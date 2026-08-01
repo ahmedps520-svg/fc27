@@ -345,7 +345,7 @@ function mulberry(seed) {
  */
 function buildCrowd() {
   const rand = mulberry(97531);
-  const rows = 9;
+  const rows = 13;
   const fans = [];
 
   const bank = (kind, from, to, step) => {
@@ -362,9 +362,9 @@ function buildCrowd() {
     }
   };
 
-  bank('far', -22, PITCH.w + 22, 1.35);
-  bank('left', -18, PITCH.h + 18, 1.35);
-  bank('right', -18, PITCH.h + 18, 1.35);
+  bank('far', -22, PITCH.w + 22, 1.05);
+  bank('left', -18, PITCH.h + 18, 1.05);
+  bank('right', -18, PITCH.h + 18, 1.05);
   return fans;
 }
 
@@ -409,8 +409,9 @@ function drawStadium(ctx, V, quality) {
       r1[0], r1[1], ROOF_Z - 1.2, r0[0], r0[1], ROOF_Z - 1.2], 'rgb(18,21,29)');
   }
 
-  // Crowd: cull beyond 95m, thin further out where individual seats are a pixel
-  // or two anyway, and thin again on phones.
+  // At full detail every seat is drawn — the only thing skipped is what sits
+  // behind the camera, which is invisible either way. Distance thinning and the
+  // hard cull are Low-detail only.
   const skip = lowQ ? 3 : 1;
   const cx = V.cam.x;
   const cy = V.cam.y;
@@ -419,9 +420,12 @@ function drawStadium(ctx, V, quality) {
     const [px, py] = fanPos(f);
     const dx = px - cx;
     const dy = py - cy;
-    const d2 = dx * dx + dy * dy;
-    if (d2 > 9025) continue;                                 // beyond 95m
-    if (d2 > 3600 && (i & 1)) continue;                      // half density past 60m
+    if (dx * V.fx + dy * V.fy < -2) continue;                // behind the camera
+    if (lowQ) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 9025) continue;                               // beyond 95m
+      if (d2 > 3600 && (i & 1)) continue;                    // half density past 60m
+    }
     const s = f.s;
     poly(ctx, V, [
       px - s, py, f.z - s, px + s, py, f.z - s,

@@ -44,12 +44,24 @@ pick the presser yourself with L1 or R1.
 | --- | --- | --- |
 | Move | Left stick / D-pad | WASD or arrows |
 | Pass · tackle | ✕ | Space |
-| Shoot (hold to charge) | ◯ | K |
+| Shoot — hold for power | ◯ | K |
+| **Curl it up and bend** | **◯ + R1** | K + I |
 | Cross | □ | J |
 | Through ball | △ | L |
 | Switch player | L1 or R1 | Q / E |
 | Sprint | R2 | Shift |
 | Pause | Options | Esc or P |
+
+### Shooting
+
+The ball is a real projectile: gravity, bounce, air drag, and Magnus spin. How long you hold ◯
+sets both power and height — a tap is a driven shot that stays near the floor, a full hold is
+much harder and rises to roughly the height of the crossbar. Overcook it from close range and it
+clears the bar, which is the point.
+
+Holding **R1 with ◯** whips it: extra lift plus sidespin, so the flight bends through the air and
+straightens as it slows. Measured at full charge: ~43 m/s off the boot, peaking about 5 m high with
+~13 m of sideways bend.
 
 A DualSense works over USB or Bluetooth through the browser Gamepad API — plug it in, press any
 button, and the chip top-right flips to **Pad ✓**. No pairing code or driver needed. Kick-off
@@ -60,8 +72,13 @@ Match length (2 / 4 / 7 min) and CPU difficulty (Easy / Pro / Elite) are set bef
 
 ### The engine
 
-No WebGL, no 3D library and no downloaded assets — every point is pushed through a pinhole camera
-and drawn with canvas 2D, and all geometry is generated in code.
+Rendering runs on **three.js** (WebGL, vendored locally in `js/vendor/`, MIT licensed) — real
+meshes, lambert shading, a directional sun with soft shadow maps, and the crowd as a single
+`InstancedMesh` so thousands of seats cost one draw call. Measured 1.55 ms/frame at 720p against
+3.9 ms for the old canvas path, with a denser crowd.
+
+A canvas-2D renderer (`render3d.js`) is kept as an automatic fallback if a machine refuses a WebGL
+context. All geometry is still generated in code — no downloaded models or textures.
 
 Players are jointed figures, not boxes: hips and shoulders drive thighs, shins, upper arms and
 forearms through tapered prisms, with knees and elbows that bend across the run cycle and spheres
@@ -110,16 +127,18 @@ index.html
 styles/main.css
 js/
   app.js                 screen router, theme, toasts
+  vendor/three.module.js three.js (MIT) — vendored, see three.LICENSE.txt
   state.js               localStorage save + career helpers
   matchEngine.js         career-mode match simulation
   data/pools.js          name/nation/club/formation/rarity tables
   data/generator.js      seeded world generation
   game/sim.js            real-time match: physics, AI, keeper, possession
   game/input.js          gamepad + keyboard + touch, unified
-  game/render3d.js       perspective camera, projected pitch, cuboid player models
+  game/renderGL.js       three.js scene: meshes, lights, shadows, instanced crowd
+  game/render3d.js       canvas-2D fallback renderer
   components/playerCard.js   reusable card + SVG radar chart
   components/crest.js        procedural crests and flags
-  screens/               menu, squad, career, quickmatch, play, match, settings
+  screens/               splash, menu, squad, career, quickmatch, play, match, settings
 ```
 
 ## Notes

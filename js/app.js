@@ -6,10 +6,11 @@ import * as Quick from './screens/quickmatch.js';
 import * as Settings from './screens/settings.js';
 import * as MatchScreen from './screens/match.js';
 import * as Play from './screens/play.js';
+import * as Splash from './screens/splash.js';
 
 const SCREENS = {
-  menu: Menu, squad: Squad, career: Career, quick: Quick, settings: Settings,
-  match: MatchScreen, play: Play,
+  splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
+  settings: Settings, match: MatchScreen, play: Play,
 };
 
 const ACCENTS = {
@@ -54,7 +55,8 @@ export function navigate(name, params = {}) {
   window.scrollTo({ top: 0 });
 
   title.textContent = mod.TITLE || 'APEX XI';
-  backBtn.hidden = name === 'menu';
+  backBtn.hidden = name === 'menu' || name === 'splash';
+  document.body.classList.toggle('on-splash', name === 'splash');
 
   if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
   refreshCoins();
@@ -74,4 +76,4 @@ document.getElementById('homeBtn').addEventListener('click', () => navigate('men
 
 loadState();
 applyTheme();
-navigate('menu');   // every state mutation persists through update(), so no unload hook needed
+navigate('splash');   // every state mutation persists through update(), so no unload hook needed

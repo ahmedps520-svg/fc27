@@ -1,9 +1,10 @@
 import { getState, update } from '../state.js';
 import { getClub } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
-import { Match } from '../game/sim.js';
+import { Match, SHAPES, FORMATION_NAMES } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import { draw, makeCamera, updateCamera, groundBasis, resolveQuality } from '../game/render3d.js';
+import { createRenderer } from '../game/renderGL.js';
 import { navigate, refreshCoins } from '../app.js';
 
 export const TITLE = 'Match';
@@ -51,7 +52,6 @@ export function render(params) {
 export function mount(root, params) {
   const shell = root.querySelector('#gmRoot');
   const canvas = root.querySelector('#gmCanvas');
-  const ctx = canvas.getContext('2d', { alpha: false });
   const input = new Input();
   const quality = resolveQuality(getState().settings.quality);
 
@@ -74,17 +74,30 @@ export function mount(root, params) {
   let vh = 0;
   let paused = false;
   let ended = false;
+  let navHeld = false;
   let raf = null;
   let last = performance.now();
 
+  // WebGL is the real renderer; the canvas-2D path stays as a fallback so the
+  // match still runs if a machine or driver refuses a GL context.
+  let gl = null;
+  let ctx = null;
+  try {
+    gl = createRenderer(canvas, match, quality);
+  } catch (err) {
+    console.warn('WebGL unavailable, falling back to canvas 2D:', err);
+    ctx = canvas.getContext('2d', { alpha: false });
+  }
+
   const resize = () => {
-    const dpr = Math.min(quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1);
     vw = shell.clientWidth;
     vh = shell.clientHeight;
-    canvas.width = Math.round(vw * dpr);
-    canvas.height = Math.round(vh * dpr);
     canvas.style.width = `${vw}px`;
     canvas.style.height = `${vh}px`;
+    if (gl) { gl.resize(vw, vh); return; }
+    const dpr = Math.min(quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(vw * dpr);
+    canvas.height = Math.round(vh * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   resize();
@@ -136,6 +149,18 @@ export function mount(root, params) {
 
     if (input.pressed('pause') && !ended) setPaused(!paused);
 
+    // pad / keyboard navigation of the pause menu
+    if (paused && !ended) {
+      const ay = input.axis().y;
+      if (ay < -0.5 && !navHeld) { navIdx = (navIdx + PAUSE_ITEMS.length - 1) % PAUSE_ITEMS.length; paintPause(); }
+      if (ay > 0.5 && !navHeld) { navIdx = (navIdx + 1) % PAUSE_ITEMS.length; paintPause(); }
+      navHeld = Math.abs(ay) > 0.5;
+      if (input.pressed('pass')) activate(PAUSE_ITEMS[navIdx].id);
+      if (input.pressed('shoot')) setPaused(false);
+    } else {
+      navHeld = false;
+    }
+
     if (!paused && !ended) {
       match.update(dt, input);
       updateCamera(cam, match, dt);
@@ -143,7 +168,9 @@ export function mount(root, params) {
       if (match.phase === 'end') { ended = true; finish(); }
     }
 
-    draw(ctx, match, cam, vw, vh, quality, paused ? 0 : dt);
+    const rdt = paused ? 0 : dt;
+    if (gl) gl.render(match, cam, rdt);
+    else draw(ctx, match, cam, vw, vh, quality, rdt);
 
     scoreH.textContent = match.teams[0].score;
     scoreA.textContent = match.teams[1].score;
@@ -164,23 +191,125 @@ export function mount(root, params) {
   const onFsChange = () => setTimeout(resize, 60);
   document.addEventListener('fullscreenchange', onFsChange);
 
-  /* ------------------------------ overlays ----------------------------- */
+  /* ---------------------------- pause menu ----------------------------- */
+  const PAUSE_ITEMS = [
+    { id: 'resume', label: 'Resume Match' },
+    { id: 'team', label: 'Team Management' },
+    { id: 'facts', label: 'Match Facts' },
+    { id: 'controls', label: 'Controls' },
+    { id: 'leave', label: 'Leave Match' },
+  ];
+  let navIdx = 1;
+  let section = 'team';
+
+  const formationSVG = (name) => {
+    const shape = SHAPES[name] || [];
+    return `<svg class="form-mini" viewBox="0 0 60 92" aria-hidden="true">
+      <rect x="1" y="1" width="58" height="90" rx="3" class="fm-pitch"/>
+      <line x1="1" y1="46" x2="59" y2="46" class="fm-line"/>
+      <circle cx="30" cy="46" r="8" class="fm-line" fill="none"/>
+      ${shape.map((s) => {
+        // shape x runs own-goal -> opponent goal; draw attacking upwards
+        const cx = 4 + s.y * 52;
+        const cy = 88 - s.x * 84;
+        return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.1"
+                  class="fm-dot ${s.role === 'GK' ? 'gk' : ''}"/>`;
+      }).join('')}
+    </svg>`;
+  };
+
+  const panelFor = (id) => {
+    const team = match.teams[match.human];
+    if (id === 'team') {
+      const seg = (key, opts) => `
+        <div class="p-row">
+          <span>${key === 'mentality' ? 'Mentality' : 'Pressing'}</span>
+          <div class="seg">${opts.map((o) => `
+            <button class="${team.tactics[key] === o ? 'on' : ''}"
+                    data-tactic="${key}" data-val="${o}">${o[0].toUpperCase() + o.slice(1)}</button>`).join('')}
+          </div>
+        </div>`;
+      return `
+        <h3>Team Management</h3>
+        <div class="p-forms">
+          <div class="form-list">
+            ${FORMATION_NAMES.map((f) => `
+              <button class="form-opt ${team.formation === f ? 'on' : ''}" data-form="${f}">${f}</button>`).join('')}
+          </div>
+          <div class="form-preview">
+            ${formationSVG(team.formation)}
+            <span>${team.formation}</span>
+          </div>
+        </div>
+        ${seg('mentality', ['defensive', 'balanced', 'attacking'])}
+        ${seg('pressing', ['low', 'normal', 'high'])}
+        <p class="p-note">Changes apply immediately — your shape shifts on the next touch.</p>`;
+    }
+    if (id === 'facts') {
+      const [ph, pa] = match.possession();
+      const [h, a] = match.teams;
+      const rows = [
+        ['Possession', `${ph}%`, `${pa}%`],
+        ['Shots', h.shots, a.shots],
+        ['On target', h.onTarget, a.onTarget],
+        ['Goals', h.score, a.score],
+      ];
+      const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
+        .sort((x, y) => x[1].minute - y[1].minute);
+      return `
+        <h3>Match Facts</h3>
+        <div class="p-facts">
+          ${rows.map(([k, x, y]) => `<div><b>${x}</b><span>${k}</span><b>${y}</b></div>`).join('')}
+        </div>
+        ${goals.length
+          ? `<ul class="gm-goals">${goals.map(([t, s]) => `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>`
+          : '<p class="p-note">No goals yet.</p>'}`;
+    }
+    if (id === 'controls') {
+      return `
+        <h3>Controls</h3>
+        <div class="ctrl-grid compact">
+          ${[['✕', 'Pass · tackle'], ['◯', 'Shoot — hold for power'], ['◯+R1', 'Curl it up'],
+             ['□', 'Cross'], ['△', 'Through ball'], ['L1/R1', 'Switch to nearest'],
+             ['R2', 'Sprint'], ['Options', 'Pause']]
+            .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
+        </div>`;
+    }
+    return '';
+  };
+
+  function paintPause() {
+    const home = getClub(params.homeId);
+    overlay.innerHTML = `
+      <div class="pause">
+        <div class="pause-head">
+          ${crestSVG(home.crest, home.short, 26)}
+          <span>Quick Match</span>
+        </div>
+        <nav class="pause-nav">
+          ${PAUSE_ITEMS.map((it, i) => `
+            <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
+                    data-nav="${i}">${it.label}</button>`).join('')}
+        </nav>
+        <div class="pause-panel">${panelFor(section)}</div>
+        <div class="pause-hints"><b>✕</b> Select <b>◯</b> Resume</div>
+      </div>`;
+  }
+
+  function activate(id) {
+    if (id === 'resume') { setPaused(false); return; }
+    if (id === 'leave') { document.exitFullscreen?.().catch(() => {}); navigate('quick'); return; }
+    section = id;
+    paintPause();
+  }
+
   function setPaused(v) {
     paused = v;
+    overlay.classList.toggle('is-pause', v);
     if (!v) { overlay.hidden = true; overlay.innerHTML = ''; return; }
     overlay.hidden = false;
-    overlay.innerHTML = `
-      <div class="gm-panel glass">
-        <h3>Paused</h3>
-        <div class="ctrl-grid compact">
-          ${[['✕', 'Pass'], ['◯', 'Shoot'], ['□', 'Cross'], ['△', 'Through'], ['L1/R1', 'Switch'], ['R2', 'Sprint']]
-            .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
-        </div>
-        <div class="gm-btns">
-          <button class="btn primary" data-o="resume">Resume</button>
-          <button class="btn ghost" data-o="quit">Quit</button>
-        </div>
-      </div>`;
+    navIdx = Math.max(1, navIdx);
+    paintPause();
   }
 
   function finish() {
@@ -215,16 +344,28 @@ export function mount(root, params) {
 
   overlay.addEventListener('click', (e) => {
     const o = e.target.closest('[data-o]')?.dataset.o;
-    if (!o) return;
-    if (o === 'resume') setPaused(false);
-    if (o === 'quit') { document.exitFullscreen?.().catch(() => {}); navigate('quick'); }
-    if (o === 'again') navigate('play', params);
+    if (o) {
+      if (o === 'resume') setPaused(false);
+      if (o === 'quit') { document.exitFullscreen?.().catch(() => {}); navigate('quick'); }
+      if (o === 'again') navigate('play', params);
+      return;
+    }
+
+    const nav = e.target.closest('[data-nav]');
+    if (nav) { navIdx = +nav.dataset.nav; activate(PAUSE_ITEMS[navIdx].id); return; }
+
+    const form = e.target.closest('[data-form]');
+    if (form) { match.applyFormation(match.human, form.dataset.form); paintPause(); return; }
+
+    const tac = e.target.closest('[data-tactic]');
+    if (tac) { match.setTactic(match.human, tac.dataset.tactic, tac.dataset.val); paintPause(); }
   });
 
   root.querySelector('#gmPause').addEventListener('click', () => { if (!ended) setPaused(!paused); });
 
   return () => {
     cancelAnimationFrame(raf);
+    gl?.dispose();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
     document.body.classList.remove('in-game');

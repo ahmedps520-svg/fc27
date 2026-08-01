@@ -9,15 +9,69 @@ const CY = PITCH.h / 2;
 const BOX_W = 16.5;
 const BOX_HALF = 20;
 
-// 4-4-2 shape in normalised coords: x = 0 own goal line, 1 = opponent goal line.
-const SHAPE = [
-  { x: .045, y: .50, role: 'GK' },
-  { x: .20, y: .16, role: 'DEF' }, { x: .16, y: .38, role: 'DEF' },
-  { x: .16, y: .62, role: 'DEF' }, { x: .20, y: .84, role: 'DEF' },
-  { x: .44, y: .13, role: 'MID' }, { x: .38, y: .40, role: 'MID' },
-  { x: .38, y: .60, role: 'MID' }, { x: .44, y: .87, role: 'MID' },
-  { x: .66, y: .36, role: 'FWD' }, { x: .66, y: .64, role: 'FWD' },
-];
+/**
+ * Formations in normalised coords: x = 0 own goal line, 1 = opponent goal line,
+ * y = 0..1 across the pitch. Every shape is exactly 11 slots with one keeper.
+ */
+export const SHAPES = {
+  '4-4-2': [
+    { x: .045, y: .50, role: 'GK' },
+    { x: .20, y: .16, role: 'DEF' }, { x: .16, y: .38, role: 'DEF' },
+    { x: .16, y: .62, role: 'DEF' }, { x: .20, y: .84, role: 'DEF' },
+    { x: .44, y: .13, role: 'MID' }, { x: .38, y: .40, role: 'MID' },
+    { x: .38, y: .60, role: 'MID' }, { x: .44, y: .87, role: 'MID' },
+    { x: .66, y: .36, role: 'FWD' }, { x: .66, y: .64, role: 'FWD' },
+  ],
+  '4-3-3': [
+    { x: .045, y: .50, role: 'GK' },
+    { x: .20, y: .15, role: 'DEF' }, { x: .16, y: .38, role: 'DEF' },
+    { x: .16, y: .62, role: 'DEF' }, { x: .20, y: .85, role: 'DEF' },
+    { x: .40, y: .28, role: 'MID' }, { x: .34, y: .50, role: 'MID' },
+    { x: .40, y: .72, role: 'MID' },
+    { x: .68, y: .16, role: 'FWD' }, { x: .72, y: .50, role: 'FWD' },
+    { x: .68, y: .84, role: 'FWD' },
+  ],
+  '4-2-3-1': [
+    { x: .045, y: .50, role: 'GK' },
+    { x: .20, y: .15, role: 'DEF' }, { x: .16, y: .38, role: 'DEF' },
+    { x: .16, y: .62, role: 'DEF' }, { x: .20, y: .85, role: 'DEF' },
+    { x: .32, y: .38, role: 'MID' }, { x: .32, y: .62, role: 'MID' },
+    { x: .56, y: .16, role: 'MID' }, { x: .54, y: .50, role: 'MID' },
+    { x: .56, y: .84, role: 'MID' },
+    { x: .74, y: .50, role: 'FWD' },
+  ],
+  '3-5-2': [
+    { x: .045, y: .50, role: 'GK' },
+    { x: .17, y: .28, role: 'DEF' }, { x: .14, y: .50, role: 'DEF' },
+    { x: .17, y: .72, role: 'DEF' },
+    { x: .46, y: .10, role: 'MID' }, { x: .36, y: .34, role: 'MID' },
+    { x: .32, y: .50, role: 'MID' }, { x: .36, y: .66, role: 'MID' },
+    { x: .46, y: .90, role: 'MID' },
+    { x: .68, y: .38, role: 'FWD' }, { x: .68, y: .62, role: 'FWD' },
+  ],
+  '5-3-2': [
+    { x: .045, y: .50, role: 'GK' },
+    { x: .24, y: .10, role: 'DEF' }, { x: .15, y: .30, role: 'DEF' },
+    { x: .12, y: .50, role: 'DEF' }, { x: .15, y: .70, role: 'DEF' },
+    { x: .24, y: .90, role: 'DEF' },
+    { x: .40, y: .30, role: 'MID' }, { x: .36, y: .50, role: 'MID' },
+    { x: .40, y: .70, role: 'MID' },
+    { x: .66, y: .38, role: 'FWD' }, { x: .66, y: .62, role: 'FWD' },
+  ],
+};
+
+export const FORMATION_NAMES = Object.keys(SHAPES);
+const SHAPE = SHAPES['4-4-2'];
+
+/** Natural role of a generated player, used when re-slotting into a new shape. */
+const ROLE_OF = {
+  GK: 'GK', CB: 'DEF', LB: 'DEF', RB: 'DEF',
+  CDM: 'MID', CM: 'MID', CAM: 'MID', LM: 'MID', RM: 'MID',
+  LW: 'FWD', RW: 'FWD', ST: 'FWD',
+};
+
+export const MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32 };
+export const PRESSING = { low: 0.7, normal: 1, high: 1.4 };
 
 const GRAV = 16;                   // arcade gravity, m/s^2
 export const GOAL_HEIGHT = 2.44;
@@ -62,6 +116,8 @@ function makeTeam(clubId, side, isHuman) {
     clubId, club, name: club.name, short: club.short,
     colors: club.crest.colors, dir, side, isHuman,
     players, score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
+    formation: '4-4-2',
+    tactics: { mentality: 'balanced', pressing: 'normal' },
   };
 }
 
@@ -112,7 +168,9 @@ export class Match {
         if (!half && p.x < PITCH.w / 2 + 2) p.x = PITCH.w / 2 + 2 + (p.role === 'FWD' ? 3 : 8);
       }
     }
-    const taker = this.teams[kickoffSide].players.find((p) => p.role === 'FWD');
+    const takers = this.teams[kickoffSide].players;
+    const taker = takers.find((p) => p.role === 'FWD')
+      || takers.find((p) => p.role === 'MID') || takers[10];
     taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6;
     taker.y = CY;
     this.kickoffTaker = taker;
@@ -159,6 +217,10 @@ export class Match {
     if (this.ball.owner) this.teams[this.ball.owner.team].poss += dt;
 
     this.chasers = [this.nearestTo(0, this.ball, true), this.nearestTo(1, this.ball, true)];
+    this.chasers2 = [
+      this.pressingOf(0) >= 1.4 ? this.secondNearest(0, this.ball) : null,
+      this.pressingOf(1) >= 1.4 ? this.secondNearest(1, this.ball) : null,
+    ];
 
     if (this.human !== null) this.handleHuman(dt, input);
 
@@ -269,8 +331,16 @@ export class Match {
       if (input.pressed('pass')) this.pass(p, aim, false);
       else if (input.pressed('through')) this.pass(p, aim, true);
       else if (input.pressed('cross')) this.cross(p, aim);
-      if (input.held('shoot')) this.charge = Math.min(1, this.charge + dt / 0.75);
-      if (input.released('shoot')) { this.shoot(p, aim, Math.max(0.28, this.charge)); this.charge = 0; }
+      if (input.held('shoot')) this.charge = Math.min(1, this.charge + dt / 0.85);
+      if (input.released('shoot')) {
+        // R1 held with the shot whips it up and bends it
+        const curled = input.held('curl');
+        this.shoot(p, aim, Math.max(0.28, this.charge), {
+          loft: curled ? 1.35 : 1,
+          curl: curled ? 34 : 0,
+        });
+        this.charge = 0;
+      }
     } else {
       this.charge = 0;
       if (input.pressed('pass') || input.pressed('through') || input.pressed('cross')) this.tackle(p, false);
@@ -278,15 +348,57 @@ export class Match {
     }
   }
 
+  /** L1 / R1 — jump straight to whoever is closest to the ball. */
   cycleActive() {
-    const team = this.humanTeam;
-    const ranked = team.players
-      .map((p, i) => ({ i, p, d: dist(p, this.ball) }))
-      .filter((o) => o.p.role !== 'GK')
-      .sort((a, b) => a.d - b.d);
-    const at = ranked.findIndex((o) => o.i === this.activeIdx);
-    this.activeIdx = ranked[(at + 1) % ranked.length].i;
+    const near = this.nearestTo(this.human, this.ball, true);
+    if (!near) return;
+    const i = this.humanTeam.players.indexOf(near);
+    if (i >= 0) this.activeIdx = i;
   }
+
+  /**
+   * Re-slot a side into a different shape, keeping the same eleven players and
+   * giving each slot the best natural fit still available.
+   */
+  applyFormation(teamIdx, name) {
+    const shape = SHAPES[name];
+    if (!shape) return;
+    const team = this.teams[teamIdx];
+    const used = new Set();
+
+    const take = (role) => {
+      let best = null;
+      let bestScore = -1;
+      for (const p of team.players) {
+        if (used.has(p)) continue;
+        const nat = ROLE_OF[p.ref.position] || 'MID';
+        // a natural keeper must never fill an outfield slot, and vice versa
+        if ((nat === 'GK') !== (role === 'GK')) continue;
+        const s = (nat === role ? 300 : 0) + p.ref.overall;
+        if (s > bestScore) { bestScore = s; best = p; }
+      }
+      if (!best) best = team.players.find((p) => !used.has(p));
+      used.add(best);
+      return best;
+    };
+
+    for (const slot of shape) {
+      const p = take(slot.role);
+      if (!p) continue;
+      p.role = slot.role;
+      p.sx = teamIdx === 0 ? slot.x : 1 - slot.x;
+      p.sy = teamIdx === 0 ? slot.y : 1 - slot.y;
+    }
+    team.formation = name;
+  }
+
+  setTactic(teamIdx, key, value) {
+    const t = this.teams[teamIdx].tactics;
+    if (key in t) t[key] = value;
+  }
+
+  mentalityOf(teamIdx) { return MENTALITY[this.teams[teamIdx].tactics.mentality] ?? 1; }
+  pressingOf(teamIdx) { return PRESSING[this.teams[teamIdx].tactics.pressing] ?? 1; }
 
   /** Only ever called at a restart, so you never lose the controlled player mid-play. */
   selectForKickoff() {
@@ -319,6 +431,21 @@ export class Match {
       return;
     }
 
+    // Magnus effect: sidespin pushes the ball perpendicular to its travel, so a
+    // curled strike bends through the air and straightens as it slows.
+    if (b.curl) {
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp > 1.5) {
+        const k = (b.curl * sp) / 26;
+        const vx0 = b.vx;
+        const vy0 = b.vy;
+        b.vx += (-vy0 / sp) * k * dt;
+        b.vy += (vx0 / sp) * k * dt;
+      }
+      b.curl *= Math.pow(0.55, dt);
+      if (b.z <= 0) b.curl = 0;
+    }
+
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.z += b.vz * dt;
@@ -340,11 +467,13 @@ export class Match {
     // if the ball is low enough to reach
     let best = null;
     let bestD = Infinity;
-    if (b.z < 2.2) {
+    if (b.z < 2.5) {
       for (const team of this.teams) {
         for (const p of team.players) {
           if (p.touchLock > 0) continue;
-          const r = p.role === 'GK' ? 1.9 : (p.slide > 0 ? 2.2 : 1.7);
+          // a ball in the air can be attacked from further out — you jump for it
+          const r = p.role === 'GK' ? 1.68
+            : (p.slide > 0 ? 2.2 : (b.z > 0.8 ? 2.15 : 1.7));
           const d = dist(p, b);
           if (d < r && d < bestD) { bestD = d; best = p; }
         }
@@ -374,12 +503,12 @@ export class Match {
         b.shotBy = null;
 
         // meeting a cross above waist height in the box is a header at goal
-        if (b.z > 1.05 && best.role !== 'GK') {
+        if (b.z > 0.85 && best.role !== 'GK') {
           const t = this.teams[best.team];
           const goalX = t.dir > 0 ? PITCH.w : 0;
           if (Math.hypot(goalX - best.x, CY - best.y) < 19) {
             b.lastTouch = best;
-            this.shoot(best, null, 0.5);
+            this.shoot(best, null, 0.5, { loft: 0.2 });   // headers are steered down
             return;
           }
         }
@@ -409,7 +538,9 @@ export class Match {
         return;
       }
       const defending = leftGoal ? 0 : 1;
-      const gk = this.teams[defending].players[0];
+      // by role, not index — a formation change can re-slot the squad
+      const side = this.teams[defending];
+      const gk = side.players.find((p) => p.role === 'GK') || side.players[0];
       b.x = clamp(b.x, 3, PITCH.w - 3);
       b.y = clamp(b.y, 6, PITCH.h - 6);
       b.z = 0;
@@ -458,6 +589,7 @@ export class Match {
     b.lastTouch = p;
     b.shotBy = null;
     b.noTouch = 0.13;
+    b.curl = 0;
     b.shotId = (b.shotId || 0) + 1;
     b.vx = vx; b.vy = vy; b.vz = vz;
     b.x = p.x + p.dirX * 1.3;
@@ -466,27 +598,60 @@ export class Match {
     p.touchLock = 0.3;
   }
 
-  /** Lofted ball into the box — the payoff is a header on the end of it. */
+  /**
+   * Lofted ball forward. Inside crossing range it hangs one up in the box for a
+   * header; from deeper it becomes a long diagonal to the furthest teammate in
+   * range rather than a rocket at the opponent's area from your own half.
+   */
   cross(p, aim) {
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
     const aimY = aim && Math.abs(aim.y) > 0.2 ? CY + aim.y * 9 : (p.y > CY ? CY - 5 : CY + 5);
+    const RANGE = 40;
 
+    // preferred target: a teammate already in the box
+    let tx = goalX - team.dir * 9;
+    let ty = aimY;
     let best = null;
     let bestD = Infinity;
     for (const t of team.players) {
       if (t === p || t.role === 'GK') continue;
       if (Math.abs(t.x - goalX) > 24) continue;
-      const d = Math.hypot(t.x - (goalX - team.dir * 9), t.y - aimY);
+      const d = Math.hypot(t.x - tx, t.y - ty);
       if (d < bestD) { bestD = d; best = t; }
     }
+    // Lead the runner: aim where they will be when the ball lands, not where
+    // they are now. The ball only passes through head height in the last couple
+    // of metres, so the landing point has to sit on them.
+    if (best) {
+      const rough = clamp(Math.hypot(best.x - p.x, best.y - p.y) / 20, 0.6, 1.9);
+      tx = best.x + best.vx * rough * 0.85 + team.dir * 0.4;
+      ty = best.y + best.vy * rough * 0.85;
+    }
 
-    const tx = best ? best.x + team.dir * 2.5 : goalX - team.dir * 9;
-    const ty = best ? best.y : aimY;
+    // too far to reach the box? float it to whoever is furthest forward in range
+    if (Math.hypot(tx - p.x, ty - p.y) > RANGE) {
+      let out = null;
+      let bestAdv = -Infinity;
+      for (const t of team.players) {
+        if (t === p || t.role === 'GK') continue;
+        if (Math.hypot(t.x - p.x, t.y - p.y) > RANGE) continue;
+        const adv = (t.x - p.x) * team.dir;
+        if (adv > bestAdv) { bestAdv = adv; out = t; }
+      }
+      if (out) { tx = out.x + team.dir * 3; ty = out.y; }
+      else {
+        tx = p.x + team.dir * 26;
+        ty = clamp(p.y + (aim ? aim.y * 10 : 0), 4, PITCH.h - 4);
+      }
+    }
+
     const dx = tx - p.x;
     const dy = ty - p.y;
     const D = Math.hypot(dx, dy) || 1;
-    const T = clamp(D / 19, 0.62, 1.7);
+    // ~20 m/s delivery: firm enough to reach the box, far off the old 35 m/s rocket,
+    // and flat enough that it does not balloon into the clouds
+    const T = clamp(D / 20, 0.6, 1.9);
     this.release(p, dx / T, dy / T, 0.5 * GRAV * T);
     this.ball.noTouch = 0.26;
   }
@@ -529,7 +694,13 @@ export class Match {
     this.release(p, nx * speed, ny * speed);
   }
 
-  shoot(p, aim, power) {
+  /**
+   * @param {object} opts
+   *   loft  multiplier on how much the strike lifts (0 = drilled along the floor)
+   *   curl  bend the flight sideways; sign picked from aim, or inward towards goal
+   */
+  shoot(p, aim, power, opts = {}) {
+    const { loft = 1, curl = 0 } = opts;
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
     const dx = goalX - p.x;
@@ -543,8 +714,19 @@ export class Match {
     const s = Math.sin(err);
     const nx = (dx * c - dy * s) / d;
     const ny = (dx * s + dy * c) / d;
-    const speed = 22 + power * 14 + acc * 6;
-    this.release(p, nx * speed, ny * speed);
+
+    const speed = 21 + power * 17 + acc * 6;
+    // Longer hold = harder and higher. Overcook it close in and it clears the bar.
+    const rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
+
+    this.release(p, nx * speed, ny * speed, rise);
+
+    if (curl) {
+      // bend away from the aim side, defaulting to whipping it back towards goal
+      let sign = aim && Math.abs(aim.y) > 0.2 ? -Math.sign(aim.y) : Math.sign(CY - p.y) || 1;
+      this.ball.curl = sign * curl * (0.55 + acc * 0.6);
+    }
+
     this.ball.shotBy = p;      // resolved as on target only if it beats a defender to the keeper or goes in
     team.shots++;
   }
@@ -586,12 +768,25 @@ export class Match {
     return best;
   }
 
+  /** Second-closest outfielder — the extra presser when pressing is set high. */
+  secondNearest(side, pt) {
+    const first = this.nearestTo(side, pt, true);
+    let best = null;
+    let bestD = Infinity;
+    for (const p of this.teams[side].players) {
+      if (p.role === 'GK' || p === first) continue;
+      const d = dist(p, pt);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
   shapeTarget(p) {
     const team = this.teams[p.team];
     const b = this.ball;
     const weHave = b.owner && b.owner.team === p.team;
     const push = ((b.x - PITCH.w / 2) / (PITCH.w / 2)) * team.dir;
-    const shift = push * 13 * (weHave ? 1.3 : 0.85);
+    const shift = push * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team);
     return {
       x: clamp(p.sx * PITCH.w + team.dir * shift, 3, PITCH.w - 3),
       y: clamp(p.sy * PITCH.h + (b.y - CY) * 0.24, 3, PITCH.h - 3),
@@ -606,13 +801,14 @@ export class Match {
     if (b.owner === p) return this.thinkOnBall(p, dt);
 
     const weHave = b.owner && b.owner.team === p.team;
-    const isChaser = this.chasers[p.team] === p;
+    const press = this.pressingOf(p.team);
+    const isChaser = this.chasers[p.team] === p || this.chasers2?.[p.team] === p;
     const target = this.shapeTarget(p);
 
-    if (!weHave && (isChaser || (!b.owner && dist(p, b) < 14))) {
+    if (!weHave && (isChaser || (!b.owner && dist(p, b) < 14 * press))) {
       this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
       if (b.owner && b.owner.team !== p.team && dist(p, b.owner) < 2.4) {
-        if (Math.random() < 1.1 * this.skill * dt) this.tackle(p, false);
+        if (Math.random() < 1.1 * this.skill * press * dt) this.tackle(p, false);
       }
       return;
     }
@@ -633,7 +829,12 @@ export class Match {
 
     if (toGoal < 24 && (pressure > 2.4 || toGoal < 13)) {
       if (Math.random() < (1.7 - toGoal / 26) * this.skill * dt) {
-        this.shoot(p, null, 0.55 + Math.random() * 0.45);
+        // CPU keeps most efforts down, but bends the odd one from range
+        const far = toGoal > 17;
+        this.shoot(p, null, 0.55 + Math.random() * 0.45, {
+          loft: 0.32 + Math.random() * 0.3,
+          curl: far && Math.random() < 0.3 ? 26 : 0,
+        });
         return;
       }
     }
@@ -679,24 +880,26 @@ export class Match {
     let standOff = clamp(d * 0.18, 1.6, 5.5);
     let tx = goalX + inward * standOff;
     let ty = CY + dy * (standOff / d);
-    let urgency = 1.15;
+    let urgency = 1.06;
 
     if (!b.owner && closing && d < 30) {
       // read the shot: intercept where it will cross the keeper's line.
       // The read is judged once per shot and carries an error scaled to the keeper's quality.
       if (p.readId !== b.shotId) {
         p.readId = b.shotId;
-        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 4.2;
+        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 6.0;
+        p.reactT = 0.07 + (1.05 - p.ref.overall / 100) * 0.18;  // beatable at pace
       }
+      p.reactT = Math.max(0, (p.reactT || 0) - dt);
       const t = (tx - b.x) / b.vx;
-      if (t > 0 && t < 2.2) {
+      if (p.reactT <= 0 && t > 0 && t < 2.2) {
         ty = b.y + b.vy * t + p.readErr;
-        urgency = 1.28;
+        urgency = 1.12;
       }
     } else if (d < 13 && b.owner && b.owner.team !== p.team) {
-      tx = goalX + inward * clamp(d * 0.45, 2, 7.5);   // narrow the angle on a one-on-one
+      tx = goalX + inward * clamp(d * 0.34, 2, 5.5);   // narrow the angle on a one-on-one
       ty = b.y;
-      urgency = 1.3;
+      urgency = 1.1;
     }
 
     ty = clamp(ty, CY - GOAL_HALF - 2.5, CY + GOAL_HALF + 2.5);

@@ -71,7 +71,8 @@ export function render() {
     <section class="panel glass about">
       <header class="panel-head"><h2>Controls</h2></header>
       <div class="ctrl-grid">
-        ${[['✕ / Space', 'Pass · tackle'], ['◯ / K', 'Shoot (hold)'], ['□ / J', 'Cross'],
+        ${[['✕ / Space', 'Pass · tackle'], ['◯ / K', 'Shoot — hold for power'],
+           ['◯+R1 / K+I', 'Curl it up and bend'], ['□ / J', 'Cross'],
            ['△ / L', 'Through ball'], ['L1 · R1 / Q', 'Switch player'], ['R2 / Shift', 'Sprint'],
            ['Options / Esc', 'Pause']]
           .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
