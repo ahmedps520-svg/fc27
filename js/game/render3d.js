@@ -51,7 +51,9 @@ export function makeCamera() {
 }
 
 export function updateCamera(cam, match, dt) {
-  const b = match.ball;
+  // during a celebration the story is the scorer, not the ball sitting in the net
+  const focus = (match.phase === 'goal' && match.celebrant) ? match.celebrant : match.ball;
+  const b = focus;
   const k = 1 - Math.exp(-dt * 2.8);
   const wantX = Math.max(16, Math.min(PITCH.w - 16, b.x));         // reach far enough to show a goal
   const wantY = -30 + b.y * 0.3;                                   // dolly in for far-side play

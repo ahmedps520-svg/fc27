@@ -952,6 +952,122 @@ body.in-game #screen {
 }
 .tbtns button:active { background: var(--accent); color: #04121a; }
 
+/* --------------------------- Team select ------------------------- */
+.teamsel {
+  display: grid; grid-template-columns: 1fr minmax(210px, 260px) 1fr;
+  grid-template-rows: 1fr auto; gap: 18px; align-items: start;
+  min-height: calc(100dvh - 130px);
+}
+.ts-side { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ts-label {
+  font-family: var(--font-num); font-size: clamp(20px, 3vw, 34px); font-weight: 800;
+  letter-spacing: .3em; color: rgba(255, 255, 255, .16);
+}
+.ts-seat {
+  font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent); padding: 4px 12px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.ts-card {
+  position: relative; overflow: hidden; width: 100%; max-width: 330px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 16px 14px;
+  border-radius: var(--radius); border: 1px solid var(--line);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--team) 20%, transparent), rgba(10, 14, 24, .9));
+  box-shadow: var(--shadow);
+}
+.ts-card::before {
+  content: ''; position: absolute; inset: auto -30% -55% -30%; height: 190px;
+  background: radial-gradient(closest-side, var(--team), transparent 72%); opacity: .28;
+}
+.ts-name { position: relative; font-size: 17px; font-weight: 700; text-align: center; }
+.ts-crest-row { position: relative; display: flex; align-items: center; gap: 8px; }
+.ts-crest { line-height: 0; }
+.ts-arrow {
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 13px;
+  border: 1px solid var(--line-strong); background: rgba(255, 255, 255, .06); color: var(--text);
+  transition: background .16s, transform .16s;
+}
+.ts-arrow:hover { background: var(--accent); color: #04121a; transform: scale(1.08); }
+.ts-stars { position: relative; letter-spacing: .18em; color: #ffd166; font-size: 15px; }
+.ts-stats { position: relative; display: flex; gap: 20px; }
+.ts-stats div { display: flex; flex-direction: column; align-items: center; }
+.ts-stats span { font-size: 9.5px; letter-spacing: .14em; color: var(--text-mute); }
+.ts-stats b { font-family: var(--font-num); font-size: 22px; font-weight: 800; }
+.ts-league {
+  position: relative; width: 100%; text-align: center; margin-top: 4px; padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  font-family: var(--font-num); font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+
+.ts-mid { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding-top: 26px; }
+.ts-vs {
+  text-align: center; font-family: var(--font-num); font-style: italic; font-weight: 800;
+  font-size: clamp(34px, 5vw, 58px); line-height: 1;
+  background: linear-gradient(180deg, #fff, var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ts-opt { display: flex; flex-direction: column; gap: 6px; }
+.ts-opt > span { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-mute); }
+.seg.col { flex-direction: column; }
+.seg.col button { text-align: left; padding: 8px 12px; display: flex; flex-direction: column; gap: 1px; }
+.seg.col button b { font-size: 13px; font-weight: 700; }
+.seg.col button i { font-style: normal; font-size: 10.5px; opacity: .7; }
+
+.ts-hints {
+  grid-column: 1 / -1; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+  justify-content: center; padding-top: 4px; font-size: 11.5px; color: var(--text-mute);
+}
+.ts-hints b {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
+  margin-right: 5px; border-radius: 999px; background: rgba(255, 255, 255, .12);
+  font-size: 10px; color: #fff;
+}
+.ts-pads { margin-left: auto; color: var(--text-dim); }
+
+@media (max-width: 860px) {
+  .teamsel { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; }
+  .ts-mid { order: 3; padding-top: 0; }
+  .ts-away { order: 2; }
+  .ts-hints { order: 4; }
+  .ts-pads { margin-left: 0; width: 100%; text-align: center; }
+}
+
+/* Goal card — rides the celebration, then clears for the restart. */
+.goal-card {
+  position: absolute; left: 0; right: 0; top: 22%; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  pointer-events: none; text-align: center;
+}
+.goal-card[hidden] { display: none; }
+.gc-word {
+  font-family: var(--font-num); font-weight: 800; font-style: italic;
+  font-size: clamp(60px, 13vw, 168px); line-height: .86; letter-spacing: -.045em;
+  color: #fff; text-shadow: 0 0 38px var(--team), 0 8px 40px rgba(0, 0, 0, .6);
+  opacity: 0; transform: translateY(26px) scale(.86);
+}
+.gc-scorer {
+  font-size: clamp(16px, 2.4vw, 27px); font-weight: 700; letter-spacing: .04em; color: #fff;
+  opacity: 0; transform: translateY(16px);
+}
+.gc-score {
+  font-family: var(--font-num); font-size: 14px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--team); font-weight: 700;
+  opacity: 0; transform: translateY(12px);
+}
+.goal-card.show .gc-word { animation: gcPop .62s cubic-bezier(.16, 1.2, .3, 1) forwards, gcThrob 1.5s ease-in-out .62s infinite; }
+.goal-card.show .gc-scorer { animation: gcRise .5s cubic-bezier(.2, .9, .3, 1) .26s forwards; }
+.goal-card.show .gc-score { animation: gcRise .5s cubic-bezier(.2, .9, .3, 1) .42s forwards; }
+@keyframes gcPop {
+  0% { opacity: 0; transform: translateY(26px) scale(.86); }
+  60% { opacity: 1; transform: translateY(0) scale(1.06); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gcRise { to { opacity: 1; transform: none; } }
+@keyframes gcThrob { 0%, 100% { text-shadow: 0 0 34px var(--team), 0 8px 40px rgba(0, 0, 0, .6); }
+  50% { text-shadow: 0 0 66px var(--team), 0 8px 40px rgba(0, 0, 0, .6); } }
+.reduce-motion .goal-card.show * { animation-duration: .01s !important; opacity: 1; transform: none; }
+
 /* Pause menu: a vertical list over the dimmed live scene, which keeps rendering. */
 .pause {
   position: absolute; inset: 0;

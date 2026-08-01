@@ -45,6 +45,12 @@ export function render(params) {
         </div>
       </div>
 
+      <div class="goal-card" id="goalCard" hidden>
+        <span class="gc-word">GOAL</span>
+        <span class="gc-scorer" id="gcScorer"></span>
+        <span class="gc-score" id="gcScore"></span>
+      </div>
+
       <div class="gm-overlay" id="gmOverlay" hidden></div>
     </div>`;
 }
@@ -52,12 +58,20 @@ export function render(params) {
 export function mount(root, params) {
   const shell = root.querySelector('#gmRoot');
   const canvas = root.querySelector('#gmCanvas');
-  const input = new Input();
+  const mode = params.mode || 'single';
+  const twoUp = mode === 'versus' || mode === 'coop';
+
+  // Seat 1 takes pad 0 and the WASD set; seat 2 takes pad 1 and the arrow/numpad
+  // set, so a second person can join with a pad or just the other half of the keyboard.
+  const inputs = [new Input({ pad: 0, keys: 'primary' })];
+  if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
+  const input = inputs[0];
   const quality = resolveQuality(getState().settings.quality);
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
     skill: params.skill || 1,
+    mode,
   });
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
@@ -67,6 +81,10 @@ export function mount(root, params) {
   const clockEl = root.querySelector('#gmClock');
   const padEl = root.querySelector('#gmPad');
   const overlay = root.querySelector('#gmOverlay');
+  const goalCard = root.querySelector('#goalCard');
+  const gcScorer = root.querySelector('#gcScorer');
+  const gcScore = root.querySelector('#gcScore');
+  let lastPhase = null;
 
   document.body.classList.add('in-game');
 
@@ -145,7 +163,7 @@ export function mount(root, params) {
   const frame = (now) => {
     const dt = Math.min(0.034, (now - last) / 1000);
     last = now;
-    input.poll(dt);
+    for (const inp of inputs) inp.poll(dt);
 
     if (input.pressed('pause') && !ended) setPaused(!paused);
 
@@ -162,7 +180,7 @@ export function mount(root, params) {
     }
 
     if (!paused && !ended) {
-      match.update(dt, input);
+      match.update(dt, inputs);
       updateCamera(cam, match, dt);
       match.basis = groundBasis(cam);
       if (match.phase === 'end') { ended = true; finish(); }
@@ -172,11 +190,31 @@ export function mount(root, params) {
     if (gl) gl.render(match, cam, rdt);
     else draw(ctx, match, cam, vw, vh, quality, rdt);
 
+    // goal card rides the celebration phase
+    if (match.phase === 'goal' && lastPhase !== 'goal') {
+      const t = match.teams[match.goalTeam];
+      goalCard.hidden = false;
+      goalCard.style.setProperty('--team', t.colors[0]);
+      gcScorer.textContent = match.scorerName || '';
+      gcScore.textContent = `${t.short}  ${match.teams[0].score} – ${match.teams[1].score}`;
+      void goalCard.offsetWidth;
+      goalCard.classList.add('show');
+    } else if (match.phase !== 'goal' && lastPhase === 'goal') {
+      goalCard.classList.remove('show');
+      goalCard.hidden = true;
+    }
+    lastPhase = match.phase;
+
     scoreH.textContent = match.teams[0].score;
     scoreA.textContent = match.teams[1].score;
     clockEl.textContent = `${match.minute()}'`;
-    padEl.textContent = input.pad ? 'Pad ✓' : 'No pad';
-    padEl.classList.toggle('on', !!input.pad);
+    if (twoUp) {
+      padEl.textContent = `P1 ${inputs[0].pad ? '✓' : 'kbd'} · P2 ${inputs[1].pad ? '✓' : 'kbd'}`;
+      padEl.classList.toggle('on', !!(inputs[0].pad && inputs[1].pad));
+    } else {
+      padEl.textContent = input.pad ? 'Pad ✓' : 'No pad';
+      padEl.classList.toggle('on', !!input.pad);
+    }
 
     raf = requestAnimationFrame(frame);
   };
@@ -369,6 +407,6 @@ export function mount(root, params) {
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
     document.body.classList.remove('in-game');
-    input.destroy();
+    for (const inp of inputs) inp.destroy();
   };
 }

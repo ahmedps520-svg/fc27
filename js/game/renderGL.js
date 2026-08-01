@@ -144,13 +144,18 @@ function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol) {
   return { grp, parts };
 }
 
-function posePlayer(rig, p, phase, fine) {
+function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
+  if (p.diveT > 0) { poseDive(rig, p, fine); return; }
+  rig.grp.rotation.set(0, 0, 0);
   const cos = p.dirX;
   const sin = p.dirY;
   const sp = Math.hypot(p.vx, p.vy);
   const gait = Math.min(1, sp / 6.5);
   const lean = Math.min(0.12, sp / 70);
+  const cheer = p.celebrating ? 1 : 0;
+  // little hop while celebrating, so the whole body lifts off the turf
+  const hop = cheer ? Math.abs(Math.sin(celebT * 6.5)) * 0.22 : 0;
   const wx = (f, l) => p.x + f * cos - l * sin;
   const wy = (f, l) => p.y + f * sin + l * cos;
 
@@ -160,11 +165,12 @@ function posePlayer(rig, p, phase, fine) {
     const kneeA = hipA - (Math.max(0, -s) * 1.15 + 0.12) * gait - 0.08;
     const lat = side * 0.11;
     const hipF = lean;
+    const hipZ = HIP_Z + hop;
     const kneeF = hipF + Math.sin(hipA) * THIGH;
-    const kneeZ = HIP_Z - Math.cos(hipA) * THIGH;
+    const kneeZ = hipZ - Math.cos(hipA) * THIGH;
     const ankF = kneeF + Math.sin(kneeA) * SHIN;
     const ankZ = Math.max(0.07, kneeZ - Math.cos(kneeA) * SHIN);
-    segment(thigh, wx(hipF, lat), wy(hipF, lat), HIP_Z, wx(kneeF, lat), wy(kneeF, lat), kneeZ, 0.1);
+    segment(thigh, wx(hipF, lat), wy(hipF, lat), hipZ, wx(kneeF, lat), wy(kneeF, lat), kneeZ, 0.1);
     segment(shin, wx(kneeF, lat), wy(kneeF, lat), kneeZ, wx(ankF, lat), wy(ankF, lat), ankZ, 0.075);
     knee.position.set(wx(kneeF, lat), wy(kneeF, lat), kneeZ);
     knee.scale.setScalar(0.085);
@@ -175,16 +181,19 @@ function posePlayer(rig, p, phase, fine) {
 
   const arm = (side, ph, upper, fore, hand) => {
     const s = Math.sin(ph);
-    const shA = s * 0.5 * gait;
-    const elA = shA + 0.75 * gait + 0.25;
+    // celebrating: both arms swing up and out overhead instead of pumping
+    const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
+    const shA = cheer ? -2.35 + swing : s * 0.5 * gait;
+    const elA = cheer ? -2.6 + swing * 0.6 : shA + 0.75 * gait + 0.25;
     const lat = side * 0.2;
-    const out = side * 0.235;
+    const out = side * (cheer ? 0.34 : 0.235);
     const shF = lean * 0.5;
+    const shZ = SHOULDER_Z + hop;
     const elF = shF + Math.sin(shA) * UPPER_ARM;
-    const elZ = SHOULDER_Z - Math.cos(shA) * UPPER_ARM;
+    const elZ = shZ - Math.cos(shA) * UPPER_ARM;
     const haF = elF + Math.sin(elA) * FOREARM;
     const haZ = elZ - Math.cos(elA) * FOREARM;
-    segment(upper, wx(shF, lat), wy(shF, lat), SHOULDER_Z, wx(elF, out), wy(elF, out), elZ, 0.072);
+    segment(upper, wx(shF, lat), wy(shF, lat), shZ, wx(elF, out), wy(elF, out), elZ, 0.072);
     segment(fore, wx(elF, out), wy(elF, out), elZ, wx(haF, out), wy(haF, out), haZ, 0.05);
     hand.position.set(wx(haF, out), wy(haF, out), haZ - 0.02);
     hand.scale.setScalar(0.058);
@@ -196,17 +205,81 @@ function posePlayer(rig, p, phase, fine) {
   arm(-1, phase, parts.armL, parts.foreL, parts.handL);
   arm(1, phase + Math.PI, parts.armR, parts.foreR, parts.handR);
 
-  segment(parts.hips, wx(lean, 0), wy(lean, 0), HIP_Z - 0.05, wx(lean, 0), wy(lean, 0), HIP_Z + 0.24, 0.185);
-  segment(parts.torso, wx(lean, 0), wy(lean, 0), HIP_Z + 0.18,
-    wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + 0.04, 0.2);
-  parts.shoulder.position.set(wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z);
+  segment(parts.hips, wx(lean, 0), wy(lean, 0), HIP_Z - 0.05 + hop,
+    wx(lean, 0), wy(lean, 0), HIP_Z + 0.24 + hop, 0.185);
+  segment(parts.torso, wx(lean, 0), wy(lean, 0), HIP_Z + 0.18 + hop,
+    wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + 0.04 + hop, 0.2);
+  parts.shoulder.position.set(wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + hop);
   parts.shoulder.scale.set(0.21, 0.14, 0.21);
-  segment(parts.neck, wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z,
-    wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + 0.16, 0.055);
-  const hz = SHOULDER_Z + 0.29;
+  segment(parts.neck, wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + hop,
+    wx(lean * 1.6, 0), wy(lean * 1.6, 0), SHOULDER_Z + 0.16 + hop, 0.055);
+  const hz = SHOULDER_Z + 0.29 + hop;
   parts.head.position.set(wx(lean * 1.6, 0), wy(lean * 1.6, 0), hz);
   parts.head.scale.setScalar(0.115);
   parts.hair.position.set(wx(lean * 1.6 - 0.02, 0), wy(lean * 1.6 - 0.02, 0), hz + 0.05);
+  parts.hair.scale.set(0.112, 0.112, 0.085);
+  parts.hair.visible = fine;
+}
+
+/**
+ * Full-stretch dive: the body lays out horizontally along the dive direction,
+ * arms reaching for the ball, legs trailing, and the whole figure lifts off the
+ * turf through the middle of the dive.
+ */
+function poseDive(rig, p, fine) {
+  const { parts } = rig;
+  const t = 1 - Math.max(0, Math.min(1, p.diveT / 0.75));   // 0 -> takeoff, 1 -> landed
+  const air = Math.sin(t * Math.PI);                        // arc through the dive
+  const s = p.diveDir || 1;
+  const lay = Math.min(1, t * 2.6);                         // how flat the body is
+
+  const bodyZ = 0.34 + air * 0.55;
+  const reach = 0.5 + air * 0.45;
+  // lateral offsets measured out from the keeper along the dive
+  const at = (o, z) => [p.x, p.y + s * o, z];
+
+  const [hx, hy, hz] = at(-0.15 * lay, bodyZ);
+  const [sx2, sy2, sz2] = at(0.5 * lay, bodyZ + 0.16 * (1 - lay * 0.5));
+
+  segment(parts.hips, hx, hy, hz, hx, hy + s * 0.1, hz + 0.2 * (1 - lay), 0.185);
+  segment(parts.torso, hx, hy, hz, sx2, sy2, sz2, 0.2);
+  parts.shoulder.position.set(sx2, sy2, sz2);
+  parts.shoulder.scale.set(0.21, 0.14, 0.21);
+
+  // arms thrown out towards the ball
+  for (const [u, f, hnd, off] of [
+    [parts.armL, parts.foreL, parts.handL, 0.16],
+    [parts.armR, parts.foreR, parts.handR, -0.16],
+  ]) {
+    const e = at(0.5 * lay + reach * 0.5, sz2 + off * 0.5 + 0.05);
+    const h = at(0.5 * lay + reach, sz2 + off + 0.1);
+    segment(u, sx2, sy2, sz2, e[0], e[1], e[2], 0.072);
+    segment(f, e[0], e[1], e[2], h[0], h[1], h[2], 0.05);
+    hnd.position.set(h[0], h[1], h[2]);
+    hnd.scale.setScalar(0.058);
+    hnd.visible = fine;
+  }
+
+  // legs trail behind the dive
+  for (const [th, sh, kn, ft, off] of [
+    [parts.thighL, parts.shinL, parts.kneeL, parts.footL, 0.11],
+    [parts.thighR, parts.shinR, parts.kneeR, parts.footR, -0.11],
+  ]) {
+    const k = at(-0.15 * lay - 0.42, bodyZ - 0.12 + off * 0.4);
+    const a = at(-0.15 * lay - 0.85, bodyZ - 0.24 + off * 0.5);
+    segment(th, hx, hy + s * off * 0.5, hz, k[0], k[1], k[2], 0.1);
+    segment(sh, k[0], k[1], k[2], a[0], a[1], a[2], 0.075);
+    kn.position.set(k[0], k[1], k[2]);
+    kn.scale.setScalar(0.085);
+    segment(ft, a[0], a[1], a[2], a[0], a[1] - s * 0.16, a[2] - 0.03, 0.06);
+    ft.visible = fine;
+  }
+
+  const nz = sz2 + 0.14;
+  segment(parts.neck, sx2, sy2, sz2, sx2, sy2 + s * 0.1, nz, 0.055);
+  parts.head.position.set(sx2, sy2 + s * 0.16, nz + 0.05);
+  parts.head.scale.setScalar(0.115);
+  parts.hair.position.set(sx2, sy2 + s * 0.18, nz + 0.1);
   parts.hair.scale.set(0.112, 0.112, 0.085);
   parts.hair.visible = fine;
 }
@@ -380,11 +453,17 @@ export function createRenderer(canvas, match, quality) {
   ball.castShadow = true;
   scene.add(ball);
 
-  const marker = new THREE.Mesh(
-    new THREE.ConeGeometry(0.3, 0.55, 4),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  marker.rotation.x = Math.PI;
-  scene.add(marker);
+  // one marker per seat — P1 white, P2 amber, so couch players can tell them apart
+  const MARKER_COLS = [0xffffff, 0xffc63d];
+  const markers = MARKER_COLS.map((col) => {
+    const m = new THREE.Mesh(
+      new THREE.ConeGeometry(0.3, 0.55, 4),
+      new THREE.MeshBasicMaterial({ color: col }));
+    m.rotation.x = Math.PI;
+    m.visible = false;
+    scene.add(m);
+    return m;
+  });
 
   const fine = quality !== 'low';
 
@@ -410,14 +489,17 @@ export function createRenderer(canvas, match, quality) {
           const rig = rigs.get(p);
           if (!rig) continue;
           p._phase = (p._phase || 0) + Math.hypot(p.vx, p.vy) * dt * 2.4;
-          posePlayer(rig, p, p._phase, fine);
+          posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
       }
       ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19);
 
-      const act = m.active;
-      marker.visible = !!act;
-      if (act) marker.position.set(act.x, act.y, 2.6);
+      const acts = m.actives || (m.active ? [m.active] : []);
+      markers.forEach((mk, i) => {
+        const p = acts[i];
+        mk.visible = !!p;
+        if (p) mk.position.set(p.x, p.y, 2.6);
+      });
 
       renderer.render(scene, camera);
     },
