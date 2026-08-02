@@ -4,6 +4,7 @@ import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
+import { sfx } from '../audio.js';
 
 export const TITLE = 'Ultimate XI';
 
@@ -81,12 +82,164 @@ function openPack(pack) {
 /* ------------------------------------------------------------------ *
  * Render
  * ------------------------------------------------------------------ */
+/**
+ * Turn the placed line-up into a squad the match engine can field.
+ * Returns null unless all eleven slots are filled.
+ */
+export function ultimateSquad() {
+  const s = getState();
+  const ids = s.club.lineup;
+  if (ids.some((id) => !id)) return null;
+  const xi = ids.map(getPlayer);
+  if (xi.some((p) => !p)) return null;
+  return { xi, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
+}
+
+/* ------------------------------ Apex Division --------------------------- */
+export function divisionView() {
+  const u = getState().ultimate;
+  const div = DIVISIONS[u.divIdx];
+  const next = DIVISIONS[u.divIdx + 1];
+  const chem = chemistryFor(getState().club.lineup, getState().club.formation);
+  const ready = chem.placedCount === 11;
+  const pips = Array.from({ length: div.need }, (_, i) =>
+    `<i class="${i < u.progress ? 'on' : ''}"></i>`).join('');
+
+  return `
+    <section class="panel glass div-hero">
+      <div class="div-badge">
+        <span class="div-num">${div.id === 0 ? '★' : div.id}</span>
+      </div>
+      <div class="div-info">
+        <span class="div-kicker">Apex Division</span>
+        <b>${div.name}</b>
+        <div class="div-pips">${pips}</div>
+        <span class="div-need">
+          ${next ? `${u.progress}/${div.need} wins to reach ${next.name}` : 'Top of the ladder — hold your rank'}
+        </span>
+      </div>
+      <div class="div-rec">
+        <div><b>${u.wins}</b><span>Won</span></div>
+        <div><b>${u.draws}</b><span>Drew</span></div>
+        <div><b>${u.losses}</b><span>Lost</span></div>
+        <div><b>${u.streak}</b><span>Streak</span></div>
+      </div>
+    </section>
+
+    <section class="panel glass">
+      <header class="panel-head"><h2>Next fixture</h2>
+        <span class="tag">Win ◈${div.reward.toLocaleString()} + pack</span></header>
+      <p class="hint">Opponents get stronger the higher you climb. A loss drops you back a rung.</p>
+      <div class="nm-actions">
+        <button class="btn primary big" id="playDivision" ${ready ? '' : 'disabled'}>
+          ${ready ? 'Play match' : `Fill your XI (${chem.placedCount}/11)`}
+        </button>
+      </div>
+    </section>`;
+}
+
+/* --------------------------------- Store -------------------------------- */
+export function storeView() {
+  const s = getState();
+  const owned = s.club.packs;
+  const counts = owned.reduce((a, id) => { a[id] = (a[id] || 0) + 1; return a; }, {});
+
+  return `
+    <section class="panel glass">
+      <header class="panel-head">
+        <h2>Store</h2>
+        <span class="coin-chip">◈ ${s.club.coins.toLocaleString()}</span>
+      </header>
+      <p class="hint">Packs go straight to your locker — open them when you want.</p>
+      <div class="store-grid">
+        ${PACKS.map((p) => {
+          const free = p.cost === 0;
+          const locked = !free && p.cost > s.club.coins;
+          return `
+            <article class="store-pack rar-${p.id === 'prime' ? 'special' : p.id}">
+              <div class="sp-art"><span class="sp-mark">UXI</span><i></i></div>
+              <b class="sp-name">${p.name}</b>
+              <span class="sp-note">${p.note}</span>
+              <span class="sp-odds">${oddsLine(p)}</span>
+              <button class="btn ${locked ? 'ghost' : 'primary'}" data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
+                ${free ? 'Claim free' : `◈ ${p.cost.toLocaleString()}`}
+              </button>
+            </article>`;
+        }).join('')}
+      </div>
+    </section>
+
+    <section class="panel glass">
+      <header class="panel-head">
+        <h2>Your locker <small>${owned.length}</small></h2>
+        ${owned.length ? '<button class="btn primary" id="openAll">Open all</button>' : ''}
+      </header>
+      ${owned.length ? `
+        <div class="locker">
+          ${Object.entries(counts).map(([id, n]) => {
+            const pack = PACKS.find((p) => p.id === id) || PACKS[0];
+            return `
+              <button class="locker-pack rar-${id === 'prime' ? 'special' : id}" data-open-pack="${id}">
+                <span class="lp-art"><i>UXI</i></span>
+                <b>${pack.name}</b>
+                <span class="lp-count">×${n}</span>
+                <span class="lp-cta">Open</span>
+              </button>`;
+          }).join('')}
+        </div>` : '<p class="empty">No packs yet — buy one above or win in Apex Division.</p>'}
+    </section>`;
+}
+
+function oddsLine(p) {
+  const parts = Object.entries(p.odds)
+    .filter(([, v]) => v > 0.001)
+    .map(([k, v]) => `${RARITY[k].label} ${Math.round(v * 100)}%`);
+  return parts.join(' · ');
+}
+
+export function objectivesView() {
+  const u = getState().ultimate;
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Objectives</h2>
+        <span class="tag">${u.objectives.filter((o) => o.done >= o.need).length}/${u.objectives.length} done</span></header>
+      <ul class="obj-list">
+        ${u.objectives.map((o) => {
+          const done = o.done >= o.need;
+          const pct = Math.min(100, (o.done / o.need) * 100);
+          return `
+            <li class="${done ? 'done' : ''}">
+              <span class="obj-tick">${done ? '✓' : ''}</span>
+              <div class="obj-body">
+                <b>${o.text}</b>
+                <i class="obj-bar"><b style="width:${pct}%"></b></i>
+                <span>${Math.min(o.done, o.need)}/${o.need}</span>
+              </div>
+              <span class="obj-reward">◈${o.coins.toLocaleString()}<em>${o.pack} pack</em></span>
+            </li>`;
+        }).join('')}
+      </ul>
+    </section>`;
+}
+
 export function render() {
   const s = getState();
   const { formation, lineup } = s.club;
   const chem = chemistryFor(lineup, formation);
 
-  return `
+  const owned = s.club.packs.length;
+  const tabs = `
+    <nav class="tabs" id="uTabs">
+      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['objectives', 'Objectives'],
+         ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
+        .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
+    </nav>`;
+
+  if (tab === 'division') return tabs + divisionView();
+  if (tab === 'objectives') return tabs + objectivesView();
+  if (tab === 'store') return tabs + storeView();
+
+  return tabs + `
     <div class="sb-head">
       <div class="sb-metrics glass">
         <div class="metric"><b class="big">${chem.rating || '--'}</b><span>Squad rating</span></div>
@@ -122,21 +275,11 @@ export function render() {
       </div>
 
       <div class="sb-side">
-        <section class="panel glass">
-          <header class="panel-head">
-            <h2>Packs</h2>
-            <span class="coin-chip">◈ ${s.club.coins.toLocaleString()}</span>
-          </header>
-          <div class="pack-row">
-            ${PACKS.map((p) => `
-              <button class="pack-btn rar-${p.id === 'prime' ? 'special' : p.id}" data-pack="${p.id}"
-                      ${p.cost > s.club.coins ? 'disabled' : ''}>
-                <span class="pack-name">${p.name}</span>
-                <span class="pack-note">${p.note}</span>
-                <span class="pack-cost">${p.cost ? `◈ ${p.cost.toLocaleString()}` : 'FREE'}</span>
-              </button>`).join('')}
-          </div>
-        </section>
+        ${owned ? `
+          <button class="mystery-pack" data-goto-store>
+            <b>${owned} pack${owned > 1 ? 's' : ''} waiting</b>
+            <span>Open them in the Store</span>
+          </button>` : ''}
 
         <section class="panel glass">
           <header class="panel-head">
@@ -178,19 +321,24 @@ function slotHTML(slot, i, playerId, chem) {
 
 function collectionHTML() {
   const s = getState();
+  // anyone already on the pitch is hidden here — the list is the bench, not a duplicate
+  const used = new Set(s.club.lineup.filter(Boolean));
   const items = s.club.collection
     .map(getPlayer)
-    .filter((p) => p && (filter === 'all' || p.rarity === filter))
+    .filter((p) => p && !used.has(p.id) && (filter === 'all' || p.rarity === filter))
     .sort((a, b) => b.overall - a.overall);
 
   if (!s.club.collection.length) {
-    return `<p class="empty">No cards yet — open the free Bronze pack.</p>`;
+    return `<p class="empty">No cards yet — grab a pack from the Store.</p>`;
   }
-  if (!items.length) return `<p class="empty">No ${RARITY[filter].label.toLowerCase()} cards.</p>`;
+  if (!items.length) {
+    return `<p class="empty">${used.size === s.club.collection.length
+      ? 'Every card you own is in the XI.'
+      : `No ${RARITY[filter].label.toLowerCase()} cards left on the bench.`}</p>`;
+  }
 
-  const used = new Set(s.club.lineup.filter(Boolean));
   return items.map((p) => `
-    <div class="coll-item ${used.has(p.id) ? 'in-xi' : ''} ${selectedId === p.id ? 'is-selected' : ''}"
+    <div class="coll-item ${selectedId === p.id ? 'is-selected' : ''}"
          data-player="${p.id}" draggable="false">
       ${playerCard(p, { size: 'mini' })}
       <div class="coll-tools">
@@ -204,6 +352,84 @@ function collectionHTML() {
  * Mount
  * ------------------------------------------------------------------ */
 export function mount(root) {
+  // tab bar is on every view
+  root.querySelector('#uTabs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-utab]');
+    if (!b) return;
+    tab = b.dataset.utab;
+    navigate('squad');
+  });
+
+  if (tab === 'division') {
+    root.querySelector('#playDivision')?.addEventListener('click', () => {
+      const squad = ultimateSquad();
+      if (!squad) return toast('Fill all 11 positions first', 'warn');
+      const u = getState().ultimate;
+      const div = DIVISIONS[u.divIdx];
+      // opponent scales with the rung you are on
+      const tier = Math.max(1, Math.min(10, 10 - u.divIdx));
+      const opp = WORLD.clubs.find((c) => c.tier === tier) || WORLD.clubs[0];
+      navigate('play', {
+        homeId: WORLD.clubs[0].id,
+        awayId: opp.id,
+        duration: 240,
+        skill: 0.75 + u.divIdx * 0.07,
+        mode: 'single',
+        ultimate: true,
+        homeSquad: squad,
+      });
+    });
+    return;
+  }
+  if (tab === 'objectives') return;
+
+  if (tab === 'store') {
+    // buy -> straight into the locker, never auto-opened
+    root.querySelectorAll('[data-buy-pack]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pack = PACKS.find((p) => p.id === btn.dataset.buyPack);
+        const s = getState();
+        if (pack.cost > s.club.coins) return toast('Not enough coins', 'warn');
+        if (pack.cost === 0 && s.club.packsOpened > 0 && s.club.packsOpened % 3 !== 0) {
+          return toast(`Free pack in ${3 - (s.club.packsOpened % 3)} more opens`, 'warn');
+        }
+        update((st) => { st.club.coins -= pack.cost; st.club.packs.push(pack.id); });
+        refreshCoins();
+        sfx('coin');
+        toast(`${pack.name} added to your locker`, 'good');
+        navigate('squad');
+      });
+    });
+
+    const openPacks = (ids) => {
+      const pulls = [];
+      for (const id of ids) {
+        const pack = PACKS.find((p) => p.id === id) || PACKS[0];
+        pulls.push(...openPack(pack));
+      }
+      update((st) => {
+        for (const id of ids) {
+          const i = st.club.packs.indexOf(id);
+          if (i >= 0) st.club.packs.splice(i, 1);
+          st.club.packsOpened += 1;
+        }
+        pulls.forEach((p) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
+      });
+      refreshCoins();
+      runPackAnimation(root, pulls, () => navigate('squad'));
+    };
+
+    root.querySelectorAll('[data-open-pack]').forEach((btn) => {
+      btn.addEventListener('click', () => openPacks([btn.dataset.openPack]));
+    });
+    root.querySelector('#openAll')?.addEventListener('click', () => {
+      const all = getState().club.packs.slice();
+      if (!all.length) return;
+      openPacks(all);
+    });
+    return;
+  }
+
   const pitch = root.querySelector('#pitch');
   const collectionEl = root.querySelector('#collection');
 
@@ -271,32 +497,9 @@ export function mount(root) {
     toast('Best available XI selected');
   });
 
-  /* --- packs --- */
-  root.querySelectorAll('[data-pack]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const pack = PACKS.find((p) => p.id === btn.dataset.pack);
-      const s = getState();
-      if (pack.cost > s.club.coins) return toast('Not enough coins', 'warn');
-      if (pack.cost === 0 && s.club.packsOpened > 0 && s.club.packsOpened % 3 !== 0) {
-        return toast(`Free pack in ${3 - (s.club.packsOpened % 3)} more opens`, 'warn');
-      }
-      const pulls = openPack(pack);
-      update((st) => {
-        st.club.coins -= pack.cost;
-        st.club.packsOpened += 1;
-        pulls.forEach((p) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
-      });
-      refreshCoins();
-      runPackAnimation(root, pulls, () => {
-        rerenderPitch();
-        root.querySelector('.coin-chip').textContent = `◈ ${getState().club.coins.toLocaleString()}`;
-        root.querySelectorAll('[data-pack]').forEach((b) => {
-          const pk = PACKS.find((p) => p.id === b.dataset.pack);
-          b.disabled = pk.cost > getState().club.coins;
-        });
-        root.querySelector('.panel-head h2 small').textContent = getState().club.collection.length;
-      });
-    });
+  root.querySelector('[data-goto-store]')?.addEventListener('click', () => {
+    tab = 'store';
+    navigate('squad');
   });
 
   /* --- filters --- */
@@ -436,8 +639,19 @@ function attachDrag(root, place, clearSlot, refreshSelection) {
 /* ------------------------------------------------------------------ *
  * Pack opening animation
  * ------------------------------------------------------------------ */
+/**
+ * Staged pack reveal. Each pull walks out one clue at a time — nationality,
+ * then position, then club — before the card itself drops. Tap or press to skip
+ * straight to the card.
+ */
 function runPackAnimation(root, pulls, onDone) {
-  const overlay = root.querySelector('#packOverlay');
+  // the Store tab has no overlay in its markup — make one when it is needed
+  let overlay = root.querySelector('#packOverlay') || document.querySelector('#packOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'packOverlay';
+    document.body.appendChild(overlay);
+  }
   const best = pulls.reduce((a, b) => (b.overall > a.overall ? b : a));
   overlay.hidden = false;
   overlay.className = `pack-overlay open rar-${best.rarity}`;
@@ -447,50 +661,138 @@ function runPackAnimation(root, pulls, onDone) {
     <div class="pack-stage">
       <div class="pack-burst"></div>
       <div class="pack-rays"></div>
+      <div class="plinths" id="plinths">
+        <div class="plinth" data-step="0"><span class="pl-label">Nation</span><div class="pl-slot"></div></div>
+        <div class="plinth" data-step="1"><span class="pl-label">Position</span><div class="pl-slot"></div></div>
+        <div class="plinth" data-step="2"><span class="pl-label">Club</span><div class="pl-slot"></div></div>
+      </div>
       <div class="walkout" id="walkout"></div>
       <div class="pack-foot">
         <span id="packCounter">1 / ${pulls.length}</span>
-        <button class="btn" id="packNext">Reveal</button>
+        <button class="btn" id="packNext">Skip</button>
+        ${pulls.length > 1 ? '<button class="btn ghost" id="packSkipAll">Skip all</button>' : ''}
       </div>
     </div>`;
 
+  const stage = overlay.querySelector('.pack-stage');
+  const plinths = overlay.querySelector('#plinths');
   const walkout = overlay.querySelector('#walkout');
   const counter = overlay.querySelector('#packCounter');
   const nextBtn = overlay.querySelector('#packNext');
-  let index = 0;
 
-  const showCard = () => {
-    const p = pulls[index];
-    overlay.style.setProperty('--rar', RARITY[p.rarity].color);
-    overlay.style.setProperty('--rar-glow', RARITY[p.rarity].glow);
+  let index = 0;
+  let timers = [];
+  let revealed = false;
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+  const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+  const slots = () => [...plinths.querySelectorAll('.plinth')];
+
+  const showCard = (p) => {
+    revealed = true;
+    sfx('reveal', p.rarity);
+    plinths.classList.add('done');
     overlay.classList.remove('flash');
     void overlay.offsetWidth;
     overlay.classList.add('flash');
-    overlay.dataset.rarity = p.rarity;
-
     walkout.innerHTML = `
-      <div class="walkout-card reveal-${p.rarity}">
-        ${playerCard(p, { size: 'full' })}
-      </div>`;
-    counter.textContent = `${index + 1} / ${pulls.length}`;
+      <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}</div>`;
     nextBtn.textContent = index === pulls.length - 1 ? 'Add to collection' : 'Next';
+    nextBtn.classList.add('primary');
   };
 
-  nextBtn.addEventListener('click', () => {
-    index++;
-    if (index >= pulls.length) {
-      overlay.classList.remove('open');
-      overlay.hidden = true;
-      overlay.innerHTML = '';
-      const specials = pulls.filter((p) => p.rarity === 'special').length;
-      toast(specials ? `${specials} SPECIAL pulled! 🔥` : `Added ${pulls.length} players`, specials ? 'good' : 'info');
-      onDone();
-      return;
-    }
-    showCard();
-  });
+  const runReveal = () => {
+    clearTimers();
+    revealed = false;
+    const p = pulls[index];
+    const club = getClub(p.clubId);
 
-  showCard();
+    overlay.style.setProperty('--rar', RARITY[p.rarity].color);
+    overlay.style.setProperty('--rar-glow', RARITY[p.rarity].glow);
+    overlay.dataset.rarity = p.rarity;
+    counter.textContent = `${index + 1} / ${pulls.length}`;
+    nextBtn.textContent = 'Skip';
+    nextBtn.classList.remove('primary');
+
+    walkout.innerHTML = '';
+    plinths.classList.remove('done');
+    const [a, b, c] = slots();
+    slots().forEach((s) => { s.classList.remove('lit'); s.querySelector('.pl-slot').innerHTML = ''; });
+
+    sfx('packRise', 2600);
+    at(260, () => {
+      a.classList.add('lit');
+      a.querySelector('.pl-slot').innerHTML = `${flagSVG(p.nationColors, 46)}<em>${p.nation}</em>`;
+      sfx('packStep', 0);
+    });
+    at(1050, () => {
+      b.classList.add('lit');
+      b.querySelector('.pl-slot').innerHTML = `<strong>${p.position}</strong>`;
+      sfx('packStep', 1);
+    });
+    at(1840, () => {
+      c.classList.add('lit');
+      c.querySelector('.pl-slot').innerHTML =
+        `${club ? crestSVG(club.crest, club.short, 44) : ''}<em>${club ? club.name : 'Free Agent'}</em>`;
+      sfx('packStep', 2);
+    });
+    at(2680, () => showCard(p));
+  };
+
+  const close = () => {
+    clearTimers();
+    overlay.classList.remove('open');
+    overlay.hidden = true;
+    overlay.innerHTML = '';
+    const specials = pulls.filter((p) => p.rarity === 'special').length;
+    toast(specials ? `${specials} SPECIAL pulled!` : `Added ${pulls.length} players`, specials ? 'good' : 'info');
+    onDone();
+  };
+
+  /**
+   * Skip the whole run. The cards are already banked before the reveal starts,
+   * so this just needs to stop the show — but dumping a dozen pulls with no
+   * feedback is useless, so lay them all out first.
+   */
+  const showSummary = () => {
+    clearTimers();
+    const order = { special: 0, gold: 1, silver: 2, bronze: 3 };
+    const sorted = pulls.slice().sort((a, b) =>
+      (order[a.rarity] - order[b.rarity]) || (b.overall - a.overall));
+    const tally = ['special', 'gold', 'silver', 'bronze']
+      .map((r) => [r, pulls.filter((p) => p.rarity === r).length])
+      .filter(([, n]) => n > 0)
+      .map(([r, n]) => `<span class="ps-tag rar-${r}">${n} ${RARITY[r].label}</span>`)
+      .join('');
+    const best = sorted[0];
+
+    overlay.style.setProperty('--rar', RARITY[best.rarity].color);
+    overlay.style.setProperty('--rar-glow', RARITY[best.rarity].glow);
+    overlay.innerHTML = `
+      <div class="pack-summary">
+        <span class="ps-kicker">Pack results</span>
+        <h3>${pulls.length} player${pulls.length > 1 ? 's' : ''} added</h3>
+        <div class="ps-tally">${tally}</div>
+        <div class="ps-grid">
+          ${sorted.map((p) => `<div class="ps-card">${playerCard(p, { size: 'mini' })}</div>`).join('')}
+        </div>
+        <button class="btn primary" id="psDone">Done</button>
+      </div>`;
+    sfx('reveal', best.rarity);
+    overlay.querySelector('#psDone').addEventListener('click', close);
+  };
+
+  const advance = () => {
+    if (!revealed) { clearTimers(); showCard(pulls[index]); return; }   // skip to the card
+    index++;
+    if (index >= pulls.length) { close(); return; }
+    runReveal();
+  };
+
+  nextBtn.addEventListener('click', advance);
+  overlay.querySelector('#packSkipAll')?.addEventListener('click', showSummary);
+  stage.addEventListener('click', (e) => { if (!e.target.closest('button')) advance(); });
+  runReveal();
 }
 
 /* ------------------------------------------------------------------ *

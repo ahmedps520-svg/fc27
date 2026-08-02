@@ -9,6 +9,9 @@ const defaults = () => ({
     reduceMotion: false,
     accent: 'cyan',
     quality: 'auto',            // auto | high | low  (3D detail in Quick Match)
+    sound: true,
+    musicVol: 0.5,
+    sfxVol: 0.9,
   },
   club: {                     // Squad Builder progress
     coins: 12_500,
@@ -16,6 +19,7 @@ const defaults = () => ({
     formation: '4-3-3',
     lineup: Array(11).fill(null),
     packsOpened: 0,
+    packs: [],                // unopened packs you own: ['silver', 'gold', ...]
   },
   career: null,               // set once a career is started
   ultimate: freshUltimate(),  // Ultimate XI progression
@@ -77,6 +81,7 @@ export function loadState() {
     state = defaults();
   }
   // A save from an older world could reference ids that no longer exist.
+  if (!Array.isArray(state.club.packs)) state.club.packs = [];
   state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
   state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
   return state;

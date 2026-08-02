@@ -8,6 +8,7 @@ import * as MatchScreen from './screens/match.js';
 import * as Play from './screens/play.js';
 import * as Splash from './screens/splash.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
+import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
 
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
@@ -61,6 +62,8 @@ export function navigate(name, params = {}) {
 
   if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
   resetPadFocus();
+  // music belongs to the front end only; the match runs its own crowd bed
+  if (name === 'play') stopMusic(); else startMusic();
   refreshCoins();
 }
 
@@ -73,11 +76,30 @@ export function toast(msg, kind = 'info') {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 350); }, 2400);
 }
 
-backBtn.addEventListener('click', () => navigate('menu'));
-document.getElementById('homeBtn').addEventListener('click', () => navigate('menu'));
+backBtn.addEventListener('click', () => { sfx('back'); navigate('menu'); });
+document.getElementById('homeBtn').addEventListener('click', () => { sfx('back'); navigate('menu'); });
+
+// Audio can only start inside a gesture, so the first tap or key unlocks it.
+const unlock = () => { resumeAudio(); if (!document.body.classList.contains('in-game')) startMusic(); };
+window.addEventListener('pointerdown', unlock, { once: true });
+window.addEventListener('keydown', unlock, { once: true });
+
+// a click on anything actionable gets a UI blip
+document.addEventListener('click', (e) => {
+  if (document.body.classList.contains('in-game')) return;
+  if (e.target.closest('button, [data-go], [data-utab], [data-nav], .tile, .coll-item')) sfx('select');
+}, true);
 
 loadState();
 applyTheme();
+{
+  const a = getState().settings;
+  setAudioSettings({
+    enabled: a.sound !== false,
+    music: a.musicVol ?? 0.5,
+    sfx: a.sfxVol ?? 0.9,
+  });
+}
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
 startPadMenu();       // whole front-end is drivable from a controller
 

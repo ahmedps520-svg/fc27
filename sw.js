@@ -4,7 +4,7 @@
  * everything cache-first — the game has no live data to go stale.
  * Bump CACHE when files change so old assets are evicted.
  */
-const CACHE = 'apexxi-v1';
+const CACHE = 'apexxi-v2';
 
 const ASSETS = [
   './',
@@ -16,6 +16,10 @@ const ASSETS = [
   './js/state.js',
   './js/padMenu.js',
   './js/fullscreen.js',
+  './js/audio.js',
+  './js/ultimate.js',
+  './js/components/face.js',
+  './js/game/net.js',
   './js/matchEngine.js',
   './js/data/pools.js',
   './js/data/generator.js',
@@ -77,18 +81,20 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // Network-first, cache as fallback. Cache-first would pin whatever shipped
+  // first and quietly serve stale modules after every update — offline play
+  // still works because every successful response is written back to the cache.
   e.respondWith((async () => {
-    const cached = await caches.match(req, { ignoreSearch: true });
-    if (cached) return cached;
     try {
       const res = await fetch(req);
-      if (res && res.status === 200) {
+      if (res && res.status === 200 && res.type === 'basic') {
         const cache = await caches.open(CACHE);
         cache.put(req, res.clone());
       }
       return res;
     } catch {
-      // offline and not cached — fall back to the shell for navigations
+      const cached = await caches.match(req, { ignoreSearch: true });
+      if (cached) return cached;
       if (req.mode === 'navigate') {
         const shell = await caches.match('./index.html');
         if (shell) return shell;

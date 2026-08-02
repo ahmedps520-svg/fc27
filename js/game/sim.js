@@ -161,6 +161,7 @@ export class Match {
     this.basis = null;                 // set each frame from the camera by the renderer
     this.charge = 0;
     this.feed = [];
+    this.cues = [];              // audio cues drained by the play screen each frame
     this.kickoffSide = 1;
     this.resetPositions(0);
   }
@@ -217,6 +218,7 @@ export class Match {
     if (this.phase === 'goal' || this.phase === 'kickoff') {
       this.ball.owner = this.kickoffTaker;
       this.kickoffTaker.touchLock = 0;
+      this.cue('whistle', 1);
     }
     this.phase = 'play';
     this.banner = '';
@@ -242,10 +244,12 @@ export class Match {
 
     if (this.half === 1 && this.t >= this.duration / 2) {
       this.phase = 'half'; this.phaseT = 1.8; this.banner = 'HALF TIME';
+      this.cue('whistle', 2);
       return;
     }
     if (this.t >= this.duration) {
       this.phase = 'end'; this.banner = 'FULL TIME';
+      this.cue('whistle', 3);
       return;
     }
 
@@ -600,6 +604,7 @@ export class Match {
           const goalX = t.dir > 0 ? PITCH.w : 0;
           if (Math.hypot(goalX - best.x, CY - best.y) < 19) {
             b.lastTouch = best;
+            this.cue('header');
             this.shoot(best, null, 0.5, { loft: 0.2 });   // headers are steered down
             return;
           }
@@ -681,25 +686,54 @@ export class Match {
     taker.y = b.y + (b.y < CY ? 1.2 : -1.2);
     taker.vx = taker.vy = 0;
 
-    // attackers crowd the six-yard area, defenders mark just goal-side of them
-    let i = 0;
-    for (const p of atk.players) {
-      if (p === taker) continue;
-      p.vx = p.vy = 0;
-      if (p.role === 'GK') continue;
-      p.x = goalX + inw * (6 + (i % 3) * 3.5);
-      p.y = CY + ((i % 5) - 2) * 3.4;
-      i++;
-    }
-    let j = 0;
-    for (const p of def.players) {
-      p.vx = p.vy = 0;
-      if (p.role === 'GK') { p.x = goalX + inw * 1.6; p.y = CY; continue; }
-      p.x = goalX + inw * (4.5 + (j % 3) * 3.5);
-      p.y = CY + ((j % 5) - 2) * 3.4 + 1.4;
-      j++;
-    }
+    // Only a handful of bodies go up for it. Everyone piling into the six-yard
+    // box was chaos and left nobody covering the counter.
+    const ATTACK_IN_BOX = 4;      // the aerial threats
+    const DEFEND_IN_BOX = 5;      // markers plus a keeper
 
+    const attackers = atk.players
+      .filter((p) => p !== taker && p.role !== 'GK')
+      .sort((a, z) => (z.ref.stats.physical + z.ref.overall) - (a.ref.stats.physical + a.ref.overall));
+
+    attackers.forEach((p, i) => {
+      p.vx = p.vy = 0;
+      if (i < ATTACK_IN_BOX) {
+        // spread across the six-yard line and the penalty spot
+        p.x = goalX + inw * (5.5 + (i % 2) * 5);
+        p.y = CY + (i - (ATTACK_IN_BOX - 1) / 2) * 3.6;
+      } else if (i === ATTACK_IN_BOX) {
+        p.x = goalX + inw * 20;                       // edge of the box for the cut-back
+        p.y = CY + (b.y < CY ? -6 : 6);
+      } else {
+        // the rest hold their shape and guard against the break
+        p.x = clamp(goalX + inw * (34 + (i - ATTACK_IN_BOX) * 9), 6, PITCH.w - 6);
+        p.y = clamp(CY + ((i % 3) - 1) * 12, 6, PITCH.h - 6);
+      }
+    });
+
+    const defenders = def.players
+      .filter((p) => p.role !== 'GK')
+      .sort((a, z) => z.ref.stats.defending - a.ref.stats.defending);
+
+    const gk = def.players.find((p) => p.role === 'GK');
+    if (gk) { gk.vx = gk.vy = 0; gk.x = goalX + inw * 1.6; gk.y = CY; }
+
+    defenders.forEach((p, i) => {
+      p.vx = p.vy = 0;
+      if (i < DEFEND_IN_BOX) {
+        // goal-side of the attackers they are picking up
+        const t = attackers[i];
+        if (t) { p.x = t.x - inw * 1.6; p.y = t.y + (i % 2 ? 1.3 : -1.3); }
+        else { p.x = goalX + inw * 5; p.y = CY + (i - 2) * 3.2; }
+      } else if (i === DEFEND_IN_BOX) {
+        p.x = goalX + inw * 12; p.y = CY;             // sweeper on the spot
+      } else {
+        p.x = clamp(goalX + inw * (26 + (i - DEFEND_IN_BOX) * 10), 5, PITCH.w - 5);
+        p.y = clamp(CY + ((i % 3) - 1) * 14, 5, PITCH.h - 5);
+      }
+    });
+
+    this.cue('whistle', 1);
     this.cornerTaker = taker;
     this.phase = 'corner';
     this.phaseT = 1.5;
@@ -760,6 +794,8 @@ export class Match {
     this.goalTeam = side;
     this.phase = 'goal';
     this.phaseT = 4.2;
+    this.cue('goal');
+    this.cue('net');
 
     // Hold the restart until the celebration is over — positions reset when the
     // phase ends, not now, so there is something to actually watch.
@@ -841,6 +877,11 @@ export class Match {
   }
 
   /* ------------------------------ actions ---------------------------- */
+  /** Queue an audio cue for the presentation layer. */
+  cue(name, arg) {
+    if (this.cues.length < 24) this.cues.push({ name, arg });
+  }
+
   release(p, vx, vy, vz = 0) {
     const b = this.ball;
     b.owner = null;
@@ -910,6 +951,7 @@ export class Match {
     // ~20 m/s delivery: firm enough to reach the box, far off the old 35 m/s rocket,
     // and flat enough that it does not balloon into the clouds
     const T = clamp(D / 20, 0.6, 1.9);
+    this.cue('cross');
     this.release(p, dx / T, dy / T, 0.5 * GRAV * T);
     this.ball.noTouch = 0.26;
   }
@@ -935,6 +977,7 @@ export class Match {
       if (score > bestScore) { bestScore = score; best = t; }
     }
 
+    this.cue('pass');
     if (!best) { this.release(p, ax * 22, ay * 22); return; }
 
     let tx = best.x;
@@ -973,6 +1016,7 @@ export class Match {
     const nx = (dx * c - dy * s) / d;
     const ny = (dx * s + dy * c) / d;
 
+    this.cue('shot', power);
     const speed = 21 + power * 17 + acc * 6;
     // Longer hold = harder and higher. Overcook it close in and it clears the bar.
     const rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
@@ -1045,8 +1089,10 @@ export class Match {
     const weHave = b.owner && b.owner.team === p.team;
     const push = ((b.x - PITCH.w / 2) / (PITCH.w / 2)) * team.dir;
     const shift = push * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team);
+    let x = clamp(p.sx * PITCH.w + team.dir * shift, 3, PITCH.w - 3);
+    if (p.role === 'DEF') x = this.holdLine(team, x);
     return {
-      x: clamp(p.sx * PITCH.w + team.dir * shift, 3, PITCH.w - 3),
+      x,
       // shift harder towards the ball's side so the block visibly slides across
       y: clamp(p.sy * PITCH.h + (b.y - CY) * 0.42, 3, PITCH.h - 3),
     };
@@ -1097,8 +1143,56 @@ export class Match {
       return;
     }
 
+    // ---- defending our own third --------------------------------------
+    // Defenders pick up a runner and sit goal-side of them. Scoped to our own
+    // third on purpose: marking across the whole pitch strangles every passing
+    // lane and kills the game in midfield.
+    if (!weHave && p.role === 'DEF') {
+      const gx = team.dir > 0 ? 0 : PITCH.w;
+      // Only inside genuine danger. Wider than this and defenders chase runners
+      // around midfield, closing every passing lane and killing attacking play.
+      const underPressure = Math.abs(b.x - gx) < 24;
+      if (underPressure) {
+        const mark = this.markFor(p);
+        if (mark) {
+          const gs = Math.sign(gx - mark.x) || 1;
+          const tx = this.holdLine(team, mark.x + gs * 3.2);
+          const ty = mark.y + Math.sign(CY - mark.y) * 0.7;
+          this.moveTo(p, clamp(tx, 2, PITCH.w - 2), clamp(ty, 2, PITCH.h - 2), dt, 1.02);
+          return;
+        }
+        // nobody to pick up — tuck into the box rather than hugging the touchline
+        const tuck = CY + (target.y - CY) * 0.62;
+        this.moveTo(p, this.holdLine(team, target.x), clamp(tuck, 3, PITCH.h - 3), dt, 0.95);
+        return;
+      }
+    }
+
     this.moveTo(p, clamp(target.x + jitterX, 3, PITCH.w - 3),
       clamp(target.y + jitterY, 3, PITCH.h - 3), dt, weHave ? 0.85 : 0.92);
+  }
+
+  /** Defenders never collapse onto their own keeper — hold a line off the goal. */
+  holdLine(team, x) {
+    const gx = team.dir > 0 ? 0 : PITCH.w;
+    const MIN = 7.5;
+    return team.dir > 0 ? Math.max(x, gx + MIN) : Math.min(x, gx - MIN);
+  }
+
+  /** Nearest opponent no other defender has claimed this tick. */
+  markFor(p) {
+    const gx = this.teams[p.team].dir > 0 ? 0 : PITCH.w;
+    let best = null;
+    let bestD = Infinity;
+    for (const f of this.teams[1 - p.team].players) {
+      if (f.role === 'GK') continue;
+      if (Math.abs(f.x - gx) > 26) continue;             // only real threats
+      if (f._markTick === this._tick && f._markedBy !== p) continue;
+      const d = dist(p, f);
+      if (d < bestD && d < 18) { bestD = d; best = f; }
+    }
+    if (best) { best._markedBy = p; best._markTick = this._tick; }
+    return best;
   }
 
   thinkOnBall(p, dt) {
@@ -1221,8 +1315,10 @@ export class Match {
     const holdable = 17 + hands * 13;                 // ~26-30 m/s for a good keeper
 
     if (speed < holdable && gk.diveT <= 0 && Math.random() < 0.55 + hands * 0.35) {
+      this.cue('save');
       return true;                                    // clean catch
     }
+    this.cue('save');
 
     // Parry. Most are pushed back into play, but a good save on a shot heading
     // for the corner is tipped round the post — behind the line, so it becomes

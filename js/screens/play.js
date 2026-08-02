@@ -8,6 +8,8 @@ import {
 } from '../game/render3d.js';
 import { createRenderer } from '../game/renderGL.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
+import { settleDivisionMatch } from '../ultimate.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '../audio.js';
 import { navigate, refreshCoins } from '../app.js';
 
 export const TITLE = 'Match';
@@ -80,6 +82,8 @@ export function mount(root, params) {
     duration: params.duration || 240,
     skill: params.skill || 1,
     mode,
+    homeSquad: params.homeSquad || null,
+    awaySquad: params.awaySquad || null,
   });
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
@@ -154,6 +158,9 @@ export function mount(root, params) {
   };
 
   document.body.classList.add('in-game');
+  resumeAudio();
+  stopMusic();          // menu music steps aside for the stadium
+  startCrowd();
 
   let vw = 0;
   let vh = 0;
@@ -268,6 +275,15 @@ export function mount(root, params) {
         recordFrame();
       }
       if (match.phase === 'end') { ended = true; finish(); }
+
+      // drain the sim's audio cues
+      while (match.cues.length) {
+        const c = match.cues.shift();
+        sfx(c.name, c.arg);
+      }
+      // crowd lifts as play nears either goal, and roars through a celebration
+      const near = Math.min(match.ball.x, PITCH.w - match.ball.x) / (PITCH.w / 2);
+      setCrowd(match.phase === 'goal' ? 1 : 0.3 + (1 - near) * 0.5);
     }
 
     const rdt = paused ? 0 : dt;
@@ -440,7 +456,14 @@ export function mount(root, params) {
     const [h, a] = match.teams;
     const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
       .sort((x, y) => x[1].minute - y[1].minute);
-    update((s) => { s.club.coins += 300 + h.score * 80; });
+
+    // Apex Division matches settle the ladder instead of paying a flat fee
+    let div = null;
+    if (params.ultimate) {
+      div = settleDivisionMatch({ scored: h.score, conceded: a.score });
+    } else {
+      update((s) => { s.club.coins += 300 + h.score * 80; });
+    }
     refreshCoins();
 
     overlay.hidden = false;
@@ -458,8 +481,19 @@ export function mount(root, params) {
           <div><b>${ph}%</b><span>Possession</span><b>${pa}%</b></div>
           <div><b>${h.shots}</b><span>Shots</span><b>${a.shots}</b></div>
         </div>
+        ${div ? `
+          <div class="div-result ${div.promoted ? 'up' : div.relegated ? 'down' : ''}">
+            <span class="dr-kicker">${div.promoted ? 'Promoted' : div.relegated ? 'Relegated' : 'Apex Division'}</span>
+            <b>${div.toDivision}</b>
+            <span class="dr-reward">◈ ${div.coins.toLocaleString()}${div.packs.length ? ` · ${div.packs.length} pack${div.packs.length > 1 ? 's' : ''}` : ''}</span>
+            ${div.objectivesDone.length
+              ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
+              : ''}
+          </div>` : ''}
         <div class="gm-btns">
-          <button class="btn primary" data-o="again">Rematch</button>
+          ${div
+            ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
+            : '<button class="btn primary" data-o="again">Rematch</button>'}
           <button class="btn ghost" data-o="quit">Quit</button>
         </div>
       </div>`;
@@ -469,7 +503,8 @@ export function mount(root, params) {
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
       if (o === 'resume') setPaused(false);
-      if (o === 'quit') { exitFullscreen(); navigate('quick'); }
+      if (o === 'quit') { exitFullscreen(); navigate(params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'again') navigate('play', params);
       return;
     }
@@ -488,6 +523,7 @@ export function mount(root, params) {
 
   return () => {
     cancelAnimationFrame(raf);
+    stopCrowd();
     gl?.dispose();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);

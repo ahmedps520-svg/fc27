@@ -1,6 +1,7 @@
 import { RARITY } from '../data/pools.js';
 import { getClub } from '../data/generator.js';
 import { crestSVG, flagSVG } from './crest.js';
+import { faceSVG } from './face.js';
 
 const STATS = [
   ['pace', 'PAC'], ['shooting', 'SHO'], ['passing', 'PAS'],
@@ -89,6 +90,7 @@ export function playerCard(p, opts = {}) {
           ${flagSVG(p.nationColors, size === 'full' ? 26 : 20)}
         </div>
       </header>
+      <div class="pc-portrait">${faceSVG(p, size === 'full' ? 96 : size === 'mini' ? 52 : 66, r.color)}</div>
       <div class="pc-name">${p.name}</div>
       ${size === 'full' ? `<div class="pc-radar-wrap">${radarSVG(p.stats, 168)}</div>` : ''}
       ${size === 'mini' ? '' : statBars(p.stats)}

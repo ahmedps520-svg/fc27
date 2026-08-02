@@ -1,6 +1,17 @@
 import { getState, update, resetAll } from '../state.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, refreshCoins } from '../app.js';
+import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
+
+/** Push the saved audio preferences into the engine. */
+function applyAudio() {
+  const a = getState().settings;
+  setAudioSettings({
+    enabled: a.sound !== false,
+    music: a.musicVol ?? 0.5,
+    sfx: a.sfxVol ?? 0.9,
+  });
+}
 
 export const TITLE = 'Settings';
 
@@ -25,6 +36,29 @@ export function render() {
         <div><b>Full commentary</b></div>
         <button class="switch ${s.commentary ? 'on' : ''}" id="commentaryTgl" role="switch"
                 aria-checked="${s.commentary}"><i></i></button>
+      </div>
+    </section>
+
+    <section class="panel glass">
+      <header class="panel-head"><h2>Sound</h2></header>
+      <div class="setting-row">
+        <div><b>Audio</b></div>
+        <button class="switch ${s.sound !== false ? 'on' : ''}" id="soundTgl" role="switch"
+                aria-checked="${s.sound !== false}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>Music</b></div>
+        <div class="seg" id="musicSeg">
+          ${[[0, 'Off'], [0.3, 'Low'], [0.5, 'Mid'], [0.85, 'High']].map(([v, l]) =>
+            `<button class="${(s.musicVol ?? 0.5) === v ? 'on' : ''}" data-music="${v}">${l}</button>`).join('')}
+        </div>
+      </div>
+      <div class="setting-row">
+        <div><b>Effects</b></div>
+        <div class="seg" id="sfxSeg">
+          ${[[0, 'Off'], [0.5, 'Low'], [0.9, 'Mid'], [1.3, 'High']].map(([v, l]) =>
+            `<button class="${(s.sfxVol ?? 0.9) === v ? 'on' : ''}" data-sfx="${v}">${l}</button>`).join('')}
+        </div>
       </div>
     </section>
 
@@ -98,6 +132,28 @@ export function mount(root) {
   });
   toggle(root.querySelector('#commentaryTgl'), 'commentary');
   toggle(root.querySelector('#motionTgl'), 'reduceMotion');
+
+  root.querySelector('#soundTgl').addEventListener('click', (e) => {
+    const next = getState().settings.sound === false;
+    update((s) => { s.settings.sound = next; });
+    e.currentTarget.classList.toggle('on', next);
+    e.currentTarget.setAttribute('aria-checked', String(next));
+    applyAudio();
+    if (next) { resumeAudio(); startMusic(); } else stopMusic();
+  });
+
+  const audioSeg = (sel, key, attr) => root.querySelector(sel).addEventListener('click', (e) => {
+    const b = e.target.closest(`[data-${attr}]`);
+    if (!b) return;
+    const v = Number(b.dataset[attr]);
+    update((s) => { s.settings[key] = v; });
+    root.querySelectorAll(`[data-${attr}]`).forEach((x) => x.classList.toggle('on', x === b));
+    applyAudio();
+    if (key === 'musicVol') { if (v > 0) startMusic(); else stopMusic(); }
+    else sfx('select');
+  });
+  audioSeg('#musicSeg', 'musicVol', 'music');
+  audioSeg('#sfxSeg', 'sfxVol', 'sfx');
 
   root.querySelector('#qualitySeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-quality]');

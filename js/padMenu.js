@@ -78,6 +78,8 @@ function step(list, dx, dy) {
   focusIdx = best;
 }
 
+import { sfx } from './audio.js';
+
 function activate(el) {
   if (!el) return;
   if (el.tagName === 'SELECT') {
@@ -119,6 +121,7 @@ function tick(dt) {
     else if (dir === 2) step(list, -1, 0);
     else if (dir === 3) step(list, 0, 1);
     else step(list, 0, -1);
+    sfx('move');
     holdT = dir !== lastDir ? REPEAT * 1.8 : REPEAT;
   }
   holdT -= dt;
