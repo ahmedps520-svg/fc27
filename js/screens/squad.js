@@ -1,11 +1,13 @@
-import { getState, update } from '../state.js';
+import { getState, update, DIVISIONS } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
-import { toast, refreshCoins } from '../app.js';
+import { toast, refreshCoins, navigate } from '../app.js';
 
-export const TITLE = 'Squad Builder';
+export const TITLE = 'Ultimate XI';
+
+let tab = 'squad';           // squad | division | objectives
 
 const PACKS = [
   { id: 'bronze',  name: 'Bronze',  cost: 0,    size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },

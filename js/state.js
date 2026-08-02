@@ -18,7 +18,47 @@ const defaults = () => ({
     packsOpened: 0,
   },
   career: null,               // set once a career is started
+  ultimate: freshUltimate(),  // Ultimate XI progression
 });
+
+/* ---------------------------------------------------------------- *
+ * Ultimate XI — Apex Division ladder, objectives and rewards
+ * ---------------------------------------------------------------- */
+export const DIVISIONS = [
+  { id: 10, name: 'Division 10', need: 2, reward: 600 },
+  { id: 9, name: 'Division 9', need: 2, reward: 800 },
+  { id: 8, name: 'Division 8', need: 3, reward: 1000 },
+  { id: 7, name: 'Division 7', need: 3, reward: 1300 },
+  { id: 6, name: 'Division 6', need: 3, reward: 1600 },
+  { id: 5, name: 'Division 5', need: 4, reward: 2000 },
+  { id: 4, name: 'Division 4', need: 4, reward: 2600 },
+  { id: 3, name: 'Division 3', need: 4, reward: 3200 },
+  { id: 2, name: 'Division 2', need: 5, reward: 4000 },
+  { id: 1, name: 'Division 1', need: 5, reward: 5200 },
+  { id: 0, name: 'Apex Elite', need: 6, reward: 7500 },
+];
+
+export function freshUltimate() {
+  return {
+    divIdx: 0,          // index into DIVISIONS, 0 = Division 10
+    progress: 0,        // wins banked toward the next division
+    played: 0, wins: 0, draws: 0, losses: 0,
+    streak: 0, bestStreak: 0,
+    goalsFor: 0, goalsAgainst: 0,
+    objectives: freshObjectives(),
+    packsOwed: 0,
+  };
+}
+
+export function freshObjectives() {
+  return [
+    { id: 'win3', text: 'Win 3 Apex Division matches', need: 3, done: 0, coins: 1200, pack: 'silver' },
+    { id: 'score8', text: 'Score 8 goals in the division', need: 8, done: 0, coins: 1500, pack: 'gold' },
+    { id: 'streak3', text: 'Win 3 in a row', need: 3, done: 0, coins: 2500, pack: 'gold' },
+    { id: 'clean2', text: 'Keep 2 clean sheets', need: 2, done: 0, coins: 1800, pack: 'silver' },
+    { id: 'div5', text: 'Reach Division 5', need: 1, done: 0, coins: 4000, pack: 'prime' },
+  ];
+}
 
 let state = defaults();
 
@@ -30,6 +70,8 @@ export function loadState() {
       state = { ...defaults(), ...parsed };
       state.settings = { ...defaults().settings, ...(parsed.settings || {}) };
       state.club = { ...defaults().club, ...(parsed.club || {}) };
+      state.ultimate = { ...freshUltimate(), ...(parsed.ultimate || {}) };
+      if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
     }
   } catch {
     state = defaults();

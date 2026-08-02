@@ -6,9 +6,9 @@ import { navigate } from '../app.js';
 export const TITLE = 'APEX XI';
 
 const TILES = [
-  { id: 'squad', name: 'Squad Builder', icon: '⬢', blurb: 'Packs · formations · chemistry', tone: 'a' },
+  { id: 'squad', name: 'Ultimate XI', icon: '⬢', blurb: 'Build · rank up · rewards', tone: 'a' },
   { id: 'career', name: 'Career Mode', icon: '▦', blurb: 'Season · table · transfers', tone: 'b' },
-  { id: 'quick', name: 'Quick Match', icon: '⚡', blurb: 'Play it yourself', tone: 'c' },
+  { id: 'quick', name: 'Kick Off', icon: '⚡', blurb: 'Straight into a match', tone: 'c' },
   { id: 'settings', name: 'Settings', icon: '⚙', blurb: 'Speed · colour · save', tone: 'd' },
 ];
 

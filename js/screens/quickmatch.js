@@ -2,6 +2,7 @@ import { WORLD, clubRating, rosterOf } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { padCount } from '../game/input.js';
 import { navigate } from '../app.js';
+import { enterFullscreen } from '../fullscreen.js';
 
 export const TITLE = 'Select Teams';
 
@@ -179,7 +180,7 @@ export function mount(root) {
   window.addEventListener('keydown', onKey);
 
   q('#kickOff').addEventListener('click', () => {
-    document.documentElement.requestFullscreen?.().catch(() => {});
+    enterFullscreen();          // no-ops safely where the API is missing (iPhone)
     navigate('play', {
       homeId: WORLD.clubs[homeIdx].id,
       awayId: WORLD.clubs[awayIdx].id,

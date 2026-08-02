@@ -7,6 +7,7 @@ import * as Settings from './screens/settings.js';
 import * as MatchScreen from './screens/match.js';
 import * as Play from './screens/play.js';
 import * as Splash from './screens/splash.js';
+import { startPadMenu, resetPadFocus } from './padMenu.js';
 
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
@@ -59,6 +60,7 @@ export function navigate(name, params = {}) {
   document.body.classList.toggle('on-splash', name === 'splash');
 
   if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
+  resetPadFocus();
   refreshCoins();
 }
 
@@ -77,3 +79,27 @@ document.getElementById('homeBtn').addEventListener('click', () => navigate('men
 loadState();
 applyTheme();
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
+startPadMenu();       // whole front-end is drivable from a controller
+
+/* ----------------------------- mobile / PWA ----------------------------- */
+// Ask phones to turn sideways — the pitch is a landscape view.
+const rotateHint = document.getElementById('rotateHint');
+const checkOrientation = () => {
+  const phone = window.matchMedia('(pointer: coarse)').matches;
+  const portrait = window.innerHeight > window.innerWidth;
+  const short = Math.min(window.innerWidth, window.innerHeight) < 500;
+  rotateHint.hidden = !(phone && portrait && short);
+};
+checkOrientation();
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 250));
+
+// Safari fires a synthetic double-tap zoom that steals taps from the touch stick.
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* offline play just won't be available */ });
+  });
+}

@@ -94,9 +94,13 @@ function pickXI(clubId) {
   return xi.slice(0, 11);
 }
 
-function makeTeam(clubId, side, isHuman) {
+/**
+ * @param {object} custom optional { xi, name, short, colors } to field a squad
+ *   that is not a club roster — how an Ultimate XI takes the pitch.
+ */
+function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
-  const xi = pickXI(clubId);
+  const xi = custom?.xi?.length === 11 ? custom.xi : pickXI(clubId);
   const dir = side === 0 ? 1 : -1;
 
   const players = xi.map((ref, i) => {
@@ -113,8 +117,11 @@ function makeTeam(clubId, side, isHuman) {
   });
 
   return {
-    clubId, club, name: club.name, short: club.short,
-    colors: club.crest.colors, dir, side, isHuman,
+    clubId, club,
+    name: custom?.name || club.name,
+    short: custom?.short || club.short,
+    colors: custom?.colors || club.crest.colors,
+    dir, side, isHuman,
     players, score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
     formation: '4-4-2',
     tactics: { mentality: 'balanced', pressing: 'normal' },
@@ -126,7 +133,10 @@ export class Match {
     // mode: 'single' | 'versus' | 'coop'. human === null runs both sides on AI.
     this.mode = opts.mode || 'single';
     this.human = opts.human === null ? null : (opts.human ?? 0);
-    this.teams = [makeTeam(homeId, 0, this.human === 0), makeTeam(awayId, 1, this.human === 1)];
+    this.teams = [
+      makeTeam(homeId, 0, this.human === 0, opts.homeSquad || null),
+      makeTeam(awayId, 1, this.human === 1, opts.awaySquad || null),
+    ];
 
     // One seat per person at the couch. Each keeps its own selected player and
     // its own shot charge, so two people never fight over the same footballer.
@@ -197,7 +207,8 @@ export class Match {
     this.kickoffTaker = taker;
     this.selectForKickoff();
     Object.assign(this.ball, {
-      x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null,
+      x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0,
+      owner: null, lastTouch: null, inNet: null, curl: 0,
     });
     this.kickoffTaker = taker;
   }
@@ -615,7 +626,7 @@ export class Match {
     if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
       const leftGoal = b.x < 0.4;
       if (Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
-        this.scoreGoal(leftGoal ? 1 : 0);
+        this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
         return;
       }
       const defending = leftGoal ? 0 : 1;
@@ -737,7 +748,7 @@ export class Match {
     b.lastTouch = p;
   }
 
-  scoreGoal(side) {
+  scoreGoal(side, inw = 1, goalLineX = PITCH.w) {
     const team = this.teams[side];
     team.score++;
     if (this.ball.shotBy && this.ball.shotBy.team === side) team.onTarget++;
@@ -766,9 +777,35 @@ export class Match {
     };
 
     const b = this.ball;
-    b.vx = b.vy = b.vz = 0;                    // ball settles in the net
+    // hand the strike to the renderer so the netting can be punched properly
+    this.netHit = {
+      x: b.x, y: b.y, z: Math.max(0.2, b.z),
+      vx: b.vx, vy: b.vy, vz: b.vz, at: this.t,
+    };
+    // Keep the ball live so it is seen crossing the line and burying itself in
+    // the netting — freezing it here is what made goals cut out at the post.
     b.owner = null;
+    b.inNet = { inw, back: goalLineX + inw * 1.75 };
     for (const p of team.players) p.celebrating = true;
+  }
+
+  /** Ball flight after it has crossed the line: the net drags it to a stop. */
+  settleBallInNet(dt) {
+    const b = this.ball;
+    if (!b.inNet) return;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.z += b.vz * dt;
+    b.vz -= GRAV * dt;
+
+    const drag = Math.pow(0.045, dt);            // netting kills the pace fast
+    b.vx *= drag; b.vy *= drag; b.vz *= drag;
+
+    if (b.z <= 0) { b.z = 0; b.vz = Math.abs(b.vz) * 0.25; if (b.vz < 0.4) b.vz = 0; }
+    const { inw, back } = b.inNet;
+    b.x = inw > 0 ? Math.min(b.x, back) : Math.max(b.x, back);
+    b.y = clamp(b.y, CY - GOAL_HALF + 0.25, CY + GOAL_HALF - 0.25);
+    b.z = Math.min(b.z, GOAL_HEIGHT - 0.2);
   }
 
   /**
@@ -777,6 +814,7 @@ export class Match {
    */
   updateCelebration(dt) {
     this.celebT += dt;
+    this.settleBallInNet(dt);
     const hero = this.celebrant;
     const scoring = this.goalTeam;
 

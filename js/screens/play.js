@@ -1,10 +1,13 @@
 import { getState, update } from '../state.js';
 import { getClub } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
-import { Match, SHAPES, FORMATION_NAMES } from '../game/sim.js';
+import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
-import { draw, makeCamera, updateCamera, groundBasis, resolveQuality } from '../game/render3d.js';
+import {
+  draw, makeCamera, updateCamera, groundBasis, replayCamera, resolveQuality,
+} from '../game/render3d.js';
 import { createRenderer } from '../game/renderGL.js';
+import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { navigate, refreshCoins } from '../app.js';
 
 export const TITLE = 'Match';
@@ -51,6 +54,11 @@ export function render(params) {
         <span class="gc-score" id="gcScore"></span>
       </div>
 
+      <div class="replay-tag" id="replayTag" hidden>
+        <span class="rt-dot"></span>REPLAY
+        <em>hold ◯ to skip</em>
+      </div>
+
       <div class="gm-overlay" id="gmOverlay" hidden></div>
     </div>`;
 }
@@ -84,7 +92,66 @@ export function mount(root, params) {
   const goalCard = root.querySelector('#goalCard');
   const gcScorer = root.querySelector('#gcScorer');
   const gcScore = root.querySelector('#gcScore');
+  const replayTag = root.querySelector('#replayTag');
   let lastPhase = null;
+
+  /* ---------------------------- goal replay ---------------------------- */
+  // Rolling buffer of recent frames, so a goal can be played back afterwards.
+  const TAPE_SECONDS = 8;
+  const TAPE_MAX = TAPE_SECONDS * 60;
+  const tape = [];
+  const allPlayers = () => [...match.teams[0].players, ...match.teams[1].players];
+
+  const recordFrame = () => {
+    const snap = {
+      b: [match.ball.x, match.ball.y, match.ball.z || 0],
+      p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]),
+    };
+    tape.push(snap);
+    // it is a ring buffer, so the recorded goal index slides as frames drop off
+    if (tape.length > TAPE_MAX) { tape.shift(); if (goalTapeIdx > 0) goalTapeIdx -= 1; }
+  };
+
+  const applyFrame = (snap) => {
+    match.ball.x = snap.b[0];
+    match.ball.y = snap.b[1];
+    match.ball.z = snap.b[2];
+    allPlayers().forEach((p, i) => {
+      const s = snap.p[i];
+      if (!s) return;
+      [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy] = s;
+      p.diveT = s[6];
+    });
+  };
+
+  let goalTapeIdx = -1;
+  let replay = null;
+  const startReplay = () => {
+    if (tape.length < 40 || goalTapeIdx < 0) return false;
+    const live = { b: [match.ball.x, match.ball.y, match.ball.z], p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]) };
+    const celeb = allPlayers().map((p) => p.celebrating);
+    allPlayers().forEach((p) => { p.celebrating = false; });
+    // window the tape around the goal so the clip runs up to the strike and
+    // then keeps going long enough to show the ball bury itself in the net
+    const from = Math.max(0, goalTapeIdx - 3.5 * 60);
+    const to = Math.min(tape.length, goalTapeIdx + 1.4 * 60);
+    replay = {
+      frames: tape.slice(from, to),
+      i: 0, live, celeb,
+      goalX: match.teams[match.goalTeam].dir > 0 ? PITCH.w : 0,
+      cam: makeCamera(),
+    };
+    replayTag.hidden = false;
+    return true;
+  };
+
+  const endReplay = () => {
+    if (!replay) return;
+    applyFrame(replay.live);
+    allPlayers().forEach((p, i) => { p.celebrating = replay.celeb[i]; });
+    replay = null;
+    replayTag.hidden = true;
+  };
 
   document.body.classList.add('in-game');
 
@@ -179,16 +246,34 @@ export function mount(root, params) {
       navHeld = false;
     }
 
-    if (!paused && !ended) {
+    if (replay) {
+      // hold ◯ to bail out of the cinematic
+      if (inputs.some((i) => i.held('shoot'))) endReplay();
+      else {
+        const f = replay.frames[Math.floor(replay.i)];
+        if (f) applyFrame(f);
+        replayCamera(replay.cam, match.ball, replay.goalX, replay.i / replay.frames.length);
+        // slow motion, and slower still over the strike itself
+        const near = replay.i / replay.frames.length > 0.68 ? 0.3 : 0.6;
+        replay.i += near;
+        if (replay.i >= replay.frames.length) endReplay();
+      }
+    } else if (!paused && !ended) {
       match.update(dt, inputs);
       updateCamera(cam, match, dt);
       match.basis = groundBasis(cam);
+      // keep taping through the goal phase, otherwise the clip stops at the line
+      if (match.phase === 'play' || match.phase === 'goal') {
+        if (match.phase === 'goal' && lastPhase !== 'goal') goalTapeIdx = tape.length;
+        recordFrame();
+      }
       if (match.phase === 'end') { ended = true; finish(); }
     }
 
     const rdt = paused ? 0 : dt;
-    if (gl) gl.render(match, cam, rdt);
-    else draw(ctx, match, cam, vw, vh, quality, rdt);
+    const shot = replay ? replay.cam : cam;
+    if (gl) gl.render(match, shot, rdt);
+    else draw(ctx, match, shot, vw, vh, quality, rdt);
 
     // goal card rides the celebration phase
     if (match.phase === 'goal' && lastPhase !== 'goal') {
@@ -202,6 +287,7 @@ export function mount(root, params) {
     } else if (match.phase !== 'goal' && lastPhase === 'goal') {
       goalCard.classList.remove('show');
       goalCard.hidden = true;
+      startReplay();                       // celebration over — roll the tape
     }
     lastPhase = match.phase;
 
@@ -221,11 +307,10 @@ export function mount(root, params) {
   raf = requestAnimationFrame(frame);
 
   /* ----------------------------- fullscreen ---------------------------- */
-  const toggleFs = () => {
-    if (document.fullscreenElement) document.exitFullscreen?.();
-    else shell.requestFullscreen?.().catch(() => {});
-  };
-  root.querySelector('#gmFs').addEventListener('click', toggleFs);
+  const fsBtn = root.querySelector('#gmFs');
+  // iPhone has no Fullscreen API — hide the control rather than offer a dead button
+  if (!fullscreenSupported()) fsBtn.hidden = true;
+  fsBtn.addEventListener('click', () => toggleFullscreen(shell));
   const onFsChange = () => setTimeout(resize, 60);
   document.addEventListener('fullscreenchange', onFsChange);
 
@@ -336,7 +421,7 @@ export function mount(root, params) {
 
   function activate(id) {
     if (id === 'resume') { setPaused(false); return; }
-    if (id === 'leave') { document.exitFullscreen?.().catch(() => {}); navigate('quick'); return; }
+    if (id === 'leave') { exitFullscreen(); navigate('quick'); return; }
     section = id;
     paintPause();
   }
@@ -384,7 +469,7 @@ export function mount(root, params) {
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
       if (o === 'resume') setPaused(false);
-      if (o === 'quit') { document.exitFullscreen?.().catch(() => {}); navigate('quick'); }
+      if (o === 'quit') { exitFullscreen(); navigate('quick'); }
       if (o === 'again') navigate('play', params);
       return;
     }

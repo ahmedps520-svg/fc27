@@ -69,6 +69,43 @@ export function updateCamera(cam, match, dt) {
  * controls always match what you see: up the stick is up the screen, right is
  * right, whatever the camera is doing.
  */
+/**
+ * Cinematic replay camera. It has to *follow the move*, not sit on the goal —
+ * parking at the goal line for the whole clip made the replay look like nothing
+ * but the ball already in the net. So: a low pitchside tracking shot that runs
+ * with the ball, swinging round behind the goal only for the finish.
+ * `t` is 0..1 through the replay.
+ */
+export function replayCamera(cam, ball, goalX, t) {
+  const inw = goalX > PITCH.w / 2 ? -1 : 1;
+  const s = Math.max(0, Math.min(1, (t - 0.62) / 0.38));
+  const ease = s * s * (3 - 2 * s);
+
+  // tracking: a low chase rig trailing the move, close enough to read
+  const ax = ball.x - inw * 15;
+  const ay = Math.max(-7, Math.min(PITCH.h + 7, ball.y + 9));
+  const az = 3.6;
+  // finish: round behind the goal
+  const bx = goalX - inw * 9;
+  const by = CY + 11;
+  const bz = 4.8;
+
+  const wantX = ax + (bx - ax) * ease;
+  const wantY = ay + (by - ay) * ease;
+  const wantZ = az + (bz - az) * ease;
+
+  // ease the rig so it glides instead of snapping frame to frame
+  const k = cam._replayed ? 0.18 : 1;
+  cam.x += (wantX - cam.x) * k;
+  cam.y += (wantY - cam.y) * k;
+  cam.z += (wantZ - cam.z) * k;
+  cam.tx += (ball.x - cam.tx) * (cam._replayed ? 0.25 : 1);
+  cam.ty += (ball.y - cam.ty) * (cam._replayed ? 0.25 : 1);
+  cam.tz = 0.9;
+  cam.hfov = 50 - ease * 10;
+  cam._replayed = true;
+}
+
 export function groundBasis(cam) {
   let fx = cam.tx - cam.x;
   let fy = cam.ty - cam.y;

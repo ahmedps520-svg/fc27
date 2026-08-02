@@ -1033,6 +1033,71 @@ body.in-game #screen {
   .ts-pads { margin-left: 0; width: 100%; text-align: center; }
 }
 
+/* ------------------------------ iOS / PWA ------------------------------ */
+html {
+  /* stop Safari resizing text when the device rotates */
+  -webkit-text-size-adjust: 100%;
+  height: -webkit-fill-available;
+}
+body {
+  /* no rubber-band scroll or long-press callouts over the pitch */
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none; }
+/* respect the notch / home indicator when installed */
+.topbar { padding-top: max(12px, env(safe-area-inset-top)); }
+.screen { padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px)); }
+.gm-hud { padding-top: max(12px, env(safe-area-inset-top)); }
+.gm-touch { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+
+.rotate-hint {
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: #05070e; text-align: center; padding: 24px;
+}
+.rotate-hint[hidden] { display: none; }
+.rh-phone {
+  font-size: 54px; color: var(--accent); line-height: 1;
+  animation: rhTurn 2.2s ease-in-out infinite;
+}
+.rotate-hint b { font-size: 18px; letter-spacing: .02em; }
+.rotate-hint span:last-child { font-size: 12.5px; color: var(--text-dim); }
+@keyframes rhTurn {
+  0%, 40% { transform: rotate(90deg); }
+  60%, 100% { transform: rotate(0deg); }
+}
+
+/* Controller focus ring for the front-end screens. */
+.pad-focus {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--accent-soft) !important;
+  border-radius: 10px;
+}
+
+/* Replay banner */
+.replay-tag {
+  position: absolute; left: 50%; top: 16px; translate: -50% 0; z-index: 5;
+  display: flex; align-items: center; gap: 9px; pointer-events: none;
+  padding: 7px 16px; border-radius: 999px;
+  background: rgba(8, 12, 24, .8); border: 1px solid rgba(255, 255, 255, .16);
+  font-family: var(--font-num); font-size: 13px; font-weight: 800; letter-spacing: .22em;
+  color: #fff;
+}
+.replay-tag[hidden] { display: none; }
+.rt-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #ff3b52;
+  animation: rtBlink 1s steps(2) infinite;
+}
+@keyframes rtBlink { 50% { opacity: .25; } }
+.replay-tag em {
+  font-style: normal; font-family: var(--font); font-size: 10.5px;
+  letter-spacing: .08em; color: var(--text-dim); font-weight: 600;
+}
+
 /* Goal card — rides the celebration, then clears for the restart. */
 .goal-card {
   position: absolute; left: 0; right: 0; top: 22%; z-index: 5;
