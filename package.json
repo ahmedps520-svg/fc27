@@ -1,0 +1,16 @@
+{
+  "name": "apexxi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "APEX XI — an original football card-collecting and club-management game, with online play.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

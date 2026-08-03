@@ -7,12 +7,16 @@ import * as Settings from './screens/settings.js';
 import * as MatchScreen from './screens/match.js';
 import * as Play from './screens/play.js';
 import * as Splash from './screens/splash.js';
+import * as Online from './screens/online.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
+import * as api from './net/api.js';
+import * as net from './net/socket.js';
+import { adoptCloudSave, saveWeight } from './state.js';
 
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
-  settings: Settings, match: MatchScreen, play: Play,
+  settings: Settings, match: MatchScreen, play: Play, online: Online,
 };
 
 const ACCENTS = {
@@ -42,7 +46,16 @@ export function refreshCoins() {
   coinsEl.textContent = getState().club.coins.toLocaleString();
 }
 
+// Career is shut for now. Guarding the route rather than only the tile means a
+// resume shortcut, a controller focus or an old deep link can't slip past it.
+const LOCKED = { career: 'Career Mode is under construction' };
+
 export function navigate(name, params = {}) {
+  if (LOCKED[name]) {
+    toast(LOCKED[name], 'info');
+    if (current !== 'menu') navigate('menu');
+    return;
+  }
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
 
@@ -102,6 +115,20 @@ applyTheme();
 }
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
 startPadMenu();       // whole front-end is drivable from a controller
+
+/* ------------------------------ account ------------------------------ */
+// Resume a stored session in the background. If the account holds more progress
+// than this device does, that copy wins — otherwise the local one is pushed up.
+api.resume().then((d) => {
+  if (!d) return;
+  if (d.save && saveWeight(d.save) > saveWeight(getState())) {
+    adoptCloudSave(d.save);
+    applyTheme();
+    refreshCoins();
+    if (current === 'menu') navigate('menu');
+  }
+  net.connect();
+}).catch(() => { /* offline — the game is fully playable without the server */ });
 
 /* ----------------------------- mobile / PWA ----------------------------- */
 // Ask phones to turn sideways — the pitch is a landscape view.

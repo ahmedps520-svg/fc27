@@ -9,13 +9,90 @@ are generated procedurally. No affiliation with any real league, club, player or
 ## Run it
 
 It uses ES modules, so it needs to be served over HTTP (opening `index.html` from the file system
-will not work).
+will not work). One command runs the whole thing — the static game, the account API and the
+online match hub:
 
 ```bash
-py -m http.server 8412
+node .dev-server.js 8412
 ```
 
 Then open <http://localhost:8412>.
+
+Node is the only requirement, and there is still nothing to install: the server uses only Node's
+standard library, including a hand-rolled WebSocket implementation.
+
+## Playing online
+
+Sign in from **Ultimate XI → Online**. An account gets you two things:
+
+- **Cloud saves.** Your coins, collection, line-up and division rank are mirrored to the server
+  on every change, so the same account picks up where it left off on another device. Progress is
+  always written locally first, so the game stays fully playable with the server down or with no
+  account at all.
+- **Online matches.** *Division Online* queues you against a real player near your rung of the
+  Apex Division ladder — results settle the same ladder, objectives and rewards as offline.
+  *Private lobby* gives you a four-letter code to hand to a friend for a friendly.
+
+Passwords are hashed with scrypt and a per-account salt; the account file is never served over
+HTTP. Accounts live in `server/data/accounts.json` — delete it to reset everything.
+
+### Hosting it
+
+**GitHub Pages will not run online play.** Pages is static hosting — it serves files and cannot
+run Node, hold a WebSocket, or store accounts. Everything offline still works there (Kick Off,
+Ultimate XI, packs, local saves, PWA install); the Online tab simply has nothing to connect to.
+
+Two arrangements do work:
+
+**One host, everything together** — simplest, and needs no code changes. Any platform that runs a
+Node process (Render, Railway, Fly.io, a VPS) serves the game *and* the online features from one
+origin. The server reads `PORT` from the environment, which is what those platforms set.
+
+```bash
+node server/server.js          # PORT comes from the environment
+```
+
+**Split: static front end + separate server** — keep the game on GitHub Pages and put only the
+server elsewhere. Set the server's origin in `js/net/config.js`:
+
+```js
+export const SERVER_ORIGIN = 'https://your-app.onrender.com';
+```
+
+and start the server with the page's origin allowed, so the browser permits the cross-origin calls:
+
+```bash
+ALLOW_ORIGIN=https://you.github.io node server/server.js
+```
+
+The page must be HTTPS for this: browsers block `ws://` from an `https://` page, and
+`socketURL()` follows the page's protocol automatically.
+
+> **Free tiers usually have an ephemeral filesystem**, which means `server/data/accounts.json` is
+> wiped on every restart or redeploy — accounts and cloud saves would vanish. Attach a persistent
+> disk/volume, or move `server/store.js` onto a real database, before anyone relies on it.
+
+### Playing with someone on another machine
+
+By default the server binds to your own machine. To let a friend on the same network join, point
+them at your LAN address (for example `http://192.168.1.20:8412`). Over the open internet you
+would need to expose the port yourself — the server has no TLS of its own, so put it behind a
+reverse proxy if you do.
+
+### How the netcode works
+
+The server never simulates football. One of the two players is elected host and runs the ordinary
+`Match` — identical physics and balance to an offline game — and broadcasts a 20 Hz snapshot of
+the ball and all 22 players. The guest never simulates: it holds the same `Match` purely as a
+scene and pours snapshots into it, rendering ~100 ms behind so two snapshots always bracket the
+render time and can be interpolated rather than snapped to. The guest streams its stick and
+buttons back at 33 Hz, with button edges accumulated between packets so a quick tap is never
+dropped. The server only relays.
+
+The trade-off is the usual one for host-authoritative play: the guest sees the world a fraction of
+a second late, and the host has no input delay. It keeps the match engine honest and the server
+cheap. Pausing does not stop an online match, and if someone quits the other player is awarded
+the win.
 
 ## What's in it
 

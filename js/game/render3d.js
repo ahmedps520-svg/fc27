@@ -76,22 +76,46 @@ export function updateCamera(cam, match, dt) {
  * with the ball, swinging round behind the goal only for the finish.
  * `t` is 0..1 through the replay.
  */
+// The stadium bowl is closed on the far touchline and on both goal ends; only
+// the near side is open ground, which is where the broadcast camera lives. Any
+// replay position outside this box ends up buried in the terracing.
+const SAFE = {
+  x0: -3, x1: PITCH.w + 3,          // between the two goal-end stands
+  y1: PITCH.h + 3,                  // in front of the far stand (near side is open)
+};
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Cinematic replay camera: a low pitchside rig that runs with the move and then
+ * swings to a tight corner angle for the finish, so you see the strike and the
+ * ball hit the net.
+ *
+ * It used to try to get *behind* the goal for the finish. There is a full stand
+ * there — the camera flew into the seating exactly as the shot was struck and
+ * the replay ended looking at the back of the terrace. It now stays in the open
+ * near-side ground and is hard-clamped to the bowl, so no framing tweak can put
+ * it inside geometry again. `t` is 0..1 through the replay.
+ */
 export function replayCamera(cam, ball, goalX, t) {
-  const inw = goalX > PITCH.w / 2 ? -1 : 1;
-  const s = Math.max(0, Math.min(1, (t - 0.62) / 0.38));
+  const dir = goalX > PITCH.w / 2 ? 1 : -1;        // direction of the attack
+  const s = clamp((t - 0.55) / 0.45, 0, 1);
   const ease = s * s * (3 - 2 * s);
 
-  // tracking: a low chase rig trailing the move, close enough to read
-  const ax = ball.x - inw * 15;
-  const ay = Math.max(-7, Math.min(PITCH.h + 7, ball.y + 9));
-  const az = 3.6;
-  // finish: round behind the goal
-  const bx = goalX - inw * 9;
-  const by = CY + 11;
-  const bz = 4.8;
+  // build-up: low and wide on the near side, trailing the move so the play runs
+  // away from camera towards the goal
+  const ax = ball.x - dir * 10;
+  const ay = -14;
+  const az = 3.2;
 
-  const wantX = ax + (bx - ax) * ease;
-  const wantY = ay + (by - ay) * ease;
+  // finish: swing up to the near corner by the goal and look back along the
+  // line, which puts the goalmouth and the net square in frame. Height matters
+  // more than it looks — sit too low and the perimeter board fills the shot.
+  const bx = goalX - dir * 11;
+  const by = -15;
+  const bz = 5.4;
+
+  const wantX = clamp(ax + (bx - ax) * ease, SAFE.x0, SAFE.x1);
+  const wantY = clamp(ay + (by - ay) * ease, -34, SAFE.y1);
   const wantZ = az + (bz - az) * ease;
 
   // ease the rig so it glides instead of snapping frame to frame
@@ -99,10 +123,20 @@ export function replayCamera(cam, ball, goalX, t) {
   cam.x += (wantX - cam.x) * k;
   cam.y += (wantY - cam.y) * k;
   cam.z += (wantZ - cam.z) * k;
-  cam.tx += (ball.x - cam.tx) * (cam._replayed ? 0.25 : 1);
-  cam.ty += (ball.y - cam.ty) * (cam._replayed ? 0.25 : 1);
-  cam.tz = 0.9;
-  cam.hfov = 50 - ease * 10;
+
+  // Aim: track the ball early, then bias towards the goalmouth so the camera is
+  // already looking at the right place when the ball arrives.
+  const lookX = ball.x + (goalX - ball.x) * ease * 0.85;
+  const lookY = ball.y + (CY - ball.y) * ease * 0.6;
+  const kt = cam._replayed ? 0.25 : 1;
+  cam.tx += (lookX - cam.tx) * kt;
+  cam.ty += (lookY - cam.ty) * kt;
+  cam.tz = 0.9 + ease * 0.5;
+  cam.hfov = 52 - ease * 14;                       // tighten in for the finish
+
+  // last resort: never let the rig sit inside the terracing
+  cam.x = clamp(cam.x, SAFE.x0, SAFE.x1);
+  cam.y = clamp(cam.y, -34, SAFE.y1);
   cam._replayed = true;
 }
 
@@ -774,7 +808,8 @@ function drawBanner(ctx, match, w, h, kits) {
  * poor signal (plenty of desktops report 4), so it only trips at the very low end.
  */
 export function resolveQuality(setting) {
-  if (setting === 'high' || setting === 'low') return setting;
+  // Ultra is never chosen automatically — it is only ever an explicit request.
+  if (setting === 'high' || setting === 'low' || setting === 'ultra') return setting;
   const touch = window.matchMedia('(pointer: coarse)').matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 760;
   const weak = (navigator.hardwareConcurrency || 8) <= 2;

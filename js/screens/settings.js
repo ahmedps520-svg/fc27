@@ -80,10 +80,15 @@ export function render() {
       <div class="setting-row">
         <div><b>3D detail</b><span>Low on phones by default.</span></div>
         <div class="seg" id="qualitySeg">
-          ${[['auto', 'Auto'], ['high', 'High'], ['low', 'Low']].map(([v, l]) =>
+          ${[['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra']].map(([v, l]) =>
             `<button class="${(s.quality || 'auto') === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
         </div>
       </div>
+      <p class="setting-note ${s.quality === 'ultra' ? 'warn' : ''}" id="qualityNote">
+        ${s.quality === 'ultra'
+          ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
+          : 'Ultra maxes out shadows, crowd density and resolution. Demanding.'}
+      </p>
     </section>
 
     <section class="panel glass">
@@ -158,8 +163,14 @@ export function mount(root) {
   root.querySelector('#qualitySeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-quality]');
     if (!b) return;
-    update((s) => { s.settings.quality = b.dataset.quality; });
+    const q = b.dataset.quality;
+    update((s) => { s.settings.quality = q; });
     root.querySelectorAll('[data-quality]').forEach((x) => x.classList.toggle('on', x === b));
+    const note = root.querySelector('#qualityNote');
+    note.classList.toggle('warn', q === 'ultra');
+    note.innerHTML = q === 'ultra'
+      ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
+      : 'Ultra maxes out shadows, crowd density and resolution. Demanding.';
   });
 
   root.querySelector('#accents').addEventListener('click', (e) => {

@@ -492,10 +492,16 @@ function poseDive(rig, p, fine) {
 
 /* ------------------------------- main ------------------------------ */
 export function createRenderer(canvas, match, quality) {
+  // 'ultra' is the deliberately expensive tier: it supersamples above the native
+  // pixel ratio, quadruples the shadow map, and fills the stands out properly.
+  const ultra = quality === 'ultra';
   const renderer = new THREE.WebGLRenderer({
     canvas, antialias: quality !== 'low', powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1));
+  const dpr = window.devicePixelRatio || 1;
+  renderer.setPixelRatio(ultra
+    ? Math.min(3, Math.max(2, dpr))          // render above native, then downsample
+    : Math.min(quality === 'low' ? 1.25 : 2, dpr));
   renderer.shadowMap.enabled = quality !== 'low';
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   // filmic tone mapping is what stops floodlit whites blowing out to flat grey
@@ -528,7 +534,8 @@ export function createRenderer(canvas, match, quality) {
   scene.add(sun, sun.target);
   if (renderer.shadowMap.enabled) {
     sun.castShadow = true;
-    sun.shadow.mapSize.set(quality === 'low' ? 1024 : 2048, quality === 'low' ? 1024 : 2048);
+    const shadowRes = quality === 'low' ? 1024 : ultra ? 4096 : 2048;
+    sun.shadow.mapSize.set(shadowRes, shadowRes);
     sun.shadow.bias = -0.0008;
     const c = sun.shadow.camera;
     c.left = -80; c.right = 80; c.top = 70; c.bottom = -70; c.near = 20; c.far = 220;
@@ -549,12 +556,16 @@ export function createRenderer(canvas, match, quality) {
   turf.receiveShadow = true;
   scene.add(turf);
 
-  // perimeter LED boards — each side gets its own shuffle of sponsors
+  // Perimeter LED boards, touchlines only.
+  //
+  // The goal-end boards used to be here too, but `rotation.set(x, y, z)` applies
+  // the X term last, so the Z spin only rolled the board about its own normal
+  // instead of turning it to face down the pitch: at ±90° the run stood on its
+  // end as an 80-unit tower behind each goal. They are gone rather than fixed —
+  // the ends read better empty, and the touchline runs already carry the sponsors.
   const boards = [
     [PITCH.w / 2, -MARGIN + 1.2, PITCH.w + 20, 0],
     [PITCH.w / 2, PITCH.h + MARGIN - 1.2, PITCH.w + 20, Math.PI],
-    [-MARGIN + 1.2, CY, PITCH.h + 12, Math.PI / 2],
-    [PITCH.w + MARGIN - 1.2, CY, PITCH.h + 12, -Math.PI / 2],
   ];
   boards.forEach(([bx, by, len, rot], i) => {
     const led = ledTexture(1471 + i * 733);
@@ -595,8 +606,8 @@ export function createRenderer(canvas, match, quality) {
     // Column 0 and the last column sit on the posts; the top row hangs off the
     // crossbar and the bottom row is staked to the ground — everything between
     // is free to billow.
-    const COLS = quality === 'low' ? 13 : 21;
-    const ROWS = quality === 'low' ? 6 : 9;
+    const COLS = quality === 'low' ? 13 : ultra ? 30 : 21;
+    const ROWS = quality === 'low' ? 6 : ultra ? 13 : 9;
     const span = GOAL_HALF * 2;
     const perim = NET_DEPTH * 2 + span;            // left side + back + right side
     const cloth = new NetCloth(COLS, ROWS,
@@ -639,7 +650,7 @@ export function createRenderer(canvas, match, quality) {
     { rot: Math.PI / 2, cx: -MARGIN, cy: CY, len: PITCH.h + 36 },
     { rot: -Math.PI / 2, cx: PITCH.w + MARGIN, cy: CY, len: PITCH.h + 36 },
   ];
-  const TERRACE_ROWS = quality === 'low' ? 8 : 14;
+  const TERRACE_ROWS = quality === 'low' ? 8 : ultra ? 22 : 14;
   for (const bk of banks) {
     const g = new THREE.Group();
     g.position.set(bk.cx, bk.cy, 0);
@@ -710,8 +721,8 @@ export function createRenderer(canvas, match, quality) {
 
   // crowd — one instanced mesh, so thousands of seats cost a single draw call
   const rand = mulberry(97531);
-  const rows = quality === 'low' ? 8 : 14;
-  const step = quality === 'low' ? 1.5 : 0.95;
+  const rows = quality === 'low' ? 8 : ultra ? 22 : 14;
+  const step = quality === 'low' ? 1.5 : ultra ? 0.62 : 0.95;
   const seats = [];
   const bankDefs = [
     { kind: 'far', from: -22, to: PITCH.w + 22 },
@@ -904,7 +915,7 @@ export function createRenderer(canvas, match, quality) {
       }
       const nd = Math.min(dt || 1 / 60, 1 / 30);
       for (const n of nets) {
-        n.cloth.step(nd, quality === 'low' ? 2 : 3);
+        n.cloth.step(nd, quality === 'low' ? 2 : ultra ? 6 : 3);
         n.geo.attributes.position.needsUpdate = true;
       }
 

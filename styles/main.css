@@ -1546,3 +1546,223 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ==================================================================== *
+ * Online — account, matchmaking, leaderboard
+ * ==================================================================== */
+.acct-wrap { max-width: 520px; margin: 0 auto; }
+
+.acct {
+  padding: 26px 24px 22px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.acct-kicker {
+  font: 700 11px/1 var(--font-cond, inherit);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.acct-title { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+.acct-sub { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.acct-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255,255,255,.05);
+  border-radius: 12px;
+}
+.acct-tabs button {
+  flex: 1;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 13px/1 inherit;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.acct-tabs button.on { background: var(--accent-soft); color: var(--accent); }
+
+.acct-form { display: flex; flex-direction: column; gap: 12px; }
+.acct-form input {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+  color: var(--text);
+  font: 500 15px/1 inherit;
+}
+.acct-form input:focus { outline: none; border-color: var(--accent); }
+.acct-error {
+  margin: 0;
+  font-size: 13px;
+  color: #ff6b8a;
+  background: rgba(255,46,88,.1);
+  border-radius: 9px;
+  padding: 8px 11px;
+}
+.acct-note { margin: 0; font-size: 11.5px; color: var(--muted); opacity: .8; line-height: 1.5; }
+.btn.wide { width: 100%; justify-content: center; }
+
+/* ------------------------------ signed in ------------------------------ */
+.ol-me {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ol-avatar {
+  width: 44px; height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 800 20px/1 inherit;
+}
+.ol-id { display: flex; flex-direction: column; gap: 3px; margin-right: auto; }
+.ol-id b { font-size: 16px; }
+.ol-conn { font-size: 11px; color: var(--muted); }
+.ol-conn.good { color: #7ef0a8; }
+.ol-conn.bad { color: #ff8f6b; }
+.ol-record { display: flex; gap: 16px; }
+.ol-record div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ol-record b { font-size: 17px; }
+.ol-record span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+.ol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.ol-card { padding: 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ol-card h3 { margin: 0; font-size: 19px; }
+.ol-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.ol-kicker {
+  font: 700 10px/1 inherit;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ol-warn { color: #ffc078 !important; }
+.ol-card .btn { margin-top: auto; }
+
+.ol-lobby { display: flex; gap: 8px; flex-wrap: wrap; }
+.ol-join { display: flex; gap: 6px; flex: 1; min-width: 150px; }
+.ol-join input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+  color: var(--text);
+  font: 700 15px/1 inherit;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.ol-join input:focus { outline: none; border-color: var(--accent); }
+.ol-code { margin: 0; font-size: 13px; color: var(--muted); }
+.ol-code b { color: var(--accent); font-size: 20px; letter-spacing: .2em; }
+
+.ol-board { padding: 18px; border-radius: 16px; }
+.ol-board h3 { margin: 0 0 12px; font-size: 18px; }
+.ol-rows { display: flex; flex-direction: column; gap: 2px; }
+.ol-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto auto 46px 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.ol-row:nth-child(odd) { background: rgba(255,255,255,.03); }
+.ol-row.me { background: var(--accent-soft); }
+.ol-row i { font-style: normal; color: var(--muted); font-size: 12px; }
+.ol-row span { color: var(--muted); font-size: 12px; }
+.ol-row .ol-gd { text-align: right; }
+.ol-row em { font-style: normal; font-weight: 800; text-align: right; color: var(--accent); }
+.ol-empty { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* ----------------------------- searching ----------------------------- */
+.ol-search {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(4,6,14,.78);
+  backdrop-filter: blur(6px);
+}
+.ols-inner {
+  padding: 30px 34px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.ols-inner b { font-size: 18px; }
+.ols-inner span { font-size: 13px; color: var(--muted); }
+.ols-spin {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.12);
+  border-top-color: var(--accent);
+  animation: olspin .8s linear infinite;
+}
+@keyframes olspin { to { transform: rotate(360deg); } }
+
+/* --------------------------- in-match pip --------------------------- */
+.gm-net {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.45);
+  font: 600 11px/1 inherit;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.gm-net.good { color: #7ef0a8; }
+.gm-net.ok { color: #ffd479; }
+.gm-net.bad { color: #ff8f6b; }
+.pause-live {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: #ffc078;
+  opacity: .9;
+}
+
+/* `hidden` must beat the layout display, or the overlay is permanently on */
+.ol-search[hidden] { display: none; }
+
+/* ------------------------- locked mode tile ------------------------- */
+.tile.is-locked {
+  opacity: .5;
+  cursor: not-allowed;
+  filter: saturate(.35);
+}
+.tile.is-locked:hover { transform: none; }
+.tile.is-locked .tile-cta { color: var(--muted); }
+
+/* --------------------- settings explanatory note -------------------- */
+.setting-note {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.setting-note.warn { color: #ffc078; }

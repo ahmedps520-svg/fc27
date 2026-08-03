@@ -1,4 +1,5 @@
 import { WORLD } from './data/generator.js';
+import { pushSave } from './net/api.js';
 
 const KEY = 'apexxi.save.v1';
 
@@ -93,6 +94,34 @@ export function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch { /* storage full or blocked — keep playing in memory */ }
+  // Local first, cloud second: the game never waits on the network to save.
+  pushSave(state);
+}
+
+/**
+ * Replace local progress with a copy pulled from the account. Used once, right
+ * after signing in — the cloud is the source of truth across devices.
+ */
+export function adoptCloudSave(cloud) {
+  if (!cloud || typeof cloud !== 'object') return false;
+  state = { ...defaults(), ...cloud };
+  state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
+  state.club = { ...defaults().club, ...(cloud.club || {}) };
+  state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
+  if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
+  if (!Array.isArray(state.club.packs)) state.club.packs = [];
+  state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
+  state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
+  return true;
+}
+
+/** Rough "how much progress is this" score, used to resolve save conflicts. */
+export function saveWeight(s) {
+  if (!s) return -1;
+  const u = s.ultimate || {};
+  const c = s.club || {};
+  return (u.played || 0) * 10 + (c.collection?.length || 0) + (c.packsOpened || 0) * 2;
 }
 
 export function update(fn) {

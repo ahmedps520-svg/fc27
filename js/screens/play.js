@@ -10,7 +10,11 @@ import { createRenderer } from '../game/renderGL.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '../audio.js';
-import { navigate, refreshCoins } from '../app.js';
+import { navigate, refreshCoins, toast } from '../app.js';
+import * as net from '../net/socket.js';
+import {
+  InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel,
+} from '../net/netplay.js';
 
 export const TITLE = 'Match';
 
@@ -34,6 +38,7 @@ export function render(params) {
           <span class="bug-clock" id="gmClock">0'</span>
         </div>
         <div class="gm-tools">
+          <span class="gm-net" id="gmNet" hidden></span>
           <span class="gm-pad" id="gmPad">No pad</span>
           <button class="icon-btn sm" id="gmFs" title="Fullscreen">⛶</button>
           <button class="icon-btn sm" id="gmPause" title="Pause">❚❚</button>
@@ -69,13 +74,27 @@ export function mount(root, params) {
   const shell = root.querySelector('#gmRoot');
   const canvas = root.querySelector('#gmCanvas');
   const mode = params.mode || 'single';
-  const twoUp = mode === 'versus' || mode === 'coop';
+  const online = params.online || null;
+  // Online is one person per machine, so the local seat is the only local input.
+  const twoUp = !online && (mode === 'versus' || mode === 'coop');
 
   // Seat 1 takes pad 0 and the WASD set; seat 2 takes pad 1 and the arrow/numpad
   // set, so a second person can join with a pad or just the other half of the keyboard.
-  const inputs = [new Input({ pad: 0, keys: 'primary' })];
-  if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
-  const input = inputs[0];
+  const localInput = new Input({ pad: 0, keys: 'primary' });
+  let inputs;
+  let remote = null;
+  if (online) {
+    // The host drives seat 0 and receives seat 1 over the wire; the guest holds
+    // seat 1 locally and streams it up. Both keep the seats in the same order so
+    // the match object is identical on both machines.
+    // The guest never simulates, so it only needs its own seat locally.
+    remote = online.host ? new RemoteInput() : null;
+    inputs = online.host ? [localInput, remote] : [localInput];
+  } else {
+    inputs = [localInput];
+    if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
+  }
+  const input = localInput;
   const quality = resolveQuality(getState().settings.quality);
 
   const match = new Match(params.homeId, params.awayId, {
@@ -156,6 +175,44 @@ export function mount(root, params) {
     replay = null;
     replayTag.hidden = true;
   };
+
+  /* ------------------------------ online ------------------------------ */
+  // Host: simulate, broadcast snapshots, consume the guest's input stream.
+  // Guest: never simulate — pour snapshots into the match and stream input up.
+  const netOffs = [];
+  const view = online && !online.host ? new SnapshotView(match) : null;
+  const sender = online && !online.host ? new InputSender(localInput) : null;
+  const netEl = root.querySelector('#gmNet');
+  let snapAcc = 0;
+  let oppGone = null;
+  let rtt = null;
+  const pendingCues = [];
+
+  if (online) {
+    netEl.hidden = false;
+    match.online = true;
+    // Only the host's clock is authoritative, so the guest must not tick its own.
+    if (online.host) {
+      netOffs.push(net.on('in', (m) => remote.accept(m)));
+    } else {
+      netOffs.push(net.on('snap', (m) => {
+        view.accept(m);
+        // sounds are made by the host's simulation and ride along with the world
+        for (const [name, arg] of m.cu || []) sfx(name, arg);
+      }));
+    }
+    netOffs.push(net.on('oppLeft', () => {
+      if (ended) return;
+      oppGone = true;
+      ended = true;
+      finish();
+    }));
+    netOffs.push(net.on('closed', () => {
+      if (!ended) toast('Lost connection to the server', 'warn');
+    }));
+    const pingTimer = setInterval(async () => { rtt = await net.ping(); }, 3000);
+    netOffs.push(() => clearInterval(pingTimer));
+  }
 
   document.body.classList.add('in-game');
   resumeAudio();
@@ -238,6 +295,9 @@ export function mount(root, params) {
     const dt = Math.min(0.034, (now - last) / 1000);
     last = now;
     for (const inp of inputs) inp.poll(dt);
+    // an online match cannot be frozen — the other player is still out there
+    const frozen = paused && !online;
+    sender?.tick(dt);
 
     if (input.pressed('pause') && !ended) setPaused(!paused);
 
@@ -265,8 +325,13 @@ export function mount(root, params) {
         replay.i += near;
         if (replay.i >= replay.frames.length) endReplay();
       }
-    } else if (!paused && !ended) {
-      match.update(dt, inputs);
+    } else if (!frozen && !ended) {
+      if (view) {
+        // guest: the world arrives over the wire rather than being computed
+        view.update(dt);
+      } else {
+        match.update(dt, inputs);
+      }
       updateCamera(cam, match, dt);
       match.basis = groundBasis(cam);
       // keep taping through the goal phase, otherwise the clip stops at the line
@@ -277,16 +342,30 @@ export function mount(root, params) {
       if (match.phase === 'end') { ended = true; finish(); }
 
       // drain the sim's audio cues
+      const outgoing = [];
       while (match.cues.length) {
         const c = match.cues.shift();
         sfx(c.name, c.arg);
+        if (online?.host) outgoing.push([c.name, c.arg ?? 0]);
+      }
+
+      // host: ship the world at 20 Hz, with any sounds it made since the last one
+      if (online?.host) {
+        pendingCues.push(...outgoing);
+        snapAcc += dt;
+        if (snapAcc >= 0.05) {
+          snapAcc = 0;
+          const snap = encodeSnapshot(match);
+          if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
+          net.send(snap);
+        }
       }
       // crowd lifts as play nears either goal, and roars through a celebration
       const near = Math.min(match.ball.x, PITCH.w - match.ball.x) / (PITCH.w / 2);
       setCrowd(match.phase === 'goal' ? 1 : 0.3 + (1 - near) * 0.5);
     }
 
-    const rdt = paused ? 0 : dt;
+    const rdt = frozen ? 0 : dt;
     const shot = replay ? replay.cam : cam;
     if (gl) gl.render(match, shot, rdt);
     else draw(ctx, match, shot, vw, vh, quality, rdt);
@@ -316,6 +395,12 @@ export function mount(root, params) {
     } else {
       padEl.textContent = input.pad ? 'Pad ✓' : 'No pad';
       padEl.classList.toggle('on', !!input.pad);
+    }
+    if (online) {
+      const q = qualityLabel(rtt);
+      const lost = view?.stale;
+      netEl.textContent = lost ? 'reconnecting…' : `${online.oppName} · ${q.text}`;
+      netEl.className = `gm-net ${lost ? 'bad' : q.cls}`;
     }
 
     raf = requestAnimationFrame(frame);
@@ -358,7 +443,7 @@ export function mount(root, params) {
   };
 
   const panelFor = (id) => {
-    const team = match.teams[match.human];
+    const team = match.teams[online ? online.seat : match.human];
     if (id === 'team') {
       const seg = (key, opts) => `
         <div class="p-row">
@@ -423,8 +508,9 @@ export function mount(root, params) {
       <div class="pause">
         <div class="pause-head">
           ${crestSVG(home.crest, home.short, 26)}
-          <span>Quick Match</span>
+          <span>${online ? `Online · vs ${online.oppName}` : 'Quick Match'}</span>
         </div>
+        ${online ? '<p class="pause-live">The match is still running — this menu does not pause it.</p>' : ''}
         <nav class="pause-nav">
           ${PAUSE_ITEMS.map((it, i) => `
             <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
@@ -437,7 +523,12 @@ export function mount(root, params) {
 
   function activate(id) {
     if (id === 'resume') { setPaused(false); return; }
-    if (id === 'leave') { exitFullscreen(); navigate('quick'); return; }
+    if (id === 'leave') {
+      exitFullscreen();
+      if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
+      navigate('quick');
+      return;
+    }
     section = id;
     paintPause();
   }
@@ -457,19 +548,39 @@ export function mount(root, params) {
     const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
       .sort((x, y) => x[1].minute - y[1].minute);
 
+    // Online, "my" side depends on which seat this machine holds.
+    const meIdx = online ? online.seat : 0;
+    const mine = match.teams[meIdx].score;
+    const theirs = match.teams[1 - meIdx].score;
+
+    if (online) {
+      // A walkover still counts: the player who stayed takes the points.
+      const scored = oppGone ? Math.max(mine, theirs + 1) : mine;
+      const conceded = oppGone ? theirs : theirs;
+      net.send({
+        t: 'result',
+        scored,
+        conceded,
+        divIdx: getState().ultimate.divIdx,
+      });
+    }
+
     // Apex Division matches settle the ladder instead of paying a flat fee
     let div = null;
     if (params.ultimate) {
-      div = settleDivisionMatch({ scored: h.score, conceded: a.score });
+      div = settleDivisionMatch({
+        scored: online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score,
+        conceded: online ? theirs : a.score,
+      });
     } else {
-      update((s) => { s.club.coins += 300 + h.score * 80; });
+      update((s) => { s.club.coins += 300 + (online ? mine : h.score) * 80; });
     }
     refreshCoins();
 
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
-        <span class="gm-ft">Full time</span>
+        <span class="gm-ft">${oppGone ? 'Opponent left — win awarded' : 'Full time'}</span>
         <div class="gm-final">
           <div>${crestSVG(h.club.crest, h.short, 40)}<b>${h.short}</b></div>
           <span>${h.score} – ${a.score}</span>
@@ -491,9 +602,11 @@ export function mount(root, params) {
               : ''}
           </div>` : ''}
         <div class="gm-btns">
-          ${div
+          ${online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
-            : '<button class="btn primary" data-o="again">Rematch</button>'}
+            : div
+              ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
+              : '<button class="btn primary" data-o="again">Rematch</button>'}
           <button class="btn ghost" data-o="quit">Quit</button>
         </div>
       </div>`;
@@ -503,7 +616,7 @@ export function mount(root, params) {
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
       if (o === 'resume') setPaused(false);
-      if (o === 'quit') { exitFullscreen(); navigate(params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); navigate(online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'again') navigate('play', params);
       return;
@@ -513,11 +626,30 @@ export function mount(root, params) {
     if (nav) { navIdx = +nav.dataset.nav; activate(PAUSE_ITEMS[navIdx].id); return; }
 
     const form = e.target.closest('[data-form]');
-    if (form) { match.applyFormation(match.human, form.dataset.form); paintPause(); return; }
+    if (form) { setShape('formation', form.dataset.form); paintPause(); return; }
 
     const tac = e.target.closest('[data-tactic]');
-    if (tac) { match.setTactic(match.human, tac.dataset.tactic, tac.dataset.val); paintPause(); }
+    if (tac) { setShape(tac.dataset.tactic, tac.dataset.val); paintPause(); }
   });
+
+  /**
+   * Shape and tactics belong to the team you are actually managing. Offline that
+   * is seat 0; online it is your seat, and a guest's change has to be applied on
+   * the host, since the host owns the simulation.
+   */
+  function setShape(key, val) {
+    const team = online ? online.seat : match.human;
+    if (key === 'formation') match.applyFormation(team, val);
+    else match.setTactic(team, key, val);
+    if (online && !online.host) net.send({ t: 'evt', k: 'shape', team, key, val });
+  }
+  if (online?.host) {
+    netOffs.push(net.on('evt', (m) => {
+      if (m.k !== 'shape') return;
+      if (m.key === 'formation') match.applyFormation(m.team, m.val);
+      else match.setTactic(m.team, m.key, m.val);
+    }));
+  }
 
   root.querySelector('#gmPause').addEventListener('click', () => { if (!ended) setPaused(!paused); });
 
@@ -528,6 +660,9 @@ export function mount(root, params) {
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
     document.body.classList.remove('in-game');
-    for (const inp of inputs) inp.destroy();
+    for (const inp of inputs) inp.destroy?.();
+    // tell the hub we are gone, so the other player is not left waiting
+    if (online && !ended) net.send({ t: 'leave' });
+    netOffs.forEach((off) => off());
   };
 }

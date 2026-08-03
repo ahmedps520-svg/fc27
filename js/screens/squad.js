@@ -5,10 +5,12 @@ import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
 import { sfx } from '../audio.js';
+import { onlineView, mountOnline, mountSignIn } from './online.js';
+import * as api from '../net/api.js';
 
 export const TITLE = 'Ultimate XI';
 
-let tab = 'squad';           // squad | division | objectives
+let tab = 'squad';           // squad | division | online | objectives | store
 
 const PACKS = [
   { id: 'bronze',  name: 'Bronze',  cost: 0,    size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
@@ -230,11 +232,13 @@ export function render() {
   const owned = s.club.packs.length;
   const tabs = `
     <nav class="tabs" id="uTabs">
-      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['objectives', 'Objectives'],
+      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['online', 'Online'],
+         ['objectives', 'Objectives'],
          ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
     </nav>`;
 
+  if (tab === 'online') return tabs + onlineView();
   if (tab === 'division') return tabs + divisionView();
   if (tab === 'objectives') return tabs + objectivesView();
   if (tab === 'store') return tabs + storeView();
@@ -359,6 +363,12 @@ export function mount(root) {
     tab = b.dataset.utab;
     navigate('squad');
   });
+
+  if (tab === 'online') {
+    return api.isSignedIn()
+      ? mountOnline(root, { rerender: () => navigate('squad') })
+      : mountSignIn(root, () => navigate('squad'));
+  }
 
   if (tab === 'division') {
     root.querySelector('#playDivision')?.addEventListener('click', () => {
