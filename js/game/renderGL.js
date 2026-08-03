@@ -5,6 +5,7 @@ import { UnrealBloomPass } from '../vendor/jsm/postprocessing/UnrealBloomPass.js
 import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import { PITCH, GOAL_HALF, BOX } from './sim.js';
 import { NetCloth } from './net.js';
+import { faceOf } from '../components/face.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -108,6 +109,47 @@ function pitchTexture() {
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 16;
   tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** Generic panelled ball — markings are what make the roll readable. */
+function ballTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f6fa';
+  g.fillRect(0, 0, c.width, c.height);
+
+  // staggered dark panels around the equator and caps
+  g.fillStyle = '#15181f';
+  const blob = (cx, cy, r) => {
+    g.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r * 0.82;
+      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.closePath();
+    g.fill();
+  };
+  for (let i = 0; i < 6; i++) blob((i + 0.5) * (c.width / 6), 34, 15);
+  for (let i = 0; i < 6; i++) blob(i * (c.width / 6), 94, 15);
+  blob(30, 64, 11); blob(158, 64, 11);
+
+  // seams
+  g.strokeStyle = 'rgba(20,24,32,.35)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    g.beginPath();
+    g.moveTo(i * (c.width / 6), 0);
+    g.lineTo(i * (c.width / 6), c.height);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -251,8 +293,15 @@ const SHIN = 0.44;
 const UPPER_ARM = 0.29;
 const FOREARM = 0.27;
 
-const LIMB_GEO = new THREE.CylinderGeometry(0.8, 1, 1, 10);
-const JOINT_GEO = new THREE.SphereGeometry(1, 10, 8);
+// Capsules rather than bare cylinders — rounded ends read as muscle and hide
+// the seams at every joint.
+const LIMB_GEO = new THREE.CapsuleGeometry(1, 1, 4, 10);
+const JOINT_GEO = new THREE.SphereGeometry(1, 12, 10);
+const BOOT_GEO = new THREE.BoxGeometry(1, 1, 1);
+
+// CapsuleGeometry(1, 1) stands 3 units tall (body 1 plus two unit caps), so the
+// length axis is divided through by that to span exactly a to b.
+const CAPSULE_H = 3;
 
 function segment(mesh, ax, ay, az, bx, by, bz, r) {
   const dx = bx - ax;
@@ -263,7 +312,7 @@ function segment(mesh, ax, ay, az, bx, by, bz, r) {
   _v.set(dx / len, dy / len, dz / len);
   _q.setFromUnitVectors(UP_Y, _v);
   mesh.quaternion.copy(_q);
-  mesh.scale.set(r, len, r);
+  mesh.scale.set(r, len / CAPSULE_H, r);
 }
 
 function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol) {
@@ -748,22 +797,23 @@ export function createRenderer(canvas, match, quality) {
   const rigs = new Map();
   for (let t = 0; t < 2; t++) {
     for (const p of match.teams[t].players) {
-      let h = 0;
-      for (const ch of p.ref.id) h = (h * 31 + ch.charCodeAt(0)) | 0;
-      h = Math.abs(h);
       const isGK = p.role === 'GK';
       const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
       const shorts = base.clone().multiplyScalar(0.6);
-      const rig = buildPlayer(base, shorts, SKINS[h % SKINS.length],
-        HAIRS[(h >> 3) % HAIRS.length], base.clone().multiplyScalar(0.8));
+      // same look the card portrait uses, so a player on the pitch matches his card
+      const look = faceOf(p.ref);
+      const rig = buildPlayer(
+        base, shorts,
+        new THREE.Color(look.skin), new THREE.Color(look.hair),
+        base.clone().multiplyScalar(0.8));
       scene.add(rig.grp);
       rigs.set(p, rig);
     }
   }
 
   const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(0.19, 16, 12),
-    new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    new THREE.SphereGeometry(0.19, 24, 18),
+    new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.55, metalness: 0.02 }));
   ball.castShadow = true;
   scene.add(ball);
 
@@ -830,6 +880,18 @@ export function createRenderer(canvas, match, quality) {
         }
       }
       ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19);
+      // Roll it. Angular speed is v/r about the axis perpendicular to travel,
+      // so the ball visibly spins along the ground instead of sliding.
+      {
+        const vx = m.ball.vx || 0;
+        const vy = m.ball.vy || 0;
+        const sp = Math.hypot(vx, vy);
+        if (sp > 0.05 && dt > 0) {
+          _v.set(-vy / sp, vx / sp, 0);
+          _q.setFromAxisAngle(_v, (sp / 0.19) * dt);
+          ball.quaternion.premultiply(_q);
+        }
+      }
 
       // netting: take the strike, then keep simulating so it ripples and settles
       if (m.netHit && m.netHit.at !== lastNetHit) {

@@ -142,6 +142,11 @@ const SOUNDS = {
   bounce() {
     tone({ freq: 130, to: 70, type: 'sine', dur: 0.07, gain: 0.16 });
   },
+  // the soft tap of a dribbler knocking the ball on
+  touch() {
+    tone({ freq: 165, to: 95, type: 'sine', dur: 0.05, gain: 0.07 });
+    noise({ dur: 0.035, gain: 0.05, type: 'highpass', freq: 1600 });
+  },
   tackle() {
     noise({ dur: 0.16, gain: 0.28, type: 'bandpass', freq: 420, to: 180, q: 0.8 });
   },
@@ -158,11 +163,19 @@ const SOUNDS = {
     noise({ dur: 0.12, gain: 0.26, type: 'lowpass', freq: 1400 });
     SOUNDS.crowdOoh(0.55);
   },
+  // vowel-shaped so it reads as "oooh" from a stand rather than a gust of wind
   crowdOoh(level = 0.6) {
-    noise({ dur: 1.1, gain: 0.1 * level, type: 'bandpass', freq: 520, to: 300, q: 0.9, attack: 0.18 });
+    [[430, 5], [900, 7], [2300, 9]].forEach(([f, q], i) => {
+      noise({
+        dur: 1.2, gain: 0.09 * level * (1 - i * 0.28), type: 'bandpass',
+        freq: f, to: f * 0.62, q, attack: 0.2,
+      });
+    });
   },
   crowdGasp() {
-    noise({ dur: 0.7, gain: 0.09, type: 'bandpass', freq: 700, to: 420, q: 1, attack: 0.06 });
+    [[620, 6], [1400, 8]].forEach(([f, q], i) => {
+      noise({ dur: 0.75, gain: 0.08 * (1 - i * 0.3), type: 'bandpass', freq: f, to: f * 0.7, q, attack: 0.05 });
+    });
   },
 
   // --- whistles ---
@@ -184,9 +197,20 @@ const SOUNDS = {
 
   // --- goal ---
   goal() {
-    // roar swells up and hangs
-    noise({ dur: 3.4, gain: 0.34, type: 'bandpass', freq: 380, to: 900, q: 0.5, attack: 0.45 });
-    noise({ dur: 3.0, gain: 0.18, type: 'highpass', freq: 1400, attack: 0.5, delay: 0.1 });
+    // Roar built from vowel formants so it sounds like a stand full of people
+    // rather than a wall of hiss, plus scattered shouts riding on top.
+    [[420, 3.5, 0.30], [980, 5, 0.22], [2100, 7, 0.13], [3400, 8, 0.06]]
+      .forEach(([f, q, g]) => {
+        noise({ dur: 3.4, gain: g, type: 'bandpass', freq: f * 0.75, to: f * 1.15, q, attack: 0.4 });
+      });
+    for (let i = 0; i < 9; i++) {
+      const base = 300 + Math.random() * 700;
+      noise({
+        dur: 0.3 + Math.random() * 0.6, gain: 0.05 + Math.random() * 0.05,
+        type: 'bandpass', freq: base, to: base * 1.4,
+        q: 6 + Math.random() * 6, attack: 0.05, delay: 0.1 + Math.random() * 1.6,
+      });
+    }
     // stadium horn: a fifth stack
     [220, 330, 440].forEach((f, i) => {
       tone({ freq: f, type: 'sawtooth', dur: 1.5, gain: 0.09, delay: 0.05 + i * 0.03 });
@@ -243,47 +267,102 @@ export function sfx(name, ...args) {
 }
 
 /* -------------------------- crowd ambience bed -------------------------- */
+/**
+ * A crowd is thousands of voices, not wind. Filtered noise on its own reads as
+ * air, so the bed runs through vowel formants, gets an uneven murmur on top of
+ * it, and has individual shouts thrown in — that irregularity is what makes it
+ * sound like people.
+ */
+const FORMANTS = [
+  { f: 480, q: 4.5, g: 1.0 },     // "ah" body
+  { f: 1180, q: 6, g: 0.62 },     // vowel colour
+  { f: 2450, q: 8, g: 0.3 },      // consonant edge
+  { f: 3600, q: 9, g: 0.13 },     // air off the top of the stands
+];
+
 export function startCrowd() {
   if (!ready && !initAudio()) return;
   if (crowdNodes) return;
+
   const src = ctx.createBufferSource();
   src.buffer = noiseBuf;
   src.loop = true;
-  const f = ctx.createBiquadFilter();
-  f.type = 'lowpass';
-  f.frequency.value = 700;
-  f.Q.value = 0.4;
-  const g = ctx.createGain();
-  g.gain.value = 0.0001;
+  src.playbackRate.value = 0.8;
 
-  // slow swell so the bed breathes rather than hissing flat
-  const lfo = ctx.createOscillator();
-  const lg = ctx.createGain();
-  lfo.frequency.value = 0.07;
-  lg.gain.value = 220;
-  lfo.connect(lg).connect(f.frequency);
+  const sum = ctx.createGain();
+  sum.gain.value = 1;
 
-  src.connect(f).connect(g).connect(sfxBus);
+  const bands = FORMANTS.map((fm) => {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = fm.f;
+    bp.Q.value = fm.q;
+    const bg = ctx.createGain();
+    bg.gain.value = fm.g;
+    src.connect(bp).connect(bg).connect(sum);
+    return { bp, bg };
+  });
+
+  // murmur: a wobble that is deliberately not periodic
+  const murmur = ctx.createGain();
+  murmur.gain.value = 1;
+  const lfoA = ctx.createOscillator();
+  const lgA = ctx.createGain();
+  lfoA.frequency.value = 0.23;
+  lgA.gain.value = 0.22;
+  const lfoB = ctx.createOscillator();
+  const lgB = ctx.createGain();
+  lfoB.frequency.value = 0.71;
+  lgB.gain.value = 0.11;
+  lfoA.connect(lgA).connect(murmur.gain);
+  lfoB.connect(lgB).connect(murmur.gain);
+
+  const out = ctx.createGain();
+  out.gain.value = 0.0001;
+  sum.connect(murmur).connect(out).connect(sfxBus);
+
   src.start();
-  lfo.start();
-  crowdNodes = { src, g, f, lfo };
+  lfoA.start();
+  lfoB.start();
+
+  // individual voices rising out of the mass every so often
+  const voices = setInterval(() => {
+    if (!crowdNodes) return;
+    const chance = 0.25 + crowdLevel * 0.6;
+    if (Math.random() > chance) return;
+    const base = 260 + Math.random() * 520;
+    noise({
+      dur: 0.25 + Math.random() * 0.5,
+      gain: (0.02 + crowdLevel * 0.05) * (0.5 + Math.random()),
+      type: 'bandpass', freq: base, to: base * (0.7 + Math.random() * 0.7),
+      q: 5 + Math.random() * 6, attack: 0.06,
+    });
+  }, 420);
+
+  crowdNodes = { src, out, bands, lfoA, lfoB, voices };
   setCrowd(0.35);
 }
 
 export function setCrowd(level) {
   crowdLevel = Math.max(0, Math.min(1, level));
   if (!crowdNodes) return;
-  crowdNodes.g.gain.setTargetAtTime(0.03 + crowdLevel * 0.12, now(), 0.6);
-  crowdNodes.f.frequency.setTargetAtTime(500 + crowdLevel * 900, now(), 0.8);
+  const t = now();
+  crowdNodes.out.gain.setTargetAtTime(0.035 + crowdLevel * 0.16, t, 0.7);
+  // excitement opens the upper formants — the crowd gets shriller, not just louder
+  crowdNodes.bands.forEach((b, i) => {
+    b.bg.gain.setTargetAtTime(FORMANTS[i].g * (0.75 + crowdLevel * 0.7), t, 0.9);
+  });
 }
 
 export function stopCrowd() {
   if (!crowdNodes) return;
-  const { src, g, lfo } = crowdNodes;
+  const { src, out, lfoA, lfoB, voices } = crowdNodes;
+  clearInterval(voices);
   try {
-    g.gain.setTargetAtTime(0.0001, now(), 0.25);
+    out.gain.setTargetAtTime(0.0001, now(), 0.25);
     src.stop(now() + 1.2);
-    lfo.stop(now() + 1.2);
+    lfoA.stop(now() + 1.2);
+    lfoB.stop(now() + 1.2);
   } catch { /* already stopped */ }
   crowdNodes = null;
 }

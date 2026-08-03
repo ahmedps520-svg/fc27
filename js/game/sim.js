@@ -384,6 +384,31 @@ export class Match {
         }
       }
     }
+    this.protectKeeper();
+  }
+
+  /**
+   * While a keeper is holding the ball, opponents are kept out of a ring around
+   * them until the ball is released — you cannot stand over a goal kick.
+   */
+  protectKeeper() {
+    const o = this.ball.owner;
+    if (!o || o.role !== 'GK') return;
+    const R = 7.5;
+    for (const p of this.teams[1 - o.team].players) {
+      const dx = p.x - o.x;
+      const dy = p.y - o.y;
+      const d = Math.hypot(dx, dy) || 0.01;
+      if (d >= R) continue;
+      const push = (R - d);
+      p.x += (dx / d) * push;
+      p.y += (dy / d) * push;
+      // bleed their momentum so they cannot bulldoze back in
+      p.vx *= 0.2;
+      p.vy *= 0.2;
+      p.x = clamp(p.x, 0.5, PITCH.w - 0.5);
+      p.y = clamp(p.y, 0.5, PITCH.h - 0.5);
+    }
   }
 
   /* ------------------------------ human ------------------------------ */
@@ -513,10 +538,40 @@ export class Match {
         if (o.holdT > 1.1) { o.holdT = 0; this.pass(o, { x: this.teams[o.team].dir, y: 0 }, true); }
         return;
       }
-      const lead = 1.35;
-      b.x = o.x + o.dirX * lead;
-      b.y = o.y + o.dirY * lead;
-      b.vx = o.vx; b.vy = o.vy;
+      // Dribbling is a series of touches, not a rigid attachment. The ball is
+      // knocked ahead and then rolls on its own until the next touch, so it lags,
+      // drifts and rolls instead of floating at a fixed offset.
+      const speed = Math.hypot(o.vx, o.vy);
+      const dx = b.x - o.x;
+      const dy = b.y - o.y;
+      const gap = Math.hypot(dx, dy);
+      const skill = o.ref.stats.dribbling / 100;
+
+      // Sprung to a point ahead of the dribbler rather than pinned there: it
+      // lags on turns, overshoots when they stop, and gets knocked on between
+      // touches. Fully detaching it was tried and it simply rolled away — the
+      // carrier AI runs at the goal, not at the ball.
+      const lead = 0.85 + speed * 0.13;
+      const tx = o.x + o.dirX * lead;
+      const ty = o.y + o.dirY * lead;
+
+      const stiff = 30 + skill * 26;               // better dribblers keep it tighter
+      const damp = 10;
+      b.vx += ((tx - b.x) * stiff - b.vx * damp) * dt;
+      b.vy += ((ty - b.y) * stiff - b.vy * damp) * dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+
+      // a visible knock-on every so often so it is played, not towed
+      o.touchT = (o.touchT || 0) - dt;
+      if (o.touchT <= 0 && speed > 1.2) {
+        const push = 0.7 + speed * 0.18;
+        b.vx += o.dirX * push;
+        b.vy += o.dirY * push;
+        o.touchT = 0.3 + Math.random() * 0.16;
+        this.cue('touch');
+      }
+
       b.lastTouch = o;
       return;
     }
@@ -619,8 +674,57 @@ export class Match {
     this.bounds();
   }
 
+  /**
+   * The frame is solid. Posts are vertical cylinders at each side of the goal,
+   * the bar is the line across the top — a ball hitting either rebounds back
+   * into play instead of sailing through.
+   */
+  hitFrame() {
+    const b = this.ball;
+    const R = 0.11 + 0.11;                      // post radius plus ball radius
+    for (const gx of [0, PITCH.w]) {
+      if (Math.abs(b.x - gx) > 1.4) continue;
+
+      // uprights
+      for (const py of [CY - GOAL_HALF, CY + GOAL_HALF]) {
+        if (b.z > GOAL_HEIGHT + 0.1) continue;
+        const dx = b.x - gx;
+        const dy = b.y - py;
+        const d = Math.hypot(dx, dy);
+        if (d > R || d < 0.0001) continue;
+        const nx = dx / d;
+        const ny = dy / d;
+        const vn = b.vx * nx + b.vy * ny;
+        if (vn > 0) continue;                   // already moving away
+        b.vx -= 2 * vn * nx;
+        b.vy -= 2 * vn * ny;
+        b.vx *= 0.62; b.vy *= 0.62;
+        b.x = gx + nx * (R + 0.01);
+        b.y = py + ny * (R + 0.01);
+        b.curl = 0;
+        b.shotBy = null;
+        this.cue('post');
+        return true;
+      }
+
+      // crossbar
+      if (Math.abs(b.y - CY) < GOAL_HALF + 0.2
+          && Math.abs(b.z - GOAL_HEIGHT) < 0.22 && b.vz > -40) {
+        b.vz = -Math.abs(b.vz) * 0.55 - 1.2;
+        b.vx *= 0.7; b.vy *= 0.7;
+        b.z = GOAL_HEIGHT - 0.24;
+        b.curl = 0;
+        b.shotBy = null;
+        this.cue('post');
+        return true;
+      }
+    }
+    return false;
+  }
+
   bounds() {
     const b = this.ball;
+    if (!b.inNet && this.hitFrame()) return;
     const attackerSide = b.lastTouch ? b.lastTouch.team : 0;
 
     if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
@@ -1043,6 +1147,9 @@ export class Match {
       p.vy = p.dirY * p.maxSpeed * 1.7;
     }
     if (!owner || owner.team === p.team) return;
+    // A keeper with the ball in their hands cannot be challenged — walking in
+    // and robbing them at a goal kick was a free goal.
+    if (owner.role === 'GK') { p.stumble = 0.35; return; }
     const d = dist(p, owner);
     if (d > (sliding ? 3.4 : 2.6)) { if (!sliding) p.stumble = 0.25; return; }
 
