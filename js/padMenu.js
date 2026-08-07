@@ -78,7 +78,7 @@ function step(list, dx, dy) {
   focusIdx = best;
 }
 
-import { sfx } from './audio.js';
+import { sfx, resumeAudio } from './audio.js';
 
 function activate(el) {
   if (!el) return;
@@ -129,6 +129,8 @@ function tick(dt) {
 
   const down = pad.buttons.map((b) => b.pressed);
   const hit = (i) => down[i] && !prevButtons[i];
+  // a pad press counts as the gesture that lets audio start, same as a tap
+  if (down.some((d, i) => d && !prevButtons[i])) resumeAudio();
   if (hit(0)) activate(list[focusIdx]);                       // cross
   if (hit(1)) {                                               // circle = back
     const back = document.getElementById('backBtn');

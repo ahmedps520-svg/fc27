@@ -20,7 +20,19 @@ const PACKS = [
 ];
 
 let selectedId = null;   // tap-to-place selection
-let filter = 'all';
+let filter = 'all';      // rarity chip
+let group = 'all';       // GK / DEF / MID / FWD chip
+let sortBy = 'rating';   // rating | position | value | name
+let pickSlot = null;     // tapping an empty slot puts the list into "fill this" mode
+
+const GROUPS = [['all', 'All'], ['GK', 'GK'], ['DEF', 'Defence'], ['MID', 'Midfield'], ['FWD', 'Attack']];
+
+const SORTS = {
+  rating: (a, b) => b.overall - a.overall,
+  position: (a, b) => a.position.localeCompare(b.position) || b.overall - a.overall,
+  value: (a, b) => b.value - a.value,
+  name: (a, b) => a.name.localeCompare(b.name),
+};
 
 /* ------------------------------------------------------------------ *
  * Chemistry
@@ -63,23 +75,60 @@ function rollRarity(odds) {
   return 'silver';
 }
 
-function drawPlayer(rarity) {
-  const pool = WORLD.players.filter((p) => p.rarity === rarity);
-  const src = pool.length ? pool : WORLD.players;
-  return src[Math.floor(Math.random() * src.length)];
+/**
+ * Draw one card of a rarity, avoiding anyone in `seen`.
+ *
+ * A card you already own is worthless — the collection holds one of each — so a
+ * pack that keeps handing them over is a pack that quietly gives you nothing.
+ * Cards you do not have come first; only when a whole rarity is exhausted does
+ * a repeat come back, and the caller pays that out in coins instead.
+ */
+function drawPlayer(rarity, seen, only = null) {
+  const matches = (p) => p.rarity === rarity && (!only || only(p));
+  let src = WORLD.players.filter(matches);
+  if (!src.length) src = only ? WORLD.players.filter(only) : WORLD.players;
+  const fresh = seen ? src.filter((p) => !seen.has(p.id)) : src;
+  const from = fresh.length ? fresh : src;
+  return from[Math.floor(Math.random() * from.length)];
 }
 
-function openPack(pack) {
+/** The player ids a pull would be a repeat of: the collection plus this batch. */
+const ownedIds = () => new Set(getState().club.collection);
+
+const hasKeeper = (ids) => ids.some((id) => getPlayer(id)?.position === 'GK');
+
+/**
+ * @param {boolean} needGK force one goalkeeper into this pack. A squad without
+ *   a keeper cannot be fielded at all, and leaving that to a 1-in-14 roll made
+ *   a new player's first four packs a coin toss on whether they could play.
+ * @returns {{p: object, dup: boolean}[]} one entry per card in the pack.
+ */
+function openPack(pack, seen = new Set(), needGK = false) {
+  const draw = (rarity, only = null) => {
+    const p = drawPlayer(rarity, seen, only);
+    const dup = seen.has(p.id);
+    seen.add(p.id);
+    return { p, dup };
+  };
+
   const pulls = [];
-  for (let i = 0; i < pack.size; i++) pulls.push(drawPlayer(rollRarity(pack.odds)));
-  if (pack.id === 'gold' && !pulls.some((p) => p.rarity === 'gold' || p.rarity === 'special')) {
-    pulls[pulls.length - 1] = drawPlayer('gold');
+  for (let i = 0; i < pack.size; i++) pulls.push(draw(rollRarity(pack.odds)));
+  if (pack.id === 'gold' && !pulls.some((x) => x.p.rarity === 'gold' || x.p.rarity === 'special')) {
+    pulls[pulls.length - 1] = draw('gold');
   }
   if (pack.id === 'prime') {
-    pulls.forEach((p, i) => { if (p.overall < 82) pulls[i] = drawPlayer(Math.random() < 0.25 ? 'special' : 'gold'); });
+    pulls.forEach((x, i) => {
+      if (x.p.overall < 82) pulls[i] = draw(Math.random() < 0.25 ? 'special' : 'gold');
+    });
+  }
+  if (needGK && !pulls.some((x) => x.p.position === 'GK')) {
+    pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
   }
   return pulls;
 }
+
+/** What a card you already own is worth — the same as selling it. */
+const dupValue = (p) => Math.round(p.value / 25_000);
 
 /* ------------------------------------------------------------------ *
  * Render
@@ -275,7 +324,7 @@ export function render() {
           </div>
           ${FORMATIONS[formation].map((slot, i) => slotHTML(slot, i, lineup[i], chem.per[i])).join('')}
         </div>
-        <p class="pitch-hint">Drag a card onto the pitch, or tap card then slot.</p>
+        <p class="pitch-hint">Tap an empty slot to see who can play there, or drag a card onto the pitch.</p>
       </div>
 
       <div class="sb-side">
@@ -288,11 +337,22 @@ export function render() {
         <section class="panel glass">
           <header class="panel-head">
             <h2>Collection <small>${s.club.collection.length}</small></h2>
-            <div class="chips" id="filters">
-              ${['all', 'special', 'gold', 'silver', 'bronze'].map((f) => `
-                <button class="chip ${filter === f ? 'on' : ''}" data-filter="${f}">${f === 'all' ? 'All' : RARITY[f].label}</button>`).join('')}
-            </div>
+            <label class="field inline">
+              <span>Sort</span>
+              <select id="collSort">
+                ${[['rating', 'Rating'], ['position', 'Position'], ['value', 'Value'], ['name', 'Name']]
+                  .map(([v, l]) => `<option value="${v}" ${sortBy === v ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </label>
           </header>
+          <div class="chips" id="filters">
+            ${['all', 'special', 'gold', 'silver', 'bronze'].map((f) => `
+              <button class="chip ${filter === f ? 'on' : ''}" data-filter="${f}">${f === 'all' ? 'All' : RARITY[f].label}</button>`).join('')}
+          </div>
+          <div class="chips" id="groupFilters">
+            ${GROUPS.map(([g, label]) => `
+              <button class="chip ${group === g ? 'on' : ''}" data-group="${g}">${label}</button>`).join('')}
+          </div>
           <div class="collection" id="collection">${collectionHTML()}</div>
         </section>
       </div>
@@ -323,33 +383,57 @@ function slotHTML(slot, i, playerId, chem) {
     </div>`;
 }
 
+/** How well a player suits a slot: 0 exact, 1 same group, 2 out of position. */
+const fitFor = (p, slotPos) =>
+  (p.position === slotPos ? 0 : POSITIONS[p.position].group === POSITIONS[slotPos].group ? 1 : 2);
+
 function collectionHTML() {
   const s = getState();
   // anyone already on the pitch is hidden here — the list is the bench, not a duplicate
   const used = new Set(s.club.lineup.filter(Boolean));
-  const items = s.club.collection
+  const slot = pickSlot === null ? null : FORMATIONS[s.club.formation][pickSlot];
+
+  let items = s.club.collection
     .map(getPlayer)
-    .filter((p) => p && !used.has(p.id) && (filter === 'all' || p.rarity === filter))
-    .sort((a, b) => b.overall - a.overall);
+    .filter((p) => p && !used.has(p.id)
+      && (filter === 'all' || p.rarity === filter)
+      && (group === 'all' || POSITIONS[p.position].group === group));
+
+  // Filling a slot: whoever can play there comes first, best fit then best player.
+  items = slot
+    ? items.sort((a, b) => fitFor(a, slot.pos) - fitFor(b, slot.pos) || b.overall - a.overall)
+    : items.sort(SORTS[sortBy] || SORTS.rating);
+
+  const banner = slot
+    ? `<div class="coll-banner">
+         <b>Pick a ${slot.pos}</b>
+         <button class="mini-btn" data-cancel-pick>Cancel</button>
+       </div>`
+    : '';
 
   if (!s.club.collection.length) {
     return `<p class="empty">No cards yet — grab a pack from the Store.</p>`;
   }
   if (!items.length) {
-    return `<p class="empty">${used.size === s.club.collection.length
-      ? 'Every card you own is in the XI.'
-      : `No ${RARITY[filter].label.toLowerCase()} cards left on the bench.`}</p>`;
+    const narrowed = filter !== 'all' || group !== 'all';
+    return banner + `<p class="empty">${narrowed
+      ? 'Nothing on the bench matches those filters.'
+      : 'Every card you own is in the XI.'}</p>`;
   }
 
-  return items.map((p) => `
-    <div class="coll-item ${selectedId === p.id ? 'is-selected' : ''}"
+  return banner + items.map((p) => {
+    const fit = slot ? fitFor(p, slot.pos) : null;
+    return `
+    <div class="coll-item ${selectedId === p.id ? 'is-selected' : ''} ${fit === 2 ? 'is-misfit' : ''}"
          data-player="${p.id}" draggable="false">
       ${playerCard(p, { size: 'mini' })}
+      ${slot ? `<span class="coll-fit fit-${fit}">${fit === 0 ? 'Fits' : fit === 1 ? 'Near' : 'Out of position'}</span>` : ''}
       <div class="coll-tools">
         <button class="mini-btn" data-detail="${p.id}">Info</button>
-        <button class="mini-btn danger" data-sell="${p.id}">Sell ◈${Math.round(p.value / 25_000).toLocaleString()}</button>
+        <button class="mini-btn danger" data-sell="${p.id}">Sell ◈${dupValue(p).toLocaleString()}</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ------------------------------------------------------------------ *
@@ -361,6 +445,7 @@ export function mount(root) {
     const b = e.target.closest('[data-utab]');
     if (!b) return;
     tab = b.dataset.utab;
+    pickSlot = null;
     navigate('squad');
   });
 
@@ -412,21 +497,30 @@ export function mount(root) {
     });
 
     const openPacks = (ids) => {
-      const pulls = [];
+      // one running set across the batch, so ten packs can't hand over the same
+      // card ten times
+      const seen = ownedIds();
+      let needGK = !hasKeeper(getState().club.collection);
+      const drawn = [];
       for (const id of ids) {
         const pack = PACKS.find((p) => p.id === id) || PACKS[0];
-        pulls.push(...openPack(pack));
+        const pulls = openPack(pack, seen, needGK);
+        if (pulls.some((x) => x.p.position === 'GK')) needGK = false;
+        drawn.push(...pulls);
       }
+      const coins = drawn.filter((x) => x.dup).reduce((sum, x) => sum + dupValue(x.p), 0);
+
       update((st) => {
         for (const id of ids) {
           const i = st.club.packs.indexOf(id);
           if (i >= 0) st.club.packs.splice(i, 1);
           st.club.packsOpened += 1;
         }
-        pulls.forEach((p) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
+        drawn.forEach(({ p }) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
+        st.club.coins += coins;
       });
       refreshCoins();
-      runPackAnimation(root, pulls, () => navigate('squad'));
+      runPackAnimation(root, drawn, coins, () => navigate('squad'));
     };
 
     root.querySelectorAll('[data-open-pack]').forEach((btn) => {
@@ -458,6 +552,8 @@ export function mount(root) {
     metrics.querySelector('.chem-bar b').style.width = `${chem.team}%`;
     metrics.querySelectorAll('.metric')[2].querySelector('.big').innerHTML = `${chem.placedCount}<small>/11</small>`;
     collectionEl.innerHTML = collectionHTML();
+    // slots are re-rendered wholesale, so the highlight has to go back on
+    if (pickSlot !== null) pitch.querySelector(`[data-slot="${pickSlot}"]`)?.classList.add('is-picking');
   };
 
   const place = (playerId, slotIndex) => {
@@ -467,6 +563,7 @@ export function mount(root) {
       s.club.lineup[slotIndex] = playerId;
     });
     selectedId = null;
+    pickSlot = null;
     rerenderPitch();
   };
 
@@ -521,10 +618,34 @@ export function mount(root) {
     collectionEl.innerHTML = collectionHTML();
   });
 
+  root.querySelector('#groupFilters').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-group]');
+    if (!b) return;
+    group = b.dataset.group;
+    root.querySelectorAll('[data-group]').forEach((x) => x.classList.toggle('on', x.dataset.group === group));
+    collectionEl.innerHTML = collectionHTML();
+  });
+
+  root.querySelector('#collSort').addEventListener('change', (e) => {
+    sortBy = e.target.value;
+    collectionEl.innerHTML = collectionHTML();
+  });
+
   /* --- collection actions --- */
   collectionEl.addEventListener('click', (e) => {
+    if (e.target.closest('[data-cancel-pick]')) return endPick();
+
     const detail = e.target.closest('[data-detail]');
     if (detail) return showDetail(root, getPlayer(detail.dataset.detail));
+
+    // filling a named slot: one tap on a card puts them straight in it
+    const card = e.target.closest('[data-player]');
+    if (pickSlot !== null && card && !e.target.closest('button')) {
+      const slotIndex = pickSlot;
+      pickSlot = null;
+      pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+      return place(card.dataset.player, slotIndex);
+    }
 
     const sell = e.target.closest('[data-sell]');
     if (sell) {
@@ -543,6 +664,12 @@ export function mount(root) {
   });
 
   /* --- slot clear + tap-to-place --- */
+  const endPick = () => {
+    pickSlot = null;
+    pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+    collectionEl.innerHTML = collectionHTML();
+  };
+
   pitch.addEventListener('click', (e) => {
     const x = e.target.closest('[data-clear]');
     if (x) {
@@ -550,7 +677,17 @@ export function mount(root) {
       return rerenderPitch();
     }
     const slot = e.target.closest('[data-slot]');
-    if (slot && selectedId) place(selectedId, +slot.dataset.slot);
+    if (!slot) return;
+    const i = +slot.dataset.slot;
+    if (selectedId) return place(selectedId, i);
+    // an empty slot asks the collection "who can play here?"
+    if (!getState().club.lineup[i]) {
+      pickSlot = pickSlot === i ? null : i;
+      pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+      if (pickSlot !== null) slot.classList.add('is-picking');
+      collectionEl.innerHTML = collectionHTML();
+      collectionEl.scrollTop = 0;
+    }
   });
 
   const clearSlot = (i) => {
@@ -558,10 +695,13 @@ export function mount(root) {
     rerenderPitch();
   };
 
-  return attachDrag(root, place, clearSlot, () => {
+  const detachDrag = attachDrag(root, place, clearSlot, () => {
     root.querySelectorAll('.coll-item').forEach((el) =>
       el.classList.toggle('is-selected', el.dataset.player === selectedId));
   });
+  // leaving the screen ends "fill this slot" — coming back to a stale pick,
+  // possibly one that has since been filled, would just be confusing
+  return () => { pickSlot = null; detachDrag(); };
 }
 
 /* ------------------------------------------------------------------ *
@@ -654,7 +794,11 @@ function attachDrag(root, place, clearSlot, refreshSelection) {
  * then position, then club — before the card itself drops. Tap or press to skip
  * straight to the card.
  */
-function runPackAnimation(root, pulls, onDone) {
+function runPackAnimation(root, drawn, coins, onDone) {
+  const pulls = drawn.map((x) => x.p);
+  const isDup = (i) => !!drawn[i].dup;
+  const dupCount = drawn.filter((x) => x.dup).length;
+
   // the Store tab has no overlay in its markup — make one when it is needed
   let overlay = root.querySelector('#packOverlay') || document.querySelector('#packOverlay');
   if (!overlay) {
@@ -706,7 +850,9 @@ function runPackAnimation(root, pulls, onDone) {
     void overlay.offsetWidth;
     overlay.classList.add('flash');
     walkout.innerHTML = `
-      <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}</div>`;
+      <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}
+        ${isDup(index) ? `<span class="dup-tag">Already yours · ◈${dupValue(p).toLocaleString()}</span>` : ''}
+      </div>`;
     nextBtn.textContent = index === pulls.length - 1 ? 'Add to collection' : 'Next';
     nextBtn.classList.add('primary');
   };
@@ -755,7 +901,10 @@ function runPackAnimation(root, pulls, onDone) {
     overlay.hidden = true;
     overlay.innerHTML = '';
     const specials = pulls.filter((p) => p.rarity === 'special').length;
-    toast(specials ? `${specials} SPECIAL pulled!` : `Added ${pulls.length} players`, specials ? 'good' : 'info');
+    const added = pulls.length - dupCount;
+    if (specials) toast(`${specials} SPECIAL pulled!`, 'good');
+    else if (coins) toast(`Added ${added} · ${dupCount} already yours for ◈${coins.toLocaleString()}`, 'info');
+    else toast(`Added ${added} player${added === 1 ? '' : 's'}`, 'info');
     onDone();
   };
 
@@ -767,24 +916,29 @@ function runPackAnimation(root, pulls, onDone) {
   const showSummary = () => {
     clearTimers();
     const order = { special: 0, gold: 1, silver: 2, bronze: 3 };
-    const sorted = pulls.slice().sort((a, b) =>
-      (order[a.rarity] - order[b.rarity]) || (b.overall - a.overall));
+    const sorted = drawn.slice().sort((a, b) =>
+      (order[a.p.rarity] - order[b.p.rarity]) || (b.p.overall - a.p.overall));
     const tally = ['special', 'gold', 'silver', 'bronze']
       .map((r) => [r, pulls.filter((p) => p.rarity === r).length])
       .filter(([, n]) => n > 0)
       .map(([r, n]) => `<span class="ps-tag rar-${r}">${n} ${RARITY[r].label}</span>`)
       .join('');
-    const best = sorted[0];
+    const best = sorted[0].p;
 
     overlay.style.setProperty('--rar', RARITY[best.rarity].color);
     overlay.style.setProperty('--rar-glow', RARITY[best.rarity].glow);
     overlay.innerHTML = `
       <div class="pack-summary">
         <span class="ps-kicker">Pack results</span>
-        <h3>${pulls.length} player${pulls.length > 1 ? 's' : ''} added</h3>
-        <div class="ps-tally">${tally}</div>
+        <h3>${pulls.length - dupCount} player${pulls.length - dupCount === 1 ? '' : 's'} added</h3>
+        <div class="ps-tally">${tally}${coins
+          ? `<span class="ps-tag dup">${dupCount} already yours · ◈${coins.toLocaleString()}</span>` : ''}</div>
         <div class="ps-grid">
-          ${sorted.map((p) => `<div class="ps-card">${playerCard(p, { size: 'mini' })}</div>`).join('')}
+          ${sorted.map(({ p, dup }) => `
+            <div class="ps-card ${dup ? 'is-dup' : ''}">
+              ${playerCard(p, { size: 'mini' })}
+              ${dup ? `<span class="ps-dup">◈${dupValue(p).toLocaleString()}</span>` : ''}
+            </div>`).join('')}
         </div>
         <button class="btn primary" id="psDone">Done</button>
       </div>`;

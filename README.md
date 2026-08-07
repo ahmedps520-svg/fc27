@@ -135,10 +135,20 @@ the win.
 | Screen | What it does |
 | --- | --- |
 | **Main Menu** | Card tiles into each mode, world stats, and a resume-career shortcut. |
-| **Squad Builder** | Four pack tiers with rarity-weighted pulls and a walkout animation, a drag-and-drop formation pitch (4-3-3, 4-4-2, 4-2-3-1, 3-5-2), live squad rating and chemistry, plus quick-sell. |
+| **Squad Builder** | Four pack tiers with rarity-weighted pulls and a walkout animation, a drag-and-drop formation pitch (4-3-3, 4-4-2, 4-2-3-1, 3-5-2), live squad rating and chemistry, plus quick-sell. Tap an empty slot and the collection reorders around who can actually play there; filters by rarity and by line, and sorting by rating, position, value or name. A new save starts with four packs so there is an XI to field. |
 | **Career Mode** | Pick one of 10 clubs, play or sim an 18-matchday season, league table, fixtures, results, and a transfer market on a budget. |
 | **Quick Match** | A **playable** full-screen 3D match you control with a gamepad, keyboard or touch. |
 | **Career match sim** | Minute-by-minute event sim: possession, shots, on target, corners, commentary feed, goal flashes, and a man-of-the-match result screen. |
+
+### Packs
+
+The collection holds one of each player, so a pull you already own would otherwise be worth
+nothing and simply vanish between the reveal and the collection — a five-card pack routinely
+handed over two. Cards you do not own are drawn first, across the whole batch when several packs
+are opened at once. Only when an entire rarity is exhausted does a repeat come back, and it is
+paid out at its sell value, labelled on the card and counted in the results. Whatever the pack
+says on the front is what lands. A pack also guarantees a goalkeeper while you have none, since
+an XI without one cannot be fielded at all.
 
 ## Playing a Quick Match
 
@@ -223,15 +233,22 @@ Measured over a full match at 720p: 3.0 ms per frame at High, 1.6 ms at Low.
 Generated once from a fixed seed (`js/data/generator.js`), so saved careers keep pointing at the
 same players across reloads.
 
-- **254 players** — name, position, overall (60–99), six stats (pace / shooting / passing /
+- **426 players** — name, position, overall (60–99), six stats (pace / shooting / passing /
   dribbling / defending / physical), rarity tier, club, fictional nationality, age, market value.
   Overall is a position-weighted blend of the six stats, not a separate number.
-- **10 clubs** — name, procedural crest (geometric shape + two-colour palette), 22-player roster,
+- **10 clubs** — name, procedural crest (geometric shape + two-colour palette), 32-player roster,
   budget, league. Squad quality scales with club tier.
 - **1 league** — 18 matchdays of double round-robin fixtures, W/D/L/GF/GA/GD/points table.
-- **34 free agents** on top of club rosters, feeding packs and the transfer market.
+- **106 free agents** on top of club rosters, feeding packs and the transfer market. Twelve of
+  them are marquee names in the special tier, unattached so pulling one never hangs on a club.
 
 Rarity is derived from overall: bronze < 70, silver 70–78, gold 79–87, special 88+.
+
+Players are generated in two passes. The first builds each club's 4-4-2 squad list, which has no
+winger in it — that left nine LW/RW in the whole world and made the 4-3-3 unfillable. The second
+adds wide and attacking depth plus the wider free pool, and it runs *after* the first on purpose:
+ids are handed out in generation order, so appending keeps every saved collection pointing at the
+same players.
 
 ## Layout
 
@@ -261,3 +278,12 @@ js/
   club/nation links with the rest of the XI. Team chemistry is the total out of 33, scaled to 100.
 - Sim speed (normal / fast / instant) and full-commentary toggle are in Settings, along with four
   accent colours and a reduce-motion switch.
+- **Sound needs one interaction first.** Every browser blocks audio until the page has been
+  touched — there is no setting or trick that gets around it. The game takes the first chance it
+  is given: a tap, a key, a scroll, a pad button, anything, and it tries again each time the tab
+  comes back to the foreground, so audio also recovers after a phone locks or a tab is
+  backgrounded. Installed as a PWA it usually starts on its own. Nothing is scheduled while audio
+  is blocked, because a suspended context has a stopped clock and everything queued against it
+  arrives at once when it resumes.
+- The icon set is generated, not drawn: `node tools/make-icons.js` rasterises all five PNGs from
+  the distance fields in that file.

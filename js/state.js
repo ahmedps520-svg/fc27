@@ -20,7 +20,11 @@ const defaults = () => ({
     formation: '4-3-3',
     lineup: Array(11).fill(null),
     packsOpened: 0,
-    packs: [],                // unopened packs you own: ['silver', 'gold', ...]
+    // A starting bundle, because the first thing the game asks for is eleven
+    // players in the right positions and one pack cannot cover that. Only new
+    // saves get these: an existing save brings its own `packs` through the
+    // merge in loadState.
+    packs: ['gold', 'silver', 'silver', 'bronze'],
   },
   career: null,               // set once a career is started
   ultimate: freshUltimate(),  // Ultimate XI progression

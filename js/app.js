@@ -92,10 +92,31 @@ export function toast(msg, kind = 'info') {
 backBtn.addEventListener('click', () => { sfx('back'); navigate('menu'); });
 document.getElementById('homeBtn').addEventListener('click', () => { sfx('back'); navigate('menu'); });
 
-// Audio can only start inside a gesture, so the first tap or key unlocks it.
-const unlock = () => { resumeAudio(); if (!document.body.classList.contains('in-game')) startMusic(); };
-window.addEventListener('pointerdown', unlock, { once: true });
-window.addEventListener('keydown', unlock, { once: true });
+/* -------------------------------- audio -------------------------------- */
+// Browsers will not let a page make noise until it has been interacted with —
+// there is no way around that rule, so the job is to take the very first chance
+// going. Every plausible first interaction is listened for (not just a button:
+// a scroll, a stray tap, a key, a pad button all count), the attempt is made
+// again whenever the tab comes back to the foreground, and the listeners take
+// themselves off once sound is actually running.
+const AUDIO_GESTURES = [
+  'pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown',
+  'keydown', 'click', 'wheel', 'scroll',
+];
+
+function tryStartAudio() {
+  if (!document.body.classList.contains('in-game')) startMusic();
+  return resumeAudio().then((running) => {
+    if (running) AUDIO_GESTURES.forEach((ev) => window.removeEventListener(ev, tryStartAudio, true));
+    return running;
+  });
+}
+
+AUDIO_GESTURES.forEach((ev) =>
+  window.addEventListener(ev, tryStartAudio, { capture: true, passive: true }));
+// Coming back to the tab or unlocking the phone leaves the context suspended.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tryStartAudio(); });
+window.addEventListener('focus', tryStartAudio);
 
 // a click on anything actionable gets a UI blip
 document.addEventListener('click', (e) => {
@@ -115,6 +136,11 @@ applyTheme();
 }
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
 startPadMenu();       // whole front-end is drivable from a controller
+// One speculative attempt now that the saved volumes are in: an installed PWA,
+// or a browser that already trusts this site, starts playing with no
+// interaction at all. Everywhere else this is a no-op and the listeners above
+// pick it up on the first touch.
+tryStartAudio();
 
 /* ------------------------------ account ------------------------------ */
 // Resume a stored session in the background. If the account holds more progress

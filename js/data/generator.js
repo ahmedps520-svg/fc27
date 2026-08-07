@@ -45,6 +45,12 @@ const ROSTER_SHAPE = [
   'ST', 'ST',
 ];
 
+// Wide and attacking depth, drawn in a second pass (see buildWorld). The shape
+// above is a 4-4-2 squad list with no wingers in it at all, which left nine
+// LW/RW in the entire world — not enough to fill the 4-3-3 the card game
+// offers, let alone choose between players for the slot.
+const DEPTH_SHAPE = ['LW', 'LW', 'RW', 'RW', 'LM', 'RM', 'CAM', 'ST', 'CM', 'CB'];
+
 const STAT_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
 
 // Rough per-position stat profile: [pace, shooting, passing, dribbling, defending, physical]
@@ -211,6 +217,47 @@ function buildWorld() {
     players.push(p);
     freeAgents.push(p.id);
   }
+
+  /* ---------------------------------------------------------------- *
+   * Expansion pass
+   *
+   * Everything below is generated *after* the league above, and that
+   * order matters: ids are handed out as players are made, so appending
+   * leaves every id from the original world pointing at the same player
+   * and a saved collection survives untouched. Adding these names inside
+   * the loops above would have renumbered the lot.
+   * ---------------------------------------------------------------- */
+  CLUB_BLUEPRINTS.forEach((bp, index) => {
+    const club = clubs[index];
+    const clubLevel = 83 - (bp.tier - 1) * 1.7;
+    DEPTH_SHAPE.forEach((pos, slot) => {
+      // squad players, not reserves: a shade behind the first XI, no more
+      const p = makePlayer(rand, pos, clubLevel - (slot % 3), club.id);
+      players.push(p);
+      club.roster.push(p.id);
+    });
+  });
+
+  // A wider free pool, so packs keep finding names you do not already own.
+  for (let i = 0; i < 60; i++) {
+    const pos = rand.pick(Object.keys(POSITIONS));
+    const p = makePlayer(rand, pos, rand.around(75, 10), null);
+    players.push(p);
+    freeAgents.push(p.id);
+  }
+
+  // Marquee free agents. Six players in the world reached the special tier,
+  // which is thin when a Prime pack is sold on a 22% chance of one — and they
+  // are unattached so pulling one never depends on a club you have not seen.
+  const MARQUEE = ['ST', 'ST', 'LW', 'RW', 'CAM', 'CAM', 'CM', 'CDM', 'CB', 'CB', 'LB', 'GK'];
+  MARQUEE.forEach((pos) => {
+    const p = makePlayer(rand, pos, rand.int(88, 93), null);
+    p.overall = clamp(p.overall + 2, 88, 99);
+    p.rarity = rarityFor(p.overall);
+    p.value = marketValue(p.overall, p.age);
+    players.push(p);
+    freeAgents.push(p.id);
+  });
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const fixtures = buildFixtures(clubs.map((c) => c.id), rand);

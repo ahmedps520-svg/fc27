@@ -3,8 +3,13 @@
  * API — no sample files, so there is nothing to download, nothing to license,
  * and it all works offline.
  *
- * Browsers (iOS especially) refuse to start audio outside a user gesture, so the
- * context is created lazily and resumed on the first tap or key press.
+ * Browsers refuse to start audio until the page has been interacted with, so the
+ * context is created lazily and resumed at the first opportunity. Everything
+ * here is written to survive that wait: nothing is scheduled while the context
+ * is suspended, because a suspended context's clock is stopped — notes queued
+ * against it all pile up at the same instant and arrive as one blare the moment
+ * it resumes. `armed` remembers what should be playing and starts it for real
+ * once the context is running.
  */
 
 let ctx = null;
@@ -13,6 +18,7 @@ let musicBus = null;
 let sfxBus = null;
 let noiseBuf = null;
 let ready = false;
+let armed = false;              // music wanted as soon as the context allows it
 
 let crowdNodes = null;
 let crowdLevel = 0;
@@ -53,13 +59,31 @@ export function initAudio() {
   sfxBus.connect(master);
 
   noiseBuf = makeNoise();
+  // The context can be suspended out from under us — a phone locking, a tab
+  // going to the background — so the music loop is rebuilt from whatever state
+  // it lands in rather than assumed to still be running.
+  ctx.onstatechange = () => {
+    if (ctx.state === 'running') { if (armed) startMusic(); }
+    else stopMusicLoop();
+  };
   ready = true;
   return true;
 }
 
+export const audioState = () => (ready && ctx ? ctx.state : 'off');
+
+/**
+ * Try to start (or restart) audio. Safe to call as often as you like — from a
+ * gesture, on regaining focus, or speculatively at load, where it succeeds on
+ * the browsers that allow it and quietly does nothing on the ones that don't.
+ */
 export function resumeAudio() {
-  if (!ready && !initAudio()) return;
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  if (!ready && !initAudio()) return Promise.resolve(false);
+  if (ctx.state === 'running') { if (armed) startMusic(); return Promise.resolve(true); }
+  return ctx.resume().then(() => {
+    if (armed) startMusic();
+    return ctx.state === 'running';
+  }).catch(() => false);
 }
 
 export function setAudioSettings(next) {
@@ -378,6 +402,8 @@ const CHORDS = [
 
 function musicBar() {
   if (!ready || !settings.music) return;
+  // never write into a stopped clock — the loop is re-armed by onstatechange
+  if (ctx.state !== 'running') { musicTimer = null; return; }
   const chord = CHORDS[musicStep % CHORDS.length];
   const bar = 3.2;
 
@@ -400,16 +426,29 @@ function musicBar() {
   musicTimer = setTimeout(musicBar, bar * 1000);
 }
 
+/**
+ * Ask for the lobby loop. If the context is still locked this only remembers
+ * the request; the first bar then plays from its start the moment audio is
+ * allowed, instead of the loop having run silently in the meantime.
+ */
 export function startMusic() {
+  if (!settings.enabled) return;
+  armed = true;
   if (!ready && !initAudio()) return;
-  if (musicTimer) return;
+  if (musicTimer || ctx.state !== 'running') return;
   musicStep = 0;
   musicBar();
 }
 
-export function stopMusic() {
+/** Stop the loop but keep wanting it — used when the context suspends. */
+function stopMusicLoop() {
   if (musicTimer) clearTimeout(musicTimer);
   musicTimer = null;
+}
+
+export function stopMusic() {
+  armed = false;
+  stopMusicLoop();
 }
 
 export const audioReady = () => ready && ctx && ctx.state === 'running';

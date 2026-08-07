@@ -79,6 +79,49 @@ values into Render's environment settings. Until that happens the deployment
 keeps using the ephemeral file and accounts still vanish on restart — the server
 logs a warning at start-up when it notices it is doing that on a host.
 
+### Squad building
+- **The world had no wingers.** Club rosters are a 4-4-2 squad list, so LW/RW
+  only ever appeared among free agents: 9 of them in 254 players, against a
+  4-3-3 that needs two. A second generation pass adds wide and attacking depth
+  per club, a wider free pool and twelve marquee free agents — 426 players,
+  LW 5→32 and RW 4→31, specials 6→18. It runs *after* the original passes so
+  every existing id still points at the same player (verified: 0 of the
+  original 254 changed).
+  AI-vs-AI over 40 matches before and after: goals 2.50 → 2.35, shots
+  12.30 → 12.32, possession 50.5 → 50.3. Club ratings move by at most a point
+  and every club moves together.
+- **Pack pulls were being thrown away.** The collection holds one of each
+  player and duplicates were dropped on the floor — 60 cards from twelve gold
+  packs produced 50 players, and the pack said nothing about it. Draws now
+  avoid what you already own across the whole batch, and a genuine repeat (only
+  when a rarity is exhausted) pays its sell value and says so on the card and
+  in the results.
+- Tapping an empty slot reorders the collection around who can play there, with
+  Fits / Near / Out of position on each card; filters by line and sorting were
+  added alongside the rarity chips.
+- New saves start with four packs, and a pack guarantees a keeper while you own
+  none. A fresh save now opens into a full XI at 74–78 rated, 64–70 chemistry.
+
+### Menu, audio, icons
+- **Back arrow showed on the main menu.** `.icon-btn` sets `display: grid`,
+  which outranks the browser's own `[hidden] { display: none }` — an attribute
+  selector loses to a class. There is now one global `[hidden]` rule with
+  `!important`; the per-component `[hidden]` rules dotted around the stylesheet
+  were the same bug being patched one element at a time.
+- **Audio.** The music loop was being scheduled into a suspended context, whose
+  clock is stopped: 19 notes were queued at the same instant before the first
+  click and arrived together on unlock, and a context suspended by
+  backgrounding the tab never came back for the rest of the session. Nothing is
+  scheduled unless the context is running, `onstatechange` rebuilds the loop,
+  and the unlock is attempted from any gesture (tap, key, scroll, wheel, pad
+  button), on regaining focus, and once speculatively at load — which is enough
+  for an installed PWA to start with no interaction at all. The one-gesture
+  rule itself is not something a page can opt out of.
+- **Icons** redrawn from the key art: floodlit black, two neon bars raking
+  opposite corners, XI burning white inside a green halo. `tools/make-icons.js`
+  still rasterises all five PNGs by hand. `sw.js` cache bumped to `apexxi-v3`
+  so installed copies pick them up.
+
 ---
 
 ## Open items

@@ -25,6 +25,11 @@
 
 * { box-sizing: border-box; }
 
+/* The browser's own [hidden] rule is a plain attribute selector, so any class
+   that sets `display` outranks it — that is how the back arrow ended up on the
+   main menu. Everything that hides itself through the attribute relies on this. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -477,6 +482,30 @@ select {
   transform: translateY(-3px); box-shadow: 0 14px 32px var(--accent-soft);
 }
 .coll-tools { display: flex; gap: 5px; }
+/* full-width rows inside the collection grid */
+.collection > .empty, .coll-banner { grid-column: 1 / -1; }
+.coll-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border-radius: 10px; margin-bottom: 2px;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.coll-banner b { font-size: 12.5px; letter-spacing: .06em; color: var(--accent); }
+.coll-fit {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  text-align: center; padding: 3px 6px; border-radius: 999px; border: 1px solid transparent;
+}
+.fit-0 { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.fit-1 { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.fit-2 { color: var(--text-mute); border-color: var(--line); }
+.coll-item.is-misfit .pcard { opacity: .62; }
+/* the slot the collection is currently filling */
+.slot.is-picking {
+  border-style: solid; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 18px var(--accent-soft);
+}
+.field.inline { flex-direction: row; align-items: center; gap: 8px; }
+.field.inline span { white-space: nowrap; }
+.sb-side .chips { margin-bottom: 8px; }
 .card-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 
 .drag-ghost {
@@ -1153,6 +1182,24 @@ body.in-game #screen {
 .ps-tag.rar-silver { background: #b9c4d0; }
 .ps-tag.rar-gold { background: #f4c95d; }
 .ps-tag.rar-special { background: #ff2e88; color: #fff; }
+/* a card you already own: banked as coins instead, and said so rather than
+   disappearing between the pack and the collection */
+.ps-tag.dup { background: transparent; color: var(--text-dim); border: 1px solid var(--line-strong); }
+.ps-card.is-dup { position: relative; }
+.ps-card.is-dup .pcard { opacity: .45; filter: grayscale(.6); }
+.ps-dup {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-family: var(--font-num); font-size: 13px; font-weight: 800; letter-spacing: .04em;
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  background: rgba(6, 10, 20, .88); border: 1px solid var(--line-strong); color: var(--warn);
+}
+.dup-tag {
+  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; white-space: nowrap;
+  padding: 5px 12px; border-radius: 999px;
+  background: rgba(6, 10, 20, .9); border: 1px solid var(--line-strong); color: var(--warn);
+}
+.walkout-card { position: relative; }
 .ps-grid {
   display: grid; gap: 9px; width: 100%;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));

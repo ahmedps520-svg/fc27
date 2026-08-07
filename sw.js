@@ -4,7 +4,7 @@
  * everything cache-first — the game has no live data to go stale.
  * Bump CACHE when files change so old assets are evicted.
  */
-const CACHE = 'apexxi-v2';
+const CACHE = 'apexxi-v3';
 
 const ASSETS = [
   './',
