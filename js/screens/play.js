@@ -46,12 +46,17 @@ export function render(params) {
       </div>
 
       <div class="gm-touch" id="gmTouch" hidden>
-        <div class="stick" id="stick"><i></i></div>
-        <div class="tbtns">
-          <button data-act="through">△</button>
-          <button data-act="cross">□</button>
-          <button data-act="shoot">◯</button>
-          <button data-act="pass">✕</button>
+        <!-- the whole left half is the stick: it appears under your thumb
+             wherever that lands, rather than asking you to find a fixed pad -->
+        <div class="tstick-zone" id="stickZone">
+          <div class="tstick" id="stick" hidden><span class="ts-base"></span><i></i></div>
+        </div>
+        <div class="tpad" id="tpad">
+          <button class="tbtn t-cross" data-slot="cross"><b>CROSS</b></button>
+          <button class="tbtn t-through" data-slot="through"><b>THROUGH</b></button>
+          <button class="tbtn t-shoot" data-slot="shoot"><i class="tb-charge"></i><b>SHOOT</b></button>
+          <button class="tbtn t-pass" data-slot="pass"><b>PASS</b></button>
+          <button class="tbtn t-sprint" data-slot="sprint"><b>SPRINT</b></button>
         </div>
       </div>
 
@@ -294,15 +299,27 @@ export function mount(root, params) {
   window.addEventListener('resize', resize);
 
   /* ------------------------------- touch ------------------------------- */
+  /**
+   * Phone and tablet controls.
+   *
+   * The old pad was a fixed 104px ring and four 46px buttons wearing PlayStation
+   * glyphs, with no way to change player at all — which made defending
+   * impossible, since off the ball nothing presses unless you pick the presser.
+   * This is the layout every mobile football game settles on instead: a stick
+   * that appears wherever your left thumb lands, and big named buttons that say
+   * what they do and change with the situation.
+   */
   const touchWrap = root.querySelector('#gmTouch');
+  let updateTouchContext = () => {};
   if (window.matchMedia('(pointer: coarse)').matches) {
     touchWrap.hidden = false;
+    const zone = root.querySelector('#stickZone');
     const stick = root.querySelector('#stick');
     const nub = stick.querySelector('i');
+    const R = 56;                       // travel to full tilt, in px
     let stickId = null;
-    const R = 44;
-    stick.addEventListener('pointerdown', (e) => { stickId = e.pointerId; stick.setPointerCapture(e.pointerId); });
-    stick.addEventListener('pointermove', (e) => {
+
+    const moveStick = (e) => {
       if (e.pointerId !== stickId) return;
       const r = stick.getBoundingClientRect();
       const dx = e.clientX - (r.left + r.width / 2);
@@ -311,24 +328,95 @@ export function mount(root, params) {
       const cl = Math.min(1, m / R);
       input.setTouchVec((dx / m) * cl, (dy / m) * cl);
       nub.style.transform = `translate(${(dx / m) * cl * R}px, ${(dy / m) * cl * R}px)`;
-    });
+    };
     const endStick = (e) => {
       if (e.pointerId !== stickId) return;
       stickId = null;
+      stick.hidden = true;
       input.setTouchVec(0, 0);
       nub.style.transform = '';
     };
-    stick.addEventListener('pointerup', endStick);
-    stick.addEventListener('pointercancel', endStick);
 
-    root.querySelectorAll('.tbtns button').forEach((b) => {
-      const act = b.dataset.act;
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); input.setTouchButton(act, true); });
-      const off = () => input.setTouchButton(act, false);
-      b.addEventListener('pointerup', off);
-      b.addEventListener('pointercancel', off);
-      b.addEventListener('pointerleave', off);
+    zone.addEventListener('pointerdown', (e) => {
+      if (stickId !== null) return;
+      stickId = e.pointerId;
+      zone.setPointerCapture(e.pointerId);
+      // plant the stick under the thumb, kept clear of the screen edges
+      const pad = R + 18;
+      const x = Math.min(Math.max(e.clientX, pad), window.innerWidth - pad);
+      const y = Math.min(Math.max(e.clientY, pad), window.innerHeight - pad);
+      stick.style.left = `${x}px`;
+      stick.style.top = `${y}px`;
+      stick.hidden = false;
+      moveStick(e);
     });
+    zone.addEventListener('pointermove', moveStick);
+    zone.addEventListener('pointerup', endStick);
+    zone.addEventListener('pointercancel', endStick);
+
+    // Each button owns one slot. What the slot does depends on whether your side
+    // has the ball, so the same thumb position is pass or tackle as the game
+    // demands, and nothing is buried in a menu.
+    const IN_POSSESSION = {
+      pass: ['pass', 'PASS'], through: ['through', 'THROUGH'], cross: ['cross', 'CROSS'],
+      shoot: ['shoot', 'SHOOT'], sprint: ['sprint', 'SPRINT'],
+    };
+    const DEFENDING = {
+      pass: ['pass', 'TACKLE'], through: ['switch', 'SWITCH'], cross: [null, ''],
+      shoot: ['shoot', 'SLIDE'], sprint: ['sprint', 'SPRINT'],
+    };
+
+    const buttons = [...root.querySelectorAll('.tbtn')].map((el) => {
+      const slot = el.dataset.slot;
+      let action = IN_POSSESSION[slot][0];
+      const press = (e) => {
+        e.preventDefault();
+        if (!action) return;
+        el.classList.add('is-down');
+        input.setTouchButton(action, true);
+        navigator.vibrate?.(8);
+        // Capture keeps a thumb that slides off the button still holding it —
+        // but it must never be what decides whether the press counted, so the
+        // input is already set and a refusal here is ignored.
+        try { el.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+      };
+      const release = () => {
+        el.classList.remove('is-down');
+        // release whatever this button is currently bound to, and its other
+        // binding too: the context can flip mid-press, and a stuck sprint or a
+        // shot that never fires is worse than an extra clear
+        input.setTouchButton(IN_POSSESSION[slot][0], false);
+        if (DEFENDING[slot][0]) input.setTouchButton(DEFENDING[slot][0], false);
+      };
+      el.addEventListener('pointerdown', press);
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+      el.addEventListener('lostpointercapture', release);
+      return {
+        el,
+        label: el.querySelector('b'),
+        set(map) {
+          const [act, text] = map[slot];
+          if (act !== action) { release(); action = act; }
+          el.hidden = !act;
+          if (text) el.querySelector('b').textContent = text;
+        },
+      };
+    });
+
+    const charge = root.querySelector('.tb-charge');
+    let attacking = null;
+    updateTouchContext = () => {
+      const seat = match.controllers[0];
+      const mine = !!match.ball.owner && seat && match.ball.owner.team === seat.team;
+      if (mine !== attacking) {
+        attacking = mine;
+        for (const b of buttons) b.set(mine ? IN_POSSESSION : DEFENDING);
+      }
+      // the shot charges while held, so the button shows how much power is on it
+      if (charge) charge.style.setProperty('--charge', `${Math.round((seat?.charge || 0) * 100)}%`);
+    };
+    updateTouchContext();
   }
 
   /* -------------------------------- loop ------------------------------- */
@@ -336,6 +424,7 @@ export function mount(root, params) {
     const dt = Math.min(0.034, (now - last) / 1000);
     last = now;
     for (const inp of inputs) inp.poll(dt);
+    updateTouchContext();
     // an online match cannot be frozen — the other player is still out there
     const frozen = paused && !online;
     sender?.tick(dt);

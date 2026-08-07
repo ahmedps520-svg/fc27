@@ -126,15 +126,59 @@ logs a warning at start-up when it notices it is doing that on a host.
   of the ball on its own: at 16px the full composition is green mush, while the
   ball still reads as a football. `sw.js` cache bumped to `apexxi-v4`.
 
+### Touch controls
+Rebuilt on the layout every mobile football game uses, because the old one was
+close to unplayable: a fixed 104px ring, four 46px buttons wearing PlayStation
+glyphs, and — the real problem — **no switch button at all**, so off the ball,
+where nothing presses unless you pick the presser, defending could not be done.
+
+- Left half of the screen is the stick; it spawns under the thumb wherever that
+  lands, clamped away from the screen edges.
+- Right hand gets named buttons, 68px (sprint 88px), colour-ringed: with the
+  ball PASS / THROUGH / CROSS / SHOOT, off it TACKLE / SWITCH / SLIDE with the
+  cross slot hidden. Swapped from `match.ball.owner.team` each frame.
+- The shoot button fills its rim with the charge held on the shot.
+- A press sets the input before it asks for pointer capture: capture can be
+  refused and must never be what decides whether the press counted. Releasing
+  clears both bindings of the slot, since the context can flip mid-press.
+
+### Player models
+Rebuilt from real proportions. The old figure was a barrel: a round 0.4 m
+capsule torso, the same measurement from every angle, with the head sunk into
+it. Now the torso is a cone section that is 0.42 m across the shoulders and
+0.26 m front to back, with its own sleeves, shorts as a second section over the
+thighs, socks, and a flat wedge for a boot. Height, girth and shoulder width are
+seeded per player off his name.
+
+Two things worth knowing if you touch this code:
+- `ovalSegment` rolls a part about its own length so the wide axis lies across
+  the shoulders. That roll is derived for a bone that is roughly vertical. The
+  diving keeper is the one place it does not hold, so the dive uses a round
+  cross-section, where the roll cannot be wrong.
+- Cone sections take their wide face at the geometry's +Y, so the wide end has
+  to be named second. Naming it first is what made the first attempt look like
+  it was wearing a dress.
+
+**This is as far as procedural geometry goes.** What FC has is photogrammetry:
+scanned meshes with albedo, normal and roughness textures, on a skinned rig with
+mocapped animation. None of that can be authored from code here. The path to it
+is the one already set up in `assets/candidates/` — a rigged `.glb` (Mixamo is
+free, needs an Adobe login, and supplies run/idle/kick), then GLTFLoader plus
+skinning wired into `renderGL`, 22 instances sharing one geometry.
+
 ---
 
 ## Open items
 
-1. **Player models.** Free, directly-downloadable *footballer* models don't exist:
-   Poly.pizza has none, Sketchfab and Mixamo have good ones but need a login.
-   Get a `.glb` from Mixamo (free Adobe account, and it supplies run/idle/kick
-   animations), drop it in `assets/candidates/`, and the preview page will show it.
-   Budget roughly 15k triangles per model — there are 22 on the pitch.
+1. **Player models, for real.** The procedural figures are now properly
+   proportioned, but photoreal needs a scanned mesh and textures, which cannot
+   be authored from code. Free, directly-downloadable *footballer* models don't
+   exist: Poly.pizza has none, Sketchfab and Mixamo have good ones but need a
+   login. Get a `.glb` from Mixamo (free Adobe account, and it supplies
+   run/idle/kick animations), drop it in `assets/candidates/`, and the preview
+   page will show it. Budget roughly 15k triangles per model — there are 22 on
+   the pitch. Wiring it in means GLTFLoader plus a skinned rig in `renderGL`,
+   replacing `buildPlayer`/`posePlayer`.
 2. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
    Long-standing, never requested. Note that a previous off-ball AI rewrite
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this

@@ -188,8 +188,18 @@ straightens as it slows. Measured at full charge: ~43 m/s off the boot, peaking 
 
 A DualSense works over USB or Bluetooth through the browser Gamepad API — plug it in, press any
 button, and the chip top-right flips to **Pad ✓**. No pairing code or driver needed. Kick-off
-requests fullscreen; the ⛶ button toggles it. On a touch device an on-screen stick and four face
-buttons appear instead.
+requests fullscreen; the ⛶ button toggles it.
+
+**On a phone or tablet** the controls are the ones mobile football settles on. The left half of
+the screen is the stick — it appears wherever your thumb lands rather than sitting in a corner
+waiting to be found — and the right hand gets named buttons that change with the situation:
+
+| With the ball | Off the ball |
+| --- | --- |
+| **PASS** · **THROUGH** · **CROSS** · **SHOOT** (hold for power, the rim fills as it charges) | **TACKLE** · **SWITCH** · **SLIDE** |
+
+**SPRINT** is the big one under the thumb in both. SWITCH matters: off the ball nothing presses on
+its own, so without it defending on touch was not possible at all.
 
 Match length (2 / 4 / 7 min) and CPU difficulty (Easy / Pro / Elite) are set before kick-off.
 
@@ -203,10 +213,17 @@ meshes, lambert shading, a directional sun with soft shadow maps, and the crowd 
 A canvas-2D renderer (`render3d.js`) is kept as an automatic fallback if a machine refuses a WebGL
 context. All geometry is still generated in code — no downloaded models or textures.
 
-Players are jointed figures, not boxes: hips and shoulders drive thighs, shins, upper arms and
-forearms through tapered prisms, with knees and elbows that bend across the run cycle and spheres
-for the head and hands. Feet, hair and hands are full-detail only. Everything is depth-sorted back
-to front and frustum-culled.
+Players are built to a real footballer's proportions rather than eyeballed: head a shade under an
+eighth of standing height, shoulders 0.42 m across but only 0.26 m front to back, waist narrower
+than both, hip at 0.94 m and knee at 0.50 m. Keeping the width and the depth of the torso apart is
+most of the work — a chest with the same measurement from every angle is a barrel, which is what
+the earlier figure looked like. The shirt is a cone section from shoulders to waist with its own
+sleeves, the shorts are a second one over the top of the thighs, socks run knee to ankle and the
+boot is a flat wedge. Height, girth and shoulder width are seeded per player off his name, so
+twenty-two men are not one man copied. Hair, hands and boots are full-detail only.
+
+These are still hand-built meshes with flat colours — no scans, no textures, no downloaded models.
+That sets the ceiling: they read as footballers at broadcast distance, not as photographs of one.
 
 The stadium is procedural — three raked stands (the fourth is where the camera sits), each with a
 front wall, seating deck, back wall and roof, plus a deterministic crowd of a few thousand small

@@ -957,29 +957,67 @@ body.in-game #screen {
 }
 .gm-pad.on { color: var(--good); border-color: rgba(61, 220, 151, .45); }
 
-.gm-touch {
-  position: absolute; inset: auto 0 0 0; z-index: 4; pointer-events: none;
-  display: flex; align-items: flex-end; justify-content: space-between; padding: 14px;
-}
+/* ---------------------------- Touch controls ---------------------------- *
+ * A stick that appears under the thumb rather than waiting in a corner, and
+ * buttons big enough to hit at a sprint. Sizes are deliberately generous: the
+ * old 46px circles were under the 44px minimum once a thumb covered them.     */
+.gm-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .gm-touch[hidden] { display: none; }
-.stick {
-  pointer-events: auto; width: 104px; height: 104px; border-radius: 50%; touch-action: none;
-  background: rgba(255, 255, 255, .07); border: 1px solid var(--line-strong);
-  display: grid; place-items: center;
+
+.tstick-zone {
+  position: absolute; left: 0; top: 52px; bottom: 0; width: 46%;
+  pointer-events: auto; touch-action: none;
 }
-.stick i {
-  width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, .3);
-  border: 1px solid rgba(255, 255, 255, .5);
+.tstick {
+  position: fixed; width: 148px; height: 148px; margin: -74px 0 0 -74px;
+  display: grid; place-items: center; pointer-events: none;
 }
-.tbtns {
-  pointer-events: auto; display: grid; gap: 6px;
-  grid-template-columns: repeat(2, 46px); grid-template-rows: repeat(2, 46px);
+.tstick .ts-base {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .13), rgba(255, 255, 255, .05) 70%);
+  border: 2px solid rgba(255, 255, 255, .35);
 }
-.tbtns button {
-  border-radius: 50%; font-size: 17px; cursor: pointer; padding: 0;
-  border: 1px solid var(--line-strong); background: rgba(10, 16, 30, .7); color: var(--text);
+.tstick i {
+  position: relative; width: 62px; height: 62px; border-radius: 50%;
+  background: rgba(255, 255, 255, .82); box-shadow: 0 4px 14px rgba(0, 0, 0, .5);
 }
-.tbtns button:active { background: var(--accent); color: #04121a; }
+
+.tpad {
+  position: absolute; right: 0; bottom: 0; pointer-events: none;
+  padding: 12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) 12px;
+  display: grid; gap: 10px; align-items: end; justify-items: center;
+  grid-template-columns: repeat(3, auto);
+  grid-template-areas: '.     through shoot'
+                       'cross pass    sprint';
+}
+.tbtn {
+  pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent;
+  position: relative; width: 68px; height: 68px; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: radial-gradient(circle at 50% 35%, rgba(28, 40, 34, .82), rgba(6, 12, 10, .88));
+  border: 3px solid var(--tb, #9fb0c4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .45), inset 0 0 14px rgba(0, 0, 0, .5);
+  transition: transform .08s, box-shadow .08s;
+}
+.tbtn b {
+  font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .9); line-height: 1;
+}
+.tbtn.is-down { transform: scale(.93); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tb) 35%, transparent); }
+.t-pass { --tb: #3ea8ff; grid-area: pass; }
+.t-through { --tb: #ffc02e; grid-area: through; }
+.t-cross { --tb: #ff8b3d; grid-area: cross; }
+.t-shoot { --tb: #ff4d4d; grid-area: shoot; }
+.t-sprint { --tb: #34e06a; grid-area: sprint; width: 88px; height: 88px; }
+.t-sprint b { font-size: 12.5px; }
+/* how much power is on the shot, drawn round the rim while it is held */
+.tb-charge {
+  position: absolute; inset: -3px; border-radius: 50%;
+  background: conic-gradient(#fff calc(var(--charge, 0%)), transparent 0);
+  mask: radial-gradient(circle, transparent 60%, #000 62%);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%);
+  opacity: .9; pointer-events: none;
+}
 
 /* --------------------------- Team select ------------------------- */
 .teamsel {
@@ -1305,7 +1343,6 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .topbar { padding-top: max(12px, env(safe-area-inset-top)); }
 .screen { padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px)); }
 .gm-hud { padding-top: max(12px, env(safe-area-inset-top)); }
-.gm-touch { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
 
 .rotate-hint {
   position: fixed; inset: 0; z-index: 400;
@@ -1586,8 +1623,13 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   .bug-team { padding: 5px 7px; font-size: 11px; }
   .bug-score { min-width: 24px; font-size: 15px; }
   .bug-clock { padding: 5px 8px; font-size: 11px; }
-  .stick { width: 92px; height: 92px; }
-  .tbtns { grid-template-columns: repeat(2, 44px); grid-template-rows: repeat(2, 44px); }
+  /* short landscape phones: keep the thumb targets big but pull them in */
+  .tpad { gap: 8px; }
+  .tbtn { width: 62px; height: 62px; }
+  .tbtn b { font-size: 10px; }
+  .t-sprint { width: 78px; height: 78px; }
+  .tstick { width: 128px; height: 128px; margin: -64px 0 0 -64px; }
+  .tstick i { width: 54px; height: 54px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
