@@ -1,0 +1,5 @@
+# account database: password hashes and cloud saves
+server/data/
+
+# local editor/session state
+.claude/
