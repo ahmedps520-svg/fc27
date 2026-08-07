@@ -1,150 +1,198 @@
 /**
- * Generates the PWA icon set as real PNGs.
+ * Builds the PWA icon set from the key art in `assets/brand/icon-source.png`.
  *
- * iOS will not accept an SVG for the home-screen icon, and there is no canvas in
- * plain Node, so the mark is rasterised by hand here and the PNG chunks written
- * directly (zlib is built in). Run: node tools/make-icons.js
+ *   node tools/make-icons.js [source.png]
  *
- * The art is the game's own key art reduced to what still reads at 48px: a
- * floodlit night, two neon light bars cutting the frame, and the XI wordmark
- * burning white in the middle of its own green glow. No photography, no type
- * foundry — every shape below is a distance field evaluated per pixel.
+ * iOS will not accept an SVG for a home-screen icon and every platform wants a
+ * different size, so the master is kept at 1024px and everything else is
+ * resampled from it here. There is no canvas and no image library in plain
+ * Node and this project has no dependencies, so the PNG reader, the Lanczos
+ * resampler and the PNG writer below are all hand-rolled on top of zlib.
+ *
+ * What each output is for:
+ *   · icon-192 / icon-512   launcher and PWA install, shown as drawn
+ *   · icon-maskable-512     Android crops this to its own shape, so the art is
+ *                           inset to keep the wordmark inside the safe circle
+ *   · apple-touch-icon      iOS applies a squircle mask of its own
+ *   · favicon-64            browser tabs
  */
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const OUT = path.join(__dirname, '..', 'icons');
-fs.mkdirSync(OUT, { recursive: true });
+const ROOT = path.join(__dirname, '..');
+const OUT = path.join(ROOT, 'icons');
+const SRC = process.argv[2] || path.join(ROOT, 'assets', 'brand', 'icon-source.png');
 
-const SS = 4;                                  // supersample factor for smooth edges
+/* ------------------------------ PNG reader ------------------------------ */
+/** @returns {{width:number, height:number, data:Buffer}} 8-bit RGBA pixels. */
+function readPNG(file) {
+  const buf = fs.readFileSync(file);
+  if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error(`${file} is not a PNG`);
 
-const lerp = (a, b, t) => a + (b - a) * t;
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const smooth = (edge0, edge1, x) => {
-  const t = clamp01((x - edge0) / (edge1 - edge0 || 1e-6));
-  return t * t * (3 - 2 * t);
-};
+  let pos = 8;
+  let ihdr = null;
+  const idat = [];
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const type = buf.toString('ascii', pos + 4, pos + 8);
+    const data = buf.subarray(pos + 8, pos + 8 + len);
+    if (type === 'IHDR') ihdr = data;
+    else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    pos += 12 + len;
+  }
+  if (!ihdr) throw new Error('PNG has no header');
 
-/** Distance from point p to segment ab — the letters are drawn from these. */
-function segDist(px, py, ax, ay, bx, by) {
-  const vx = bx - ax;
-  const vy = by - ay;
-  const wx = px - ax;
-  const wy = py - ay;
-  const len2 = vx * vx + vy * vy || 1;
-  const t = clamp01((wx * vx + wy * vy) / len2);
-  return Math.hypot(px - (ax + vx * t), py - (ay + vy * t));
+  const width = ihdr.readUInt32BE(0);
+  const height = ihdr.readUInt32BE(4);
+  const depth = ihdr[8];
+  const color = ihdr[9];
+  const interlace = ihdr[12];
+  if (depth !== 8) throw new Error(`only 8-bit PNGs are supported (got ${depth})`);
+  if (interlace) throw new Error('interlaced PNGs are not supported');
+  const channels = { 0: 1, 2: 3, 4: 2, 6: 4 }[color];
+  if (!channels) throw new Error(`unsupported colour type ${color}`);
+
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const bpp = channels;
+  const stride = width * bpp;
+  const out = Buffer.alloc(width * height * 4);
+  const line = Buffer.alloc(stride);
+  let prev = Buffer.alloc(stride);
+
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    raw.copy(line, 0, y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+    // undo the per-row filter: each byte was stored as a delta from its
+    // neighbours, which is what makes PNG compress at all
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? line[i - bpp] : 0;      // left
+      const b = prev[i];                           // above
+      const c = i >= bpp ? prev[i - bpp] : 0;      // above-left
+      let add = 0;
+      if (filter === 1) add = a;
+      else if (filter === 2) add = b;
+      else if (filter === 3) add = (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        add = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      line[i] = (line[i] + add) & 0xff;
+    }
+    for (let x = 0; x < width; x++) {
+      const s = x * bpp;
+      const d = (y * width + x) * 4;
+      if (channels >= 3) {
+        out[d] = line[s]; out[d + 1] = line[s + 1]; out[d + 2] = line[s + 2];
+        out[d + 3] = channels === 4 ? line[s + 3] : 255;
+      } else {
+        out[d] = line[s]; out[d + 1] = line[s]; out[d + 2] = line[s];
+        out[d + 3] = channels === 2 ? line[s + 1] : 255;
+      }
+    }
+    prev = Buffer.from(line);
+  }
+  return { width, height, data: out };
 }
 
-/** Distance to an infinite line through `c` at angle `ang` — the light bars. */
-const lineDist = (u, v, ang, c) => Math.abs(u * Math.cos(ang) + v * Math.sin(ang) - c);
-
-const GREEN = [56, 240, 118];                  // the neon the key art is lit with
-const DEEP = [3, 7, 5];                        // night sky behind the stands
-const PITCH = [8, 26, 14];                     // grass catching the floodlights
+/* ------------------------------- resampling ------------------------------ */
+const LOBES = 3;
+const sinc = (x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x));
+const lanczos = (x) => (Math.abs(x) >= LOBES ? 0 : sinc(x) * sinc(x / LOBES));
 
 /**
- * The XI wordmark, as stroke segments in 0..1 space. Serifs on the I so it can
- * never be read as a lower-case L at icon size.
+ * Separable Lanczos-3 resize. Box averaging loses the ball's panel edges and
+ * the thin light streaks at 64px; Lanczos keeps them.
  */
-const GLYPH = [
-  [0.265, 0.360, 0.475, 0.650],                // X, top-left to bottom-right
-  [0.475, 0.360, 0.265, 0.650],                // X, top-right to bottom-left
-  [0.660, 0.360, 0.660, 0.650],                // I, stem
-  [0.585, 0.360, 0.735, 0.360],                // I, top serif
-  [0.585, 0.650, 0.735, 0.650],                // I, foot serif
-];
-
-function renderIcon(size, { maskable = false } = {}) {
-  const S = size * SS;
-  const buf = Buffer.alloc(S * S * 4);
-  // Maskable icons get their corners eaten by whatever shape the launcher uses,
-  // so the artwork shrinks toward the middle while the background stays full.
-  const k = maskable ? 0.74 : 1;
-  const toArt = (c) => 0.5 + (c - 0.5) / k;    // pixel -> artwork space
-
-  const stroke = 0.055;
-  const barW = 0.05;
-
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const u = toArt((x + 0.5) / S);
-      const v = toArt((y + 0.5) / S);
-
-      // --- night sky, warmed toward the grass at the bottom ---
-      const horizon = smooth(0.52, 1.05, v);
-      let r = lerp(DEEP[0], PITCH[0], horizon);
-      let g = lerp(DEEP[1], PITCH[1], horizon);
-      let b = lerp(DEEP[2], PITCH[2], horizon);
-
-      // --- floodlights: three blooms along the top, the middle one strongest ---
-      for (const [lx, ly, rad, amp] of [[0.16, 0.04, 0.46, 0.34], [0.5, -0.06, 0.6, 0.5], [0.86, 0.04, 0.46, 0.34]]) {
-        const d = Math.hypot(u - lx, (v - ly) * 1.35);
-        const f = Math.pow(Math.max(0, 1 - d / rad), 3) * amp;
-        r += 16 * f; g += 52 * f; b += 28 * f;
+function resize(img, w, h) {
+  const weightsFor = (dstLen, srcLen) => {
+    const scale = srcLen / dstLen;
+    const support = Math.max(1, scale) * LOBES;
+    return Array.from({ length: dstLen }, (_, i) => {
+      const centre = (i + 0.5) * scale - 0.5;
+      const from = Math.max(0, Math.ceil(centre - support));
+      const to = Math.min(srcLen - 1, Math.floor(centre + support));
+      const taps = [];
+      let sum = 0;
+      for (let s = from; s <= to; s++) {
+        const wgt = lanczos((s - centre) / Math.max(1, scale));
+        if (wgt !== 0) { taps.push([s, wgt]); sum += wgt; }
       }
+      return taps.map(([s, wgt]) => [s, wgt / sum]);
+    });
+  };
 
-      // --- haze off the pitch ---
-      const haze = Math.pow(smooth(0.7, 1.04, v), 1.8) * 0.5;
-      r += GREEN[0] * 0.05 * haze; g += GREEN[1] * 0.11 * haze; b += GREEN[2] * 0.06 * haze;
+  const cols = weightsFor(w, img.width);
+  const rows = weightsFor(h, img.height);
 
-      // --- two neon bars raking opposite corners, as on the key art. They are
-      // placed clear of the wordmark: a light bar cutting through the letters
-      // would read as a strike-through at icon size. ---
-      const ANG = -0.86;                        // roughly 50 degrees off horizontal
-      for (const [c, w, amp] of [[-0.62, barW, 1], [0.5, barW * 0.4, 0.62]]) {
-        const d = lineDist(u, v, ANG, c);
-        const core = 1 - smooth(w * 0.5, w * 0.5 + 0.01, d);
-        const bloom = Math.pow(Math.max(0, 1 - d / (w * 3)), 2.4) * 0.45;
-        const a = Math.min(1, core + bloom) * amp;
-        r = lerp(r, GREEN[0], a * 0.9); g = lerp(g, GREEN[1], a * 0.95); b = lerp(b, GREEN[2], a * 0.9);
+  // horizontal pass into a float buffer, then vertical
+  const mid = new Float32Array(w * img.height * 4);
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0; let g = 0; let b = 0; let a = 0;
+      for (const [s, wgt] of cols[x]) {
+        const i = (y * img.width + s) * 4;
+        r += img.data[i] * wgt; g += img.data[i + 1] * wgt;
+        b += img.data[i + 2] * wgt; a += img.data[i + 3] * wgt;
       }
-
-      // --- the wordmark ---
-      let d = Infinity;
-      for (const [ax, ay, bx, by] of GLYPH) d = Math.min(d, segDist(u, v, ax, ay, bx, by));
-      const edge = d - stroke * 0.5;
-
-      // glow first, so the letters sit inside a halo rather than on top of one
-      const halo = Math.pow(Math.max(0, 1 - edge / 0.062), 3.2);
-      r += GREEN[0] * 0.62 * halo; g += GREEN[1] * 0.66 * halo; b += GREEN[2] * 0.5 * halo;
-
-      // then the white-hot core, with the faintest green bleed at its rim
-      const ink = 1 - smooth(-0.006, 0.002, edge);
-      const rim = 1 - smooth(0.001, 0.009, edge);
-      r = lerp(r, lerp(188, 250, ink), rim);
-      g = lerp(g, lerp(255, 255, ink), rim);
-      b = lerp(b, lerp(208, 252, ink), rim);
-
-      // vignette: the key art is a floodlit middle inside dark corners
-      const vig = 1 - 0.55 * Math.pow(Math.hypot(u - 0.5, v - 0.5) / 0.72, 2.4);
-      r *= vig; g *= vig; b *= vig;
-
-      const i = (y * S + x) * 4;
-      buf[i] = Math.min(255, r);
-      buf[i + 1] = Math.min(255, g);
-      buf[i + 2] = Math.min(255, b);
-      buf[i + 3] = 255;
+      const o = (y * w + x) * 4;
+      mid[o] = r; mid[o + 1] = g; mid[o + 2] = b; mid[o + 3] = a;
     }
   }
 
-  // downsample the supersampled buffer
-  const out = Buffer.alloc(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      for (let sy = 0; sy < SS; sy++) {
-        for (let sx = 0; sx < SS; sx++) {
-          const i = ((y * SS + sy) * S + (x * SS + sx)) * 4;
-          r += buf[i]; g += buf[i + 1]; b += buf[i + 2];
-        }
+  const out = Buffer.alloc(w * h * 4);
+  const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : Math.round(v));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0; let g = 0; let b = 0; let a = 0;
+      for (const [s, wgt] of rows[y]) {
+        const i = (s * w + x) * 4;
+        r += mid[i] * wgt; g += mid[i + 1] * wgt; b += mid[i + 2] * wgt; a += mid[i + 3] * wgt;
       }
-      const n = SS * SS;
-      const o = (y * size + x) * 4;
-      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+      const o = (y * w + x) * 4;
+      out[o] = clamp(r); out[o + 1] = clamp(g); out[o + 2] = clamp(b); out[o + 3] = clamp(a);
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+/** Square crop of the source, given a centre and a side length in 0..1 units. */
+function cropSquare(img, cx, cy, side) {
+  const s = Math.round(side * img.width);
+  const x0 = Math.round(cx * img.width - s / 2);
+  const y0 = Math.round(cy * img.height - s / 2);
+  const out = Buffer.alloc(s * s * 4);
+  for (let y = 0; y < s; y++) {
+    const sy = Math.min(img.height - 1, Math.max(0, y0 + y));
+    for (let x = 0; x < s; x++) {
+      const sx = Math.min(img.width - 1, Math.max(0, x0 + x));
+      img.data.copy(out, (y * s + x) * 4, (sy * img.width + sx) * 4, (sy * img.width + sx) * 4 + 4);
+    }
+  }
+  return { width: s, height: s, data: out };
+}
+
+/** Paste `img` centred on a solid square of `size`. */
+function onCanvas(img, size, [br, bg, bb] = [0, 0, 0]) {
+  const out = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < size * size; i++) {
+    out[i * 4] = br; out[i * 4 + 1] = bg; out[i * 4 + 2] = bb; out[i * 4 + 3] = 255;
+  }
+  const ox = Math.round((size - img.width) / 2);
+  const oy = Math.round((size - img.height) / 2);
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      const s = (y * img.width + x) * 4;
+      const d = ((y + oy) * size + (x + ox)) * 4;
+      const a = img.data[s + 3] / 255;
+      out[d] = img.data[s] * a + out[d] * (1 - a);
+      out[d + 1] = img.data[s + 1] * a + out[d + 1] * (1 - a);
+      out[d + 2] = img.data[s + 2] * a + out[d + 2] * (1 - a);
+      out[d + 3] = 255;
     }
   }
   return out;
@@ -197,15 +245,35 @@ function writePNG(file, rgba, size) {
   return png.length;
 }
 
+/* ---------------------------------- run ---------------------------------- */
+// Android masks a maskable icon to its own shape — a circle on some launchers —
+// and only the middle 80% is guaranteed to survive. The wordmark runs almost
+// the full width of the art, so it is inset rather than cropped.
+const MASKABLE_INSET = 0.88;
+
+// A tab favicon is drawn at 16-32px, where the whole composition — wordmark,
+// streaks, stands — collapses into green mush. The ball alone still reads as a
+// football at 16px, so that is what the favicon is: centre and side, measured
+// off the artwork.
+const FAVICON_CROP = [0.49, 0.69, 0.40];
+
 const jobs = [
-  ['icon-192.png', 192, {}],
-  ['icon-512.png', 512, {}],
-  ['icon-maskable-512.png', 512, { maskable: true }],
-  ['apple-touch-icon.png', 180, {}],
-  ['favicon-64.png', 64, {}],
+  ['icon-192.png', 192, { fill: 1 }],
+  ['icon-512.png', 512, { fill: 1 }],
+  ['icon-maskable-512.png', 512, { fill: MASKABLE_INSET }],
+  ['apple-touch-icon.png', 180, { fill: 1 }],
+  ['favicon-64.png', 64, { fill: 1, crop: FAVICON_CROP }],
 ];
 
-for (const [name, size, opts] of jobs) {
-  const bytes = writePNG(path.join(OUT, name), renderIcon(size, opts), size);
-  console.log(`${name}  ${size}x${size}  ${(bytes / 1024).toFixed(1)} KB`);
+fs.mkdirSync(OUT, { recursive: true });
+const source = readPNG(SRC);
+console.log(`source ${path.relative(ROOT, SRC)}  ${source.width}x${source.height}`);
+
+for (const [name, size, { fill, crop }] of jobs) {
+  const from = crop ? cropSquare(source, ...crop) : source;
+  const inner = Math.round(size * fill);
+  const scaled = resize(from, inner, inner);
+  const rgba = inner === size ? scaled.data : onCanvas(scaled, size);
+  const bytes = writePNG(path.join(OUT, name), rgba, size);
+  console.log(`${name}  ${size}x${size}  ${(bytes / 1024).toFixed(1)} KB${crop ? '  (ball crop)' : ''}`);
 }

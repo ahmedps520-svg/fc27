@@ -117,10 +117,14 @@ logs a warning at start-up when it notices it is doing that on a host.
   button), on regaining focus, and once speculatively at load — which is enough
   for an installed PWA to start with no interaction at all. The one-gesture
   rule itself is not something a page can opt out of.
-- **Icons** redrawn from the key art: floodlit black, two neon bars raking
-  opposite corners, XI burning white inside a green halo. `tools/make-icons.js`
-  still rasterises all five PNGs by hand. `sw.js` cache bumped to `apexxi-v3`
-  so installed copies pick them up.
+- **Icons** are now the real key art. The master lives at
+  `assets/brand/icon-source.png` (1024px) and `tools/make-icons.js` resamples
+  the five outputs from it — the script grew a PNG reader and a Lanczos
+  resampler so it still runs on plain Node with nothing installed. The maskable
+  icon is inset to 88%, which keeps the whole AXI wordmark inside the circle
+  Android masks it to (checked against a circular mask). The favicon is a crop
+  of the ball on its own: at 16px the full composition is green mush, while the
+  ball still reads as a football. `sw.js` cache bumped to `apexxi-v4`.
 
 ---
 

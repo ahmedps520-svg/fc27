@@ -285,5 +285,8 @@ js/
   backgrounded. Installed as a PWA it usually starts on its own. Nothing is scheduled while audio
   is blocked, because a suspended context has a stopped clock and everything queued against it
   arrives at once when it resumes.
-- The icon set is generated, not drawn: `node tools/make-icons.js` rasterises all five PNGs from
-  the distance fields in that file.
+- The icon set is generated from one master: `node tools/make-icons.js` resamples
+  `assets/brand/icon-source.png` (1024px) into all five PNGs. The PNG reader, the Lanczos
+  resampler and the PNG writer in that script are hand-rolled on zlib, so there is still nothing
+  to install. The maskable icon is inset to 88% because Android crops it to its own shape, and
+  the favicon is a crop of the ball alone — the full composition is unreadable at 16px.
