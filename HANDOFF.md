@@ -54,22 +54,41 @@ waiting players so two lone people eventually find each other.
 lists `assets/candidates/`, and `model-preview.html` auto-discovers dropped files,
 normalises each to 1.8 m, plays its idle clip and reports triangles and clips.
 
+### Durable accounts (was open item 1)
+`server/store.js` now picks its backend from the environment: Redis over HTTP
+when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are both set,
+otherwise the old JSON file. The REST API is reached with plain `fetch`, so
+there is still nothing to install. Details in the README under *Where accounts
+are stored*; the short version:
+
+- Whole database under one key (`apexxi:accounts:v1`, override with `STORE_KEY`),
+  held in memory, written on a 400 ms debounce.
+- Failed writes retry with a widening backoff (1 s → 30 s) instead of being
+  dropped; `SIGTERM` flushes anything pending, which is what a host sends before
+  a redeploy.
+- Unreadable storage at start-up **exits the process**. Serving an empty database
+  would tell everyone their account does not exist and then write that over the
+  real one. Half-configured credentials are an error too, not a quiet fall back.
+- `GET /api/health` says which backend is live, whether it is durable, how many
+  accounts are loaded and whether a write is pending.
+- One instance only: the database is written as a single value, so two servers
+  would clobber each other.
+
+**Still to do on the live site:** create the Upstash database and paste the two
+values into Render's environment settings. Until that happens the deployment
+keeps using the ephemeral file and accounts still vanish on restart — the server
+logs a warning at start-up when it notices it is doing that on a host.
+
 ---
 
 ## Open items
 
-1. **Render's free tier has an ephemeral filesystem.** `server/data/accounts.json`
-   is wiped on every restart, sleep-wake and redeploy, so accounts and cloud saves
-   silently vanish. This is the most important thing left. Needs a hosted
-   key-value store — Upstash Redis has a REST API that works with plain `fetch`,
-   which would keep the zero-dependency setup intact. Configurable entirely
-   through a web dashboard.
-2. **Player models.** Free, directly-downloadable *footballer* models don't exist:
+1. **Player models.** Free, directly-downloadable *footballer* models don't exist:
    Poly.pizza has none, Sketchfab and Mixamo have good ones but need a login.
    Get a `.glb` from Mixamo (free Adobe account, and it supplies run/idle/kick
    animations), drop it in `assets/candidates/`, and the preview page will show it.
    Budget roughly 15k triangles per model — there are 22 on the pitch.
-3. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
+2. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
    Long-standing, never requested. Note that a previous off-ball AI rewrite
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
    only with an AI-vs-AI sweep measuring goals, shots and turnovers.

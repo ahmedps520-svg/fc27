@@ -41,8 +41,6 @@ const TYPES = {
   '.bin': 'application/octet-stream',
 };
 
-store.load();
-
 /* ------------------------------------------------------------------ *
  * HTTP: JSON API + static files
  * ------------------------------------------------------------------ */
@@ -101,6 +99,12 @@ async function api(req, res, route) {
 
   if (route === '/api/leaderboard') {
     return json(res, 200, { rows: store.leaderboard(25) });
+  }
+
+  // Somewhere to look when accounts go missing: says where they are being
+  // stored and whether that storage survives a restart.
+  if (route === '/api/health') {
+    return json(res, 200, { ok: true, uptime: Math.round(process.uptime()), store: store.status() });
   }
 
   // Lists whatever models have been dropped into assets/candidates, so the
@@ -400,7 +404,35 @@ ws.attach(server, '/ws', (sock) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`APEX XI server on http://localhost:${PORT}`);
-  console.log('  · static game, /api accounts + cloud saves, /ws online play');
+/* ------------------------------------------------------------------ *
+ * Start-up and shutdown
+ * ------------------------------------------------------------------ */
+
+// Accounts must be in memory before the first request: an empty database would
+// answer every sign-in with "no account with that name" and then be written
+// back over the real one.
+store.load().then(() => {
+  server.listen(PORT, () => {
+    console.log(`APEX XI server on http://localhost:${PORT}`);
+    console.log('  · static game, /api accounts + cloud saves, /ws online play');
+  });
+}).catch((err) => {
+  console.error('[fatal] account storage unavailable:', err.message);
+  console.error('        refusing to start rather than serve an empty database.');
+  process.exit(1);
 });
+
+// Hosts send SIGTERM ahead of a redeploy or a sleep. Writes are debounced, so
+// without this the last few seconds of play go with the process.
+let closing = false;
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, async () => {
+    if (closing) return;
+    closing = true;
+    console.log(`[${sig}] flushing accounts…`);
+    server.close();
+    const ok = await store.shutdown();
+    if (!ok) console.error('[store] shutting down with unsaved changes');
+    process.exit(ok ? 0 : 1);
+  });
+}

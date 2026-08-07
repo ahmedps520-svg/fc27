@@ -34,7 +34,8 @@ Sign in from **Ultimate XI → Online**. An account gets you two things:
   *Private lobby* gives you a four-letter code to hand to a friend for a friendly.
 
 Passwords are hashed with scrypt and a per-account salt; the account file is never served over
-HTTP. Accounts live in `server/data/accounts.json` — delete it to reset everything.
+HTTP. Run locally, accounts live in `server/data/accounts.json` — delete it to reset everything.
+Hosted, they belong in a Redis key instead; see [Where accounts are stored](#where-accounts-are-stored).
 
 ### Hosting it
 
@@ -68,9 +69,44 @@ ALLOW_ORIGIN=https://you.github.io node server/server.js
 The page must be HTTPS for this: browsers block `ws://` from an `https://` page, and
 `socketURL()` follows the page's protocol automatically.
 
-> **Free tiers usually have an ephemeral filesystem**, which means `server/data/accounts.json` is
-> wiped on every restart or redeploy — accounts and cloud saves would vanish. Attach a persistent
-> disk/volume, or move `server/store.js` onto a real database, before anyone relies on it.
+### Where accounts are stored
+
+By default the whole account database is one JSON file, `server/data/accounts.json`. That is right
+for local play and wrong for hosting: **free tiers have an ephemeral filesystem**, so the file is
+wiped on every restart, sleep-wake and redeploy, taking every account and cloud save with it.
+
+Anything hosted should point the server at Redis over HTTP instead. Two environment variables
+switch it over — no code change, and no dependency, because the REST API is reachable with plain
+`fetch`:
+
+```bash
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=…
+```
+
+Create a free database at [Upstash](https://upstash.com), copy those two values out of its
+dashboard, and paste them into your host's environment settings (on Render: *Environment* →
+*Environment Variables*). `KV_REST_API_URL`/`KV_REST_API_TOKEN` and `REDIS_REST_URL`/
+`REDIS_REST_TOKEN` are accepted as aliases, since some platforms inject those names. The whole
+database lives under one key, `apexxi:accounts:v1`, which `STORE_KEY` can override.
+
+The database is held in memory and written back on a short debounce, so a burst of saves is one
+write. A failed write is retried with a widening backoff rather than dropped, and `SIGTERM` — what
+a host sends ahead of a redeploy — flushes anything pending before the process exits.
+
+Two deliberate refusals, both because the alternative loses accounts silently:
+
+- If Redis cannot be read at start-up, the server **exits instead of starting**. Serving from an
+  empty database would answer every sign-in with "no account with that name" and then write that
+  emptiness back over the real thing.
+- Setting only one of the URL and the token is an error, not a quiet fall back to the file.
+
+`GET /api/health` reports which backend is live, whether it survives a restart, how many accounts
+are loaded and whether a write is pending — the first thing to check if accounts go missing.
+
+> One process at a time. The whole database is written as a single value, so two instances of the
+> server would overwrite each other's accounts; keep the service at one instance (free tiers are
+> anyway).
 
 ### Playing with someone on another machine
 

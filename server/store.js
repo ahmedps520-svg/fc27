@@ -1,10 +1,21 @@
 /**
  * Account + cloud-save storage.
  *
- * A JSON file on disk, held in memory and flushed lazily. This is a game for a
- * handful of friends, not a service — but passwords still get hashed properly
- * (scrypt with a per-account salt) because storing them any other way would be
- * indefensible even here.
+ * The whole database is held in memory and flushed lazily to a backend. This is
+ * a game for a handful of friends, not a service — but passwords still get
+ * hashed properly (scrypt with a per-account salt) because storing them any
+ * other way would be indefensible even here.
+ *
+ * Two backends, chosen by environment:
+ *
+ *   · Redis over HTTP  — used when UPSTASH_REDIS_REST_URL / _TOKEN are set.
+ *     The whole database is one JSON string under one key. Plain `fetch`, so
+ *     the zero-dependency setup survives.
+ *   · A JSON file      — the default, for local play.
+ *
+ * The file backend is *not* durable on a free hosting tier: those filesystems
+ * are wiped on every restart, sleep-wake and redeploy, taking accounts and
+ * cloud saves with them. Anything hosted needs the Redis backend.
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,40 +26,183 @@ const FILE = path.join(DIR, 'accounts.json');
 
 const NAME_RE = /^[a-zA-Z0-9_.-]{3,16}$/;
 
-let db = { accounts: {}, version: 1 };
-let flushTimer = null;
+const EMPTY = () => ({ accounts: {}, version: 1 });
 
-function load() {
-  try {
-    fs.mkdirSync(DIR, { recursive: true });
-    if (fs.existsSync(FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(FILE, 'utf8'));
-      if (parsed && parsed.accounts) db = parsed;
-    }
-  } catch (err) {
-    console.error('[store] could not read accounts, starting empty:', err.message);
-  }
-  return db;
-}
+let db = EMPTY();
+let backend = null;
 
-function flush() {
-  // debounce: a save can land on every match end, but the file is small
-  if (flushTimer) return;
-  flushTimer = setTimeout(() => {
-    flushTimer = null;
-    try {
+/* ------------------------------------------------------------------ *
+ * Backends
+ *
+ * Each is { name, read(), write(db) }. `read` resolves to the stored
+ * database, or null when there is nothing stored yet — and *throws* if it
+ * could not tell the two apart, because starting empty on a failed read
+ * would flush an empty database straight over the real one.
+ * ------------------------------------------------------------------ */
+
+function fileBackend() {
+  return {
+    name: `file (${path.relative(path.resolve(__dirname, '..'), FILE)})`,
+    durable: false,
+    async read() {
+      fs.mkdirSync(DIR, { recursive: true });
+      if (!fs.existsSync(FILE)) return null;
+      return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    },
+    async write(data) {
+      fs.mkdirSync(DIR, { recursive: true });
       const tmp = `${FILE}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(db, null, 1));
-      fs.renameSync(tmp, FILE);         // atomic-ish: never leave a half-written file
-    } catch (err) {
-      console.error('[store] write failed:', err.message);
-    }
-  }, 400);
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 1));
+      fs.renameSync(tmp, FILE);     // atomic-ish: never leave a half-written file
+    },
+  };
 }
 
+/**
+ * Upstash-style Redis REST: one POST per command, the command itself a JSON
+ * array in the body. Sending the value in the body rather than the URL is what
+ * lets the database be any size without worrying about URL limits.
+ */
+function redisBackend(url, token, key) {
+  const base = url.replace(/\/+$/, '');
+
+  const command = async (args) => {
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+      signal: AbortSignal.timeout(10000),
+    });
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
+    if (!res.ok || (body && body.error)) {
+      throw new Error(`redis ${args[0]} failed: ${res.status} ${(body && body.error) || text.slice(0, 200)}`);
+    }
+    return body ? body.result : null;
+  };
+
+  return {
+    name: `redis (${base.replace(/^https?:\/\//, '')} key ${key})`,
+    durable: true,
+    async read() {
+      const raw = await command(['GET', key]);
+      if (raw == null) return null;
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    },
+    async write(data) {
+      await command(['SET', key, JSON.stringify(data)]);
+    },
+  };
+}
+
+/** Accepts the Upstash names and the two common aliases for the same pair. */
+function pickBackend() {
+  const env = process.env;
+  const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL || env.REDIS_REST_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN || env.REDIS_REST_TOKEN;
+  if (url && token) return redisBackend(url, token, env.STORE_KEY || 'apexxi:accounts:v1');
+  if (url || token) {
+    throw new Error('Redis storage needs both a REST URL and a REST token; only one was set.');
+  }
+  return fileBackend();
+}
+
+/* ------------------------------------------------------------------ *
+ * Writing
+ *
+ * Mutations mark the database dirty and return immediately; a debounced
+ * writer drains it. A failed write keeps it dirty and retries with a
+ * backoff, so a blip in the network costs a few seconds rather than an
+ * account.
+ * ------------------------------------------------------------------ */
+const FLUSH_DELAY = 400;
+const RETRY_MAX = 30000;
+
+let dirty = false;
+let writing = false;
+let timer = null;
+let retry = 1000;
+
+function schedule(delay = FLUSH_DELAY) {
+  if (timer || writing || !dirty) return;
+  timer = setTimeout(drain, delay);
+  if (timer.unref) timer.unref();
+}
+
+async function drain() {
+  timer = null;
+  if (writing || !dirty) return;
+  writing = true;
+  dirty = false;                 // anything changed from here on re-dirties
+  try {
+    await backend.write(db);
+    retry = 1000;
+  } catch (err) {
+    dirty = true;
+    console.error(`[store] write failed, retrying in ${retry / 1000}s:`, err.message);
+  } finally {
+    const wait = dirty ? retry : FLUSH_DELAY;
+    if (dirty) retry = Math.min(retry * 2, RETRY_MAX);
+    writing = false;
+    schedule(wait);
+  }
+}
+
+/** Mark the database changed. Cheap, and safe to call on every mutation. */
+function flush() {
+  dirty = true;
+  schedule();
+}
+
+/**
+ * Write out whatever is pending, right now, and wait for it. Called on the
+ * way down: hosts send SIGTERM before a redeploy, and the debounce window
+ * would otherwise take the last few seconds of play with it.
+ */
+async function shutdown(attempts = 3) {
+  if (timer) { clearTimeout(timer); timer = null; }
+  for (let i = 0; i < attempts && (dirty || writing); i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await drain();
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+  return !dirty;
+}
+
+/* ------------------------------------------------------------------ *
+ * Accounts
+ * ------------------------------------------------------------------ */
 const hash = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString('hex');
 const newToken = () => crypto.randomBytes(24).toString('hex');
 const key = (name) => name.toLowerCase();
+
+/**
+ * Read the database into memory. Must finish before the server accepts
+ * traffic. Throws when the backend cannot be read: refusing to start is the
+ * only safe answer, since serving from an empty database would hand every
+ * player a "no account with that name" and then overwrite the real one.
+ */
+async function load() {
+  backend = backend || pickBackend();
+  let stored = null;
+  try {
+    stored = await backend.read();
+  } catch (err) {
+    if (backend.durable) throw new Error(`could not read accounts from ${backend.name}: ${err.message}`);
+    // Local file: a missing or corrupt file is not worth refusing to boot over.
+    console.error('[store] could not read accounts, starting empty:', err.message);
+  }
+  db = (stored && stored.accounts) ? stored : EMPTY();
+  const count = Object.keys(db.accounts).length;
+  console.log(`[store] ${backend.name} — ${count} account${count === 1 ? '' : 's'}`);
+  if (!backend.durable && (process.env.RENDER || process.env.DYNO || process.env.FLY_APP_NAME)) {
+    console.warn('[store] WARNING: storing accounts on a hosted filesystem. Free tiers wipe it on');
+    console.warn('[store]          every restart or redeploy. Set UPSTASH_REDIS_REST_URL and');
+    console.warn('[store]          UPSTASH_REDIS_REST_TOKEN to keep accounts and cloud saves.');
+  }
+  return db;
+}
 
 function register(name, pass) {
   if (!NAME_RE.test(name || '')) {
@@ -131,6 +285,15 @@ function leaderboard(limit = 25) {
 /** What the client is allowed to see about itself. */
 const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created });
 
+/** For the health endpoint: where accounts are going, and whether that lasts. */
+const status = () => ({
+  backend: backend ? backend.name : 'not loaded',
+  durable: !!(backend && backend.durable),
+  accounts: Object.keys(db.accounts).length,
+  pendingWrite: dirty || writing,
+});
+
 module.exports = {
-  load, register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
+  load, shutdown, status,
+  register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
 };
