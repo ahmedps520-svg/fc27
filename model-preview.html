@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>APEX XI — model candidates</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #070b14; color: #e8eefc;
+               font: 500 14px/1.4 "Bahnschrift", system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #labels { position: fixed; inset: auto 0 0 0; display: flex; pointer-events: none; }
+  #labels div { flex: 1; text-align: center; padding: 10px 4px 18px; }
+  #labels b { display: block; font-size: 17px; letter-spacing: .02em; }
+  #labels span { font-size: 11px; color: #8fa3c8; }
+  #labels i { font-style: normal; color: #41d3ff; font-size: 11px; }
+  #hud { position: fixed; top: 12px; left: 0; right: 0; text-align: center;
+         font-size: 12px; color: #8fa3c8; letter-spacing: .18em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="hud">Player model candidates — scaled to the same height</div>
+<div id="labels"></div>
+<script type="importmap">
+  { "imports": { "three": "./js/vendor/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './js/vendor/jsm/loaders/GLTFLoader.js';
+
+// Whatever is sitting in assets/candidates — drop .glb files in and reload.
+const pretty = (f) => f.replace(/\.(glb|gltf)$/i, '').replace(/[-_]+/g, ' ')
+  .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const MODELS = await fetch('/api/models')
+  .then((r) => r.json())
+  .then((d) => (d.models || []).map((m) => ({ file: m.file, name: pretty(m.file), bytes: m.bytes })))
+  .catch(() => []);
+
+if (!MODELS.length) {
+  document.getElementById('hud').innerHTML =
+    'Drop .glb files into <b>assets/candidates/</b> and reload to compare them';
+}
+
+const TARGET_H = 1.8;              // every model normalised to 1.8m so they compare fairly
+const SPACING = 1.6;
+const MAX_ROW = 6;                 // beyond this the row gets too wide to read
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070b14);
+
+// lighting roughly matching the stadium: cool ambient, warm key, rim
+scene.add(new THREE.HemisphereLight(0x9fc4ff, 0x1b2436, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 2.6);
+key.position.set(3, 6, 5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -6; key.shadow.camera.right = 6;
+key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x59b7ff, 1.5);
+rim.position.set(-4, 3, -5);
+scene.add(rim);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 20),
+  new THREE.MeshStandardMaterial({ color: 0x16351f, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+const span = Math.max(1, MODELS.length - 1) * SPACING;
+// pull back far enough that however many models there are all fit in frame
+const dist = Math.max(6, (span / 2 + 1.2) / Math.tan((camera.fov * Math.PI / 180) / 2)
+  / Math.max(0.6, camera.aspect) + 2.4);
+camera.position.set(span / 2, 1.15, dist);
+camera.lookAt(span / 2, 0.95, 0);
+
+const loader = new GLTFLoader();
+const mixers = [];
+const report = [];
+
+const load = (m, i) => new Promise((resolve) => {
+  loader.load(`./assets/candidates/${m.file}`, (gltf) => {
+    const root = gltf.scene;
+
+    // Bounding boxes are only meaningful once world matrices are current —
+    // measuring a freshly-parsed skinned mesh gives garbage, which silently
+    // scales models to wildly different sizes.
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root, true);
+    const size = box.getSize(new THREE.Vector3());
+    const scale = TARGET_H / (size.y || 1);
+    root.scale.setScalar(scale);
+
+    // re-measure after scaling and drop it onto the floor, centred
+    root.updateMatrixWorld(true);
+    const box2 = new THREE.Box3().setFromObject(root, true);
+    const c = box2.getCenter(new THREE.Vector3());
+    root.position.x += i * SPACING - c.x;
+    root.position.z += -c.z;
+    root.position.y -= box2.min.y;
+    root.updateMatrixWorld(true);
+
+    let tris = 0;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      const g = o.geometry;
+      if (g?.index) tris += g.index.count / 3;
+      else if (g?.attributes?.position) tris += g.attributes.position.count / 3;
+    });
+    scene.add(root);
+
+    // play an idle-ish clip if one exists, otherwise the first
+    const clips = gltf.animations || [];
+    let clipName = '—';
+    if (clips.length) {
+      const mixer = new THREE.AnimationMixer(root);
+      const idle = clips.find((c2) => /idle/i.test(c2.name)) || clips[0];
+      mixer.clipAction(idle).play();
+      mixers.push(mixer);
+      clipName = idle.name;
+    }
+
+    report.push({
+      name: m.name, file: m.file,
+      triangles: Math.round(tris),
+      animations: clips.length,
+      clips: clips.map((c2) => c2.name),
+      playing: clipName,
+      nativeHeight: +size.y.toFixed(2),
+    });
+    resolve();
+  }, undefined, (err) => {
+    report.push({ name: m.name, file: m.file, error: String(err) });
+    resolve();
+  });
+});
+
+await Promise.all(MODELS.map(load));
+report.sort((a, b) => MODELS.findIndex((m) => m.name === a.name) - MODELS.findIndex((m) => m.name === b.name));
+
+document.getElementById('labels').innerHTML = report.map((r) => `
+  <div><b>${r.name}</b>
+    <span>${r.error ? 'failed to load' : `${r.triangles.toLocaleString()} tris`}</span>
+    <i>${r.error ? '' : `${r.animations} anim${r.animations === 1 ? '' : 's'}`}</i>
+  </div>`).join('');
+
+window.__report = report;
+window.__ready = true;
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  for (const mx of mixers) mx.update(dt);
+  renderer.render(scene, camera);
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

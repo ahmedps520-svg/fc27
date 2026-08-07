@@ -98,7 +98,10 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  */
 export function replayCamera(cam, ball, goalX, t) {
   const dir = goalX > PITCH.w / 2 ? 1 : -1;        // direction of the attack
-  const s = clamp((t - 0.55) / 0.45, 0, 1);
+  // The strike lands about 78% through the clip (3.5s of build-up, 1s of tail),
+  // so the swing has to be finished by then — arriving late means the camera is
+  // still moving while the ball is already in the net.
+  const s = clamp((t - 0.46) / 0.30, 0, 1);
   const ease = s * s * (3 - 2 * s);
 
   // build-up: low and wide on the near side, trailing the move so the play runs

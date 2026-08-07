@@ -36,6 +36,9 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
+  '.bin': 'application/octet-stream',
 };
 
 store.load();
@@ -98,6 +101,19 @@ async function api(req, res, route) {
 
   if (route === '/api/leaderboard') {
     return json(res, 200, { rows: store.leaderboard(25) });
+  }
+
+  // Lists whatever models have been dropped into assets/candidates, so the
+  // preview page picks them up without anyone editing a list by hand.
+  if (route === '/api/models') {
+    const dir = path.join(ROOT, 'assets', 'candidates');
+    let files = [];
+    try {
+      files = fs.readdirSync(dir)
+        .filter((f) => /\.(glb|gltf)$/i.test(f))
+        .map((f) => ({ file: f, bytes: fs.statSync(path.join(dir, f)).size }));
+    } catch { /* folder not created yet */ }
+    return json(res, 200, { models: files });
   }
 
   return json(res, 404, { error: 'No such endpoint.' });

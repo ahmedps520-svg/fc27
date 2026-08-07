@@ -125,14 +125,39 @@ export function mount(root, params) {
   const tape = [];
   const allPlayers = () => [...match.teams[0].players, ...match.teams[1].players];
 
+  // How the clip is cut. The build-up is taken from the rolling tape the moment
+  // the goal goes in; the rest is recorded live straight into the clip.
+  const PRE_FRAMES = Math.round(3.5 * 60);      // dribble and the strike
+  const POST_FRAMES = 60;                       // ball crossing the line into the net
+  const HOLD_SECONDS = 2;                       // freeze on the finish
+
+  /**
+   * Playback speed across the clip. The strike is the moment worth slowing for;
+   * once the ball is in the net nothing moves, so lingering there just stalls.
+   *
+   * This was the real fault in the old replay: the slow-motion threshold sat at
+   * t > 0.68 and the goal landed at t ≈ 0.71, so it dropped to 0.3x exactly as
+   * the ball came to rest and then ground through eighty static frames — 44% of
+   * the replay was a still image of the ball sitting in the goal.
+   *
+   * `GOAL_T` is where the ball crosses the line: PRE / (PRE + POST).
+   */
+  const GOAL_T = PRE_FRAMES / (PRE_FRAMES + POST_FRAMES);
+  const playbackSpeed = (t) => {
+    if (t < GOAL_T - 0.16) return 0.8;           // the dribble, near enough real time
+    if (t < GOAL_T + 0.07) return 0.34;          // the shot and the ball crossing the line
+    return 0.85;                                 // tail: get to the hold
+  };
+
   const recordFrame = () => {
     const snap = {
       b: [match.ball.x, match.ball.y, match.ball.z || 0],
       p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]),
     };
     tape.push(snap);
-    // it is a ring buffer, so the recorded goal index slides as frames drop off
-    if (tape.length > TAPE_MAX) { tape.shift(); if (goalTapeIdx > 0) goalTapeIdx -= 1; }
+    if (tape.length > TAPE_MAX) tape.shift();
+    // once a goal is captured, keep feeding the clip until it has its tail
+    if (clip && clip.post < POST_FRAMES) { clip.frames.push(snap); clip.post += 1; }
   };
 
   const applyFrame = (snap) => {
@@ -147,23 +172,39 @@ export function mount(root, params) {
     });
   };
 
-  let goalTapeIdx = -1;
+  /**
+   * Cut the clip the instant the ball crosses the line.
+   *
+   * It used to be windowed out of the rolling tape when the celebration ended,
+   * which quietly broke it: the tape is a ring buffer and recording continues
+   * through the celebration, so a long one pushed the entire build-up out and
+   * the "replay" was nothing but the ball already sitting in the net. Taking the
+   * build-up here, while it is still in the buffer, makes the clip independent
+   * of how long anyone wheels away for.
+   */
+  let clip = null;
+  const captureGoal = () => {
+    clip = {
+      frames: tape.slice(Math.max(0, tape.length - PRE_FRAMES)),
+      post: 0,
+      goalX: match.teams[match.goalTeam].dir > 0 ? PITCH.w : 0,
+    };
+  };
+
   let replay = null;
   const startReplay = () => {
-    if (tape.length < 40 || goalTapeIdx < 0) return false;
+    if (!clip || clip.frames.length < 60) return false;
     const live = { b: [match.ball.x, match.ball.y, match.ball.z], p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]) };
     const celeb = allPlayers().map((p) => p.celebrating);
     allPlayers().forEach((p) => { p.celebrating = false; });
-    // window the tape around the goal so the clip runs up to the strike and
-    // then keeps going long enough to show the ball bury itself in the net
-    const from = Math.max(0, goalTapeIdx - 3.5 * 60);
-    const to = Math.min(tape.length, goalTapeIdx + 1.4 * 60);
     replay = {
-      frames: tape.slice(from, to),
+      frames: clip.frames,
       i: 0, live, celeb,
-      goalX: match.teams[match.goalTeam].dir > 0 ? PITCH.w : 0,
+      goalX: clip.goalX,
       cam: makeCamera(),
+      hold: 0,
     };
+    clip = null;
     replayTag.hidden = false;
     return true;
   };
@@ -317,13 +358,20 @@ export function mount(root, params) {
       // hold ◯ to bail out of the cinematic
       if (inputs.some((i) => i.held('shoot'))) endReplay();
       else {
-        const f = replay.frames[Math.floor(replay.i)];
-        if (f) applyFrame(f);
-        replayCamera(replay.cam, match.ball, replay.goalX, replay.i / replay.frames.length);
-        // slow motion, and slower still over the strike itself
-        const near = replay.i / replay.frames.length > 0.68 ? 0.3 : 0.6;
-        replay.i += near;
-        if (replay.i >= replay.frames.length) endReplay();
+        const N = replay.frames.length;
+        if (replay.i < N) {
+          applyFrame(replay.frames[Math.min(N - 1, Math.floor(replay.i))]);
+          const t = replay.i / N;
+          replayCamera(replay.cam, match.ball, replay.goalX, t);
+          replay.i += playbackSpeed(t);
+        } else {
+          // Hold on the finish: the ball sits in the net, everyone frozen, so
+          // the goal actually registers before we cut back to the match.
+          applyFrame(replay.frames[N - 1]);
+          replayCamera(replay.cam, match.ball, replay.goalX, 1);
+          replay.hold += dt;
+          if (replay.hold >= HOLD_SECONDS) endReplay();
+        }
       }
     } else if (!frozen && !ended) {
       if (view) {
@@ -336,7 +384,8 @@ export function mount(root, params) {
       match.basis = groundBasis(cam);
       // keep taping through the goal phase, otherwise the clip stops at the line
       if (match.phase === 'play' || match.phase === 'goal') {
-        if (match.phase === 'goal' && lastPhase !== 'goal') goalTapeIdx = tape.length;
+        // capture before recording, so the build-up ends on the strike itself
+        if (match.phase === 'goal' && lastPhase !== 'goal') captureGoal();
         recordFrame();
       }
       if (match.phase === 'end') { ended = true; finish(); }
