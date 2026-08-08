@@ -291,6 +291,62 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
    only with an AI-vs-AI sweep measuring goals, shots and turnovers.
 
+### Two currencies and the reset
+`club.coins` is gone. `club.apex` is the earned, spendable balance; `club.ultimate`
+is displayed everywhere and granted nowhere — it exists so the save format, the
+wallet and the settings screen already know about it before it means anything.
+
+`state.js` carries a `RESET_TAG`. Bump it and every save is wiped back to a fresh
+start exactly once, and `flags.apology` is set so Ultimate XI can explain itself
+the next time it is opened. Two things about that wipe are load-bearing:
+- **It persists immediately.** The first version only reset in memory, so it
+  re-ran on every load — which would have taken back anything earned in between.
+- **It leaves career alone.** The reset is about the Ultimate XI economy.
+
+Match pay is `matchApex(div, {won, drew, poss})`: the division sets the purse,
+possession scales it 0.8x to 1.2x across the realistic 35–65% band. A loss with
+all the ball still pays a fraction of a win without it.
+
+### Icons and Limited Edition
+Eight players in the world are `rarity: 'icon'`, all 99, all unattached,
+appended last in the generator for the usual id-stability reason. `rarityFor`
+deliberately never returns `'icon'` — the tier is stamped on by hand, or a 97
+turning up in the league would silently join it.
+
+They exist only in Limited Edition packs: 75,000 Apex or the 12-win objective,
+4% per card over three cards. Measured against the real draw code: 11.9% of
+packs contain at least one, nothing below 79 rated. `__openPackForTest` is
+exported so that measurement can be repeated.
+
+**The Icons are original players, not real footballers.** That was a deliberate
+departure from what was asked for — names and likenesses of living professionals
+are the one thing in this project that could cause its author real trouble, and
+the game states everything in it is fictional. `ICONS` in `pools.js` is a plain
+list of names if that decision is ever revisited.
+
+### Updates and the stale-cache problem
+Symptom: a deployed change never reaches the installed app. An installed PWA is
+almost never fully closed, so the page keeps talking to the worker it launched
+with; a new worker downloads, installs, and then waits politely forever.
+
+What is in place now, all of it needed:
+- `sw.js` serves **network-first**, and precaches with `cache: 'reload'` so a new
+  worker cannot populate itself out of a stale HTTP cache.
+- Navigations are refetched with `cache: 'reload'`, so a home-screen launch
+  always gets the current shell.
+- `CACHE` is the eviction mechanism — `activate` deletes every cache that is not
+  the current name, so **bump it on every release**.
+- The page registers with `updateViaCache: 'none'`, calls `update()` on load, on
+  every return to the foreground and hourly, tells a waiting worker to
+  `skip-waiting`, and reloads once on `controllerchange`.
+- Settings → **Force update** unregisters every worker, deletes every cache and
+  reloads with a cache-busting query. That is the escape hatch for a device that
+  is *already* stuck, since a stuck device cannot be fixed by the thing that is
+  stuck.
+
+`APP_VERSION` in `app.js` is shown in Settings so a bug report can say which
+build it came from. Bump it with `CACHE`.
+
 ## Rules that keep biting
 
 - **Never re-balance the match by feel.** Always sweep AI-vs-AI
@@ -300,6 +356,11 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
   touchline and both goal ends are stands. Outside
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.
 - `server/data/` is gitignored — it holds password hashes. Keep it that way.
+- **Bump `CACHE` in `sw.js` and `APP_VERSION` in `app.js` on every release.**
+  The cache name is what evicts the previous build.
+- **New modules must be added to `ASSETS` in `sw.js`.** Network-first means a
+  missing entry does not break an online player, so the omission is invisible
+  until someone opens the game offline.
 - **The graphics prompt fires once, ever.** `settings.graphicsAsked` is set the
   moment the card is rendered, whatever the player then answers. Asking after
   every match would be worse than the stutter it is asking about.

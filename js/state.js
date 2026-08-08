@@ -3,6 +3,21 @@ import { pushSave } from './net/api.js';
 
 const KEY = 'apexxi.save.v1';
 
+/** What a brand new manager starts with, and what the reset below hands back. */
+const START_APEX = 5_000;
+
+/**
+ * Bump this when a change makes existing Ultimate XI saves invalid, and every
+ * save is wiped back to a fresh start exactly once. `flags.apology` is then set
+ * so the mode can explain itself the next time it is opened, rather than the
+ * player finding an empty club and drawing their own conclusions.
+ *
+ * `econ-2curr-1`: the split into Apex and Ultimate, packs repriced, and match
+ * pay moved onto division and possession. Squads built against the old prices
+ * were worth several times what the new ones cost to assemble.
+ */
+const RESET_TAG = 'econ-2curr-1';
+
 const defaults = () => ({
   settings: {
     simSpeed: 'normal',      // instant | fast | normal
@@ -22,7 +37,12 @@ const defaults = () => ({
     sfxVol: 0.9,
   },
   club: {                     // Squad Builder progress
-    coins: 12_500,
+    // Two balances. Apex is the one you earn and spend. Ultimate is the
+    // premium currency: it is displayed, it is never granted, and nothing
+    // costs it yet — it is here so the save format and the HUD already know
+    // about it when it does become obtainable.
+    apex: START_APEX,
+    ultimate: 0,
     collection: [],           // player ids pulled from packs
     formation: '4-3-3',
     lineup: Array(11).fill(null),
@@ -33,6 +53,10 @@ const defaults = () => ({
     // merge in loadState.
     packs: ['gold', 'silver', 'silver', 'bronze'],
   },
+  flags: {                    // one-off UI state that has to outlive a reload
+    apology: false,           // show the "we reset your club" card once
+  },
+  meta: { reset: RESET_TAG }, // which wipe this save has already been through
   career: null,               // set once a career is started
   ultimate: freshUltimate(),  // Ultimate XI progression
 });
@@ -68,11 +92,13 @@ export function freshUltimate() {
 
 export function freshObjectives() {
   return [
-    { id: 'win3', text: 'Win 3 Apex Division matches', need: 3, done: 0, coins: 1200, pack: 'silver' },
-    { id: 'score8', text: 'Score 8 goals in the division', need: 8, done: 0, coins: 1500, pack: 'gold' },
-    { id: 'streak3', text: 'Win 3 in a row', need: 3, done: 0, coins: 2500, pack: 'gold' },
-    { id: 'clean2', text: 'Keep 2 clean sheets', need: 2, done: 0, coins: 1800, pack: 'silver' },
-    { id: 'div5', text: 'Reach Division 5', need: 1, done: 0, coins: 4000, pack: 'prime' },
+    { id: 'win3', text: 'Win 3 Apex Division matches', need: 3, done: 0, apex: 1200, pack: 'silver' },
+    { id: 'score8', text: 'Score 8 goals in the division', need: 8, done: 0, apex: 1500, pack: 'gold' },
+    { id: 'streak3', text: 'Win 3 in a row', need: 3, done: 0, apex: 2500, pack: 'gold' },
+    { id: 'clean2', text: 'Keep 2 clean sheets', need: 2, done: 0, apex: 1800, pack: 'silver' },
+    { id: 'div5', text: 'Reach Division 5', need: 1, done: 0, apex: 4000, pack: 'prime' },
+    // the only way to a Limited Edition pack that does not cost 75,000
+    { id: 'win12', text: 'Win 12 Apex Division matches', need: 12, done: 0, apex: 8000, pack: 'limited' },
   ];
 }
 
@@ -87,7 +113,15 @@ export function loadState() {
       state.settings = { ...defaults().settings, ...(parsed.settings || {}) };
       state.club = { ...defaults().club, ...(parsed.club || {}) };
       state.ultimate = { ...freshUltimate(), ...(parsed.ultimate || {}) };
+      state.flags = { ...defaults().flags, ...(parsed.flags || {}) };
+      state.meta = { ...(parsed.meta || {}) };
       if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
+      // Persist the wipe the moment it happens. Leaving it in memory would mean
+      // re-running it on the next load — and by then the player may have earned
+      // something, which the second wipe would take back off them.
+      if (applyReset(state)) {
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
+      }
     }
   } catch {
     state = defaults();
@@ -97,6 +131,26 @@ export function loadState() {
   state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
   state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
   return state;
+}
+
+/**
+ * The one-time wipe. Career is deliberately left alone: the reset is about the
+ * Ultimate XI economy, and taking someone's season off them would be a second
+ * apology to write.
+ */
+function applyReset(s) {
+  if (s.meta?.reset === RESET_TAG) return false;
+  s.club.apex = START_APEX;
+  s.club.ultimate = 0;
+  s.club.collection = [];
+  s.club.lineup = Array(11).fill(null);
+  s.club.packsOpened = 0;
+  s.club.packs = ['silver'];      // something to open the moment they read the note
+  delete s.club.coins;            // the old single balance
+  s.ultimate = freshUltimate();
+  s.flags = { ...s.flags, apology: true };
+  s.meta = { ...s.meta, reset: RESET_TAG };
+  return true;
 }
 
 export const getState = () => state;
@@ -119,7 +173,12 @@ export function adoptCloudSave(cloud) {
   state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
   state.club = { ...defaults().club, ...(cloud.club || {}) };
   state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
+  state.flags = { ...defaults().flags, ...(cloud.flags || {}) };
+  state.meta = { ...(cloud.meta || {}) };
   if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
+  // a save pulled from the cloud may predate the wipe even when this device's
+  // local copy did not
+  applyReset(state);
   if (!Array.isArray(state.club.packs)) state.club.packs = [];
   state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
   state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));

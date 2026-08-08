@@ -347,7 +347,7 @@ function simMatchday() {
         const won = mineHome ? q.homeGoals > q.awayGoals : q.awayGoals > q.homeGoals;
         const drew = q.homeGoals === q.awayGoals;
         cr.budget += won ? 2_400_000 : drew ? 1_200_000 : 700_000;
-        s.club.coins += won ? 900 : drew ? 500 : 300;
+        s.club.apex += won ? 900 : drew ? 500 : 300;
       }
     });
     cr.resolvedMatchday = cr.matchday;

@@ -12,12 +12,32 @@ export const TITLE = 'Ultimate XI';
 
 let tab = 'squad';           // squad | division | online | objectives | store
 
+/**
+ * Prices.
+ *
+ * These went up a long way, on the grounds that a squad used to be finished
+ * inside an afternoon. A Prime pack is now most of a promotion run rather than
+ * two wins, and Limited Edition is meant to be something you save for or earn,
+ * not something you buy on a whim.
+ *
+ * `icon` odds are what a Limited Edition pack is for: eight players in the
+ * world are 99 rated, and 4% on three cards is roughly a one-in-nine chance of
+ * seeing one per pack. Rare enough to matter, not so rare it is a lottery.
+ */
 const PACKS = [
-  { id: 'bronze',  name: 'Bronze',  cost: 0,    size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
-  { id: 'silver',  name: 'Silver',  cost: 900,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
-  { id: 'gold',    name: 'Gold',    cost: 2400, size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, note: '5 · gold min' },
-  { id: 'prime',   name: 'Prime',   cost: 6000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, note: '3 · 82+ min' },
+  { id: 'bronze',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00, icon: 0.00 }, note: '4 cards' },
+  { id: 'silver',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01, icon: 0.00 }, note: '4 cards' },
+  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05, icon: 0.00 }, note: '5 · gold min' },
+  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22, icon: 0.00 }, note: '3 · 82+ min' },
+  {
+    id: 'limited', name: 'Limited Edition', cost: 75000, size: 3, limited: true,
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.34, special: 0.62, icon: 0.04 },
+    note: '3 · 79+ min · Icon chance',
+  },
 ];
+
+/** Limited Edition is also the reward for the hardest objective. */
+export const PACK_BY_ID = (id) => PACKS.find((p) => p.id === id) || PACKS[0];
 
 let selectedId = null;   // tap-to-place selection
 let filter = 'all';      // rarity chip
@@ -121,13 +141,31 @@ function openPack(pack, seen = new Set(), needGK = false) {
       if (x.p.overall < 82) pulls[i] = draw(Math.random() < 0.25 ? 'special' : 'gold');
     });
   }
+  // Limited Edition never hands back a bronze or a silver. An Icon is left
+  // exactly as the roll found it — guaranteeing one would defeat the point.
+  if (pack.limited) {
+    pulls.forEach((x, i) => {
+      if (x.p.rarity === 'bronze' || x.p.rarity === 'silver') {
+        pulls[i] = draw(Math.random() < 0.6 ? 'special' : 'gold');
+      }
+    });
+  }
   if (needGK && !pulls.some((x) => x.p.position === 'GK')) {
     pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
   }
   return pulls;
 }
 
-/** What a card you already own is worth — the same as selling it. */
+/** Exposed so the pack odds can be measured against the real draw code. */
+export const __openPackForTest = openPack;
+
+/**
+ * What a card you already own is worth — the same as selling it.
+ *
+ * An Icon is valued at 250M, which at this divisor would pay 10,000 Apex for a
+ * repeat. That is deliberate: pulling a second Icon should feel like a result,
+ * not like the pack failed.
+ */
 const dupValue = (p) => Math.round(p.value / 25_000);
 
 /* ------------------------------------------------------------------ *
@@ -199,15 +237,16 @@ export function storeView() {
     <section class="panel glass">
       <header class="panel-head">
         <h2>Store</h2>
-        <span class="coin-chip">◈ ${s.club.coins.toLocaleString()}</span>
+        <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
       </header>
       <p class="hint">Packs go straight to your locker — open them when you want.</p>
       <div class="store-grid">
         ${PACKS.map((p) => {
           const free = p.cost === 0;
-          const locked = !free && p.cost > s.club.coins;
+          const locked = !free && p.cost > (s.club.apex || 0);
           return `
-            <article class="store-pack rar-${p.id === 'prime' ? 'special' : p.id}">
+            <article class="store-pack rar-${p.limited ? 'icon' : p.id === 'prime' ? 'special' : p.id}">
+              ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
               <div class="sp-art"><span class="sp-mark">UXI</span><i></i></div>
               <b class="sp-name">${p.name}</b>
               <span class="sp-note">${p.note}</span>
@@ -215,6 +254,7 @@ export function storeView() {
               <button class="btn ${locked ? 'ghost' : 'primary'}" data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
                 ${free ? 'Claim free' : `◈ ${p.cost.toLocaleString()}`}
               </button>
+              ${p.limited ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
             </article>`;
         }).join('')}
       </div>
@@ -230,7 +270,7 @@ export function storeView() {
           ${Object.entries(counts).map(([id, n]) => {
             const pack = PACKS.find((p) => p.id === id) || PACKS[0];
             return `
-              <button class="locker-pack rar-${id === 'prime' ? 'special' : id}" data-open-pack="${id}">
+              <button class="locker-pack rar-${pack.limited ? 'icon' : id === 'prime' ? 'special' : id}" data-open-pack="${id}">
                 <span class="lp-art"><i>UXI</i></span>
                 <b>${pack.name}</b>
                 <span class="lp-count">×${n}</span>
@@ -266,10 +306,38 @@ export function objectivesView() {
                 <i class="obj-bar"><b style="width:${pct}%"></b></i>
                 <span>${Math.min(o.done, o.need)}/${o.need}</span>
               </div>
-              <span class="obj-reward">◈${o.coins.toLocaleString()}<em>${o.pack} pack</em></span>
+              <span class="obj-reward">◈${(o.apex ?? 0).toLocaleString()}<em>${o.pack} pack</em></span>
             </li>`;
         }).join('')}
       </ul>
+    </section>`;
+}
+
+/**
+ * Shown once, the first time the mode is opened after a save wipe.
+ *
+ * A player who opens Ultimate XI and finds an empty club and no money will
+ * assume the game lost their save, which is worse than being told. It says what
+ * happened, why, and what they have been given to start again with.
+ */
+function apologyCard() {
+  if (!getState().flags?.apology) return '';
+  return `
+    <section class="panel glass apology" id="apologyCard">
+      <header class="panel-head"><h2>We reset your club — sorry</h2></header>
+      <p>Apex XI now runs on two currencies, and packs cost a lot more than they
+         did. Squads built under the old prices were worth several times what a
+         new one costs to assemble, so every Ultimate XI club has been wiped back
+         to the start — yours included. Career mode is untouched.</p>
+      <ul class="ap-list">
+        <li><b>◈ 5,000 Apex</b> to start with</li>
+        <li><b>A Silver pack</b> in your locker</li>
+        <li><b>A free Bronze pack</b> in the store, as always</li>
+      </ul>
+      <p class="ap-note">Apex is earned from matches — more for winning, more
+         again for the division you are in and how much of the ball you had.
+         Ultimate is the second currency; nothing costs it yet.</p>
+      <button class="btn primary" id="apologyOk">Start again</button>
     </section>`;
 }
 
@@ -287,12 +355,16 @@ export function render() {
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
     </nav>`;
 
-  if (tab === 'online') return tabs + onlineView();
-  if (tab === 'division') return tabs + divisionView();
-  if (tab === 'objectives') return tabs + objectivesView();
-  if (tab === 'store') return tabs + storeView();
+  // the apology sits above whichever tab is open, so it cannot be missed by
+  // landing on the store instead of the squad
+  const sorry = apologyCard();
 
-  return tabs + `
+  if (tab === 'online') return tabs + sorry + onlineView();
+  if (tab === 'division') return tabs + sorry + divisionView();
+  if (tab === 'objectives') return tabs + sorry + objectivesView();
+  if (tab === 'store') return tabs + sorry + storeView();
+
+  return tabs + sorry + `
     <div class="sb-head">
       <div class="sb-metrics glass">
         <div class="metric"><b class="big">${chem.rating || '--'}</b><span>Squad rating</span></div>
@@ -440,6 +512,12 @@ function collectionHTML() {
  * Mount
  * ------------------------------------------------------------------ */
 export function mount(root) {
+  // Dismissing clears the flag for good: it is an explanation, not a nag.
+  root.querySelector('#apologyOk')?.addEventListener('click', () => {
+    update((s) => { s.flags.apology = false; });
+    root.querySelector('#apologyCard')?.remove();
+  });
+
   // tab bar is on every view
   root.querySelector('#uTabs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-utab]');
@@ -484,11 +562,11 @@ export function mount(root) {
       btn.addEventListener('click', () => {
         const pack = PACKS.find((p) => p.id === btn.dataset.buyPack);
         const s = getState();
-        if (pack.cost > s.club.coins) return toast('Not enough coins', 'warn');
+        if (pack.cost > (s.club.apex || 0)) return toast('Not enough Apex', 'warn');
         if (pack.cost === 0 && s.club.packsOpened > 0 && s.club.packsOpened % 3 !== 0) {
           return toast(`Free pack in ${3 - (s.club.packsOpened % 3)} more opens`, 'warn');
         }
-        update((st) => { st.club.coins -= pack.cost; st.club.packs.push(pack.id); });
+        update((st) => { st.club.apex -= pack.cost; st.club.packs.push(pack.id); });
         refreshCoins();
         sfx('coin');
         toast(`${pack.name} added to your locker`, 'good');
@@ -517,7 +595,7 @@ export function mount(root) {
           st.club.packsOpened += 1;
         }
         drawn.forEach(({ p }) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
-        st.club.coins += coins;
+        st.club.apex += coins;
       });
       refreshCoins();
       runPackAnimation(root, drawn, coins, () => navigate('squad'));
@@ -654,10 +732,10 @@ export function mount(root) {
       update((s) => {
         s.club.collection = s.club.collection.filter((id) => id !== p.id);
         s.club.lineup = s.club.lineup.map((id) => (id === p.id ? null : id));
-        s.club.coins += coins;
+        s.club.apex += coins;
       });
       refreshCoins();
-      root.querySelector('.coin-chip').textContent = `◈ ${getState().club.coins.toLocaleString()}`;
+      root.querySelector('.coin-chip').textContent = `◈ ${getState().club.apex.toLocaleString()}`;
       rerenderPitch();
       toast(`Sold ${p.name} for ◈${coins.toLocaleString()}`);
     }

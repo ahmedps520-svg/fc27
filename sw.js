@@ -1,10 +1,15 @@
 /**
  * APEX XI service worker.
- * Precaches the whole app so it launches offline once installed, and serves
- * everything cache-first — the game has no live data to go stale.
- * Bump CACHE when files change so old assets are evicted.
+ *
+ * Precaches the whole app so it launches offline once installed, then serves
+ * network-first: the network decides what the code is, and the cache is only
+ * the fallback for when there is no network.
+ *
+ * Bump CACHE on every release. The name is the eviction mechanism — `activate`
+ * deletes every cache that is not the current one, so a new name is what
+ * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v5';
+const CACHE = 'apexxi-v7';
 
 const ASSETS = [
   './',
@@ -38,8 +43,17 @@ const ASSETS = [
   './js/screens/play.js',
   './js/screens/match.js',
   './js/screens/settings.js',
+  './js/screens/online.js',
+
+  './js/net/api.js',
+  './js/net/socket.js',
+  './js/net/config.js',
+  './js/net/netplay.js',
+  './js/game/playerModel.js',
 
   './js/vendor/three.module.js',
+  './js/vendor/jsm/loaders/GLTFLoader.js',
+  './js/vendor/jsm/utils/SkeletonUtils.js',
   './js/vendor/jsm/postprocessing/EffectComposer.js',
   './js/vendor/jsm/postprocessing/RenderPass.js',
   './js/vendor/jsm/postprocessing/ShaderPass.js',
@@ -61,8 +75,13 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // add one at a time so a single 404 cannot fail the whole install
-    await Promise.all(ASSETS.map((u) => cache.add(u).catch(() => {})));
+    // `cache: 'reload'` so installing a new worker cannot repopulate itself out
+    // of the HTTP cache — precaching a stale copy of a file is exactly the bug
+    // this worker exists to avoid.
+    await Promise.all(ASSETS.map((u) =>
+      cache.add(new Request(u, { cache: 'reload' })).catch(() => {})));
+    // take over immediately rather than waiting for every tab to close: a game
+    // installed to a home screen is almost never fully closed
     self.skipWaiting();
   })());
 });
@@ -73,6 +92,11 @@ self.addEventListener('activate', (e) => {
     await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
+});
+
+// lets the page ask an already-waiting worker to take over now
+self.addEventListener('message', (e) => {
+  if (e.data === 'skip-waiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (e) => {
@@ -86,7 +110,11 @@ self.addEventListener('fetch', (e) => {
   // still works because every successful response is written back to the cache.
   e.respondWith((async () => {
     try {
-      const res = await fetch(req);
+      // navigations bypass the HTTP cache outright, so a home-screen launch
+      // always gets the current shell
+      const res = req.mode === 'navigate'
+        ? await fetch(new Request(req, { cache: 'reload' }))
+        : await fetch(req);
       if (res && res.status === 200 && res.type === 'basic') {
         const cache = await caches.open(CACHE);
         cache.put(req, res.clone());

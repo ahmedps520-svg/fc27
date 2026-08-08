@@ -115,11 +115,49 @@ export const RARITY = {
   silver:  { label: 'Silver',  color: '#b9c4d0', glow: 'rgba(185,196,208,.45)' },
   gold:    { label: 'Gold',    color: '#f4c95d', glow: 'rgba(244,201,93,.55)'  },
   special: { label: 'Special', color: '#ff2e88', glow: 'rgba(255,46,136,.65)'  },
+  icon:    { label: 'Icon',    color: '#7af7ff', glow: 'rgba(122,247,255,.75)' },
 };
 
+/**
+ * Icons are never derived from a rating — they are stamped on by hand in the
+ * generator. A 97 turning up in the ordinary league would otherwise silently
+ * become an icon, and the whole point of the tier is that there are exactly
+ * eight of them in the world.
+ */
 export function rarityFor(overall) {
   if (overall >= 88) return 'special';
   if (overall >= 79) return 'gold';
   if (overall >= 70) return 'silver';
   return 'bronze';
 }
+
+/**
+ * The eight Icons. Every one is 99 rated and unattached, and they exist only
+ * in Limited Edition packs.
+ *
+ * These are original players, not real footballers. Naming living professionals
+ * on collectible cards in a game that is actually deployed is the one thing in
+ * this project that could land its author in real trouble — likeness and name
+ * rights are exactly what the licensed games spend their money on — and the
+ * game already tells the player everything in it is fictional. Swapping the
+ * names is a one-line edit here if that is wanted anyway.
+ */
+export const ICONS = [
+  { name: 'Rinaldo Vasques',  position: 'LW',  nation: 'Cerravia', trait: 'flair' },
+  { name: 'Cassiano Reyes',   position: 'ST',  nation: 'Sunhaven', trait: 'power' },
+  { name: 'Leandro Marchetti', position: 'CAM', nation: 'Ferrenza', trait: 'flair' },
+  { name: 'Emeka Osabuoye',   position: 'CM',  nation: 'Meridia',  trait: 'engine' },
+  { name: 'Ruben de Vries',   position: 'CB',  nation: 'Ostmark',  trait: 'wall' },
+  { name: 'Yuki Tanaharu',    position: 'RW',  nation: 'Kaldoria', trait: 'flair' },
+  { name: 'Anselm Brandt',    position: 'CDM', nation: 'Norlund',  trait: 'wall' },
+  { name: 'Matteo Salvarez',  position: 'GK',  nation: 'Astravia', trait: 'keeper' },
+];
+
+/** What an icon is best at. Every icon is 99 overall; these shape the radar. */
+export const ICON_TRAITS = {
+  flair:  { pace: 99, shooting: 92, passing: 91, dribbling: 99, defending: 42, physical: 78 },
+  power:  { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },
+  engine: { pace: 88, shooting: 88, passing: 99, dribbling: 94, defending: 78, physical: 88 },
+  wall:   { pace: 84, shooting: 62, passing: 84, dribbling: 74, defending: 99, physical: 97 },
+  keeper: { pace: 68, shooting: 42, passing: 88, dribbling: 62, defending: 99, physical: 95 },
+};
