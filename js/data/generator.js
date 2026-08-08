@@ -1,6 +1,6 @@
 import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, POSITIONS, rarityFor,
-  ICONS, ICON_TRAITS,
+  ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
 
 /* ------------------------------------------------------------------ *
@@ -125,6 +125,33 @@ function makePlayer(rand, position, baseLevel, clubId) {
     nationColors: nation.colors,
     age,
     value: marketValue(overall, age),
+    form: 0,
+  };
+}
+
+/**
+ * A hand-written card — an Icon or a Star.
+ *
+ * Rating is stated rather than derived: these exist to be a specific number,
+ * and letting `weightedOverall` have an opinion would make a keeper's 92 mean
+ * something different from a winger's. Rarity is stamped on for the same
+ * reason `rarityFor` never returns these tiers.
+ */
+function namedCard(def, stats, overall, rarity, value, id) {
+  return {
+    id: `p${id}`,
+    name: def.name,
+    // spelled out on the blueprint: initialising "Neymar Jr" gives "N. Jr"
+    short: def.short,
+    position: def.position,
+    overall,
+    stats: { ...stats },
+    rarity,
+    clubId: null,
+    nation: def.nation,
+    nationColors: def.colors,
+    age: 29,
+    value,
     form: 0,
   };
 }
@@ -268,27 +295,21 @@ function buildWorld() {
    * Limited Edition pack.                                                     */
   const icons = [];
   ICONS.forEach((def) => {
-    const stats = { ...ICON_TRAITS[def.trait] };
-    const p = {
-      id: `p${++idCounter}`,
-      name: def.name,
-      // spelled out on the blueprint: initialising "Neymar Jr" gives "N. Jr"
-      short: def.short,
-      position: def.position,
-      overall: 99,
-      stats,
-      rarity: 'icon',
-      icon: true,
-      clubId: null,
-      nation: def.nation,
-      nationColors: def.colors,
-      age: 29,
-      value: 250_000_000,
-      form: 0,
-    };
+    const p = namedCard(def, ICON_TRAITS[def.trait], 99, 'icon', 250_000_000, ++idCounter);
     players.push(p);
     freeAgents.push(p.id);
     icons.push(p.id);
+  });
+
+  /* -------------------------------- Stars -------------------------------- *
+   * One rung below the Icons, and appended after them for the same reason:
+   * ids are handed out in creation order, so anything new goes on the end.     */
+  const stars = [];
+  STARS.forEach((def) => {
+    const p = namedCard(def, STAR_TRAITS[def.trait], 92, 'star', 120_000_000, ++idCounter);
+    players.push(p);
+    freeAgents.push(p.id);
+    stars.push(p.id);
   });
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
@@ -302,6 +323,7 @@ function buildWorld() {
     playersById: byId,
     freeAgents,
     icons,
+    stars,
     fixtures,
   };
 }

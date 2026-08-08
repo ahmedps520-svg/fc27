@@ -20,19 +20,33 @@ let tab = 'squad';           // squad | division | online | objectives | store
  * two wins, and Limited Edition is meant to be something you save for or earn,
  * not something you buy on a whim.
  *
- * `icon` odds are what a Limited Edition pack is for: eight players in the
- * world are 99 rated, and 4% on three cards is roughly a one-in-nine chance of
- * seeing one per pack. Rare enough to matter, not so rare it is a lottery.
+ * The two Limited packs do not roll for their headline card, they promise it.
+ * `guarantee` names a rarity that one of the cards is replaced with, whatever
+ * the dice said — so a Limited: Stars pack is always exactly one 92, and an
+ * Icon pack is always exactly one 99. The 12-win objective is a long way to
+ * come to be told no.
+ *
+ * "Exactly one" is the other half of that promise: the guarantee replaces a
+ * single card, and the rest of the pack rolls normally. You do not get the set.
  */
 const PACKS = [
-  { id: 'bronze',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00, icon: 0.00 }, note: '4 cards' },
-  { id: 'silver',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01, icon: 0.00 }, note: '4 cards' },
-  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05, icon: 0.00 }, note: '5 · gold min' },
-  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22, icon: 0.00 }, note: '3 · 82+ min' },
+  { id: 'bronze',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
+  { id: 'silver',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
+  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, note: '5 · gold min' },
+  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, note: '3 · 82+ min' },
   {
-    id: 'limited', name: 'Limited Edition', cost: 75000, size: 3, limited: true,
-    odds: { bronze: 0.00, silver: 0.00, gold: 0.34, special: 0.62, icon: 0.04 },
-    note: '3 · 79+ min · Icon chance',
+    id: 'stars', name: 'Limited: Stars', cost: 40000, size: 3, limited: true,
+    guarantee: 'star',
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.55, special: 0.45 },
+    note: '3 cards · 79+ min',
+    promise: '1 guaranteed 92-rated Star',
+  },
+  {
+    id: 'limited', name: 'Limited: Icons', cost: 75000, size: 3, limited: true,
+    guarantee: 'icon',
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.30, special: 0.70 },
+    note: '3 cards · 79+ min',
+    promise: '1 guaranteed 99-rated Icon',
   },
 ];
 
@@ -153,6 +167,14 @@ function openPack(pack, seen = new Set(), needGK = false) {
   if (needGK && !pulls.some((x) => x.p.position === 'GK')) {
     pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
   }
+  // The promised card, last, so nothing above can overwrite it — and in a
+  // random slot, so the reveal animation does not always end on the same beat.
+  // Slot 0 is skipped when a keeper was forced into it.
+  if (pack.guarantee) {
+    const lo = needGK ? 1 : 0;
+    const at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
+    pulls[at] = draw(pack.guarantee);
+  }
   return pulls;
 }
 
@@ -245,16 +267,17 @@ export function storeView() {
           const free = p.cost === 0;
           const locked = !free && p.cost > (s.club.apex || 0);
           return `
-            <article class="store-pack rar-${p.limited ? 'icon' : p.id === 'prime' ? 'special' : p.id}">
+            <article class="store-pack rar-${p.guarantee || (p.id === 'prime' ? 'special' : p.id)}">
               ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
               <div class="sp-art"><span class="sp-mark">UXI</span><i></i></div>
               <b class="sp-name">${p.name}</b>
               <span class="sp-note">${p.note}</span>
+              ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
               <span class="sp-odds">${oddsLine(p)}</span>
               <button class="btn ${locked ? 'ghost' : 'primary'}" data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
                 ${free ? 'Claim free' : `◈ ${p.cost.toLocaleString()}`}
               </button>
-              ${p.limited ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
+              ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
             </article>`;
         }).join('')}
       </div>
@@ -270,7 +293,7 @@ export function storeView() {
           ${Object.entries(counts).map(([id, n]) => {
             const pack = PACKS.find((p) => p.id === id) || PACKS[0];
             return `
-              <button class="locker-pack rar-${pack.limited ? 'icon' : id === 'prime' ? 'special' : id}" data-open-pack="${id}">
+              <button class="locker-pack rar-${pack.guarantee || (id === 'prime' ? 'special' : id)}" data-open-pack="${id}">
                 <span class="lp-art"><i>UXI</i></span>
                 <b>${pack.name}</b>
                 <span class="lp-count">×${n}</span>
@@ -418,7 +441,7 @@ export function render() {
             </label>
           </header>
           <div class="chips" id="filters">
-            ${['all', 'special', 'gold', 'silver', 'bronze'].map((f) => `
+            ${['all', 'icon', 'star', 'special', 'gold', 'silver', 'bronze'].map((f) => `
               <button class="chip ${filter === f ? 'on' : ''}" data-filter="${f}">${f === 'all' ? 'All' : RARITY[f].label}</button>`).join('')}
           </div>
           <div class="chips" id="groupFilters">
@@ -996,7 +1019,9 @@ function runPackAnimation(root, drawn, coins, onDone) {
     const order = { special: 0, gold: 1, silver: 2, bronze: 3 };
     const sorted = drawn.slice().sort((a, b) =>
       (order[a.p.rarity] - order[b.p.rarity]) || (b.p.overall - a.p.overall));
-    const tally = ['special', 'gold', 'silver', 'bronze']
+    // rarest first, and every tier listed — an Icon missing off the summary of
+    // the pack you spent 75,000 on is not a small omission
+    const tally = ['icon', 'star', 'special', 'gold', 'silver', 'bronze']
       .map((r) => [r, pulls.filter((p) => p.rarity === r).length])
       .filter(([, n]) => n > 0)
       .map(([r, n]) => `<span class="ps-tag rar-${r}">${n} ${RARITY[r].label}</span>`)
