@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>APEX XI — FBX to GLB</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; padding: 28px;
+    background: #05070e; color: #eef2fb;
+    font: 15px/1.55 "Inter", system-ui, sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .02em; }
+  p.sub { margin: 0 0 22px; color: #8b97b0; font-size: 13.5px; max-width: 62ch; }
+  #drop {
+    border: 2px dashed rgba(255,255,255,.22); border-radius: 16px;
+    padding: 34px; text-align: center; color: #8b97b0; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.over { border-color: #34e06a; background: rgba(52,224,106,.07); }
+  #list { margin: 18px 0 0; padding: 0; list-style: none; }
+  #list li {
+    display: flex; gap: 12px; align-items: baseline; padding: 7px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13.5px;
+  }
+  #list b { font-weight: 600; min-width: 20ch; }
+  #list span { color: #8b97b0; }
+  #list li.bad b, #list li.bad span { color: #ff6b8a; }
+  button {
+    margin-top: 18px; padding: 11px 20px; border-radius: 11px; cursor: pointer;
+    border: 0; background: #34e06a; color: #04121a; font: 600 14px/1 inherit;
+  }
+  button:disabled { opacity: .4; cursor: default; }
+  #out { margin-top: 14px; font-size: 13.5px; color: #8b97b0; white-space: pre-wrap; }
+  code { background: rgba(255,255,255,.07); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<h1>FBX → GLB</h1>
+<p class="sub">
+  Mixamo hands you the whole character inside every animation download, so ten
+  animations means ten copies of the same mannequin. Drop them all here and this
+  writes one <code>.glb</code>: the mesh and skeleton once, every animation as a
+  named clip. Nothing is uploaded — it runs in this page. Name each file after
+  the move (Mixamo's own filenames are fine); that name becomes the clip name
+  the game asks for.
+</p>
+
+<div id="drop">Drop <b>.fbx</b> files here, or click to choose</div>
+<input id="picker" type="file" accept=".fbx" multiple hidden />
+<ul id="list"></ul>
+<button id="go" disabled>Build GLB</button>
+<div id="out"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { FBXLoader } from './vendor/FBXLoader.js';
+import { GLTFExporter } from './vendor/GLTFExporter.js';
+
+const dropEl = document.getElementById('drop');
+const listEl = document.getElementById('list');
+const goEl = document.getElementById('go');
+const outEl = document.getElementById('out');
+const picker = document.getElementById('picker');
+let files = [];
+
+const clipNameOf = (filename) => filename
+  .replace(/\.fbx$/i, '')
+  .replace(/^[0-9a-f]{6,}-/, '')       // strip an upload hash if there is one
+  .replace(/[\s()]+/g, '_');
+
+function paint() {
+  listEl.innerHTML = files.map((f) => `
+    <li class="${f.error ? 'bad' : ''}">
+      <b>${clipNameOf(f.name)}</b>
+      <span>${f.error || `${(f.size / 1048576).toFixed(1)} MB`}</span>
+    </li>`).join('');
+  goEl.disabled = !files.some((f) => !f.error);
+}
+
+const accept = (fileList) => {
+  files = [...fileList].filter((f) => /\.fbx$/i.test(f.name));
+  paint();
+};
+
+dropEl.addEventListener('click', () => picker.click());
+picker.addEventListener('change', (e) => accept(e.target.files));
+dropEl.addEventListener('dragover', (e) => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragleave', () => dropEl.classList.remove('over'));
+dropEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropEl.classList.remove('over');
+  accept(e.dataTransfer.files);
+});
+
+goEl.addEventListener('click', async () => {
+  goEl.disabled = true;
+  outEl.textContent = 'Reading…';
+  const loader = new FBXLoader();
+  const clips = [];
+  let root = null;
+  let triangles = 0;
+  let bones = 0;
+
+  for (const file of files) {
+    file.error = null;
+    try {
+      const buf = await file.arrayBuffer();
+      const fbx = loader.parse(buf, '');
+      const clip = fbx.animations[0];
+      if (!root) {
+        root = fbx;
+        fbx.traverse((o) => {
+          if (o.isBone) bones += 1;
+          if (o.isMesh || o.isSkinnedMesh) {
+            const g = o.geometry;
+            triangles += (g.index ? g.index.count : g.attributes.position.count) / 3;
+          }
+        });
+      }
+      if (!clip) { file.error = 'no animation in this file'; }
+      else { clip.name = clipNameOf(file.name); clips.push(clip); }
+    } catch (err) {
+      // A file that fails here is damaged rather than unsupported — a partial
+      // download usually. Re-download that one from Mixamo.
+      file.error = `unreadable (${String(err.message).slice(0, 40)})`;
+    }
+    paint();
+  }
+
+  if (!root) { outEl.textContent = 'Nothing readable in that set.'; goEl.disabled = false; return; }
+
+  outEl.textContent = 'Writing GLB…';
+  const glb = await new Promise((res, rej) => {
+    new GLTFExporter().parse(root, res, rej, { binary: true, animations: clips });
+  });
+  const blob = new Blob([glb], { type: 'model/gltf-binary' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'player.glb';
+  a.click();
+
+  const skipped = files.filter((f) => f.error);
+  outEl.textContent = [
+    `${(blob.size / 1048576).toFixed(2)} MB — ${clips.length} clip${clips.length === 1 ? '' : 's'}: `
+      + clips.map((c) => `${c.name} (${c.duration.toFixed(2)}s)`).join(', '),
+    `mesh: ${Math.round(triangles).toLocaleString()} triangles, ${bones} bones`,
+    skipped.length ? `skipped ${skipped.length}: ${skipped.map((f) => f.name).join(', ')}` : '',
+    'Saved as player.glb — drop it into assets/candidates/ and open model-preview.html to check it.',
+  ].filter(Boolean).join('\n');
+  goEl.disabled = false;
+});
+</script>
+</body>
+</html>

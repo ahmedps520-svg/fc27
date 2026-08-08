@@ -306,6 +306,15 @@ js/
   backgrounded. Installed as a PWA it usually starts on its own. Nothing is scheduled while audio
   is blocked, because a suspended context has a stopped clock and everything queued against it
   arrives at once when it resumes.
+- **Turning Mixamo downloads into a model:** open `tools/fbx-to-glb.html` in a browser and drop
+  the `.fbx` files on it. Mixamo puts the whole character inside every animation download, so ten
+  animations means ten copies of the same mesh; the tool writes one `.glb` with the mesh and
+  skeleton once and each animation as a named clip, taking the clip name from the filename. It
+  runs entirely in the page — nothing is uploaded — and it names any file it could not read, which
+  in practice means a download that arrived incomplete. `tools/vendor/` holds the three.js build
+  it needs (a newer one than the game runs: Mixamo now exports FBX 7.7, which the vendored r160
+  loader cannot parse). None of it ships with the game.
+
 - The icon set is generated from one master: `node tools/make-icons.js` resamples
   `assets/brand/icon-source.png` (1024px) into all five PNGs. The PNG reader, the Lanczos
   resampler and the PNG writer in that script are hand-rolled on zlib, so there is still nothing
