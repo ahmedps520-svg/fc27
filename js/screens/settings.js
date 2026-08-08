@@ -152,7 +152,9 @@ export function render() {
            ['Options / Esc', 'Pause']]
           .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
       </div>
-      <p class="disclaimer">${WORLD.clubs.length} clubs · ${WORLD.players.length} players. All fictional.</p>
+      <p class="disclaimer">${WORLD.clubs.length} clubs · ${WORLD.players.length} players.
+        Clubs, leagues and players are fictional, apart from the eight Icon cards,
+        which name real footballers and are not endorsed by or affiliated with them.</p>
     </section>`;
 }
 
