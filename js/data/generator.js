@@ -269,21 +269,19 @@ function buildWorld() {
   const icons = [];
   ICONS.forEach((def) => {
     const stats = { ...ICON_TRAITS[def.trait] };
-    const nation = NATIONS.find((n) => n.name === def.nation) || NATIONS[0];
-    const first = def.name.split(' ')[0];
-    const last = def.name.split(' ').slice(1).join(' ');
     const p = {
       id: `p${++idCounter}`,
       name: def.name,
-      short: `${first[0]}. ${last}`,
+      // spelled out on the blueprint: initialising "Neymar Jr" gives "N. Jr"
+      short: def.short,
       position: def.position,
       overall: 99,
       stats,
       rarity: 'icon',
       icon: true,
       clubId: null,
-      nation: nation.name,
-      nationColors: nation.colors,
+      nation: def.nation,
+      nationColors: def.colors,
       age: 29,
       value: 250_000_000,
       form: 0,

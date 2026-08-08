@@ -318,11 +318,20 @@ They exist only in Limited Edition packs: 75,000 Apex or the 12-win objective,
 packs contain at least one, nothing below 79 rated. `__openPackForTest` is
 exported so that measurement can be repeated.
 
-**The Icons are original players, not real footballers.** That was a deliberate
-departure from what was asked for — names and likenesses of living professionals
-are the one thing in this project that could cause its author real trouble, and
-the game states everything in it is fictional. `ICONS` in `pools.js` is a plain
-list of names if that decision is ever revisited.
+**The Icons name real footballers**, at the project owner's explicit direction:
+an original-name set was built first, the exposure was put to them, and they
+asked for the real names. Worth keeping in mind if this ever goes further than a
+personal project — player names and likenesses are licensed property, and the
+football games that carry them pay heavily for the right. Two things limit the
+exposure deliberately, and should stay:
+- **No likenesses.** The card portraits are the same procedural faces every
+  other player gets, hashed off the name. They do not resemble anyone. Drawing
+  or importing real portraits is a materially different thing from using a name.
+- **The disclaimer in Settings says so**, naming the Icons as the exception to
+  "everything here is fictional" and disclaiming endorsement.
+
+Reverting is one edit: `ICONS` in `pools.js` is a plain list, and nothing else
+in the codebase knows or cares what the names are.
 
 ### Updates and the stale-cache problem
 Symptom: a deployed change never reaches the installed app. An installed PWA is

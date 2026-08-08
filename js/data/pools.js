@@ -135,22 +135,26 @@ export function rarityFor(overall) {
  * The eight Icons. Every one is 99 rated and unattached, and they exist only
  * in Limited Edition packs.
  *
- * These are original players, not real footballers. Naming living professionals
- * on collectible cards in a game that is actually deployed is the one thing in
- * this project that could land its author in real trouble — likeness and name
- * rights are exactly what the licensed games spend their money on — and the
- * game already tells the player everything in it is fictional. Swapping the
- * names is a one-line edit here if that is wanted anyway.
+ * These are real footballers, named at the project owner's explicit direction
+ * after the alternative was offered and declined. Worth knowing what that
+ * means: names and likenesses of real players are licensed property, and the
+ * football games that carry them pay a great deal for the right. This is a
+ * personal project, but it is publicly deployed. If a rights holder ever
+ * objects, swapping this list back to invented names is a single edit here and
+ * nothing else in the codebase needs to change.
+ *
+ * Nations carry their own flag colours rather than drawing from NATIONS, which
+ * is the fictional list the rest of the world is built from.
  */
 export const ICONS = [
-  { name: 'Rinaldo Vasques',  position: 'LW',  nation: 'Cerravia', trait: 'flair' },
-  { name: 'Cassiano Reyes',   position: 'ST',  nation: 'Sunhaven', trait: 'power' },
-  { name: 'Leandro Marchetti', position: 'CAM', nation: 'Ferrenza', trait: 'flair' },
-  { name: 'Emeka Osabuoye',   position: 'CM',  nation: 'Meridia',  trait: 'engine' },
-  { name: 'Ruben de Vries',   position: 'CB',  nation: 'Ostmark',  trait: 'wall' },
-  { name: 'Yuki Tanaharu',    position: 'RW',  nation: 'Kaldoria', trait: 'flair' },
-  { name: 'Anselm Brandt',    position: 'CDM', nation: 'Norlund',  trait: 'wall' },
-  { name: 'Matteo Salvarez',  position: 'GK',  nation: 'Astravia', trait: 'keeper' },
+  { name: 'Lionel Messi',      short: 'L. Messi',    position: 'RW',  nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair' },
+  { name: 'Cristiano Ronaldo', short: 'C. Ronaldo',  position: 'ST',  nation: 'Portugal',  colors: ['#da291c', '#046a38'], trait: 'power' },
+  { name: 'Neymar Jr',         short: 'Neymar Jr',   position: 'LW',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
+  { name: 'Diego Maradona',    short: 'D. Maradona', position: 'CAM', nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair' },
+  { name: 'Zinedine Zidane',   short: 'Z. Zidane',   position: 'CM',  nation: 'France',    colors: ['#0055a4', '#ef4135'], trait: 'engine' },
+  { name: 'Lothar Matthaus',   short: 'L. Matthaus', position: 'CDM', nation: 'Germany',   colors: ['#000000', '#dd0000'], trait: 'engine' },
+  { name: 'Paolo Maldini',     short: 'P. Maldini',  position: 'CB',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'wall' },
+  { name: 'Gianluigi Buffon',  short: 'G. Buffon',   position: 'GK',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'keeper' },
 ];
 
 /** What an icon is best at. Every icon is 99 overall; these shape the radar. */
