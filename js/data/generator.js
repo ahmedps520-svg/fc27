@@ -202,8 +202,10 @@ function buildWorld() {
       name: bp.name,
       short: bp.short,
       tier: bp.tier,
-      crest: { shape: bp.crest, colors: bp.colors },
+      crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
       league: LEAGUE_NAME,
+      founded: bp.founded,
+      ground: bp.ground,
       roster,
       budget: Math.round((12 - bp.tier) * 6_500_000 + 8_000_000),
     });

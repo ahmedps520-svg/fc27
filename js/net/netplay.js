@@ -136,7 +136,10 @@ export function encodeSnapshot(match) {
     ts: performance.now(),
     b: [r2(b.x), r2(b.y), r2(b.z || 0), r2(b.vx), r2(b.vy), r2(b.vz || 0)],
     o: ownerIdx,
-    p: all.map((p) => [r2(p.x), r2(p.y), r2(p.dirX), r2(p.dirY), r2(p.vx), r2(p.vy), r2(p.diveT || 0)]),
+    // Per-player slots are positional and append-only, same rule as PHASES:
+    // a guest on an older build reads the first seven and ignores the rest.
+    p: all.map((p) => [r2(p.x), r2(p.y), r2(p.dirX), r2(p.dirY), r2(p.vx), r2(p.vy),
+      r2(p.diveT || 0), r2(p.stamina ?? 1)]),
     s: [match.teams[0].score, match.teams[1].score],
     ph: PHASES.indexOf(match.phase),
     tm: r2(match.t),
@@ -234,6 +237,8 @@ export class SnapshotView {
       p.dirY = lerp(sa[3], sb[3]);
       p.vx = sa[4]; p.vy = sa[5];
       p.diveT = sa[6];
+      // an older host does not send this, and a full tank is the safe read
+      p.stamina = sa[7] ?? 1;
       p.celebrating = a.ce?.[i] === '1';
     }
 

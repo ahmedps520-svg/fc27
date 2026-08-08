@@ -31,11 +31,23 @@ const MODEL_URL = new URL('../../assets/candidates/player.glb', import.meta.url)
  */
 const ACTIONS = {
   idle: ['offensive_idle', 'idle'],
-  jog: ['jog_forward', 'run_forward', 'running'],
-  sprint: ['strike_foward_jog', 'sprint', 'fast_run', 'jog_forward'],
+  run: ['jog_forward', 'run_forward', 'running'],
   keeperIdle: ['goalkeeper_idle', 'goalkeeper_idle_2_', 'offensive_idle'],
   keeperDive: ['goalkeeper_diving_save', 'goalkeeper_diving_save_2_'],
 };
+
+/**
+ * There is no separate sprint clip in this set, so running is one clip played
+ * faster or slower to match the ground speed. Doing it this way also cures foot
+ * sliding, which a fixed-rate jog always has at every speed but one.
+ *
+ * The first attempt reached for `strike_foward_jog`, which is a jog *with a
+ * strike in it* — so every sprinting player kicked at thin air, continuously.
+ * Nothing in this file should ever map a movement state onto a clip whose name
+ * contains an action.
+ */
+const RUN_CLIP_SPEED = 3.5;      // metres per second the jog clip reads as
+const RUN_RATE = [0.75, 1.85];   // how far the playback rate may be pushed
 
 /* ------------------------------------------------------------------ *
  * Per-player variation
@@ -292,11 +304,9 @@ export function makeRig(model, { kit, ref, index, isGK }) {
 }
 
 /** Which action suits what this player is doing right now. */
-export function actionFor(rig, p) {
+export function actionFor(rig, speed, p) {
   if (p.diveT > 0) return rig.actions.keeperDive ? 'keeperDive' : 'idle';
-  const speed = Math.hypot(p.vx, p.vy);
-  if (speed > 5.6) return 'sprint';
-  if (speed > 1.1) return 'jog';
+  if (speed > 1.1) return 'run';
   return rig.isGK && rig.actions.keeperIdle ? 'keeperIdle' : 'idle';
 }
 
@@ -305,7 +315,16 @@ export function actionFor(rig, p) {
  * @param {number} dt seconds since the last frame
  */
 export function poseRig(rig, p, dt) {
-  const want = actionFor(rig, p);
+  const speed = Math.hypot(p.vx, p.vy);
+  const want = actionFor(rig, speed, p);
+
+  // Walk, jog and sprint are all this one clip, taken at the rate the legs
+  // would actually be turning over at that speed.
+  if (want === 'run' && rig.actions.run) {
+    rig.actions.run.timeScale =
+      Math.min(RUN_RATE[1], Math.max(RUN_RATE[0], speed / RUN_CLIP_SPEED));
+  }
+
   if (want !== rig.current) {
     const next = rig.actions[want] || rig.actions.idle;
     if (next) {

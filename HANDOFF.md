@@ -167,6 +167,25 @@ still built every match and stay visible until the 14 MB model has actually
 arrived, so a kick-off never waits on a download and a failed fetch costs
 nothing but the look.
 
+### Stamina
+Added to the simulation, which had none. Drained by how hard a player is
+actually running rather than by whether a sprint button is held, so the CPU
+tires on the same terms a person does; the drain only bites above two-thirds of
+top speed, and recovery is slower than the drain. A spent player runs at 82% of
+his top speed — slower, never stopped. `physical` sets how fast he empties and
+refills. The bar in the match HUD follows whoever you are steering, which means
+the name on it changes when control switches; that is correct, not a bug.
+
+The three constants were **swept AI-vs-AI, not chosen by feel**, per the rule at
+the bottom of this file. 2.08 goals and 12.0 shots a match after, against 3.20
+and 12.5 before. The first attempt used a drain rate that emptied a sprinting
+player in 26 seconds — remember that a match is 240 real seconds standing in for
+90 minutes, so anything per-second has to be budgeted against that, not against
+a real 90 minutes.
+
+Stamina rides the wire as slot 7 of each player in a snapshot. Those slots are
+positional and **append-only**, same rule as `PHASES`.
+
 ### Scanned players (`js/game/playerModel.js`)
 One Mixamo character, loaded once, `SkeletonUtils.clone`d twenty-two times, one
 `AnimationMixer` each. Four things are worth knowing before touching it:
@@ -192,6 +211,23 @@ One Mixamo character, loaded once, `SkeletonUtils.clone`d twenty-two times, one
   enough at match distance, and the honest ceiling without a second asset.
 - **Root motion is cancelled by pinning the hips.** The clips walk the character
   across the floor; the match owns where he is.
+- **Never map a movement state onto a clip whose name contains an action.** The
+  sprint state was pointed at `strike_foward_jog`, which is a jog *with a strike
+  in it*, so every sprinting player kicked at thin air for the whole match. There
+  is no sprint clip in this set: walking, jogging and sprinting are all
+  `jog_forward` with `timeScale` set from the player's ground speed, which also
+  cures foot sliding.
+
+### Crests (`js/components/crest.js`)
+A badge is an outline, a field pattern, a device and a name band — the first
+version had the outline and the name only, which is why every club looked like a
+placeholder. All four now come from `CLUB_BLUEPRINTS`, and each club's device
+means something about its name. Two things to keep in mind:
+- **There are two builds, chosen by `size`.** Under 28px the device and the band
+  are dropped and the initials are drawn large, because the badge has to survive
+  being 20px in the match scoreline.
+- **The band takes the ink colour and the letters take the field colour.** Doing
+  it the other way round paints dark text onto a dark band.
 
 ### The first-goal freeze (online)
 Reported as "when the first goal scores in online the other opponent's screen
@@ -246,7 +282,11 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
    whether to keep that. If a phone turns out to be hopeless, the honest fix is
    a decimated second asset, not a different default.
 
-2. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
+2. **The crest devices are geometry, not artwork.** Ten hand-written SVG paths.
+   They read at size and they are distinct, but a designer would do better, and
+   the format (one path function per device) makes replacing any one of them a
+   contained change.
+3. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
    Long-standing, never requested. Note that a previous off-ball AI rewrite
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
    only with an AI-vs-AI sweep measuring goals, shots and turnovers.
