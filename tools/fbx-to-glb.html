@@ -45,9 +45,16 @@
   the move (Mixamo's own filenames are fine); that name becomes the clip name
   the game asks for.
 </p>
+<p class="sub">
+  Exactly one download needs to be taken <b>with skin</b> — that is where the
+  body comes from, and it can be any of them. The rest can be "without skin" at
+  a tenth of the size. A <code>.glb</code> this tool made earlier can go back in
+  alongside, so adding a character to a set of animations you already converted
+  costs nothing.
+</p>
 
-<div id="drop">Drop <b>.fbx</b> files here, or click to choose</div>
-<input id="picker" type="file" accept=".fbx" multiple hidden />
+<div id="drop">Drop <b>.fbx</b> or <b>.glb</b> files here, or click to choose</div>
+<input id="picker" type="file" accept=".fbx,.glb,.gltf" multiple hidden />
 <ul id="list"></ul>
 <button id="go" disabled>Build GLB</button>
 <div id="out"></div>
@@ -58,6 +65,7 @@
 <script type="module">
 import * as THREE from './vendor/three.module.js';
 import { FBXLoader } from './vendor/FBXLoader.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { GLTFExporter } from './vendor/GLTFExporter.js';
 
 const dropEl = document.getElementById('drop');
@@ -68,9 +76,43 @@ const picker = document.getElementById('picker');
 let files = [];
 
 const clipNameOf = (filename) => filename
-  .replace(/\.fbx$/i, '')
+  .replace(/\.(fbx|glb|gltf)$/i, '')
   .replace(/^[0-9a-f]{6,}-/, '')       // strip an upload hash if there is one
   .replace(/[\s()]+/g, '_');
+
+const hasSkin = (obj) => {
+  let found = false;
+  obj.traverse((o) => { if (o.isSkinnedMesh) found = true; });
+  return found;
+};
+
+/**
+ * Mixamo namespaces its rig per download session — bones come back as
+ * `mixamorigHips` in one file and `mixamorig5Hips` in the next. Animation
+ * tracks address bones by name, so a clip from one session simply does not
+ * bind to a character from another: the model stands in its T-pose and nothing
+ * moves. Rewriting the prefix to whatever the character actually uses is what
+ * makes a mixed set work.
+ */
+function retargetClips(clips, skeletonRoot) {
+  let target = null;
+  skeletonRoot.traverse((o) => {
+    if (!target && o.isBone) {
+      const m = /^(mixamorig\d*)/i.exec(o.name);
+      if (m) target = m[1];
+    }
+  });
+  if (!target) return 0;
+
+  let renamed = 0;
+  for (const clip of clips) {
+    for (const track of clip.tracks) {
+      const next = track.name.replace(/^mixamorig\d*/i, target);
+      if (next !== track.name) { track.name = next; renamed += 1; }
+    }
+  }
+  return renamed;
+}
 
 /**
  * What the match actually needs, and how to spot it in a filename. Everything
@@ -120,7 +162,7 @@ function paint() {
 }
 
 const accept = (fileList) => {
-  files = [...fileList].filter((f) => /\.fbx$/i.test(f.name));
+  files = [...fileList].filter((f) => /\.(fbx|glb|gltf)$/i.test(f.name));
   paint();
 };
 
@@ -143,15 +185,24 @@ goEl.addEventListener('click', async () => {
   let triangles = 0;
   let bones = 0;
 
+  const gltfLoader = new GLTFLoader();
   for (const file of files) {
     file.error = null;
     try {
       const buf = await file.arrayBuffer();
-      const fbx = loader.parse(buf, '');
-      const clip = fbx.animations[0];
-      if (!root) {
-        root = fbx;
-        fbx.traverse((o) => {
+      const isGLB = /\.(glb|gltf)$/i.test(file.name);
+      const asset = isGLB
+        ? await gltfLoader.parseAsync(buf, '')
+        : loader.parse(buf, '');
+      const scene = isGLB ? asset.scene : asset;
+      const found = asset.animations || [];
+
+      // The character comes from whichever file actually carries one, not from
+      // whichever happens to be first: a set that opens with a "without skin"
+      // download used to export a skeleton with no body on it.
+      if (!root && hasSkin(scene)) {
+        root = scene;
+        scene.traverse((o) => {
           if (o.isBone) bones += 1;
           if (o.isMesh || o.isSkinnedMesh) {
             const g = o.geometry;
@@ -159,13 +210,18 @@ goEl.addEventListener('click', async () => {
           }
         });
       }
+
       // A clip with no tracks is a download that carried the character but no
       // motion. Keeping it would put a dud in the GLB that plays as a T-pose.
-      if (!clip || !clip.tracks.length || !clip.duration) {
-        file.error = 'no animation in this file — re-download it';
+      const usable = found.filter((c) => c.tracks.length && c.duration);
+      if (!usable.length) {
+        file.error = hasSkin(scene)
+          ? 'character only, no animation in it'
+          : 'no animation in this file — re-download it';
       } else {
-        clip.name = clipNameOf(file.name);
-        clips.push(clip);
+        // one clip keeps the filename; a GLB full of them keeps its own names
+        if (usable.length === 1 && !isGLB) usable[0].name = clipNameOf(file.name);
+        clips.push(...usable);
       }
     } catch (err) {
       // A file that fails here is damaged rather than unsupported — a partial
@@ -175,7 +231,16 @@ goEl.addEventListener('click', async () => {
     paint();
   }
 
-  if (!root) { outEl.textContent = 'Nothing readable in that set.'; goEl.disabled = false; return; }
+  if (!root) {
+    outEl.textContent = clips.length
+      ? `Found ${clips.length} animations but no character in any of these files.\n`
+        + 'Add one Mixamo download taken "with skin" — that is the file the body comes from.\n'
+        + 'You can drop this same set again together with it; nothing needs downloading twice.'
+      : 'Nothing readable in that set.';
+    goEl.disabled = false;
+    return;
+  }
+  const renamed = retargetClips(clips, root);
 
   outEl.textContent = 'Writing GLB…';
   const glb = await new Promise((res, rej) => {
@@ -196,6 +261,7 @@ goEl.addEventListener('click', async () => {
       + (untextured ? ' — no textures, so this is a plain mannequin rather than a kitted player'
         : ' — textured'),
     skipped.length ? `skipped ${skipped.length}: ${skipped.map((f) => f.name).join(', ')}` : '',
+    renamed ? `retargeted ${renamed} animation tracks onto this character's skeleton` : '',
     checklist(clips.map((c) => c.name)),
     'Saved as player.glb — drop it into assets/candidates/ and open model-preview.html to check it.',
   ].filter(Boolean).join('\n');
