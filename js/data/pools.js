@@ -44,17 +44,23 @@ export const NATIONS = [
 ];
 
 // 10 fictional clubs. `tier` drives squad quality (1 = strongest).
+/**
+ * `crest` is the outline, `pattern` the field drawn inside it and `device` the
+ * charge sitting on top — see `components/crest.js`. Each club gets its own
+ * combination, and the device is picked to mean something about the name.
+ * `founded` is flavour, shown on the club cards.
+ */
 export const CLUB_BLUEPRINTS = [
-  { name: 'Ironvale FC',       short: 'IRV', tier: 1,  crest: 'shield',   colors: ['#e0294a', '#1a1c22'] },
-  { name: 'Solaris Athletic',  short: 'SOL', tier: 2,  crest: 'circle',   colors: ['#ffb703', '#12263f'] },
-  { name: 'Duskmoor City',     short: 'DSK', tier: 3,  crest: 'hex',      colors: ['#9d4edd', '#10101a'] },
-  { name: 'Verano Sporting',   short: 'VER', tier: 4,  crest: 'diamond',  colors: ['#2ec4b6', '#0b132b'] },
-  { name: 'Kestrel Park',      short: 'KES', tier: 5,  crest: 'chevron',  colors: ['#ff7f11', '#2f3640'] },
-  { name: 'Thornbury Union',   short: 'THB', tier: 6,  crest: 'shield',   colors: ['#4f9d3a', '#d4af37'] },
-  { name: 'Marisol CF',        short: 'MAR', tier: 7,  crest: 'circle',   colors: ['#ff5c8a', '#13315c'] },
-  { name: 'Aurora Nord',       short: 'AUR', tier: 8,  crest: 'triangle', colors: ['#41d3ff', '#2b2d6e'] },
-  { name: 'Bastion Rovers',    short: 'BAS', tier: 9,  crest: 'hex',      colors: ['#6c8ea4', '#c9d6df'] },
-  { name: 'Calderon Zenith',   short: 'CAL', tier: 10, crest: 'diamond',  colors: ['#ff2e88', '#150d1f'] },
+  { name: 'Ironvale FC',       short: 'IRV', tier: 1,  crest: 'shield',   pattern: 'stripes',  device: 'keep',       founded: 1889, ground: 'The Forge',        colors: ['#e0294a', '#1a1c22'] },
+  { name: 'Solaris Athletic',  short: 'SOL', tier: 2,  crest: 'circle',   pattern: 'solid',    device: 'sun',        founded: 1902, ground: 'Helios Park',      colors: ['#ffb703', '#12263f'] },
+  { name: 'Duskmoor City',     short: 'DSK', tier: 3,  crest: 'hex',      pattern: 'halves',   device: 'crescent',   founded: 1921, ground: 'Blackmoor',        colors: ['#9d4edd', '#10101a'] },
+  { name: 'Verano Sporting',   short: 'VER', tier: 4,  crest: 'diamond',  pattern: 'solid',    device: 'leaf',       founded: 1934, ground: 'Estadio Verano',   colors: ['#2ec4b6', '#0b132b'] },
+  { name: 'Kestrel Park',      short: 'KES', tier: 5,  crest: 'chevron',  pattern: 'solid',    device: 'bird',       founded: 1898, ground: 'Kestrel Park',     colors: ['#ff7f11', '#2f3640'] },
+  { name: 'Thornbury Union',   short: 'THB', tier: 6,  crest: 'shield',   pattern: 'quarters', device: 'thorn',      founded: 1876, ground: 'Bramble Lane',     colors: ['#4f9d3a', '#d4af37'] },
+  { name: 'Marisol CF',        short: 'MAR', tier: 7,  crest: 'circle',   pattern: 'hoops',    device: 'wave',       founded: 1947, ground: 'Puerto Marisol',   colors: ['#ff5c8a', '#13315c'] },
+  { name: 'Aurora Nord',       short: 'AUR', tier: 8,  crest: 'triangle', pattern: 'solid',    device: 'star',       founded: 1955, ground: 'Nordlys Arena',    colors: ['#41d3ff', '#2b2d6e'] },
+  { name: 'Bastion Rovers',    short: 'BAS', tier: 9,  crest: 'hex',      pattern: 'stripes',  device: 'battlement', founded: 1883, ground: 'The Rampart',      colors: ['#6c8ea4', '#c9d6df'] },
+  { name: 'Calderon Zenith',   short: 'CAL', tier: 10, crest: 'diamond',  pattern: 'halves',   device: 'peak',       founded: 1968, ground: 'Cumbre Stadium',   colors: ['#ff2e88', '#150d1f'] },
 ];
 
 export const LEAGUE_NAME = 'Apex Premier Division';

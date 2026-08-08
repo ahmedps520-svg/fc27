@@ -26,6 +26,9 @@ export function render(params) {
       <canvas id="gmCanvas"></canvas>
 
       <div class="gm-hud">
+        <!-- the scoreline and the stamina bar stack together on the left; the
+             HUD itself is a row, so they need their own column -->
+        <div class="gm-left">
         <div class="gm-bug">
           <span class="bug-team" style="--team:${home.crest.colors[0]}">
             ${crestSVG(home.crest, home.short, 20)}<b>${home.short}</b>
@@ -36,6 +39,12 @@ export function render(params) {
             <b>${away.short}</b>${crestSVG(away.crest, away.short, 20)}
           </span>
           <span class="bug-clock" id="gmClock">0'</span>
+        </div>
+        <!-- the player you are actually steering, and how much he has left -->
+        <div class="gm-stam" id="gmStam" hidden>
+          <span class="stam-who" id="gmStamWho"></span>
+          <i><b id="gmStamFill"></b></i>
+        </div>
         </div>
         <div class="gm-tools">
           <span class="gm-fps" id="gmFps" hidden>-- FPS</span>
@@ -473,6 +482,32 @@ export function mount(root, params) {
   };
   const matchFps = () => (matchSeconds > 0 ? matchFrames / matchSeconds : 0);
 
+  /* ------------------------------- stamina ------------------------------ *
+   * Shows the man under your thumb, whoever that currently is. Online it is
+   * the seat this machine holds; a guest reads it off the snapshot rather than
+   * simulating it, same as everything else it draws.                        */
+  const stamEl = root.querySelector('#gmStam');
+  const stamWho = root.querySelector('#gmStamWho');
+  const stamFill = root.querySelector('#gmStamFill');
+  let stamShown = -1;
+  let stamName = '';
+  const updateStamina = () => {
+    const seat = match.controllers[online ? online.seat : 0];
+    const p = match.playerOf(seat);
+    if (!p) { stamEl.hidden = true; return; }
+    stamEl.hidden = false;
+    const name = p.ref?.short || p.ref?.name || '';
+    if (name !== stamName) { stamName = name; stamWho.textContent = name; }
+    // whole percent only: this runs every frame and the DOM does not need
+    // to be touched sixty times a second for a bar two hundred pixels wide
+    const pct = Math.round((p.stamina ?? 1) * 100);
+    if (pct === stamShown) return;
+    stamShown = pct;
+    stamFill.style.width = `${pct}%`;
+    stamEl.classList.toggle('low', pct <= 45);
+    stamEl.classList.toggle('spent', pct <= 20);
+  };
+
   let frameErrors = 0;
   let running = true;
   const frame = (now) => {
@@ -494,6 +529,7 @@ export function mount(root, params) {
     const dt = Math.min(0.034, raw);
     last = now;
     countFrame(now, raw);
+    updateStamina();
     for (const inp of inputs) inp.poll(dt);
     updateTouchContext();
     // an online match cannot be frozen — the other player is still out there

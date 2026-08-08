@@ -34,16 +34,25 @@ function clubStats(clubId) {
   };
 }
 
+/** The name anyone would recognise: the best player on the books. */
+function talisman(clubId) {
+  return rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall)[0] || null;
+}
+
 function teamCard(idx, side) {
   const c = WORLD.clubs[idx];
   const s = clubStats(c.id);
   const stars = '★'.repeat(s.stars) + '☆'.repeat(5 - s.stars);
+  const star = talisman(c.id);
   return `
     <div class="ts-card" style="--team:${c.crest.colors[0]};--team2:${c.crest.colors[1]}">
-      <div class="ts-name">${c.name}</div>
+      <div class="ts-head">
+        <div class="ts-name">${c.name}</div>
+        <div class="ts-meta">Est. ${c.founded} · ${c.ground}</div>
+      </div>
       <div class="ts-crest-row">
         <button class="ts-arrow" data-cycle="${side}" data-dir="-1" aria-label="Previous club">◀</button>
-        <div class="ts-crest">${crestSVG(c.crest, c.short, 132)}</div>
+        <div class="ts-crest">${crestSVG(c.crest, c.short, 128)}</div>
         <button class="ts-arrow" data-cycle="${side}" data-dir="1" aria-label="Next club">▶</button>
       </div>
       <div class="ts-stars">${stars}</div>
@@ -51,8 +60,65 @@ function teamCard(idx, side) {
         <div><span>ATT</span><b>${s.att}</b></div>
         <div><span>MID</span><b>${s.mid}</b></div>
         <div><span>DEF</span><b>${s.def}</b></div>
+        <div class="ovr"><span>OVR</span><b>${s.overall}</b></div>
       </div>
-      <div class="ts-league">${WORLD.leagueName}</div>
+      ${star ? `
+        <div class="ts-star">
+          <span class="tss-kicker">Talisman</span>
+          <b>${star.name}</b>
+          <span class="tss-pos">${star.position}</span>
+          <span class="tss-ovr">${star.overall}</span>
+        </div>` : ''}
+      <div class="ts-kit" title="Club colours">
+        <i style="background:${c.crest.colors[0]}"></i>
+        <i style="background:${c.crest.colors[1]}"></i>
+        <span>${WORLD.leagueName}</span>
+      </div>
+    </div>`;
+}
+
+/**
+ * Every club, as a row of badges. The arrows are still there, but stepping one
+ * at a time through ten clubs to reach the one you want is the sort of thing
+ * that only survives because nobody sat down and used it.
+ */
+function clubRail(side, idx, otherIdx) {
+  return `
+    <div class="ts-rail" role="listbox" aria-label="Choose a club">
+      ${WORLD.clubs.map((c, i) => `
+        <button class="ts-chip ${i === idx ? 'on' : ''}" data-pick="${side}" data-idx="${i}"
+                ${i === otherIdx ? 'disabled aria-disabled="true"' : ''}
+                title="${c.name}" aria-label="${c.name}"
+                style="--team:${c.crest.colors[0]}">
+          ${crestSVG(c.crest, c.short, 34)}
+        </button>`).join('')}
+    </div>`;
+}
+
+/**
+ * Head to head. Bars are drawn against the better of the two sides rather than
+ * against 100, because every club in this league sits between 74 and 88 and
+ * bars anchored at zero would all look the same length.
+ */
+function h2h(hIdx, aIdx) {
+  const hc = WORLD.clubs[hIdx];
+  const ac = WORLD.clubs[aIdx];
+  const h = clubStats(hc.id);
+  const a = clubStats(ac.id);
+  const rows = [['ATT', h.att, a.att], ['MID', h.mid, a.mid], ['DEF', h.def, a.def]];
+  return `
+    <div class="ts-h2h" style="--hc:${hc.crest.colors[0]};--ac:${ac.crest.colors[0]}">
+      ${rows.map(([label, x, y]) => {
+    const top = Math.max(x, y) || 1;
+    return `
+        <div class="h2h-row">
+          <b class="${x >= y ? 'win' : ''}">${x}</b>
+          <span class="h2h-bar left"><i style="width:${(x / top) * 100}%"></i></span>
+          <span class="h2h-label">${label}</span>
+          <span class="h2h-bar right"><i style="width:${(y / top) * 100}%"></i></span>
+          <b class="${y >= x ? 'win' : ''}">${y}</b>
+        </div>`;
+  }).join('')}
     </div>`;
 }
 
@@ -63,10 +129,12 @@ export function render() {
         <span class="ts-label">HOME</span>
         <div id="tsHome">${teamCard(homeIdx, 'home')}</div>
         <span class="ts-seat" id="tsSeatH"></span>
+        <div id="tsRailH">${clubRail('home', homeIdx, awayIdx)}</div>
       </div>
 
       <div class="ts-mid">
         <span class="ts-vs">VS</span>
+        <div id="tsH2h">${h2h(homeIdx, awayIdx)}</div>
         <div class="ts-opt">
           <span>Mode</span>
           <div class="seg col" id="modeSeg">
@@ -97,6 +165,7 @@ export function render() {
         <span class="ts-label">AWAY</span>
         <div id="tsAway">${teamCard(awayIdx, 'away')}</div>
         <span class="ts-seat" id="tsSeatA"></span>
+        <div id="tsRailA">${clubRail('away', awayIdx, homeIdx)}</div>
       </div>
 
       <div class="ts-hints">
@@ -132,6 +201,9 @@ export function mount(root) {
   const paint = () => {
     q('#tsHome').innerHTML = teamCard(homeIdx, 'home');
     q('#tsAway').innerHTML = teamCard(awayIdx, 'away');
+    q('#tsRailH').innerHTML = clubRail('home', homeIdx, awayIdx);
+    q('#tsRailA').innerHTML = clubRail('away', awayIdx, homeIdx);
+    q('#tsH2h').innerHTML = h2h(homeIdx, awayIdx);
     seatText();
   };
 
@@ -148,6 +220,17 @@ export function mount(root) {
   root.addEventListener('click', (e) => {
     const cy = e.target.closest('[data-cycle]');
     if (cy) { cycle(cy.dataset.cycle, +cy.dataset.dir); return; }
+
+    const pick = e.target.closest('[data-pick]');
+    if (pick && !pick.disabled) {
+      const i = +pick.dataset.idx;
+      // the two sides cannot be the same club, and the rail already disables
+      // the one the other side holds, so this only guards a stray call
+      if (pick.dataset.pick === 'home') { if (i !== awayIdx) homeIdx = i; }
+      else if (i !== homeIdx) awayIdx = i;
+      paint();
+      return;
+    }
 
     const md = e.target.closest('[data-mode]');
     if (md) {
