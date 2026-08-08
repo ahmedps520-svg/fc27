@@ -177,11 +177,11 @@ refills. The bar in the match HUD follows whoever you are steering, which means
 the name on it changes when control switches; that is correct, not a bug.
 
 The three constants were **swept AI-vs-AI, not chosen by feel**, per the rule at
-the bottom of this file. The figures first recorded here — 2.08 goals, 12.0
-shots — came off a 24-match sweep and were not reliable; re-measured over 40
-matches the same code gives **3.02 goals and 11.95 shots**, against 3.20 and
-12.5 before stamina. The conclusion stands, the numbers were noise. See the
-sweep-size rule at the bottom. The first attempt used a drain rate that emptied a sprinting
+the bottom of this file. Treat the exact figures once recorded here with
+suspicion: every sweep run before `tools/sweep.mjs` existed was unseeded, and
+successive runs of that same code produced 2.08, 3.02 and 2.50 goals a match.
+Stamina does bring goals down and does not touch possession — that much survived
+every sample — but if the numbers matter, re-measure with the seeded tool. The first attempt used a drain rate that emptied a sprinting
 player in 26 seconds — remember that a match is 240 real seconds standing in for
 90 minutes, so anything per-second has to be budgeted against that, not against
 a real 90 minutes.
@@ -412,24 +412,31 @@ guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
 went 446 → 731 players and every position now has gold, special, star and icon
 cards in it.
 
-### The menu
-It was a title, three zeroes and four tiles on the top third of a tablet
-screen. Below the tiles it now carries your division and record, squad rating
-and chemistry, your best card in its own rarity colour, what is unopened in the
-locker, and the objective you are nearest to finishing — each one a button into
-the place that changes it. All of it is suppressed for a save with nothing in
-it: a row of zeroes is worse than the space it fills.
+### The menu — leave it alone
+A "hub" was built under the tiles carrying division, record, squad rating,
+chemistry, best card, locker count and next objective. It was reverted on sight:
+*"janky and cluttered and there is too many things happening at once."* The
+empty space below the tiles is not a problem to be solved. If something really
+has to be surfaced there, it is one thing, not seven.
 
 ## Rules that keep biting
 
 - **Never re-balance the match by feel.** Always sweep AI-vs-AI
   (`new Match(a, b, {human: null})` stepped at 1/60) and measure goals, shots and
   turnovers per match. Target is roughly 2–3 goals and ~11 shots.
-- **Sweep at least 40 matches, in multiples of ten.** The sweep pairs clubs by
-  index against a ten-club league, so anything that is not a whole number of
-  cycles over-weights the first few fixtures. A 20-match run made three settings
-  look 13% apart when a 40-match run put them within 3% — which is noise, and
-  tuning against it is worse than not tuning at all.
+- **Sweep with `node tools/sweep.mjs`, and always on two different seeds.**
+  `sim.js` calls `Math.random` directly, so unseeded runs of *identical* code
+  differ by half a goal a match even at sixty matches. That is larger than most
+  changes being measured, and it has already produced two false results in this
+  project: a passing tweak that looked 13% apart on 20 matches and was within 3%
+  on 40, and an off-ball change that looked like it added goals on one sample
+  and removed them on the next. The tool substitutes a seeded generator so
+  before and after play the same fixtures with the same dice.
+
+  **Anything that does not move a number across two different seeds has not
+  moved it.** Run the sweep on a clean checkout, apply the change, run it again
+  with the same arguments, and compare. Sixty matches per seed is the working
+  minimum.
 - **Cameras must stay inside the bowl.** Only the near touchline is open; the far
   touchline and both goal ends are stands. Outside
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.
