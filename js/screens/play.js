@@ -856,9 +856,12 @@ export function mount(root, params) {
       div = settleDivisionMatch({
         scored: online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score,
         conceded: online ? theirs : a.score,
+        // possession is reported home-first, and "mine" depends on the seat
+        possession: online && online.seat === 1 ? pa : ph,
       });
     } else {
-      update((s) => { s.club.coins += 300 + (online ? mine : h.score) * 80; });
+      // a friendly is pocket money next to a division match
+      update((s) => { s.club.apex += 200 + (online ? mine : h.score) * 60; });
     }
     refreshCoins();
 
@@ -881,7 +884,8 @@ export function mount(root, params) {
           <div class="div-result ${div.promoted ? 'up' : div.relegated ? 'down' : ''}">
             <span class="dr-kicker">${div.promoted ? 'Promoted' : div.relegated ? 'Relegated' : 'Apex Division'}</span>
             <b>${div.toDivision}</b>
-            <span class="dr-reward">◈ ${div.coins.toLocaleString()}${div.packs.length ? ` · ${div.packs.length} pack${div.packs.length > 1 ? 's' : ''}` : ''}</span>
+            <span class="dr-reward">◈ ${div.apex.toLocaleString()}${div.packs.length ? ` · ${div.packs.length} pack${div.packs.length > 1 ? 's' : ''}` : ''}</span>
+            <span class="dr-why">${div.possession}% of the ball</span>
             ${div.objectivesDone.length
               ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
               : ''}

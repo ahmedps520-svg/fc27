@@ -311,6 +311,7 @@ select {
   box-shadow: inset 0 0 26px var(--rar-glow); opacity: .55;
 }
 .rar-special .pcard, .pcard.rar-special { box-shadow: 0 12px 34px var(--rar-glow), inset 0 1px 0 rgba(255, 255, 255, .12); }
+.rar-icon .pcard, .pcard.rar-icon { box-shadow: 0 14px 40px var(--rar-glow), inset 0 1px 0 rgba(255, 255, 255, .18); }
 .pc-sheen {
   position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 2;
   background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .22) 50%, transparent 65%);
@@ -460,6 +461,7 @@ select {
 .pack-btn.rar-silver { --pk: #b9c4d0; }
 .pack-btn.rar-gold { --pk: #f4c95d; }
 .pack-btn.rar-special { --pk: #ff2e88; }
+.pack-btn.rar-icon { --pk: #7af7ff; }
 .pack-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); border-color: var(--pk); }
 .pack-btn:disabled { opacity: .38; cursor: not-allowed; }
 .pack-name { font-family: var(--font-num); font-size: 16px; font-weight: 700; }
@@ -1187,6 +1189,7 @@ body.in-game #screen {
 .store-pack.rar-silver { --pk: #b9c4d0; }
 .store-pack.rar-gold { --pk: #f4c95d; }
 .store-pack.rar-special { --pk: #ff2e88; }
+.store-pack.rar-icon { --pk: #7af7ff; }
 .sp-art {
   position: relative; width: 84px; height: 112px; border-radius: 10px; overflow: hidden;
   display: grid; place-items: center; margin-bottom: 4px;
@@ -1219,6 +1222,7 @@ body.in-game #screen {
 .locker-pack.rar-silver { --pk: #b9c4d0; }
 .locker-pack.rar-gold { --pk: #f4c95d; }
 .locker-pack.rar-special { --pk: #ff2e88; }
+.locker-pack.rar-icon { --pk: #7af7ff; }
 .locker-pack:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); }
 .lp-art {
   width: 52px; height: 70px; border-radius: 8px; display: grid; place-items: center;
@@ -1284,6 +1288,7 @@ body.in-game #screen {
 .ps-tag.rar-silver { background: #b9c4d0; }
 .ps-tag.rar-gold { background: #f4c95d; }
 .ps-tag.rar-special { background: #ff2e88; color: #fff; }
+.ps-tag.rar-icon { background: #7af7ff; color: #04121a; }
 /* a card you already own: banked as coins instead, and said so rather than
    disappearing between the pack and the collection */
 .ps-tag.dup { background: transparent; color: var(--text-dim); border: 1px solid var(--line-strong); }
@@ -1979,3 +1984,36 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   color: var(--muted);
 }
 .setting-note.warn { color: #ffc078; }
+
+/* --------------------- currency, icons and the reset --------------------- */
+.coin-chip.ult { color: #b892ff; border-color: rgba(184, 146, 255, .35); }
+
+/* Icon tier — the eight 99s. Cyan, so it cannot be mistaken for gold. */
+.rar-icon {
+  --rar: #7af7ff;
+  --rar-glow: rgba(122, 247, 255, .75);
+  border-color: rgba(122, 247, 255, .5);
+}
+.store-pack.rar-icon { box-shadow: 0 0 26px rgba(122, 247, 255, .22); }
+.sp-tag {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  padding: 3px 8px; border-radius: 999px;
+  background: #7af7ff; color: #04121a;
+  font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+}
+.store-pack { position: relative; }
+.sp-alt { margin-top: 6px; font-size: 10px; color: var(--text-mute); text-align: center; }
+
+.apology { border-color: rgba(255, 183, 3, .4); }
+.apology p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text); }
+.ap-list { margin: 0 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.ap-list b { color: var(--accent); }
+.ap-note { font-size: 11.5px !important; color: var(--text-dim) !important; }
+
+.dr-why { font-size: 10.5px; color: var(--text-dim); }
+.wallet { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 420px) {
+  /* two balances plus a title do not fit on a small phone; Apex is the one
+     that is actually spendable, so Ultimate is the one that goes */
+  .wallet .ult { display: none; }
+}

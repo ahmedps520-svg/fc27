@@ -4,7 +4,25 @@ import { getState, update, DIVISIONS } from './state.js';
  * Settles an Apex Division result: moves you up or down the ladder, banks the
  * rewards, and ticks objectives. Returns a summary the result screen renders.
  */
-export function settleDivisionMatch({ scored, conceded }) {
+/**
+ * How much Apex a division match pays.
+ *
+ * Two things decide it. The division sets the size of the purse — climbing is
+ * what makes the money worth having — and possession sets a multiplier on top,
+ * because a win where you never had the ball should not pay the same as one
+ * where you controlled the game. The band is deliberately narrow: ±25% is
+ * enough to notice and not enough to make keep-ball the only strategy.
+ *
+ * @param {number} poss percentage of the ball this player's side had, 0-100
+ */
+export function matchApex(div, { won, drew, poss }) {
+  const outcome = won ? 1 : drew ? 0.35 : 0.15;
+  const share = Math.max(0, Math.min(100, Number.isFinite(poss) ? poss : 50));
+  const control = 0.5 + (share / 100);
+  return Math.round(div.reward * outcome * control);
+}
+
+export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
   const before = getState().ultimate;
   const beforeDiv = DIVISIONS[before.divIdx];
   const won = scored > conceded;
@@ -15,7 +33,8 @@ export function settleDivisionMatch({ scored, conceded }) {
     promoted: false, relegated: false,
     fromDivision: beforeDiv.name,
     toDivision: beforeDiv.name,
-    coins: 0,
+    apex: 0,
+    possession: Math.round(possession),
     packs: [],
     objectivesDone: [],
   };
@@ -52,17 +71,17 @@ export function settleDivisionMatch({ scored, conceded }) {
     }
     out.toDivision = DIVISIONS[u.divIdx].name;
 
-    // match reward
-    const reward = won ? div.reward : drew ? Math.round(div.reward * 0.35) : Math.round(div.reward * 0.15);
-    out.coins += reward;
-    s.club.coins += reward;
+    // match reward — division sets the purse, possession scales it
+    const reward = matchApex(div, { won, drew, poss: possession });
+    out.apex += reward;
+    s.club.apex += reward;
     // packs land in the store inventory unopened — you choose when to rip them
     if (won) { out.packs.push('silver'); s.club.packs.push('silver'); }
     if (out.promoted) {
       out.packs.push('gold');
       s.club.packs.push('gold');
-      out.coins += 1500;
-      s.club.coins += 1500;
+      out.apex += 1500;
+      s.club.apex += 1500;
     }
 
     // objectives
@@ -73,8 +92,8 @@ export function settleDivisionMatch({ scored, conceded }) {
       o.done += by;
       if (!wasDone && o.done >= o.need) {
         out.objectivesDone.push(o.text);
-        out.coins += o.coins;
-        s.club.coins += o.coins;
+        out.apex += o.apex;
+        s.club.apex += o.apex;
         out.packs.push(o.pack);
         s.club.packs.push(o.pack);
       }
@@ -84,6 +103,7 @@ export function settleDivisionMatch({ scored, conceded }) {
     if (u.streak >= 3) bump('streak3', 3);
     if (conceded === 0) bump('clean2');
     if (u.divIdx >= 5) bump('div5');
+    if (won) bump('win12');
   });
 
   return out;

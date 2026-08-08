@@ -1,5 +1,6 @@
 import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, POSITIONS, rarityFor,
+  ICONS, ICON_TRAITS,
 } from './pools.js';
 
 /* ------------------------------------------------------------------ *
@@ -261,6 +262,37 @@ function buildWorld() {
     freeAgents.push(p.id);
   });
 
+  /* -------------------------------- Icons -------------------------------- *
+   * Appended last, for the same id-stability reason as everything else in this
+   * block. Eight players, all 99, all unattached, and the only way to one is a
+   * Limited Edition pack.                                                     */
+  const icons = [];
+  ICONS.forEach((def) => {
+    const stats = { ...ICON_TRAITS[def.trait] };
+    const nation = NATIONS.find((n) => n.name === def.nation) || NATIONS[0];
+    const first = def.name.split(' ')[0];
+    const last = def.name.split(' ').slice(1).join(' ');
+    const p = {
+      id: `p${++idCounter}`,
+      name: def.name,
+      short: `${first[0]}. ${last}`,
+      position: def.position,
+      overall: 99,
+      stats,
+      rarity: 'icon',
+      icon: true,
+      clubId: null,
+      nation: nation.name,
+      nationColors: nation.colors,
+      age: 29,
+      value: 250_000_000,
+      form: 0,
+    };
+    players.push(p);
+    freeAgents.push(p.id);
+    icons.push(p.id);
+  });
+
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const fixtures = buildFixtures(clubs.map((c) => c.id), rand);
 
@@ -271,6 +303,7 @@ function buildWorld() {
     players,
     playersById: byId,
     freeAgents,
+    icons,
     fixtures,
   };
 }

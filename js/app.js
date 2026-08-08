@@ -26,10 +26,14 @@ const ACCENTS = {
   amber: { accent: '#ffb703', soft: 'rgba(255,183,3,.18)' },
 };
 
+/** Shown in Settings so a player can say which build they are actually on. */
+export const APP_VERSION = 'v7';
+
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
 const backBtn = document.getElementById('backBtn');
 const coinsEl = document.getElementById('coins');
+const ultEl = document.getElementById('ultCoins');
 
 let current = 'menu';
 let activeCleanup = null;
@@ -43,7 +47,9 @@ export function applyTheme() {
 }
 
 export function refreshCoins() {
-  coinsEl.textContent = getState().club.coins.toLocaleString();
+  const c = getState().club;
+  coinsEl.textContent = (c.apex || 0).toLocaleString();
+  if (ultEl) ultEl.textContent = (c.ultimate || 0).toLocaleString();
 }
 
 // Career is shut for now. Guarding the route rather than only the tile means a
@@ -173,8 +179,58 @@ window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
+/* ------------------------------------------------------------------ *
+ * Updates
+ *
+ * Registering a service worker and then never speaking to it again is how an
+ * installed game gets stuck on the build it was installed with. A home-screen
+ * PWA is rarely closed, so the page can sit on an old worker indefinitely:
+ * the new one downloads, installs, and then waits politely forever.
+ *
+ * So: check for a new worker on load and every time the app comes back to the
+ * foreground, tell a waiting one to take over, and reload once when it does.
+ * ------------------------------------------------------------------ */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* offline play just won't be available */ });
+  window.addEventListener('load', async () => {
+    try {
+      // updateViaCache 'none' keeps the browser from answering the update
+      // check out of its own HTTP cache, which is the classic reason an
+      // update never lands however many times you reopen the app
+      const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+
+      const nudge = () => {
+        if (reg.waiting) reg.waiting.postMessage('skip-waiting');
+      };
+      nudge();
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          // only a *replacement* matters; the very first install has no
+          // controller and must not trigger a reload
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            toast('Update ready — reloading', 'info');
+            nudge();
+          }
+        });
+      });
+
+      const check = () => { reg.update().catch(() => {}); };
+      check();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+      // and hourly, for a session left open on a tablet all afternoon
+      setInterval(check, 60 * 60 * 1000);
+    } catch { /* offline play just won't be available */ }
+  });
+
+  // The new worker has taken control. Reload once so the running page is the
+  // build the worker is now serving; the guard stops a reload loop.
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
   });
 }

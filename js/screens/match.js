@@ -182,7 +182,7 @@ function flashGoal(root, side) {
 function commitResult(params, result) {
   if (params.mode !== 'career') {
     const reward = 350 + result.homeGoals * 60 + result.awayGoals * 20;
-    update((s) => { s.club.coins += reward; });
+    update((s) => { s.club.apex += reward; });
     refreshCoins();
     return;
   }
@@ -211,7 +211,7 @@ function commitResult(params, result) {
     c.budget += won ? 2_400_000 : drew ? 1_200_000 : 700_000;
     c.resolvedMatchday = c.matchday;
     c.matchday += 1;
-    s.club.coins += won ? 900 : drew ? 500 : 300;
+    s.club.apex += won ? 900 : drew ? 500 : 300;
   });
   refreshCoins();
 }
