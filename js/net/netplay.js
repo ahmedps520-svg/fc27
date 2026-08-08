@@ -120,7 +120,12 @@ export class RemoteInput {
 /* ------------------------------------------------------------------ *
  * Host -> guest: world snapshots
  * ------------------------------------------------------------------ */
-const PHASES = ['kickoff', 'play', 'goal', 'corner', 'goalkick', 'throwin', 'freekick', 'end'];
+/**
+ * Phase names are sent as an index into this list, so entries may be appended
+ * but never reordered — a host and a guest on different builds have to agree.
+ * `half` was missing, which made the guest read half time as ordinary play.
+ */
+const PHASES = ['kickoff', 'play', 'goal', 'corner', 'goalkick', 'throwin', 'freekick', 'end', 'half'];
 
 export function encodeSnapshot(match) {
   const all = [...match.teams[0].players, ...match.teams[1].players];
@@ -138,6 +143,17 @@ export function encodeSnapshot(match) {
     c: match.controllers.map((c) => c.activeIdx),
     ce: all.map((p) => (p.celebrating ? 1 : 0)).join(''),
     bn: match.banner || '',
+    // Who scored, and who put it in. These are written by the simulation, so
+    // the guest — which never simulates — has no way to know them otherwise,
+    // and the goal card and the replay camera both need them.
+    gt: match.goalTeam ?? -1,
+    sn: match.scorerName || '',
+    // shots, shots on target and time on the ball, so the guest's match facts
+    // and full-time screen are the numbers the host is looking at rather than
+    // zeroes and a flat 50/50
+    st: [match.teams[0].shots, match.teams[0].onTarget,
+      match.teams[1].shots, match.teams[1].onTarget,
+      r2(match.teams[0].poss), r2(match.teams[1].poss)],
   };
 }
 
@@ -226,6 +242,13 @@ export class SnapshotView {
     m.phase = PHASES[a.ph] || 'play';
     m.t = a.tm;
     m.banner = a.bn;
+    if (a.gt >= 0) m.goalTeam = a.gt;
+    if (a.sn) m.scorerName = a.sn;
+    if (a.st) {
+      m.teams[0].shots = a.st[0]; m.teams[0].onTarget = a.st[1];
+      m.teams[1].shots = a.st[2]; m.teams[1].onTarget = a.st[3];
+      if (a.st.length > 4) { m.teams[0].poss = a.st[4]; m.teams[1].poss = a.st[5]; }
+    }
     a.c?.forEach((idx, i) => { if (m.controllers[i]) m.controllers[i].activeIdx = idx; });
   }
 }

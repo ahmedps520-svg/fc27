@@ -130,6 +130,10 @@ a second late, and the host has no input delay. It keeps the match engine honest
 cheap. Pausing does not stop an online match, and if someone quits the other player is awarded
 the win.
 
+Anything the simulation knows and the guest cannot derive has to ride in the snapshot, or the
+guest is left guessing: who scored and who put it in, and the shot counts behind the match facts,
+travel with the world state for exactly that reason.
+
 ## What's in it
 
 | Screen | What it does |

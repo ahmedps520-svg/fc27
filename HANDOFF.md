@@ -166,6 +166,37 @@ is the one already set up in `assets/candidates/` — a rigged `.glb` (Mixamo is
 free, needs an Adobe login, and supplies run/idle/kick), then GLTFLoader plus
 skinning wired into `renderGL`, 22 instances sharing one geometry.
 
+### The first-goal freeze (online)
+Reported as "when the first goal scores in online the other opponent's screen
+freezes for the whole game", and that is exactly what happened.
+
+`goalTeam` and `scorerName` are written by the simulation. A guest never
+simulates, so both were `undefined` there, and nothing in the snapshot carried
+them. The moment a snapshot moved the guest's phase to `goal`, the frame loop
+ran `match.teams[match.goalTeam]` — `teams[undefined]` — and threw a TypeError
+reading `.colors` (and `.dir`, a few lines earlier, in `captureGoal`).
+
+What turned one line into a dead match: `raf = requestAnimationFrame(frame)`
+was the **last statement of the frame body**, so anything that threw above it
+skipped the request and the loop was never scheduled again. The socket stayed
+up and the host played on, which is why it looked like a freeze rather than a
+crash.
+
+Three fixes, and the third is the one that matters most:
+1. `gt` and `sn` ride in the snapshot, so the guest knows who scored — its goal
+   card and replay camera were wrong even when they did not throw.
+2. `scoringTeam()` falls back to whichever score moved, so a missing field is
+   never read as `teams[undefined]` again.
+3. **The frame is wrapped, and the next one is requested from a `finally`.** A
+   throw now costs one frame and logs once, not the rest of the match.
+
+Also folded in: shots and shots-on-target ride in the snapshot and the guest
+rebuilds its scorer list from `gt`/`sn`, so its match facts and full-time screen
+show real numbers instead of zeroes; the replay advances against the clock
+rather than per frame, so a guest at 30 fps no longer sits out twice as much of
+the match as the host; and a stale stream during a replay no longer claims to
+be "reconnecting…", since the host stops broadcasting while it plays one.
+
 ---
 
 ## Open items

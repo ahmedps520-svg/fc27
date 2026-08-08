@@ -178,6 +178,21 @@ export function mount(root, params) {
   };
 
   /**
+   * Which team just scored. `goalTeam` is written by the simulation, so on a
+   * guest — which never simulates — it arrives in the snapshot, and on an older
+   * host it may not arrive at all. Falling back to whichever score moved keeps
+   * every consumer of this honest rather than reading `teams[undefined]`.
+   */
+  let lastScores = [match.teams[0].score, match.teams[1].score];
+  const scoringTeam = () => {
+    const gt = match.goalTeam;
+    if (gt === 0 || gt === 1) return match.teams[gt];
+    const moved = match.teams[0].score !== lastScores[0] ? 0
+      : match.teams[1].score !== lastScores[1] ? 1 : null;
+    return moved === null ? null : match.teams[moved];
+  };
+
+  /**
    * Cut the clip the instant the ball crosses the line.
    *
    * It used to be windowed out of the rolling tape when the celebration ended,
@@ -189,10 +204,11 @@ export function mount(root, params) {
    */
   let clip = null;
   const captureGoal = () => {
+    const team = scoringTeam();
     clip = {
       frames: tape.slice(Math.max(0, tape.length - PRE_FRAMES)),
       post: 0,
-      goalX: match.teams[match.goalTeam].dir > 0 ? PITCH.w : 0,
+      goalX: team && team.dir > 0 ? PITCH.w : 0,
     };
   };
 
@@ -420,7 +436,31 @@ export function mount(root, params) {
   }
 
   /* -------------------------------- loop ------------------------------- */
+  /**
+   * One frame. Everything below is wrapped so that a throw costs a frame and
+   * not the match: the next frame is requested from a `finally`, because the
+   * request used to be the last statement of the body and anything that threw
+   * above it silently ended the game. That is what turned a missing `goalTeam`
+   * on a guest — one line, at the first goal — into a screen frozen for
+   * ninety minutes while the other player carried on.
+   */
+  let frameErrors = 0;
+  let running = true;
   const frame = (now) => {
+    if (!running) return;
+    try {
+      step(now);
+    } catch (err) {
+      frameErrors += 1;
+      // noisy once, then quiet: a broken frame usually breaks every frame
+      if (frameErrors <= 3) console.error('[match] frame failed, continuing:', err);
+      if (frameErrors === 4) console.error('[match] further frame errors suppressed');
+    } finally {
+      if (running) raf = requestAnimationFrame(frame);
+    }
+  };
+
+  const step = (now) => {
     const dt = Math.min(0.034, (now - last) / 1000);
     last = now;
     for (const inp of inputs) inp.poll(dt);
@@ -452,7 +492,11 @@ export function mount(root, params) {
           applyFrame(replay.frames[Math.min(N - 1, Math.floor(replay.i))]);
           const t = replay.i / N;
           replayCamera(replay.cam, match.ball, replay.goalX, t);
-          replay.i += playbackSpeed(t);
+          // advanced against the clock, not the frame: the tape was recorded at
+          // 60 Hz, and online both machines roll their own copy — a guest at
+          // 30 fps would otherwise sit out twice as much of the match as the
+          // host does
+          replay.i += playbackSpeed(t) * dt * 60;
         } else {
           // Hold on the finish: the ball sits in the net, everyone frozen, so
           // the goal actually registers before we cut back to the match.
@@ -510,13 +554,17 @@ export function mount(root, params) {
 
     // goal card rides the celebration phase
     if (match.phase === 'goal' && lastPhase !== 'goal') {
-      const t = match.teams[match.goalTeam];
+      const t = scoringTeam();
       goalCard.hidden = false;
-      goalCard.style.setProperty('--team', t.colors[0]);
+      goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
-      gcScore.textContent = `${t.short}  ${match.teams[0].score} – ${match.teams[1].score}`;
+      gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
       void goalCard.offsetWidth;
       goalCard.classList.add('show');
+      // A guest never simulates, so nothing has written this goal into the
+      // scorer list its full-time screen reads from. Rebuild it from what the
+      // snapshot carried.
+      if (view && t) t.scorers.push({ name: match.scorerName || '', minute: match.minute() });
     } else if (match.phase !== 'goal' && lastPhase === 'goal') {
       goalCard.classList.remove('show');
       goalCard.hidden = true;
@@ -536,12 +584,13 @@ export function mount(root, params) {
     }
     if (online) {
       const q = qualityLabel(rtt);
-      const lost = view?.stale;
+      // the host stops broadcasting while it plays its own replay, so a stale
+      // stream during one is expected rather than a connection problem
+      const lost = view?.stale && !replay;
       netEl.textContent = lost ? 'reconnecting…' : `${online.oppName} · ${q.text}`;
       netEl.className = `gm-net ${lost ? 'bad' : q.cls}`;
     }
-
-    raf = requestAnimationFrame(frame);
+    lastScores = [match.teams[0].score, match.teams[1].score];
   };
   raf = requestAnimationFrame(frame);
 
@@ -792,6 +841,9 @@ export function mount(root, params) {
   root.querySelector('#gmPause').addEventListener('click', () => { if (!ended) setPaused(!paused); });
 
   return () => {
+    // the loop re-arms itself from a `finally`, so leaving has to say stop as
+    // well as cancelling the frame already in flight
+    running = false;
     cancelAnimationFrame(raf);
     stopCrowd();
     gl?.dispose();

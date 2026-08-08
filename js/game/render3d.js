@@ -800,7 +800,9 @@ function drawBanner(ctx, match, w, h, kits) {
   ctx.fillRect(0, 0, w, h);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = isGoal ? shade(kits[match.goalTeam], 1.25) : '#fff';
+  // goalTeam is written by the simulation, so it can be missing on a guest
+  const goalKit = kits[match.goalTeam];
+  ctx.fillStyle = isGoal && goalKit ? shade(goalKit, 1.25) : '#fff';
   ctx.font = `800 ${Math.round(Math.min(w * 0.11, 96))}px "Bahnschrift", system-ui, sans-serif`;
   ctx.fillText(match.banner, w / 2, h / 2);
 }
