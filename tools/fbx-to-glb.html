@@ -32,6 +32,11 @@
   }
   button:disabled { opacity: .4; cursor: default; }
   #out { margin-top: 14px; font-size: 13.5px; color: #8b97b0; white-space: pre-wrap; }
+  .opt { display: inline-flex; gap: 9px; align-items: center; margin-bottom: 14px; font-size: 13.5px; color: #8b97b0; }
+  .opt select {
+    background: rgba(255,255,255,.06); color: #eef2fb; font: inherit;
+    border: 1px solid rgba(255,255,255,.2); border-radius: 9px; padding: 7px 10px;
+  }
   code { background: rgba(255,255,255,.07); padding: 1px 5px; border-radius: 5px; }
 </style>
 </head>
@@ -52,6 +57,16 @@
   alongside, so adding a character to a set of animations you already converted
   costs nothing.
 </p>
+
+<label class="opt">
+  Texture size
+  <select id="texSize">
+    <option value="512">512 — smallest</option>
+    <option value="1024" selected>1024 — good for a match camera</option>
+    <option value="2048">2048 — close-ups</option>
+    <option value="0">leave as they are</option>
+  </select>
+</label>
 
 <div id="drop">Drop <b>.fbx</b> or <b>.glb</b> files here, or click to choose</div>
 <!-- No `accept` filter on purpose: iOS resolves it through its own type
@@ -83,6 +98,37 @@ const clipNameOf = (filename) => filename
   .replace(/\.(fbx|glb|gltf)$/i, '')
   .replace(/^[0-9a-f]{6,}-/, '')       // strip an upload hash if there is one
   .replace(/[\s()]+/g, '_');
+
+/**
+ * A character exported with its textures untouched is enormous — one arrived at
+ * 55 MB, which GitHub will not take and a phone certainly will not download.
+ * Almost all of that is image data written out as PNG at whatever resolution
+ * the artist worked at. Capping the size and encoding as JPEG is the entire
+ * difference between unusable and shippable, and at a match camera nobody can
+ * tell. Maps that carry transparency stay PNG, since JPEG has no alpha and the
+ * hair would turn into a solid block.
+ */
+function setTextureFormat(root) {
+  const seen = new Set();
+  let jpeg = 0;
+  let kept = 0;
+  root.traverse((o) => {
+    for (const m of [].concat(o.material || [])) {
+      if (!m) continue;
+      const needsAlpha = m.transparent || m.alphaTest > 0;
+      for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap',
+        'emissiveMap', 'aoMap', 'specularMap', 'bumpMap']) {
+        const tex = m[key];
+        if (!tex || seen.has(tex)) continue;
+        seen.add(tex);
+        if (needsAlpha) { kept += 1; continue; }
+        tex.userData.mimeType = 'image/jpeg';
+        jpeg += 1;
+      }
+    }
+  });
+  return { jpeg, kept, total: seen.size };
+}
 
 const hasSkin = (obj) => {
   let found = false;
@@ -253,10 +299,16 @@ goEl.addEventListener('click', async () => {
     return;
   }
   const renamed = retargetClips(clips, root);
+  const tex = setTextureFormat(root);
+  const cap = Number(document.getElementById('texSize').value) || Infinity;
 
   outEl.textContent = 'Writing GLB…';
   const glb = await new Promise((res, rej) => {
-    new GLTFExporter().parse(root, res, rej, { binary: true, animations: clips });
+    new GLTFExporter().parse(root, res, rej, {
+      binary: true,
+      animations: clips,
+      maxTextureSize: cap,
+    });
   });
   const blob = new Blob([glb], { type: 'model/gltf-binary' });
   const a = document.createElement('a');
@@ -271,7 +323,10 @@ goEl.addEventListener('click', async () => {
       + clips.map((c) => `${c.name} (${c.duration.toFixed(2)}s)`).join(', '),
     `mesh: ${Math.round(triangles).toLocaleString()} triangles, ${bones} bones`
       + (untextured ? ' — no textures, so this is a plain mannequin rather than a kitted player'
-        : ' — textured'),
+        : ` — ${tex.total} texture${tex.total === 1 ? '' : 's'}`
+          + (cap === Infinity ? ' at their original size' : `, capped at ${cap}px`)
+          + (tex.jpeg ? `, ${tex.jpeg} written as JPEG` : '')
+          + (tex.kept ? ` (${tex.kept} kept as PNG for transparency)` : '')),
     skipped.length ? `skipped ${skipped.length}: ${skipped.map((f) => f.name).join(', ')}` : '',
     renamed ? `retargeted ${renamed} animation tracks onto this character's skeleton` : '',
     checklist(clips.map((c) => c.name)),
