@@ -190,6 +190,17 @@ Three fixes, and the third is the one that matters most:
 3. **The frame is wrapped, and the next one is requested from a `finally`.** A
    throw now costs one frame and logs once, not the rest of the match.
 
+Confirmed both ways. In a real two-client match the guest froze at 55' and 0-0
+while the host played on to 58' with the link still reading 4 ms. Goals are too
+rare to test on (four test matches finished 0-0), so the repeatable version
+takes the last snapshot a live guest received, flips its phase to `goal`, and
+hands it back to that guest's own socket — the same packet a scoring host
+sends. Before: `TypeError: Cannot read properties of undefined (reading 'dir')`
+and a clock stuck on 1' for the next 28 seconds. After: no error, clock runs
+2' → 12' straight through. Repeated with `gt`/`sn`/`st` stripped from the packet,
+standing in for a host on the old build: still fine, which is the score-delta
+fallback doing its job. The script is `goalpacket.mjs` in the session scratch.
+
 Also folded in: shots and shots-on-target ride in the snapshot and the guest
 rebuilds its scorer list from `gt`/`sn`, so its match facts and full-time screen
 show real numbers instead of zeroes; the replay advances against the clock
