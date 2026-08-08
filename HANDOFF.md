@@ -214,15 +214,32 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
 
 ## Open items
 
-1. **Player models, for real.** The procedural figures are now properly
-   proportioned, but photoreal needs a scanned mesh and textures, which cannot
-   be authored from code. Free, directly-downloadable *footballer* models don't
-   exist: Poly.pizza has none, Sketchfab and Mixamo have good ones but need a
-   login. Get a `.glb` from Mixamo (free Adobe account, and it supplies
-   run/idle/kick animations), drop it in `assets/candidates/`, and the preview
-   page will show it. Budget roughly 15k triangles per model — there are 22 on
-   the pitch. Wiring it in means GLTFLoader plus a skinned rig in `renderGL`,
-   replacing `buildPlayer`/`posePlayer`.
+1. **Player models — the asset has arrived, the integration has not.**
+   `assets/candidates/player.glb` is a Mixamo character (Ch38) in a full kit
+   with 55 clips, built with `tools/fbx-to-glb.html`. 14.24 MB: 7.72 MB mesh,
+   3.02 MB animation, 1.87 MB textures. 48,140 triangles, 7 skinned meshes,
+   two materials (`Ch38_body`, `Ch38_hair`).
+
+   Three things were checked before anyone builds on it:
+   - **It animates.** idle, jog, kick and the keeper's diving save all play off
+     the merged file.
+   - **Team colours are possible.** Skin and kit share one atlas, so tinting the
+     material would give every player a coloured face. The kit is the only part
+     of that atlas which is pale *and* unsaturated — skin, hair and boots all
+     carry saturation or darkness — so recolouring pixels above about 0.45
+     lightness and below 0.22 saturation turns the strip alone. Proven in red,
+     blue and keeper green with the face untouched. Do it once per kit at load
+     and share the texture across that team's eleven.
+   - **The triangle count is the open question.** 48k each against ~15k budgeted;
+     22 of them is a million triangles. Fielding the two keepers costs 96k and
+     is obviously affordable. All 22 needs measuring on a real phone, and wants
+     a Settings toggle rather than a guess, with the procedural rig as the other
+     option.
+
+   What is left: load the GLB once, `SkeletonUtils.clone` per player (it is not
+   vendored yet), an `AnimationMixer` each, a map from match state to clip, and
+   cross-fades. The scene is z-up and the asset is y-up in centimetres, so the
+   clone needs `rotation.x = π/2` and a scale of about 1/100.
 2. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
    Long-standing, never requested. Note that a previous off-ball AI rewrite
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
