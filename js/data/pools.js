@@ -156,6 +156,19 @@ export const ICONS = [
   { name: 'Lothar Matthaus',   short: 'L. Matthaus', position: 'CDM', nation: 'Germany',   colors: ['#000000', '#dd0000'], trait: 'engine' },
   { name: 'Paolo Maldini',     short: 'P. Maldini',  position: 'CB',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'wall' },
   { name: 'Gianluigi Buffon',  short: 'G. Buffon',   position: 'GK',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'keeper' },
+  // `added` marks everything appended after the first eight. It exists purely
+  // so the generator can hand these ids out after the Stars below, leaving the
+  // original twenty named cards pointing at the same players they always did.
+  { name: 'Roberto Carlos',    short: 'R. Carlos',   position: 'LB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', added: true },
+  { name: 'Cafu',              short: 'Cafu',        position: 'RB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', added: true },
+  { name: 'Ryan Giggs',        short: 'R. Giggs',    position: 'LM',  nation: 'Wales',     colors: ['#c8102e', '#00b140'], trait: 'flair',    added: true },
+  { name: 'David Beckham',     short: 'D. Beckham',  position: 'RM',  nation: 'England',   colors: ['#ffffff', '#ce1124'], trait: 'engine',   added: true },
+  // A 4-3-3 asks for two centre-backs and two central midfielders, and 4-4-2
+  // for two strikers, so one Icon per position still could not field an Icon
+  // XI. These three are the duplicates that close it.
+  { name: 'Franz Beckenbauer', short: 'F. Beckenbauer', position: 'CB', nation: 'Germany', colors: ['#000000', '#dd0000'], trait: 'wall',   added: true },
+  { name: 'Xavi Hernandez',    short: 'Xavi',        position: 'CM',  nation: 'Spain',     colors: ['#c60b1e', '#ffc400'], trait: 'engine',   added: true },
+  { name: 'Ronaldo Nazario',   short: 'R. Nazario',  position: 'ST',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'power',    added: true },
 ];
 
 /**
@@ -179,6 +192,15 @@ export const STARS = [
   { name: 'Virgil van Dijk', short: 'V. van Dijk', position: 'CB',  nation: 'Netherlands', colors: ['#ae1c28', '#21468b'], trait: 'wall' },
   { name: 'Achraf Hakimi',   short: 'A. Hakimi',   position: 'RB',  nation: 'Morocco',     colors: ['#c1272d', '#006233'], trait: 'engine' },
   { name: 'Alisson',         short: 'Alisson',     position: 'GK',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'keeper' },
+  // appended after the originals — see the note on ICONS
+  { name: 'Alphonso Davies', short: 'A. Davies',   position: 'LB',  nation: 'Canada',      colors: ['#ff0000', '#ffffff'], trait: 'fullback', added: true },
+  { name: 'Jeremy Doku',     short: 'J. Doku',     position: 'LM',  nation: 'Belgium',     colors: ['#000000', '#fdda24'], trait: 'flair',    added: true },
+  { name: 'Bukayo Saka',     short: 'B. Saka',     position: 'RM',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'flair',    added: true },
+  { name: 'William Saliba',  short: 'W. Saliba',   position: 'CB',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'wall',     added: true },
+  { name: 'Declan Rice',     short: 'D. Rice',     position: 'CDM', nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'wall',     added: true },
+  { name: 'Mohamed Salah',   short: 'M. Salah',    position: 'RW',  nation: 'Egypt',       colors: ['#c8102e', '#ffffff'], trait: 'power',    added: true },
+  { name: 'Harry Kane',      short: 'H. Kane',     position: 'ST',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'power',    added: true },
+  { name: 'Gianluigi Donnarumma', short: 'G. Donnarumma', position: 'GK', nation: 'Italy', colors: ['#0064aa', '#ffffff'], trait: 'keeper',   added: true },
 ];
 
 /** Star radars — the same shapes as the Icons, a rung down. */
@@ -187,7 +209,8 @@ export const STAR_TRAITS = {
   power:  { pace: 93, shooting: 93, passing: 76, dribbling: 87, defending: 40, physical: 88 },
   engine: { pace: 84, shooting: 84, passing: 92, dribbling: 88, defending: 74, physical: 84 },
   wall:   { pace: 78, shooting: 56, passing: 80, dribbling: 68, defending: 92, physical: 91 },
-  keeper: { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
+  keeper:   { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
+  fullback: { pace: 93, shooting: 72, passing: 86, dribbling: 86, defending: 88, physical: 84 },
 };
 
 /** What an icon is best at. Every icon is 99 overall; these shape the radar. */
@@ -196,5 +219,6 @@ export const ICON_TRAITS = {
   power:  { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },
   engine: { pace: 88, shooting: 88, passing: 99, dribbling: 94, defending: 78, physical: 88 },
   wall:   { pace: 84, shooting: 62, passing: 84, dribbling: 74, defending: 99, physical: 97 },
-  keeper: { pace: 68, shooting: 42, passing: 88, dribbling: 62, defending: 99, physical: 95 },
+  keeper:   { pace: 68, shooting: 42, passing: 88, dribbling: 62, defending: 99, physical: 95 },
+  fullback: { pace: 99, shooting: 84, passing: 93, dribbling: 92, defending: 92, physical: 90 },
 };

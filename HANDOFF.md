@@ -342,8 +342,20 @@ appended last in the generator for the usual id-stability reason. `rarityFor`
 deliberately never returns `'icon'` — the tier is stamped on by hand, or a 97
 turning up in the league would silently join it.
 
-There is a second named tier below them: twelve **Stars** at 92, also real
-players, also unattached.
+There is a second named tier below them: twenty **Stars** at 92, also real
+players, also unattached. Fifteen Icons and twenty Stars, covering every
+position in both tiers — a pure Icon XI fills a 4-3-3 or a 4-4-2 on exact
+positions, which is why there are two centre-backs, two central midfielders and
+two strikers among them rather than a tidy one-per-position twelve.
+
+**Named cards are emitted in two waves.** Ids are handed out in creation order,
+and the original eight Icons and twelve Stars are already in people's
+collections, so anything added later carries `added: true` and is generated
+after *both* original lists. Appending four Icons in place would have shifted
+every Star by four and quietly turned a saved Vinicius into a Rodri. There is a
+check for this in the scratchpad (`idcheck.mjs`): it walks every id from the
+previous build and asserts it still resolves to the same player. Run it after
+touching the generator.
 
 The two Limited packs do not roll for their headline card, they **promise** it.
 `guarantee` names a rarity that replaces exactly one card in the pack after
@@ -390,6 +402,23 @@ What is in place now, all of it needed:
 
 `APP_VERSION` in `app.js` is shown in Settings so a bug report can say which
 build it came from. Bump it with `CACHE`.
+
+### The thin positions
+LM and RM had no `special` cards in the entire world and full-backs had one or
+two, so a Prime pack literally could not find a right-back worth playing. A
+pass in `buildWorld` now adds ten full-back / wide / keeper / centre-back
+squad players per club, seventy free agents drawn from the same shape, and a
+guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
+went 446 → 731 players and every position now has gold, special, star and icon
+cards in it.
+
+### The menu
+It was a title, three zeroes and four tiles on the top third of a tablet
+screen. Below the tiles it now carries your division and record, squad rating
+and chemistry, your best card in its own rarity colour, what is unopened in the
+locker, and the objective you are nearest to finishing — each one a button into
+the place that changes it. All of it is suppressed for a save with nothing in
+it: a row of zeroes is worse than the space it fills.
 
 ## Rules that keep biting
 

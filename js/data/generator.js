@@ -289,28 +289,72 @@ function buildWorld() {
     freeAgents.push(p.id);
   });
 
-  /* -------------------------------- Icons -------------------------------- *
-   * Appended last, for the same id-stability reason as everything else in this
-   * block. Eight players, all 99, all unattached, and the only way to one is a
-   * Limited Edition pack.                                                     */
+  /* --------------------------- Icons and Stars --------------------------- *
+   * Twelve Icons at 99 and twenty Stars at 92, all unattached, one of each
+   * position in both tiers so a whole XI can be built out of either.
+   *
+   * Emitted in two waves. Ids are handed out in creation order, and the first
+   * eight Icons and twelve Stars already exist in people's collections — so
+   * anything added later has to come after *both* original lists, not at the
+   * end of its own. Appending four Icons in place would have shifted every
+   * Star by four and quietly turned a saved Vinicius into a Rodri.
+   * ---------------------------------------------------------------------- */
   const icons = [];
-  ICONS.forEach((def) => {
-    const p = namedCard(def, ICON_TRAITS[def.trait], 99, 'icon', 250_000_000, ++idCounter);
-    players.push(p);
-    freeAgents.push(p.id);
-    icons.push(p.id);
+  const stars = [];
+  const named = [
+    ...ICONS.map((def) => ({ def, tier: 'icon' })),
+    ...STARS.map((def) => ({ def, tier: 'star' })),
+  ];
+  for (const wave of [false, true]) {
+    for (const { def, tier } of named) {
+      if (!!def.added !== wave) continue;
+      const p = tier === 'icon'
+        ? namedCard(def, ICON_TRAITS[def.trait], 99, 'icon', 250_000_000, ++idCounter)
+        : namedCard(def, STAR_TRAITS[def.trait], 92, 'star', 120_000_000, ++idCounter);
+      players.push(p);
+      freeAgents.push(p.id);
+      (tier === 'icon' ? icons : stars).push(p.id);
+    }
+  }
+
+  /* ------------------------- filling out the world ------------------------ *
+   * Full-backs and wide midfielders were the thinnest positions in the game —
+   * LM and RM had no `special` cards at all, so a Prime pack could not find
+   * one, and a squad that wanted two full-backs and two wingers was competing
+   * for a handful of cards. This pass is aimed squarely at that.             */
+  const THIN = ['LB', 'RB', 'LM', 'RM', 'LB', 'RB', 'LM', 'RM', 'GK', 'CB'];
+  CLUB_BLUEPRINTS.forEach((bp, index) => {
+    const club = clubs[index];
+    const clubLevel = 83 - (bp.tier - 1) * 1.7;
+    THIN.forEach((pos, slot) => {
+      const p = makePlayer(rand, pos, clubLevel - (slot % 4), club.id);
+      players.push(p);
+      club.roster.push(p.id);
+    });
   });
 
-  /* -------------------------------- Stars -------------------------------- *
-   * One rung below the Icons, and appended after them for the same reason:
-   * ids are handed out in creation order, so anything new goes on the end.     */
-  const stars = [];
-  STARS.forEach((def) => {
-    const p = namedCard(def, STAR_TRAITS[def.trait], 92, 'star', 120_000_000, ++idCounter);
+  // and a free pool weighted the same way, with a guaranteed run of high-rated
+  // cards in each thin position so every rarity is reachable everywhere
+  for (let i = 0; i < 70; i++) {
+    const p = makePlayer(rand, rand.pick(THIN), rand.around(76, 9), null);
     players.push(p);
     freeAgents.push(p.id);
-    stars.push(p.id);
-  });
+  }
+  for (const pos of ['LB', 'RB', 'LM', 'RM']) {
+    for (let i = 0; i < 5; i++) {
+      const p = makePlayer(rand, pos, rand.int(82, 90), null);
+      p.rarity = rarityFor(p.overall);
+      p.value = marketValue(p.overall, p.age);
+      players.push(p);
+      freeAgents.push(p.id);
+    }
+  }
+  // a wider general pool on top, so packs keep turning up names you do not own
+  for (let i = 0; i < 80; i++) {
+    const p = makePlayer(rand, rand.pick(Object.keys(POSITIONS)), rand.around(74, 11), null);
+    players.push(p);
+    freeAgents.push(p.id);
+  }
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const fixtures = buildFixtures(clubs.map((c) => c.id), rand);
