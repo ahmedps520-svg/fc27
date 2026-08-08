@@ -65,7 +65,7 @@ export function render(params) {
           <button class="tbtn t-cross" data-slot="cross"><b>CROSS</b></button>
           <button class="tbtn t-through" data-slot="through"><b>THROUGH</b></button>
           <button class="tbtn t-shoot" data-slot="shoot"><i class="tb-charge"></i><b>SHOOT</b></button>
-          <button class="tbtn t-pass" data-slot="pass"><b>PASS</b></button>
+          <button class="tbtn t-pass" data-slot="pass"><i class="tb-charge"></i><b>PASS</b></button>
           <button class="tbtn t-sprint" data-slot="sprint"><b>SPRINT</b></button>
         </div>
       </div>
@@ -433,7 +433,8 @@ export function mount(root, params) {
       };
     });
 
-    const charge = root.querySelector('.tb-charge');
+    const charge = root.querySelector('.t-shoot .tb-charge');
+    const passCharge = root.querySelector('.t-pass .tb-charge');
     let attacking = null;
     updateTouchContext = () => {
       const seat = match.controllers[0];
@@ -444,6 +445,10 @@ export function mount(root, params) {
       }
       // the shot charges while held, so the button shows how much power is on it
       if (charge) charge.style.setProperty('--charge', `${Math.round((seat?.charge || 0) * 100)}%`);
+      // the pass button fills the same way, so a held pass is visibly a held pass
+      if (passCharge) {
+        passCharge.style.setProperty('--charge', `${Math.round((seat?.passCharge || 0) * 100)}%`);
+      }
     };
     updateTouchContext();
   }

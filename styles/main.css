@@ -311,6 +311,7 @@ select {
   box-shadow: inset 0 0 26px var(--rar-glow); opacity: .55;
 }
 .rar-special .pcard, .pcard.rar-special { box-shadow: 0 12px 34px var(--rar-glow), inset 0 1px 0 rgba(255, 255, 255, .12); }
+.rar-star .pcard, .pcard.rar-star,
 .rar-icon .pcard, .pcard.rar-icon { box-shadow: 0 14px 40px var(--rar-glow), inset 0 1px 0 rgba(255, 255, 255, .18); }
 .pc-sheen {
   position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 2;
@@ -461,6 +462,7 @@ select {
 .pack-btn.rar-silver { --pk: #b9c4d0; }
 .pack-btn.rar-gold { --pk: #f4c95d; }
 .pack-btn.rar-special { --pk: #ff2e88; }
+.pack-btn.rar-star { --pk: #a06bff; }
 .pack-btn.rar-icon { --pk: #7af7ff; }
 .pack-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); border-color: var(--pk); }
 .pack-btn:disabled { opacity: .38; cursor: not-allowed; }
@@ -1189,6 +1191,7 @@ body.in-game #screen {
 .store-pack.rar-silver { --pk: #b9c4d0; }
 .store-pack.rar-gold { --pk: #f4c95d; }
 .store-pack.rar-special { --pk: #ff2e88; }
+.store-pack.rar-star { --pk: #a06bff; }
 .store-pack.rar-icon { --pk: #7af7ff; }
 .sp-art {
   position: relative; width: 84px; height: 112px; border-radius: 10px; overflow: hidden;
@@ -1222,6 +1225,7 @@ body.in-game #screen {
 .locker-pack.rar-silver { --pk: #b9c4d0; }
 .locker-pack.rar-gold { --pk: #f4c95d; }
 .locker-pack.rar-special { --pk: #ff2e88; }
+.locker-pack.rar-star { --pk: #a06bff; }
 .locker-pack.rar-icon { --pk: #7af7ff; }
 .locker-pack:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); }
 .lp-art {
@@ -1288,6 +1292,7 @@ body.in-game #screen {
 .ps-tag.rar-silver { background: #b9c4d0; }
 .ps-tag.rar-gold { background: #f4c95d; }
 .ps-tag.rar-special { background: #ff2e88; color: #fff; }
+.ps-tag.rar-star { background: #a06bff; color: #fff; }
 .ps-tag.rar-icon { background: #7af7ff; color: #04121a; }
 /* a card you already own: banked as coins instead, and said so rather than
    disappearing between the pack and the collection */
@@ -1989,11 +1994,17 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .coin-chip.ult { color: #b892ff; border-color: rgba(184, 146, 255, .35); }
 
 /* Icon tier — the eight 99s. Cyan, so it cannot be mistaken for gold. */
+.rar-star {
+  --rar: #a06bff;
+  --rar-glow: rgba(160, 107, 255, .7);
+  border-color: rgba(160, 107, 255, .5);
+}
 .rar-icon {
   --rar: #7af7ff;
   --rar-glow: rgba(122, 247, 255, .75);
   border-color: rgba(122, 247, 255, .5);
 }
+.store-pack.rar-star { box-shadow: 0 0 26px rgba(160, 107, 255, .2); }
 .store-pack.rar-icon { box-shadow: 0 0 26px rgba(122, 247, 255, .22); }
 .sp-tag {
   position: absolute; top: 8px; right: 8px; z-index: 2;
@@ -2016,4 +2027,13 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   /* two balances plus a title do not fit on a small phone; Apex is the one
      that is actually spendable, so Ultimate is the one that goes */
   .wallet .ult { display: none; }
+}
+
+/* what a Limited pack promises, said plainly above the odds */
+.sp-promise {
+  display: block; margin: 2px 0 4px; padding: 3px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--pk) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pk) 45%, transparent);
+  color: var(--pk);
+  font-size: 10px; font-weight: 800; letter-spacing: .04em; text-align: center;
 }

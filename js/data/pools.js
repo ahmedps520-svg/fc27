@@ -115,6 +115,7 @@ export const RARITY = {
   silver:  { label: 'Silver',  color: '#b9c4d0', glow: 'rgba(185,196,208,.45)' },
   gold:    { label: 'Gold',    color: '#f4c95d', glow: 'rgba(244,201,93,.55)'  },
   special: { label: 'Special', color: '#ff2e88', glow: 'rgba(255,46,136,.65)'  },
+  star:    { label: 'Star',    color: '#a06bff', glow: 'rgba(160,107,255,.7)'  },
   icon:    { label: 'Icon',    color: '#7af7ff', glow: 'rgba(122,247,255,.75)' },
 };
 
@@ -156,6 +157,38 @@ export const ICONS = [
   { name: 'Paolo Maldini',     short: 'P. Maldini',  position: 'CB',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'wall' },
   { name: 'Gianluigi Buffon',  short: 'G. Buffon',   position: 'GK',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'keeper' },
 ];
+
+/**
+ * The Stars: twelve current players at 92, one tier below the Icons and the
+ * whole point of the cheaper Limited pack, which guarantees one of them.
+ *
+ * Real names, same decision and the same caveats as the Icons above — see the
+ * note there. Twelve of them across every line, so the guarantee is worth
+ * having whatever hole is left in a squad.
+ */
+export const STARS = [
+  { name: 'Lamine Yamal',    short: 'L. Yamal',    position: 'RW',  nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'flair' },
+  { name: 'Raphinha',        short: 'Raphinha',    position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
+  { name: 'Vinicius Jr',     short: 'Vinicius Jr', position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
+  { name: 'Kylian Mbappe',   short: 'K. Mbappe',   position: 'ST',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'power' },
+  { name: 'Erling Haaland',  short: 'E. Haaland',  position: 'ST',  nation: 'Norway',      colors: ['#ba0c2f', '#00205b'], trait: 'power' },
+  { name: 'Jude Bellingham', short: 'J. Bellingham', position: 'CM', nation: 'England',    colors: ['#ffffff', '#ce1124'], trait: 'engine' },
+  { name: 'Kevin De Bruyne', short: 'K. De Bruyne', position: 'CAM', nation: 'Belgium',    colors: ['#000000', '#fdda24'], trait: 'engine' },
+  { name: 'Federico Valverde', short: 'F. Valverde', position: 'CM', nation: 'Uruguay',    colors: ['#0038a8', '#ffffff'], trait: 'engine' },
+  { name: 'Rodri',           short: 'Rodri',       position: 'CDM', nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'wall' },
+  { name: 'Virgil van Dijk', short: 'V. van Dijk', position: 'CB',  nation: 'Netherlands', colors: ['#ae1c28', '#21468b'], trait: 'wall' },
+  { name: 'Achraf Hakimi',   short: 'A. Hakimi',   position: 'RB',  nation: 'Morocco',     colors: ['#c1272d', '#006233'], trait: 'engine' },
+  { name: 'Alisson',         short: 'Alisson',     position: 'GK',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'keeper' },
+];
+
+/** Star radars — the same shapes as the Icons, a rung down. */
+export const STAR_TRAITS = {
+  flair:  { pace: 94, shooting: 86, passing: 84, dribbling: 94, defending: 38, physical: 72 },
+  power:  { pace: 93, shooting: 93, passing: 76, dribbling: 87, defending: 40, physical: 88 },
+  engine: { pace: 84, shooting: 84, passing: 92, dribbling: 88, defending: 74, physical: 84 },
+  wall:   { pace: 78, shooting: 56, passing: 80, dribbling: 68, defending: 92, physical: 91 },
+  keeper: { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
+};
 
 /** What an icon is best at. Every icon is 99 overall; these shape the radar. */
 export const ICON_TRAITS = {

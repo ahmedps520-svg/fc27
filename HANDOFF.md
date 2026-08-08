@@ -177,8 +177,11 @@ refills. The bar in the match HUD follows whoever you are steering, which means
 the name on it changes when control switches; that is correct, not a bug.
 
 The three constants were **swept AI-vs-AI, not chosen by feel**, per the rule at
-the bottom of this file. 2.08 goals and 12.0 shots a match after, against 3.20
-and 12.5 before. The first attempt used a drain rate that emptied a sprinting
+the bottom of this file. The figures first recorded here — 2.08 goals, 12.0
+shots — came off a 24-match sweep and were not reliable; re-measured over 40
+matches the same code gives **3.02 goals and 11.95 shots**, against 3.20 and
+12.5 before stamina. The conclusion stands, the numbers were noise. See the
+sweep-size rule at the bottom. The first attempt used a drain rate that emptied a sprinting
 player in 26 seconds — remember that a match is 240 real seconds standing in for
 90 minutes, so anything per-second has to be budgeted against that, not against
 a real 90 minutes.
@@ -291,6 +294,32 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
    only with an AI-vs-AI sweep measuring goals, shots and turnovers.
 
+### Hold to pass
+Pass charges while held and fires on release, exactly like the shot, on all
+three input types — they all land on the same `pass` action, so there is nothing
+per-device about it. Power buys reach (14m at zero, 58m at full) and pace, and
+costs a little accuracy at the top. Three things are load-bearing:
+- **A tap has a 0.3 floor.** One frame of hold would otherwise be a three-yard
+  nudge, and a quick pass has to keep playing the way it always did.
+- **Losing the ball clears the charge**, or a hold started in possession would
+  bank a pass you never meant to make.
+- **The CPU passes through the same function** and never holds a button, so its
+  power is stated explicitly at 0.75 — which reproduces the flat 48m range it
+  had before power existed. That was the point: add the mechanic, don't move the
+  balance.
+
+### The crowd
+People, not capsules: a seated figure of about sixty triangles, two instanced
+meshes sharing one set of transforms — bodies tinted with a shirt colour, heads
+with a skin tone. One mesh could not do that, because an instance carries a
+single colour, and a face the colour of the shirt is what made the old crowd
+read as jellybeans. A third of them stand, all of them vary in size and angle.
+
+Authored **Z-up, facing +Y**, the same convention the seats use, so a spectator
+takes the identical `rotation.set(0, 0, face)` its seat gets. The first version
+built them Y-up and tipped them, and the facing rotation then rolled the whole
+stand onto its side.
+
 ### Two currencies and the reset
 `club.coins` is gone. `club.apex` is the earned, spendable balance; `club.ultimate`
 is displayed everywhere and granted nowhere — it exists so the save format, the
@@ -313,10 +342,16 @@ appended last in the generator for the usual id-stability reason. `rarityFor`
 deliberately never returns `'icon'` — the tier is stamped on by hand, or a 97
 turning up in the league would silently join it.
 
-They exist only in Limited Edition packs: 75,000 Apex or the 12-win objective,
-4% per card over three cards. Measured against the real draw code: 11.9% of
-packs contain at least one, nothing below 79 rated. `__openPackForTest` is
-exported so that measurement can be repeated.
+There is a second named tier below them: twelve **Stars** at 92, also real
+players, also unattached.
+
+The two Limited packs do not roll for their headline card, they **promise** it.
+`guarantee` names a rarity that replaces exactly one card in the pack after
+every other rule has run, so Limited: Stars is always one 92 and Limited: Icons
+is always one 99 — which random one is the only thing left to chance. Twelve
+wins is too far to come to be told no. Measured over 3,000 opens of each
+through the real draw code: 100% contain exactly one, none contain zero, and
+none hand over the set. `__openPackForTest` is exported so that can be repeated.
 
 **The Icons name real footballers**, at the project owner's explicit direction:
 an original-name set was built first, the exposure was put to them, and they
@@ -361,6 +396,11 @@ build it came from. Bump it with `CACHE`.
 - **Never re-balance the match by feel.** Always sweep AI-vs-AI
   (`new Match(a, b, {human: null})` stepped at 1/60) and measure goals, shots and
   turnovers per match. Target is roughly 2–3 goals and ~11 shots.
+- **Sweep at least 40 matches, in multiples of ten.** The sweep pairs clubs by
+  index against a ten-club league, so anything that is not a whole number of
+  cycles over-weights the first few fixtures. A 20-match run made three settings
+  look 13% apart when a 40-match run put them within 3% — which is noise, and
+  tuning against it is worse than not tuning at all.
 - **Cameras must stay inside the bowl.** Only the near touchline is open; the far
   touchline and both goal ends are stands. Outside
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.

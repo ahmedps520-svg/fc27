@@ -885,22 +885,90 @@ export function createRenderer(canvas, match, quality, models = false) {
   seatMesh.instanceMatrix.needsUpdate = true;
   scene.add(seatMesh);
 
-  // spectators sat in a share of those seats
+  /* ----------------------------- spectators -----------------------------
+   * People, not capsules.
+   *
+   * Two instanced meshes sharing one set of transforms: bodies tinted with the
+   * shirt colour, heads tinted with a skin tone. One instanced mesh could not
+   * do that — an instance carries a single colour — and a coloured face is
+   * exactly what makes a crowd read as jellybeans.
+   *
+   * Everything is boxes. A seated figure is sixty triangles, so a full ultra
+   * bowl is well under a million static triangles in two draw calls, which a
+   * GPU does not notice. Nothing here animates; a stand full of moving people
+   * would cost more than the match.
+   * -------------------------------------------------------------------- */
   const taken = seats.filter((s) => s.occupied);
-  const crowd = new THREE.InstancedMesh(
-    new THREE.CapsuleGeometry(0.17, 0.34, 3, 6),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 }),
-    taken.length);
-  taken.forEach((s, i) => {
-    dummy.position.set(s.x, s.y, s.z + 0.08);
-    dummy.rotation.set(Math.PI / 2, 0, 0);
-    dummy.scale.set(1, 1, 1);
-    dummy.updateMatrix();
-    crowd.setMatrixAt(i, dummy.matrix);
-    crowd.setColorAt(i, col.setHex(s.c));
-  });
-  crowd.instanceMatrix.needsUpdate = true;
-  scene.add(crowd);
+  {
+    /** Merge a list of box geometries into one buffer. */
+    const mergeBoxes = (boxes) => {
+      const positions = [];
+      const normals = [];
+      const indices = [];
+      for (const g2 of boxes) {
+        const base = positions.length / 3;
+        const pos = g2.attributes.position.array;
+        const nrm = g2.attributes.normal.array;
+        for (let i = 0; i < pos.length; i++) positions.push(pos[i]);
+        for (let i = 0; i < nrm.length; i++) normals.push(nrm[i]);
+        for (const v of g2.index.array) indices.push(v + base);
+        g2.dispose();
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      g.setIndex(indices);
+      return g;
+    };
+    const box = (w, d, h, x, y, z) => new THREE.BoxGeometry(w, d, h).translate(x, y, z);
+
+    /* Authored in the scene's own space — Z up, +Y the way the spectator looks
+     * — which is the same convention the seats use. That means a figure can be
+     * placed with the identical `rotation.set(0, 0, face)` its seat gets, and
+     * cannot end up facing the car park. An earlier version built them Y-up and
+     * tipped them, and the facing rotation then rolled them onto their sides. */
+    const bodyParts = [
+      box(0.34, 0.22, 0.40, 0, 0, 0.30),            // torso
+      box(0.30, 0.30, 0.15, 0, 0.14, 0.06),         // thighs, out over the seat front
+    ];
+    if (quality !== 'low') {
+      bodyParts.push(box(0.09, 0.11, 0.30, -0.21, 0.02, 0.28));   // arms
+      bodyParts.push(box(0.09, 0.11, 0.30, 0.21, 0.02, 0.28));
+      bodyParts.push(box(0.13, 0.13, 0.26, -0.09, 0.24, -0.16));  // shins
+      bodyParts.push(box(0.13, 0.13, 0.26, 0.09, 0.24, -0.16));
+    }
+    const bodyGeo = mergeBoxes(bodyParts);
+    const headGeo = mergeBoxes([
+      box(0.10, 0.10, 0.10, 0, 0, 0.56),            // neck
+      box(0.17, 0.17, 0.19, 0, 0.01, 0.70),         // head
+    ]);
+
+    const skinTone = new THREE.Color();
+    const mat = () => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+    const bodies = new THREE.InstancedMesh(bodyGeo, mat(), taken.length);
+    const heads = new THREE.InstancedMesh(headGeo, mat(), taken.length);
+    bodies.castShadow = false;      // a stand casting shadows onto itself is invisible and not free
+    heads.castShadow = false;
+
+    taken.forEach((s, i) => {
+      // A third of them are on their feet, and everyone is a slightly different
+      // size and sits at a slightly different angle. Without that the stand is
+      // a grid of identical dolls, which reads worse than the capsules did.
+      const standing = rand() < 0.3;
+      const scale = 0.88 + rand() * 0.26;
+      dummy.position.set(s.x, s.y, s.z - 0.34 + (standing ? 0.3 : 0));
+      dummy.rotation.set(0, 0, (s.face || 0) + (rand() - 0.5) * 0.5);
+      dummy.scale.set(scale, scale, standing ? scale * 1.25 : scale);
+      dummy.updateMatrix();
+      bodies.setMatrixAt(i, dummy.matrix);
+      heads.setMatrixAt(i, dummy.matrix);
+      bodies.setColorAt(i, col.setHex(s.c));
+      heads.setColorAt(i, skinTone.setHex(SKINS[(rand() * SKINS.length) | 0]));
+    });
+    bodies.instanceMatrix.needsUpdate = true;
+    heads.instanceMatrix.needsUpdate = true;
+    scene.add(bodies, heads);
+  }
 
   // players
   const kitHome = new THREE.Color(hexOf(match.teams[0].colors[0]));
