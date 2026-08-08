@@ -74,10 +74,12 @@ are stored*; the short version:
 - One instance only: the database is written as a single value, so two servers
   would clobber each other.
 
-**Still to do on the live site:** create the Upstash database and paste the two
-values into Render's environment settings. Until that happens the deployment
-keeps using the ephemeral file and accounts still vanish on restart — the server
-logs a warning at start-up when it notices it is doing that on a host.
+**Live and durable since 2026-08-08.** An Upstash database is wired into
+Render's environment, and `/api/health` reports
+`backend: redis (fluent-guppy-206491.upstash.io key apexxi:accounts:v1)` with
+`durable: true`. If that ever reads `file (...)` again, the two environment
+variables have gone missing from the service and accounts are being lost on
+every restart.
 
 ### Squad building
 - **The world had no wingers.** Club rosters are a 4-4-2 squad list, so LW/RW
