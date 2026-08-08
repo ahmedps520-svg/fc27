@@ -19,6 +19,14 @@ const ACCENTS = [
   ['cyan', '#41d3ff'], ['lime', '#b8ff3d'], ['magenta', '#ff2e88'], ['amber', '#ffb703'],
 ];
 
+const QUALITY_NOTE = (q) => (q === 'ultra' || !q
+  ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
+  : 'Ultra maxes out shadows, crowd density and resolution. Demanding.');
+
+const MODEL_NOTE = (m) => (m === 'simple'
+  ? 'Light figures are built in code — no download, and they run on anything.'
+  : '<b>Realistic:</b> a scanned, motion-captured footballer, downloaded once and cached. Twenty-two of them is real work for a phone; switch to Light if the frame rate drops.');
+
 export function render() {
   const s = getState().settings;
   const st = getState();
@@ -78,17 +86,30 @@ export function render() {
                 aria-checked="${s.reduceMotion}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>3D detail</b><span>Low on phones by default.</span></div>
+        <div><b>3D detail</b><span>Ships on Ultra. Auto reads the device.</span></div>
         <div class="seg" id="qualitySeg">
           ${[['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra']].map(([v, l]) =>
             `<button class="${(s.quality || 'auto') === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <p class="setting-note ${s.quality === 'ultra' ? 'warn' : ''}" id="qualityNote">
-        ${s.quality === 'ultra'
-          ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
-          : 'Ultra maxes out shadows, crowd density and resolution. Demanding.'}
+        ${QUALITY_NOTE(s.quality)}
       </p>
+      <div class="setting-row">
+        <div><b>Player models</b><span>Realistic is a scanned mesh — a one-off download.</span></div>
+        <div class="seg" id="modelSeg">
+          ${[['realistic', 'Realistic'], ['simple', 'Light']].map(([v, l]) =>
+            `<button class="${(s.models || 'realistic') === v ? 'on' : ''}" data-models="${v}">${l}</button>`).join('')}
+        </div>
+      </div>
+      <p class="setting-note ${s.models === 'simple' ? '' : 'warn'}" id="modelNote">
+        ${MODEL_NOTE(s.models)}
+      </p>
+      <div class="setting-row">
+        <div><b>Show FPS</b><span>Live frame counter in the corner during a match.</span></div>
+        <button class="switch ${s.showFps ? 'on' : ''}" id="fpsTgl" role="switch"
+                aria-checked="${!!s.showFps}"><i></i></button>
+      </div>
     </section>
 
     <section class="panel glass">
@@ -137,6 +158,7 @@ export function mount(root) {
   });
   toggle(root.querySelector('#commentaryTgl'), 'commentary');
   toggle(root.querySelector('#motionTgl'), 'reduceMotion');
+  toggle(root.querySelector('#fpsTgl'), 'showFps');
 
   root.querySelector('#soundTgl').addEventListener('click', (e) => {
     const next = getState().settings.sound === false;
@@ -168,9 +190,18 @@ export function mount(root) {
     root.querySelectorAll('[data-quality]').forEach((x) => x.classList.toggle('on', x === b));
     const note = root.querySelector('#qualityNote');
     note.classList.toggle('warn', q === 'ultra');
-    note.innerHTML = q === 'ultra'
-      ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
-      : 'Ultra maxes out shadows, crowd density and resolution. Demanding.';
+    note.innerHTML = QUALITY_NOTE(q);
+  });
+
+  root.querySelector('#modelSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-models]');
+    if (!b) return;
+    const m = b.dataset.models;
+    update((s) => { s.settings.models = m; });
+    root.querySelectorAll('[data-models]').forEach((x) => x.classList.toggle('on', x === b));
+    const note = root.querySelector('#modelNote');
+    note.classList.toggle('warn', m !== 'simple');
+    note.innerHTML = MODEL_NOTE(m);
   });
 
   root.querySelector('#accents').addEventListener('click', (e) => {

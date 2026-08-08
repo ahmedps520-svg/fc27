@@ -9,7 +9,14 @@ const defaults = () => ({
     commentary: true,
     reduceMotion: false,
     accent: 'cyan',
-    quality: 'auto',            // auto | high | low  (3D detail in Quick Match)
+    // Everything ships at the top setting. A phone that cannot hold it says so
+    // in the frame rate, and the one-time prompt after the first full match
+    // offers to turn it down — better than starting everyone on "safe" and
+    // having nobody ever find out what the game actually looks like.
+    quality: 'ultra',           // auto | low | high | ultra   (3D detail in a match)
+    models: 'realistic',        // realistic | simple          (scanned mesh vs built-in figures)
+    showFps: false,             // live frame counter in the match HUD
+    graphicsAsked: false,       // the post-match "keep these graphics?" prompt fires once, ever
     sound: true,
     musicVol: 0.5,
     sfxVol: 0.9,

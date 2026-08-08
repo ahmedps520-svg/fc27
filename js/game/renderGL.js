@@ -6,6 +6,7 @@ import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import { PITCH, GOAL_HALF, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
+import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -590,7 +591,7 @@ function poseDive(rig, p, fine) {
 }
 
 /* ------------------------------- main ------------------------------ */
-export function createRenderer(canvas, match, quality) {
+export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
   const ultra = quality === 'ultra';
@@ -922,6 +923,43 @@ export function createRenderer(canvas, match, quality) {
     }
   }
 
+  /* ------------------------- scanned players ------------------------- *
+   * The built-in figures above are always built, and stay in place until the
+   * model has actually arrived: a 14 MB download must never be the reason a
+   * kick-off waits. When it lands the two sets swap over, and if it fails —
+   * offline, or the file missing — nothing happens and the match carries on
+   * looking exactly as it did.                                               */
+  const modelRigs = new Map();
+  let useModels = false;
+  if (models) {
+    loadPlayerModel().then((model) => {
+      if (!model || disposed) return;
+      let index = 0;
+      for (let t = 0; t < 2; t++) {
+        for (const p of match.teams[t].players) {
+          const isGK = p.role === 'GK';
+          const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
+          const rig = makeRig(model, {
+            kit: {
+              shirt: base,
+              shorts: base.clone().multiplyScalar(0.62),
+              socks: base.clone().multiplyScalar(0.82),
+            },
+            ref: p.ref,
+            index: index++,
+            isGK,
+          });
+          scene.add(rig.root);
+          modelRigs.set(p, rig);
+        }
+      }
+      // hide the built-in figures rather than destroying them, so quality can
+      // be turned back down mid-match without rebuilding anything
+      for (const rig of rigs.values()) rig.grp.visible = false;
+      useModels = true;
+    });
+  }
+
   const ball = new THREE.Mesh(
     new THREE.SphereGeometry(0.19, 24, 18),
     new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.55, metalness: 0.02 }));
@@ -941,6 +979,7 @@ export function createRenderer(canvas, match, quality) {
   });
 
   const fine = quality !== 'low';
+  let disposed = false;
   let lastNetHit = -1;
 
   // iOS drops the GL context under memory pressure; keep it recoverable rather
@@ -984,6 +1023,11 @@ export function createRenderer(canvas, match, quality) {
 
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
+          if (useModels) {
+            const rig = modelRigs.get(p);
+            if (rig) poseRig(rig, p, dt);
+            continue;
+          }
           const rig = rigs.get(p);
           if (!rig) continue;
           p._phase = (p._phase || 0) + Math.hypot(p.vx, p.vy) * dt * 2.4;
@@ -1031,6 +1075,12 @@ export function createRenderer(canvas, match, quality) {
       else renderer.render(scene, camera);
     },
     dispose() {
+      disposed = true;
+      for (const rig of modelRigs.values()) {
+        rig.mixer.stopAllAction();
+        scene.remove(rig.root);
+      }
+      modelRigs.clear();
       canvas.removeEventListener('webglcontextlost', onLost);
       composer?.dispose?.();
       pmrem?.dispose();

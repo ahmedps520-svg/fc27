@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>model check</title><style>body{margin:0;background:#0b1620}</style></head>
+<body>
+<script type="importmap">
+{ "imports": { "three": "/js/vendor/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from '/js/vendor/three.module.js';
+import { loadPlayerModel, makeRig, poseRig } from '/js/game/playerModel.js';
+
+const W = 1280; const H = 620;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d2416);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x22401f, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(6, -8, 14);
+sun.castShadow = true;
+scene.add(sun);
+// z-up, like the match
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60),
+  new THREE.MeshStandardMaterial({ color: 0x2f8a46 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 200);
+camera.up.set(0, 0, 1);
+
+const rigs = [];
+window.build = async (n = 8, kitHex = 0xd7263d) => {
+  const model = await loadPlayerModel();
+  if (!model) return 'no model';
+  const kit = {
+    shirt: new THREE.Color(kitHex),
+    shorts: new THREE.Color(kitHex).multiplyScalar(0.62),
+    socks: new THREE.Color(kitHex).multiplyScalar(0.82),
+  };
+  for (let i = 0; i < n; i++) {
+    const rig = makeRig(model, { kit, ref: { id: `p${i}`, name: `Player ${i}` }, index: i, isGK: false });
+    rigs.push(rig);
+    scene.add(rig.root);
+  }
+  return `${n} rigs`;
+};
+
+window.frame = (t, opts = {}) => {
+  const spacing = opts.spacing ?? 1.5;
+  rigs.forEach((rig, i) => {
+    const x = (i - (rigs.length - 1) / 2) * spacing;
+    // fake a player: standing, jogging or sprinting, facing the camera
+    const speed = opts.speed ?? 0;
+    poseRig(rig, { x, y: 0, vx: 0, vy: -speed, dirX: 0, dirY: -1, diveT: 0 }, t);
+  });
+  camera.position.set(opts.cx ?? 0, opts.cy ?? -(opts.dist ?? 7), opts.cz ?? 1.7);
+  camera.lookAt(opts.tx ?? 0, 0, 1.0);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+};
+</script>
+</body>
+</html>
