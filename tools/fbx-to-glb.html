@@ -54,7 +54,11 @@
 </p>
 
 <div id="drop">Drop <b>.fbx</b> or <b>.glb</b> files here, or click to choose</div>
-<input id="picker" type="file" accept=".fbx,.glb,.gltf" multiple hidden />
+<!-- No `accept` filter on purpose: iOS resolves it through its own type
+     registry, does not recognise .fbx, and greys the files out in the Files
+     picker so they cannot be chosen at all. The filtering happens below,
+     where it can explain itself. -->
+<input id="picker" type="file" multiple hidden />
 <ul id="list"></ul>
 <button id="go" disabled>Build GLB</button>
 <div id="out"></div>
@@ -162,7 +166,15 @@ function paint() {
 }
 
 const accept = (fileList) => {
-  files = [...fileList].filter((f) => /\.(fbx|glb|gltf)$/i.test(f.name));
+  const all = [...fileList];
+  files = all.filter((f) => /\.(fbx|glb|gltf)$/i.test(f.name));
+  const ignored = all.filter((f) => !files.includes(f));
+  outEl.textContent = ignored.length
+    ? `Ignored ${ignored.length} file${ignored.length === 1 ? ' that is' : 's that are'} not .fbx or .glb: `
+      + `${ignored.map((f) => f.name).join(', ')}`
+      + (ignored.some((f) => /\.zip$/i.test(f.name))
+        ? '\nA .zip needs unzipping first — Mixamo packs several downloads into one.' : '')
+    : '';
   paint();
 };
 
