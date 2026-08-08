@@ -72,6 +72,44 @@ const clipNameOf = (filename) => filename
   .replace(/^[0-9a-f]{6,}-/, '')       // strip an upload hash if there is one
   .replace(/[\s()]+/g, '_');
 
+/**
+ * What the match actually needs, and how to spot it in a filename. Everything
+ * on the pitch spends most of its time running, so those clips carry the look
+ * of the game far more than any set piece does — hence the split.
+ */
+const WANTED = [
+  { key: 'idle', re: /idle/i, need: 'core', note: 'standing' },
+  { key: 'run', re: /\brun\b|jog/i, need: 'core', note: 'the one every player uses most' },
+  { key: 'sprint', re: /sprint|fast_run/i, need: 'core', note: 'with the ball and chasing' },
+  { key: 'kick / shot', re: /kick|shoot|shot|strike/i, not: /drop_?kick|goalkeeper/i, need: 'core', note: 'an outfield strike, not the keeper drop kick' },
+  { key: 'pass', re: /pass/i, need: 'core' },
+  { key: 'dribble', re: /dribbl/i, need: 'nice' },
+  { key: 'tackle', re: /tackle|slide/i, need: 'nice' },
+  { key: 'header', re: /header|head/i, need: 'nice' },
+  { key: 'throw-in', re: /throw_in|throwin/i, need: 'nice' },
+  { key: 'keeper idle', re: /keeper.*idle|goalkeeper.*idle/i, need: 'keeper' },
+  { key: 'keeper dive', re: /dive|diving/i, need: 'keeper', note: 'the save everyone watches' },
+  { key: 'keeper catch', re: /catch|scoop/i, need: 'keeper' },
+  { key: 'keeper throw', re: /drop_?kick|overhand_?throw/i, need: 'keeper' },
+];
+
+function checklist(names) {
+  const rows = WANTED.map((w) => ({
+    ...w,
+    have: names.some((n) => w.re.test(n) && !(w.not && w.not.test(n))),
+  }));
+  const missing = rows.filter((r) => !r.have);
+  const core = missing.filter((r) => r.need === 'core');
+  const lines = [];
+  if (!missing.length) return 'Every clip the match wants is in here.';
+  if (core.length) {
+    lines.push(`Still needed for outfield play: ${core.map((r) => r.key + (r.note ? ` (${r.note})` : '')).join(', ')}`);
+  }
+  const rest = missing.filter((r) => r.need !== 'core');
+  if (rest.length) lines.push(`Optional, adds polish: ${rest.map((r) => r.key).join(', ')}`);
+  return lines.join('\n');
+}
+
 function paint() {
   listEl.innerHTML = files.map((f) => `
     <li class="${f.error ? 'bad' : ''}">
@@ -121,8 +159,14 @@ goEl.addEventListener('click', async () => {
           }
         });
       }
-      if (!clip) { file.error = 'no animation in this file'; }
-      else { clip.name = clipNameOf(file.name); clips.push(clip); }
+      // A clip with no tracks is a download that carried the character but no
+      // motion. Keeping it would put a dud in the GLB that plays as a T-pose.
+      if (!clip || !clip.tracks.length || !clip.duration) {
+        file.error = 'no animation in this file — re-download it';
+      } else {
+        clip.name = clipNameOf(file.name);
+        clips.push(clip);
+      }
     } catch (err) {
       // A file that fails here is damaged rather than unsupported — a partial
       // download usually. Re-download that one from Mixamo.
@@ -144,11 +188,15 @@ goEl.addEventListener('click', async () => {
   a.click();
 
   const skipped = files.filter((f) => f.error);
+  const untextured = !root.getObjectByProperty('isMesh', true)?.material?.map;
   outEl.textContent = [
     `${(blob.size / 1048576).toFixed(2)} MB — ${clips.length} clip${clips.length === 1 ? '' : 's'}: `
       + clips.map((c) => `${c.name} (${c.duration.toFixed(2)}s)`).join(', '),
-    `mesh: ${Math.round(triangles).toLocaleString()} triangles, ${bones} bones`,
+    `mesh: ${Math.round(triangles).toLocaleString()} triangles, ${bones} bones`
+      + (untextured ? ' — no textures, so this is a plain mannequin rather than a kitted player'
+        : ' — textured'),
     skipped.length ? `skipped ${skipped.length}: ${skipped.map((f) => f.name).join(', ')}` : '',
+    checklist(clips.map((c) => c.name)),
     'Saved as player.glb — drop it into assets/candidates/ and open model-preview.html to check it.',
   ].filter(Boolean).join('\n');
   goEl.disabled = false;
