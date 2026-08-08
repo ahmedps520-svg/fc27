@@ -1325,6 +1325,21 @@ body.in-game #screen {
 .dr-reward { font-family: var(--font-num); font-size: 13px; color: var(--warn); }
 .dr-objs { list-style: none; margin: 6px 0 0; padding: 0; font-size: 11.5px; color: var(--good); }
 
+/* the once-ever "are these graphics right for your device" card */
+.gfx-ask {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 13px 14px; margin-bottom: 16px; border-radius: 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line);
+}
+.gfx-ask.rough { border-color: var(--warn); background: rgba(255, 183, 3, .09); }
+.ga-kicker { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-dim); }
+.gfx-ask p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text); }
+.gfx-ask b { font-family: var(--font-num); }
+.ga-btns { display: flex; gap: 8px; }
+.ga-btns .btn { flex: 1; }
+.gfx-ask em { font-size: 10.5px; font-style: normal; color: var(--text-dim); }
+
 /* ------------------------------ iOS / PWA ------------------------------ */
 html {
   /* stop Safari resizing text when the device rotates */
@@ -1823,6 +1838,17 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   background: rgba(0,0,0,.45);
   font: 600 11px/1 inherit;
   color: var(--muted);
+  white-space: nowrap;
+}
+/* Tabular figures, or the badge jitters sideways every time the number
+   changes and the eye reads that as the game stuttering. */
+.gm-fps {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(0,0,0,.45);
+  font: 700 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #7ef0a8;
   white-space: nowrap;
 }
 .gm-net.good { color: #7ef0a8; }

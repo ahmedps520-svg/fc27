@@ -161,12 +161,37 @@ Two things worth knowing if you touch this code:
   to be named second. Naming it first is what made the first attempt look like
   it was wearing a dress.
 
-**This is as far as procedural geometry goes.** What FC has is photogrammetry:
-scanned meshes with albedo, normal and roughness textures, on a skinned rig with
-mocapped animation. None of that can be authored from code here. The path to it
-is the one already set up in `assets/candidates/` — a rigged `.glb` (Mixamo is
-free, needs an Adobe login, and supplies run/idle/kick), then GLTFLoader plus
-skinning wired into `renderGL`, 22 instances sharing one geometry.
+**This is as far as procedural geometry goes**, and it is now the *fallback*
+rather than the default — see "Scanned players" below. The built-in figures are
+still built every match and stay visible until the 14 MB model has actually
+arrived, so a kick-off never waits on a download and a failed fetch costs
+nothing but the look.
+
+### Scanned players (`js/game/playerModel.js`)
+One Mixamo character, loaded once, `SkeletonUtils.clone`d twenty-two times, one
+`AnimationMixer` each. Four things are worth knowing before touching it:
+
+- **Two nested objects, not one.** The outer object carries the player's
+  position and heading; the inner one carries the y-up-centimetres to
+  z-up-metres correction. They cannot be the same object: tipping the model and
+  then spinning it about its own axis rolls the player flat onto the grass
+  instead of turning him. That is exactly what the first attempt did.
+- **The character's forward is -Y once tipped**, so the heading is
+  `atan2(dirY, dirX) + π/2`. The sign is easy to get wrong and the symptom —
+  everyone running backwards — is easy to miss at match camera distance.
+- **The kit is painted per mesh, not per pixel.** The asset splits shirt,
+  shorts, socks, body, boots and hair into separate meshes sharing two
+  materials, so the garment is known from the mesh name. An earlier plan
+  isolated the kit by lightness and saturation in the shared atlas; that was
+  never needed and would have been fragile. `recolour` keeps the cloth's own
+  brightness and puts the new colour under it, so folds and seams survive.
+- **Variation is uniforms, not assets.** Skin tone, hair colour, baldness,
+  height, build, head shape, sock colour and boot colour are all seeded off the
+  player's name and id, so a given footballer is always himself. Facial bones do
+  not exist on this rig, so a "different face" is head scale on three axes —
+  enough at match distance, and the honest ceiling without a second asset.
+- **Root motion is cancelled by pinning the hips.** The clips walk the character
+  across the floor; the match owns where he is.
 
 ### The first-goal freeze (online)
 Reported as "when the first goal scores in online the other opponent's screen
@@ -214,32 +239,13 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
 
 ## Open items
 
-1. **Player models — the asset has arrived, the integration has not.**
-   `assets/candidates/player.glb` is a Mixamo character (Ch38) in a full kit
-   with 55 clips, built with `tools/fbx-to-glb.html`. 14.24 MB: 7.72 MB mesh,
-   3.02 MB animation, 1.87 MB textures. 48,140 triangles, 7 skinned meshes,
-   two materials (`Ch38_body`, `Ch38_hair`).
+1. **Scanned players on a real phone.** The integration is done and the models
+   render, but the triangle budget was never measured on hardware — 48,140 each,
+   twenty-two of them, is 1.06 M triangles a frame. The game now ships on Ultra
+   with Realistic models and asks the player once, after their first full match,
+   whether to keep that. If a phone turns out to be hopeless, the honest fix is
+   a decimated second asset, not a different default.
 
-   Three things were checked before anyone builds on it:
-   - **It animates.** idle, jog, kick and the keeper's diving save all play off
-     the merged file.
-   - **Team colours are possible.** Skin and kit share one atlas, so tinting the
-     material would give every player a coloured face. The kit is the only part
-     of that atlas which is pale *and* unsaturated — skin, hair and boots all
-     carry saturation or darkness — so recolouring pixels above about 0.45
-     lightness and below 0.22 saturation turns the strip alone. Proven in red,
-     blue and keeper green with the face untouched. Do it once per kit at load
-     and share the texture across that team's eleven.
-   - **The triangle count is the open question.** 48k each against ~15k budgeted;
-     22 of them is a million triangles. Fielding the two keepers costs 96k and
-     is obviously affordable. All 22 needs measuring on a real phone, and wants
-     a Settings toggle rather than a guess, with the procedural rig as the other
-     option.
-
-   What is left: load the GLB once, `SkeletonUtils.clone` per player (it is not
-   vendored yet), an `AnimationMixer` each, a map from match state to clip, and
-   cross-fades. The scene is z-up and the asset is y-up in centimetres, so the
-   clone needs `rotation.x = π/2` and a scale of about 1/100.
 2. **CPU attackers don't make runs into the box**, so headers off crosses are rare.
    Long-standing, never requested. Note that a previous off-ball AI rewrite
    destroyed possession (shots fell 17 → 2.8) and had to be reverted — change this
@@ -254,3 +260,6 @@ be "reconnecting…", since the host stops broadcasting while it plays one.
   touchline and both goal ends are stands. Outside
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.
 - `server/data/` is gitignored — it holds password hashes. Keep it that way.
+- **The graphics prompt fires once, ever.** `settings.graphicsAsked` is set the
+  moment the card is rendered, whatever the player then answers. Asking after
+  every match would be worse than the stutter it is asking about.

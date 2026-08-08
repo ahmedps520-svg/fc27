@@ -38,6 +38,7 @@ export function render(params) {
           <span class="bug-clock" id="gmClock">0'</span>
         </div>
         <div class="gm-tools">
+          <span class="gm-fps" id="gmFps" hidden>-- FPS</span>
           <span class="gm-net" id="gmNet" hidden></span>
           <span class="gm-pad" id="gmPad">No pad</span>
           <button class="icon-btn sm" id="gmFs" title="Fullscreen">⛶</button>
@@ -101,6 +102,9 @@ export function mount(root, params) {
   }
   const input = localInput;
   const quality = resolveQuality(getState().settings.quality);
+  // Scanned players are a 14 MB download, so they are never forced on the
+  // low-detail path — a machine that asked for Low did so for a reason.
+  const useModels = getState().settings.models !== 'simple' && quality !== 'low';
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
@@ -294,7 +298,7 @@ export function mount(root, params) {
   let gl = null;
   let ctx = null;
   try {
-    gl = createRenderer(canvas, match, quality);
+    gl = createRenderer(canvas, match, quality, useModels);
   } catch (err) {
     console.warn('WebGL unavailable, falling back to canvas 2D:', err);
     ctx = canvas.getContext('2d', { alpha: false });
@@ -444,6 +448,31 @@ export function mount(root, params) {
    * on a guest — one line, at the first goal — into a screen frozen for
    * ninety minutes while the other player carried on.
    */
+  /* --------------------------------- fps -------------------------------- *
+   * Two readings off the same counter. The badge is a short average, because a
+   * number that changes sixty times a second is unreadable; the match average
+   * is the whole game, and it is what the post-match prompt argues from — one
+   * bad second while the model streams in should not decide anything.        */
+  const fpsEl = root.querySelector('#gmFps');
+  const showFps = !!getState().settings.showFps;
+  fpsEl.hidden = !showFps;
+  let fpsFrames = 0;
+  let fpsSince = performance.now();
+  let matchFrames = 0;
+  let matchSeconds = 0;
+
+  const countFrame = (now, dt) => {
+    // stalls (tab hidden, a long GC) are not frame rate, and would poison an average
+    if (dt > 0 && dt < 0.5) { matchFrames += 1; matchSeconds += dt; }
+    fpsFrames += 1;
+    const span = now - fpsSince;
+    if (span < 500) return;
+    if (showFps) fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`;
+    fpsFrames = 0;
+    fpsSince = now;
+  };
+  const matchFps = () => (matchSeconds > 0 ? matchFrames / matchSeconds : 0);
+
   let frameErrors = 0;
   let running = true;
   const frame = (now) => {
@@ -461,8 +490,10 @@ export function mount(root, params) {
   };
 
   const step = (now) => {
-    const dt = Math.min(0.034, (now - last) / 1000);
+    const raw = (now - last) / 1000;
+    const dt = Math.min(0.034, raw);
     last = now;
+    countFrame(now, raw);
     for (const inp of inputs) inp.poll(dt);
     updateTouchContext();
     // an online match cannot be frozen — the other player is still out there
@@ -729,6 +760,37 @@ export function mount(root, params) {
     paintPause();
   }
 
+  /* ----------------------- the one-time graphics ask ---------------------- *
+   * The game ships on Ultra with scanned players, which is the right default —
+   * but on a phone that may be twenty frames a second, and a player who has
+   * never seen the settings screen would just conclude the game is broken.
+   * So the first full match, and only ever the first, ends by asking.
+   *
+   * It is asked once whatever the answer is: nagging after every match would be
+   * worse than the stutter. Nothing to lower means nothing to ask.            */
+  function graphicsPrompt() {
+    const s = getState().settings;
+    if (s.graphicsAsked) return '';
+    if (s.models === 'simple' && s.quality !== 'ultra' && s.quality !== 'high') return '';
+    const fps = Math.round(matchFps());
+    // too short to have measured anything — leave the question for a real match
+    if (matchSeconds < 20) return '';
+    update((st) => { st.settings.graphicsAsked = true; });
+    const rough = fps > 0 && fps < 45;
+    return `
+      <div class="gfx-ask ${rough ? 'rough' : ''}">
+        <span class="ga-kicker">Graphics</span>
+        <p>${rough
+          ? `That match ran at about <b>${fps} FPS</b>. Lower settings would make it smoother — the players get simpler, everything else stays.`
+          : `That match ran at about <b>${fps} FPS</b>, so your device is handling the full detail. Keep it, or trade some of the look for headroom.`}</p>
+        <div class="ga-btns">
+          <button class="btn ${rough ? 'primary' : 'ghost'}" data-o="gfxLower">Lower them</button>
+          <button class="btn ${rough ? 'ghost' : 'primary'}" data-o="gfxKeep">Keep them</button>
+        </div>
+        <em>Either way, this is in Settings → Look from now on.</em>
+      </div>`;
+  }
+
   function finish() {
     const [ph, pa] = match.possession();
     const [h, a] = match.teams;
@@ -788,6 +850,7 @@ export function mount(root, params) {
               ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
               : ''}
           </div>` : ''}
+        ${graphicsPrompt()}
         <div class="gm-btns">
           ${online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
@@ -802,6 +865,18 @@ export function mount(root, params) {
   overlay.addEventListener('click', (e) => {
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
+      if (o === 'gfxLower' || o === 'gfxKeep') {
+        if (o === 'gfxLower') {
+          // one step down on both axes: the light figures, and detail left to
+          // the device rather than pinned to the top
+          update((s) => { s.settings.models = 'simple'; s.settings.quality = 'auto'; });
+          toast('Graphics lowered — takes effect next match');
+        } else {
+          toast('Keeping full detail');
+        }
+        e.target.closest('.gfx-ask')?.remove();
+        return;
+      }
       if (o === 'resume') setPaused(false);
       if (o === 'quit') { exitFullscreen(); navigate(online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
