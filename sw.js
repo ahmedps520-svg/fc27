@@ -45,6 +45,7 @@ const ASSETS = [
   './js/screens/play.js',
   './js/screens/match.js',
   './js/screens/settings.js',
+  './js/screens/shootout.js',
   './js/screens/online.js',
 
   './js/net/api.js',

@@ -272,6 +272,7 @@ export class Match {
       if (this.phase === 'goal') this.updateCelebration(dt);
       if (this.phaseT <= 0) {
         if (this.phase === 'corner') { this.takeCorner(); return; }
+        if (this.phase === 'penalty') { this.takePenalty(); return; }
         if (this.phase === 'goal') this.resetPositions(this.pendingKickoff ?? 0);
         if (this.phase === 'half') { this.half = 2; this.resetPositions(0); }
         this.startPlay();
@@ -1300,7 +1301,99 @@ export class Match {
       owner.stumble = 0.35;
     } else {
       p.stumble = sliding ? 1.15 : 0.5;
+      /* A mistimed challenge in your own box is a penalty.
+       *
+       * Fouls exist only here, and only inside the area. That is a deliberate
+       * limit rather than an oversight: there is no free-kick set piece in this
+       * game, so a foul anywhere else would have nowhere to go and would just
+       * be a turnover with a whistle on it. Inside the box there is somewhere
+       * for it to go, and it is the moment that matters.
+       *
+       * A slide is far more likely to give one away than a standing tackle,
+       * which is exactly the risk a slide is supposed to carry. */
+      const chance = sliding ? 0.34 : 0.1;
+      if (this.inPenaltyArea(owner, p.team) && Math.random() < chance) {
+        this.awardPenalty(1 - p.team, p);
+      }
     }
+  }
+
+  /** Is `pt` inside the box that `defending` is protecting? */
+  inPenaltyArea(pt, defending) {
+    const goalX = this.teams[defending].dir > 0 ? 0 : PITCH.w;
+    return Math.abs(pt.x - goalX) < BOX_W && Math.abs(pt.y - CY) < BOX_HALF;
+  }
+
+  /**
+   * Set a penalty. Everyone but the taker and the keeper leaves the box, the
+   * ball goes on the spot, and the taker is the best finisher on the pitch —
+   * which is what a manager would do and saves inventing a taker order.
+   */
+  awardPenalty(attacking, conceded) {
+    const atk = this.teams[attacking];
+    const goalX = atk.dir > 0 ? PITCH.w : 0;
+    const spotX = goalX + (atk.dir > 0 ? -11 : 11);
+
+    const b = this.ball;
+    Object.assign(b, {
+      x: spotX, y: CY, z: 0, vx: 0, vy: 0, vz: 0,
+      owner: null, lastTouch: null, inNet: null, curl: 0, shotBy: null,
+    });
+
+    const taker = atk.players
+      .filter((p) => p.role !== 'GK')
+      .sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
+    taker.x = spotX - atk.dir * 2.2;
+    taker.y = CY;
+    taker.vx = taker.vy = 0;
+    taker.touchLock = 0;
+
+    // everyone else outside the area, spread across the D
+    let n = 0;
+    for (const t of [0, 1]) {
+      for (const p of this.teams[t].players) {
+        if (p === taker) continue;
+        if (p.role === 'GK') {
+          if (t === attacking) { p.x = this.teams[t].dir > 0 ? 6 : PITCH.w - 6; p.y = CY; }
+          else { p.x = goalX + (atk.dir > 0 ? -0.7 : 0.7); p.y = CY; }
+          p.vx = p.vy = 0;
+          continue;
+        }
+        const side = n % 2 ? 1 : -1;
+        p.x = spotX - atk.dir * (7 + (n % 3) * 2.2);
+        p.y = clamp(CY + side * (5 + (n % 4) * 3.4), 3, PITCH.h - 3);
+        p.vx = p.vy = 0;
+        p.touchLock = 0.4;
+        n += 1;
+      }
+    }
+
+    this.penaltyTaker = taker;
+    this.conceded = conceded;
+    this.phase = 'penalty';
+    this.phaseT = 1.6;
+    this.banner = 'PENALTY';
+    this.cue('whistle', 1);
+    this.penalties = (this.penalties || 0) + 1;
+  }
+
+  /** Strike the penalty once the phase timer runs out. */
+  takePenalty() {
+    const p = this.penaltyTaker;
+    if (!p) { this.startPlay(); return; }
+    const atk = this.teams[p.team];
+    const goalX = atk.dir > 0 ? PITCH.w : 0;
+    this.ball.owner = p;
+    p.touchLock = 0;
+    // Aimed into a corner with an error that shrinks as shooting rises: a 99
+    // buries it, a centre-back does not.
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const spread = (100 - p.ref.stats.shooting) / 100;
+    const aimY = CY + side * (GOAL_HALF - 1.1) + (Math.random() - 0.5) * spread * 5.2;
+    this.shoot(p, { x: goalX > PITCH.w / 2 ? 1 : -1, y: (aimY - CY) / 12 },
+      0.72 + Math.random() * 0.22, { loft: 0.16 });
+    this.penaltyTaker = null;
+    this.phase = 'play';
   }
 
   /* -------------------------------- AI ------------------------------- */

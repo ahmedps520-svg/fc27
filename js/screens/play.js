@@ -9,6 +9,7 @@ import {
 import { createRenderer } from '../game/renderGL.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
+import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '../audio.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
@@ -686,6 +687,7 @@ export function mount(root, params) {
   let navIdx = 1;
   let section = 'team';
   let subFrom = null;      // the shirt selected to come off, if any
+  let shootoutResult = null;
 
   const formationSVG = (name) => {
     const shape = SHAPES[name] || [];
@@ -878,6 +880,34 @@ export function mount(root, params) {
       </div>`;
   }
 
+  /**
+   * A drawn Kick Off can go to penalties. Only a Kick Off: the Apex Division
+   * already accepts a draw and settles the ladder on it, and an online shootout
+   * would need a second authoritative state machine on the wire for a result
+   * that is already agreed.
+   */
+  function offerShootout() {
+    const [h, a] = match.teams;
+    const squadOf = (t) => ({
+      name: t.name,
+      short: t.short,
+      xi: t.players.map((p) => p.ref),
+      keeper: (t.players.find((p) => p.role === 'GK') || t.players[0]).ref,
+    });
+    overlay.innerHTML = '<div class="gm-panel glass"></div>';
+    runShootout(overlay.querySelector('.gm-panel'), {
+      home: squadOf(h), away: squadOf(a), youAre: match.human ?? 0,
+    }).then(({ winner, home, away }) => {
+      // The shootout does not touch the scoreline — a 2-2 is still a 2-2, which
+      // is how football records it — so it pays out on its own.
+      const won = winner === (match.human ?? 0);
+      update((st) => { st.club.apex += won ? 400 : 150; });
+      refreshCoins();
+      shootoutResult = { winner, home, away, won };
+      finish();
+    });
+  }
+
   function finish() {
     const [ph, pa] = match.possession();
     const [h, a] = match.teams;
@@ -888,6 +918,8 @@ export function mount(root, params) {
     const meIdx = online ? online.seat : 0;
     const mine = match.teams[meIdx].score;
     const theirs = match.teams[1 - meIdx].score;
+    // offered once: after the shootout there is nothing left to settle
+    const drawnKickOff = mine === theirs && !online && !params.ultimate && !shootoutResult;
 
     if (online) {
       // A walkover still counts: the player who stayed takes the points.
@@ -925,6 +957,11 @@ export function mount(root, params) {
           <span>${h.score} – ${a.score}</span>
           <div>${crestSVG(a.club.crest, a.short, 40)}<b>${a.short}</b></div>
         </div>
+        ${shootoutResult ? `
+          <div class="so-result ${shootoutResult.won ? 'won' : 'lost'}">
+            <span>${shootoutResult.won ? 'Won' : 'Lost'} on penalties</span>
+            <b>${shootoutResult.home} – ${shootoutResult.away}</b>
+          </div>` : ''}
         ${goals.length ? `<ul class="gm-goals">${goals.map(([t, s]) =>
           `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>` : ''}
         <div class="gm-stats">
@@ -942,6 +979,8 @@ export function mount(root, params) {
               : ''}
           </div>` : ''}
         ${graphicsPrompt()}
+        ${drawnKickOff ? `
+          <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
         <div class="gm-btns">
           ${online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
@@ -968,6 +1007,7 @@ export function mount(root, params) {
         e.target.closest('.gfx-ask')?.remove();
         return;
       }
+      if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'quit') { exitFullscreen(); navigate(online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }

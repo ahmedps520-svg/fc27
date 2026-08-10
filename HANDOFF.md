@@ -546,6 +546,12 @@ which silently removed the wallet pills from the header.
   and removed them on the next. The tool substitutes a seeded generator so
   before and after play the same fixtures with the same dice.
 
+  **A caveat found while adding penalties:** seeding makes runs *reproducible*,
+  but a change that consumes a different number of random draws desynchronises
+  the stream from the first difference onward, so before/after is only exact for
+  changes that do not alter RNG consumption. Anything that adds a dice roll —
+  fouls, a new AI branch — still needs two seeds and a tolerance for drift.
+
   **Anything that does not move a number across two different seeds has not
   moved it.** Run the sweep on a clean checkout, apply the change, run it again
   with the same arguments, and compare. Sixty matches per seed is the working
