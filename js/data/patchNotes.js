@@ -18,6 +18,45 @@
  */
 export const RELEASES = [
   {
+    version: 'v31',
+    date: '2026-08-10',
+    tag: 'Graphics',
+    title: 'Every fixture, a different ground',
+    lede: 'Stadiums are built to order now — big and small, open and covered, '
+        + 'packed and half empty, some closing their corners into a bowl.',
+    entries: [
+      {
+        head: 'No two fixtures share a stadium',
+        summary: 'The ground is invented from the two teams playing, so every fixture has its '
+               + 'own — and the same fixture always looks the same place twice.',
+        detail: 'Every match used to be played in one identical stadium: the same three stands, '
+              + 'the same height, the same roof, the same crowd, every time. The terracing depth '
+              + 'and height, the roof, the seat colours and the floodlights are all drawn from '
+              + 'the fixture now. Because the Apex Division fields a different opponent club on '
+              + 'every rung, climbing the ladder walks you through eleven different grounds.',
+      },
+      {
+        head: 'Curved corners on the big ones',
+        summary: 'The larger stadiums close their corners into a bowl instead of being three '
+               + 'separate stands with a gap you can see the night through.',
+        detail: 'Quarter-rings of terracing join the far stand to each side, with the crowd '
+              + 'swept round them and spaced by arc length so the density matches the straight '
+              + 'banks. Only the far corners — the near touchline stays open because that is '
+              + 'where the camera lives.',
+      },
+      {
+        head: 'Attendance is its own thing',
+        summary: 'Some grounds are packed, some are half empty, and it has nothing to do with '
+               + 'how big they are.',
+        detail: 'Size and attendance are drawn independently on purpose. A packed small ground '
+              + 'and a half-full bowl are both real, and both more interesting than every '
+              + 'stadium in the game being sold out. Small grounds are open terracing too, so '
+              + 'you can see the sky over the far end — which is most of what makes one read as '
+              + 'a smaller place than the last.',
+      },
+    ],
+  },
+  {
     version: 'v30',
     date: '2026-08-10',
     tag: 'Progression',
