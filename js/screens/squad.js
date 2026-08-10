@@ -3,6 +3,7 @@ import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
 import { PRESETS } from '../game/sim.js';
+import { screenHead } from '../components/screenHead.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
@@ -538,7 +539,21 @@ export function render() {
   const chem = chemistryFor(lineup, formation);
 
   const owned = s.club.packs.length;
-  const tabs = `
+
+  /* The banner reports the ladder rather than repeating the screen's name back
+     at you: which rung you are on and the record that got you there is the one
+     thing worth carrying above every tab in this mode. */
+  const u = s.ultimate;
+  const div = DIVISIONS[u.divIdx];
+  const head = screenHead({
+    kicker: 'Mode 02',
+    title: 'Ultimate XI',
+    sub: `${div.name} · ${u.wins}W ${u.draws}D ${u.losses}L`
+       + `${u.streak >= 2 ? ` · ${u.streak} in a row` : ''}`,
+    motif: 'ladder', tone: 'a',
+  });
+
+  const tabs = head + `
     <nav class="tabs" id="uTabs">
       ${[['squad', 'Squad'], ['division', 'Apex Division'], ['online', 'Online'],
          ['objectives', 'Objectives'], ['challenges', 'Challenges'],

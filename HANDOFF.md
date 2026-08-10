@@ -308,6 +308,33 @@ costs a little accuracy at the top. Three things are load-bearing:
   had before power existed. That was the point: add the mechanic, don't move the
   balance.
 
+### The theme, and where it used to stop
+The title screen and the menu are built on one idea — heavy italic condensed
+type over a pair of bold green lines sweeping up to the right. That idea used to
+stop at the menu: opening Ultimate XI, Kick Off or Settings dropped you into a
+stack of grey glass panels that could have belonged to any app.
+
+`components/screenHead.js` is the piece that carries it through the door. Every
+mode screen opens with one banner: kicker, italic title, one line of small
+print, the cover's swoosh, and a **motif** — a line drawing unique to that
+screen, all four authored on the same 300x120 canvas at the same stroke weight
+so they read as one set rather than four unrelated drawings. Ultimate XI gets
+the division ladder and reports which rung you are on; Kick Off gets the centre
+circle; Settings gets faders; Career gets a fixture grid. Tones come from the
+same `.tone-a`..`.tone-d` classes the menu tiles use, so a screen keeps the
+colour of the tile that opened it.
+
+Below the banner, `.panel-head h2` carries a short accent bar. It is a small
+thing and it is most of why a page of panels now reads as this game.
+
+**The accent picker is gone and is not coming back.** Green is the cover, the
+app icon, every swoosh and the mark on the top bar; a magenta build was a
+different game wearing the badge, and every screen designed afterwards had to be
+checked against five palettes instead of one. `GREEN` in `app.js` is the only
+palette, `:root` in the CSS states it too so the first paint is not a cyan
+flash, and `settings.accent` no longer exists (old saves carrying one are simply
+ignored).
+
 ### Gameplay presets
 `PRESETS` in `sim.js` — one object, two tunings, six multipliers each, all
 centred on 1 so the old behaviour is roughly the midpoint and *neither* preset

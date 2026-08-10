@@ -5,6 +5,7 @@ import { crestSVG } from '../components/crest.js';
 import { playerCard, fmtMoney } from '../components/playerCard.js';
 import { showDetail } from './squad.js';
 import { navigate, toast } from '../app.js';
+import { screenHead } from '../components/screenHead.js';
 
 export const TITLE = 'Career Mode';
 
@@ -19,6 +20,12 @@ export function render() {
 
 function pickerHTML() {
   return `
+    ${screenHead({
+      kicker: 'Mode 03',
+      title: 'Career Mode',
+      sub: 'A season at one club — the table, the transfers and the sack race.',
+      motif: 'season', tone: 'b',
+    })}
     <p class="lede">Pick a club to manage.</p>
     <div class="pick-grid">
       ${WORLD.clubs.map((c) => `
