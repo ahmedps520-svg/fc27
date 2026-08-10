@@ -18,12 +18,12 @@
  */
 export const RELEASES = [
   {
-    version: 'v29',
+    version: 'v30',
     date: '2026-08-10',
     tag: 'Progression',
     title: 'Objectives that keep coming',
-    lede: 'A ladder of 24, seven at a time, refreshing daily — and the last six '
-        + 'pay Ultimate.',
+    lede: 'A ladder of 24, seven at a time, refreshing twice a day — and the '
+        + 'last six pay Ultimate.',
     entries: [
       {
         head: 'A 24-rung ladder',
@@ -35,9 +35,9 @@ export const RELEASES = [
               + 'a five-figure sum at the bottom.',
       },
       {
-        head: 'Finished ones refresh every 24 hours',
-        summary: 'Complete an objective and it is replaced at the next daily refresh. Ones you '
-               + 'are midway through keep their progress and their place.',
+        head: 'Finished ones refresh every 12 hours',
+        summary: 'Complete an objective and it is replaced at the next refresh, twice a day. '
+               + 'Ones you are midway through keep their progress and their place.',
         detail: 'Only the finished slots are refilled — a refresh rewards finishing things '
               + 'rather than resetting the board, so a long objective you are grinding is never '
               + 'taken away from you. The countdown is on the tab, and it only lights up when '

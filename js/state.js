@@ -166,6 +166,12 @@ export function loadState() {
         state.ultimate.objRefresh = Date.now() + REFRESH_MS;
       }
       if (!Array.isArray(state.ultimate.objClaimed)) state.ultimate.objClaimed = [];
+      /* A stored refresh time can outlive the interval that set it — a save made
+         while the gap was 24 hours would otherwise sit on that timer long after
+         it became 12. Clamp it: the next refresh is never further away than one
+         full interval from now. */
+      const due = state.ultimate.objRefresh;
+      if (!due || due > Date.now() + REFRESH_MS) state.ultimate.objRefresh = Date.now() + REFRESH_MS;
       // Persist the wipe the moment it happens. Leaving it in memory would mean
       // re-running it on the next load — and by then the player may have earned
       // something, which the second wipe would take back off them.

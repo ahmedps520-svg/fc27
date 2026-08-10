@@ -2,7 +2,7 @@
  * The objective ladder.
  *
  * Twenty-four of them, in order, and you hold seven at a time. Finish one and
- * it stays finished until the daily refresh, which clears the completed slots
+ * it stays finished until the next refresh, which clears the completed slots
  * and deals the next unclaimed rungs into them. The ones you did *not* finish
  * stay exactly where they were with their progress intact — a refresh is a
  * reward for finishing things, not a punishment for being midway through one.
@@ -30,7 +30,7 @@
 export const SLATE_SIZE = 7;
 
 /** How long a slate lasts before the finished slots are refilled. */
-export const REFRESH_MS = 24 * 60 * 60 * 1000;
+export const REFRESH_MS = 12 * 60 * 60 * 1000;
 
 const L = (id, metric, text, need, apex, pack, extra = {}) =>
   ({ id, metric, text, need, apex, pack, ...extra });
