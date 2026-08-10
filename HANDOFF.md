@@ -858,6 +858,23 @@ Careful with the CSS block around `.brand-mark`: `.coin-chip` lives directly
 under it and was deleted by a careless replace-through-to-the-next-comment,
 which silently removed the wallet pills from the header.
 
+## Found in an audit, not yet fixed
+
+- **A substituted player keeps the old man's face.** `substitute()` swaps
+  `p.ref`, but the scanned-model rig in `renderGL.js` was built once from the
+  *original* `ref` — skin, hair, height, socks and boots are baked into it. Bring
+  on a visibly different player and he runs out wearing the previous one's
+  appearance. Fixing it means rebuilding the rig mid-match (expensive) or making
+  the per-player traits live uniforms.
+- **`js/game/net.js` is a complete Verlet cloth simulation for goal netting that
+  nothing imports.** It was in the service worker's precache list *twice*, so
+  every install downloaded it for nothing; that is now removed. The file is kept
+  because it works and the nets are still static — wiring it up is a real visual
+  improvement waiting to be picked up.
+- **A benched player comes back on fresh.** Stamina lives on the pitch object,
+  not the card, so subbing a tired player off and straight back on restores him.
+  Bounded by `MAX_SUBS`, so it is an oddity rather than an exploit.
+
 ## Rules that keep biting
 
 - **Never re-balance the match by feel.** Always sweep AI-vs-AI
