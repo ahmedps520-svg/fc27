@@ -19,12 +19,66 @@ import {
 
 export const TITLE = 'Match';
 
+/**
+ * What the loading screen says while it waits.
+ *
+ * Shuffled and stepped through, because a fixed order gives the game away the
+ * second time you see it. Half of these are true and half are jokes, which is
+ * the correct ratio for a loading screen.
+ */
+const LOADING_LINES = [
+  'Loading packages',
+  'Loading models',
+  'Touching grass',
+  'Inflating the ball',
+  'Painting the lines',
+  'Mowing the stripes',
+  'Warming up the keeper',
+  'Selling the perimeter boards',
+  'Filling the stands',
+  'Compiling shaders',
+  'Tuning the floodlights',
+  'Checking the offside trap',
+  'Bribing the referee',
+  'Polishing the boots',
+  'Reticulating splines',
+  'Waking the substitutes',
+];
+
+/**
+ * Who is actually playing, for anything that draws a badge.
+ *
+ * A custom squad borrows a real club's id purely so the pitch and the fixture
+ * have something to hang off, which meant the scoreboard showed Ironvale's crest
+ * over your own Ultimate XI. If the squad brought an identity with it, that wins.
+ */
+function sideOf(params, which) {
+  const squad = which === 'home' ? params.homeSquad : params.awaySquad;
+  const club = getClub(which === 'home' ? params.homeId : params.awayId);
+  if (!squad?.crest) return club;
+  return { ...club, name: squad.name || club.name, short: squad.short || club.short, crest: squad.crest };
+}
+
 export function render(params) {
-  const home = getClub(params.homeId);
-  const away = getClub(params.awayId);
+  const home = sideOf(params, 'home');
+  const away = sideOf(params, 'away');
   return `
     <div class="gm" id="gmRoot">
       <canvas id="gmCanvas"></canvas>
+
+      <!-- Sits over everything until the match is genuinely ready to look at.
+           See the loading block in mount() for what "ready" means. -->
+      <div class="gm-load" id="gmLoad">
+        <div class="gl-inner">
+          <div class="gl-teams">
+            <span class="gl-team">${crestSVG(home.crest, home.short, 54)}<b>${home.short}</b></span>
+            <span class="gl-vs">VS</span>
+            <span class="gl-team">${crestSVG(away.crest, away.short, 54)}<b>${away.short}</b></span>
+          </div>
+          <div class="gl-bar"><i id="gmLoadFill"></i></div>
+          <p class="gl-status" id="gmLoadText">Loading packages</p>
+        </div>
+      </div>
 
       <div class="gm-hud">
         <!-- the scoreline and the stamina bar stack together on the left; the
@@ -342,6 +396,67 @@ export function mount(root, params) {
   resize();
   window.addEventListener('resize', resize);
 
+  /* ---------------------------- loading screen ----------------------------
+   *
+   * Two jobs, and the second is the real one.
+   *
+   * The obvious job is to look like a game rather than dumping you onto a pitch
+   * the instant the screen changes. The important job is that a match used to
+   * start on the built-in figures and swap to the scanned players when the
+   * 14 MB model finished downloading — so the opening seconds looked cheap and
+   * then abruptly did not. Waiting on `gl.ready` means the picture you kick off
+   * with is the picture you keep.
+   *
+   * The clock and the assets are both floors, not deadlines: the screen stays up
+   * until the randomised 5-7 s has passed *and* the renderer says it is done.
+   * `LOAD_CEILING` is the escape hatch, because a model that never arrives must
+   * not be able to lock someone out of their own match.
+   */
+  /* Offline the wait is deliberate and the match is held still behind it.
+   * Online it is not: the rule everywhere else in this file is that an online
+   * match cannot be frozen because the other player is still out there, and a
+   * six-second stall on one machine only is a desync with a nice animation on
+   * top. So online keeps the veil — the model pop is worth hiding either way —
+   * but only for as long as the assets genuinely take. */
+  const LOAD_MS = online ? 0 : 5000 + Math.random() * 2000;
+  const LOAD_CEILING = 22000;
+  const loadEl = root.querySelector('#gmLoad');
+  const loadFill = root.querySelector('#gmLoadFill');
+  const loadText = root.querySelector('#gmLoadText');
+  let loading = true;
+  const loadStart = performance.now();
+  let assetsReady = !gl;                    // the canvas-2D path has nothing to wait for
+  gl?.ready.then(() => { assetsReady = true; });
+
+  const lines = LOADING_LINES.slice().sort(() => Math.random() - 0.5);
+  let lineIdx = 0;
+  loadText.textContent = lines[0];
+  const lineTimer = setInterval(() => {
+    lineIdx = (lineIdx + 1) % lines.length;
+    loadText.textContent = lines[lineIdx];
+  }, 700 + Math.random() * 500);
+
+  /** @returns {boolean} true once the veil has been lifted */
+  function tickLoading(now) {
+    const elapsed = now - loadStart;
+    // Creeps towards 96% on the clock and only completes when the assets are
+    // in, so a long download reads as "nearly there" rather than as a hang.
+    const clock = Math.min(1, elapsed / LOAD_MS);
+    const pct = assetsReady ? Math.max(clock, 0.96) : clock * 0.96;
+    loadFill.style.width = `${(pct * 100).toFixed(1)}%`;
+    if (elapsed < LOAD_MS) return false;
+    if (!assetsReady && elapsed < LOAD_CEILING) return false;
+
+    loading = false;
+    clearInterval(lineTimer);
+    loadFill.style.width = '100%';
+    loadEl.classList.add('done');
+    setTimeout(() => { loadEl.hidden = true; }, 420);
+    // the clock restarts here, or the match opens having "missed" the wait
+    last = performance.now();
+    return true;
+  }
+
   /* ------------------------------- touch ------------------------------- */
   /**
    * Phone and tablet controls.
@@ -548,18 +663,22 @@ export function mount(root, params) {
     const raw = (now - last) / 1000;
     const dt = Math.min(0.034, raw);
     last = now;
-    countFrame(now, raw);
+    // Frames drawn behind the loading veil are not match frames: nothing is
+    // simulated and half of them are spent compiling shaders, so counting them
+    // would skew the average the end-of-match graphics prompt is judged on.
+    if (!loading) countFrame(now, raw);
     updateStamina();
     for (const inp of inputs) inp.poll(dt);
     updateTouchContext();
+    if (loading) tickLoading(now);
     // an online match cannot be frozen — the other player is still out there
-    const frozen = paused && !online;
+    const frozen = (paused || loading) && !online;
     sender?.tick(dt);
 
-    if (input.pressed('pause') && !ended) setPaused(!paused);
+    if (input.pressed('pause') && !ended && !loading) setPaused(!paused);
 
     // pad / keyboard navigation of the pause menu
-    if (paused && !ended) {
+    if (paused && !ended && !loading) {
       const ay = input.axis().y;
       if (ay < -0.5 && !navHeld) { navIdx = (navIdx + PAUSE_ITEMS.length - 1) % PAUSE_ITEMS.length; paintPause(); }
       if (ay > 0.5 && !navHeld) { navIdx = (navIdx + 1) % PAUSE_ITEMS.length; paintPause(); }
@@ -637,7 +756,7 @@ export function mount(root, params) {
     const rdt = frozen ? 0 : dt;
     const shot = replay ? replay.cam : cam;
     if (gl) gl.render(match, shot, rdt);
-    else draw(ctx, match, shot, vw, vh, quality, rdt);
+    else draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
 
     // goal card rides the celebration phase
     if (match.phase === 'goal' && lastPhase !== 'goal') {
@@ -652,7 +771,28 @@ export function mount(root, params) {
       // scorer list its full-time screen reads from. Rebuild it from what the
       // snapshot carried.
       if (view && t) t.scorers.push({ name: match.scorerName || '', minute: match.minute() });
-    } else if (match.phase !== 'goal' && lastPhase === 'goal') {
+    }
+
+    /* Half time is a break, not a jump cut.
+     *
+     * The sim gives the phase 1.8 seconds and then teleports everyone back to
+     * their starting spots, which from the pitch looked like the game had
+     * glitched. Pausing here holds `phaseT` where it is — the frozen branch
+     * above never calls `match.update` — so nothing moves until the whistle is
+     * asked for, and the interval is long enough to actually be worth something:
+     * it opens on substitutions, because a spent full-back at 45 minutes is
+     * exactly the decision a half-time break exists for.
+     *
+     * Online is excluded for the same reason pausing is: the other player's
+     * clock keeps running whatever this one does. */
+    if (match.phase === 'half' && lastPhase !== 'half' && !online && !ended) {
+      halfTime = true;
+      section = 'subs';
+      navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'subs');
+      setPaused(true);
+    }
+
+    if (match.phase !== 'goal' && lastPhase === 'goal') {
       goalCard.classList.remove('show');
       goalCard.hidden = true;
       startReplay();                       // celebration over — roll the tape
@@ -701,6 +841,7 @@ export function mount(root, params) {
   let navIdx = 1;
   let section = 'team';
   let subFrom = null;      // the shirt selected to come off, if any
+  let halfTime = false;    // the pause menu is standing in for the interval
   let shootoutResult = null;
 
   const formationSVG = (name) => {
@@ -824,18 +965,26 @@ export function mount(root, params) {
   };
 
   function paintPause() {
-    const home = getClub(params.homeId);
+    const home = sideOf(params, 'home');
     overlay.innerHTML = `
-      <div class="pause">
-        <div class="pause-head">
-          ${crestSVG(home.crest, home.short, 26)}
-          <span>${online ? `Online · vs ${online.oppName}` : 'Quick Match'}</span>
-        </div>
+      <div class="pause ${halfTime ? 'is-half' : ''}">
+        ${halfTime ? `
+          <div class="half-head">
+            <span class="half-word">HALF TIME</span>
+            <span class="half-score">
+              ${match.teams[0].short} ${match.teams[0].score} – ${match.teams[1].score} ${match.teams[1].short}
+            </span>
+            <span class="half-note">Make your changes, then kick off the second half.</span>
+          </div>` : `
+          <div class="pause-head">
+            ${crestSVG(home.crest, home.short, 26)}
+            <span>${online ? `Online · vs ${online.oppName}` : 'Quick Match'}</span>
+          </div>`}
         ${online ? '<p class="pause-live">The match is still running — this menu does not pause it.</p>' : ''}
         <nav class="pause-nav">
           ${PAUSE_ITEMS.map((it, i) => `
             <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
-                    data-nav="${i}">${it.label}</button>`).join('')}
+                    data-nav="${i}">${it.id === 'resume' && halfTime ? 'Start Second Half' : it.label}</button>`).join('')}
         </nav>
         <div class="pause-panel">${panelFor(section)}</div>
         <div class="pause-hints"><b>✕</b> Select <b>◯</b> Resume</div>
@@ -857,7 +1006,12 @@ export function mount(root, params) {
   function setPaused(v) {
     paused = v;
     overlay.classList.toggle('is-pause', v);
-    if (!v) { overlay.hidden = true; overlay.innerHTML = ''; return; }
+    if (!v) {
+      // resuming out of the interval is the second-half whistle
+      if (halfTime) { halfTime = false; sfx('whistle'); }
+      overlay.hidden = true; overlay.innerHTML = '';
+      return;
+    }
     overlay.hidden = false;
     navIdx = Math.max(1, navIdx);
     paintPause();

@@ -392,6 +392,59 @@ Three effects:
   card behaves exactly as it did before and only the ends of the range moved.
   That is deliberate — it is how the mechanic went in without moving balance.
 
+### The loading screen
+Two jobs, and the second is the real one. The obvious job is to look like a game
+instead of dumping you onto a pitch the instant the screen changes. The
+important job is that a match used to start on the built-in figures and swap to
+the scanned players the moment the 14 MB model finished downloading — the
+opening seconds looked cheap and then abruptly did not.
+
+So the veil waits on **two floors, not a deadline**: a randomised 5–7 s *and*
+`gl.ready`, the promise `createRenderer` now returns, which settles when the
+model has landed or failed. `LOAD_CEILING` (22 s) is the escape hatch, because a
+model that never arrives must not lock someone out of their own match. While it
+is up the sim is frozen but the scene still renders, so shaders compile behind
+it rather than hitching on the first touch. Frames drawn during loading are
+excluded from `countFrame`, or they would skew the average the end-of-match
+graphics prompt is judged on.
+
+**Online is deliberately excluded from the 5–7 s floor.** The rule everywhere in
+`play.js` is that an online match cannot be frozen because the other player is
+still out there; a six-second stall on one machine only is a desync with an
+animation on top. Online keeps the veil but only for as long as the assets
+genuinely take.
+
+### Half time
+The sim gives the `half` phase 1.8 s and then teleports everyone back to their
+starting spots, which from the pitch looked like the game had glitched. `play.js`
+now catches the transition into `half` and opens the pause menu on
+**substitutions** — the frozen branch never calls `match.update`, so `phaseT`
+simply stops and nothing moves until the second half is asked for. Online is
+excluded for the same reason pausing is.
+
+The 2D renderer's phase banner takes a `hideBanner` option now, or HALF TIME gets
+painted across a half-time menu that already says HALF TIME.
+
+### Your club
+`club.identity` — a name, three letters, and a crest of shape/pattern/device plus
+two colours. It is deliberately **not a new system**: that object is exactly what
+`crestSVG` has always consumed and exactly what `makeTeam`'s custom-squad path
+has always accepted, and the two colours are what the kit shader tints every
+shirt from. The Your Club tab is a form over it.
+
+Two things to know:
+- `clubIdentity()` in `squad.js` fills in from defaults rather than trusting
+  storage. Saves written before this existed have no identity, and a *half*-set
+  one is worse than none — a missing `crest.colors` reaches the kit shader as
+  `undefined[0]`.
+- `sideOf()` in `play.js` exists because a custom squad borrows a real club's id
+  purely so the fixture has something to hang off, which meant the scoreboard
+  showed Ironvale's crest over your own Ultimate XI.
+
+The picker rebuilds each swatch through `innerHTML` on a wrapper span. `crestSVG`
+returns a string with leading whitespace, so parsing it and taking the first
+*node* hands back the whitespace, not the badge.
+
 ### The pitch, and the four white pools
 The turf is **three** textures, and that split is the point. `pitchTexture` is
 the colour — stripes, wear and markings, low frequency, so a modest resolution

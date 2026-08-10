@@ -11,6 +11,7 @@ import * as net from '../net/socket.js';
 import { DIVISIONS } from '../state.js';
 import { navigate, toast, refreshCoins } from '../app.js';
 import { sfx } from '../audio.js';
+import { clubIdentity } from './squad.js';
 
 export const TITLE = 'Account';
 
@@ -322,14 +323,20 @@ export function mount(root) {
 // Registered once, at module level, rather than by whichever screen happens to
 // be mounted — an opponent can be found after you have wandered off the tab.
 net.on('match', (m) => {
-  const squadOf = (ids, name, colors) => {
+  const squadOf = (ids, name, short, crest) => {
     const xi = (ids || []).map(getPlayer).filter(Boolean);
     return xi.length === 11
-      ? { xi, name, short: (name || 'XI').slice(0, 3).toUpperCase(), colors }
+      ? { xi, name, short, colors: crest.colors, crest }
       : null;
   };
-  const mine = squadOf(getState().club.lineup.filter(Boolean), api.getName() || 'You', ['#41d3ff', '#0b1020']);
-  const theirs = squadOf(m.opp.squad, m.opp.name, ['#ff2e88', '#160b16']);
+  /* Your own club goes onto the wire as you built it. The opponent's badge does
+     not travel — the lobby only carries a name and eleven ids — so they take a
+     stock away kit that is guaranteed to clash with nothing. */
+  const me = clubIdentity();
+  const mine = squadOf(getState().club.lineup.filter(Boolean), me.name, me.short, me.crest);
+  const oppName = m.opp.name || 'Rival';
+  const theirs = squadOf(m.opp.squad, oppName, oppName.slice(0, 3).toUpperCase(),
+    { shape: 'circle', pattern: 'halves', device: 'star', colors: ['#ff2e88', '#160b16'] });
 
   sfx('confirm');
   navigate('play', {

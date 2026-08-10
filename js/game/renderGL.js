@@ -1462,9 +1462,16 @@ export function createRenderer(canvas, match, quality, models = false) {
    * looking exactly as it did.                                               */
   const modelRigs = new Map();
   let useModels = false;
+  /* Resolves once there is nothing left that would visibly change the picture.
+   * The loading screen waits on this, which is the whole reason it exists: the
+   * match used to start on the built-in figures and swap to the scanned ones
+   * mid-play, so the first ten seconds looked like a different, worse game. */
+  let markReady;
+  const ready = new Promise((res) => { markReady = res; });
+  if (!models) markReady();
   if (models) {
     loadPlayerModel().then((model) => {
-      if (!model || disposed) return;
+      if (!model || disposed) { markReady(); return; }
       let index = 0;
       for (let t = 0; t < 2; t++) {
         for (const p of match.teams[t].players) {
@@ -1488,7 +1495,8 @@ export function createRenderer(canvas, match, quality, models = false) {
       // be turned back down mid-match without rebuilding anything
       for (const rig of rigs.values()) rig.grp.visible = false;
       useModels = true;
-    });
+      markReady();
+    }).catch(() => markReady());
   }
 
   const ball = new THREE.Mesh(
@@ -1563,6 +1571,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
 
   return {
+    /** Settles when every asset that would change the picture has landed. */
+    ready,
     /** Live three.js counters — draw calls, triangles, memory. Handy for profiling. */
     get info() { return renderer.info; },
     get engine() { return `three.js r${THREE.REVISION}`; },

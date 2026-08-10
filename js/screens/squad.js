@@ -5,7 +5,7 @@ import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
 import { PRESETS } from '../game/sim.js';
 import { screenHead } from '../components/screenHead.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
-import { crestSVG, flagSVG } from '../components/crest.js';
+import { crestSVG, flagSVG, CREST_PARTS } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
 import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
@@ -222,7 +222,103 @@ export function ultimateSquad() {
   if (xi.some((p) => !p)) return null;
   // The bench is optional — an empty seat simply means nobody to bring on there.
   const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean);
-  return { xi, bench, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
+  const id = clubIdentity();
+  return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest };
+}
+
+/**
+ * The player's own club, with every field guaranteed present.
+ *
+ * Saves written before identity existed have no `club.identity`, and a half-set
+ * one is worse than none — a missing `crest.colors` reaches the kit shader as
+ * `undefined[0]`. So this fills in from the defaults rather than trusting what
+ * came out of storage.
+ */
+export function clubIdentity() {
+  const d = { name: 'Ultimate XI', short: 'UXI',
+    crest: { shape: 'shield', pattern: 'solid', device: 'star', colors: ['#41d3ff', '#0b1020'] } };
+  const got = getState().club.identity || {};
+  return {
+    name: got.name || d.name,
+    short: (got.short || d.short).slice(0, 3).toUpperCase(),
+    crest: {
+      shape: got.crest?.shape || d.crest.shape,
+      pattern: got.crest?.pattern || d.crest.pattern,
+      device: got.crest?.device || d.crest.device,
+      colors: got.crest?.colors?.length === 2 ? got.crest.colors : d.crest.colors,
+    },
+  };
+}
+
+/* ------------------------------- Your club ------------------------------ *
+ *
+ * A UI over machinery that already existed. `crestSVG` has always built a badge
+ * out of a shape, a pattern, a device and two colours, and `makeTeam` has always
+ * accepted a custom squad's name and colours — those two colours are what the
+ * kit shader tints every shirt from. Nothing here is a new system; it is a form
+ * that writes four fields and a live badge that redraws as you touch them.
+ *
+ * The kit swatches are deliberately the same two colours as the crest. One
+ * palette per club is how real ones work, and two separate pickers would let
+ * someone build a badge that has nothing to do with the shirt they take onto
+ * the pitch.
+ */
+const KIT_PALETTES = [
+  ['#41d3ff', '#0b1020'], ['#e0294a', '#1a1c22'], ['#23c55e', '#07130c'],
+  ['#ffb703', '#12263f'], ['#9d4edd', '#10101a'], ['#ff5c8a', '#13315c'],
+  ['#2ec4b6', '#0b132b'], ['#ff7f11', '#2f3640'], ['#f2f4f8', '#12141a'],
+  ['#b8ff3d', '#14210a'], ['#ff2e88', '#160b16'], ['#8ecae6', '#023047'],
+];
+
+function clubView() {
+  const id = clubIdentity();
+  const row = (key, opts) => `
+    <div class="ci-row">
+      <span class="ci-label">${key}</span>
+      <div class="ci-opts">
+        ${opts.map((o) => `
+          <button class="ci-opt ${id.crest[key] === o ? 'on' : ''}" data-part="${key}" data-val="${o}">
+            <span class="ci-badge">${crestSVG({ ...id.crest, [key]: o }, id.short, 34)}</span>
+            <em>${o}</em>
+          </button>`).join('')}
+      </div>
+    </div>`;
+
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Your club</h2></header>
+      <p class="hint">The badge and the kit your Ultimate XI takes onto the pitch,
+        and what an opponent sees when you play online.</p>
+
+      <div class="ci-top">
+        <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 128)}</div>
+        <div class="ci-names">
+          <label class="field">
+            <span>Club name</span>
+            <input id="ciName" type="text" maxlength="22" value="${id.name.replace(/"/g, '&quot;')}">
+          </label>
+          <label class="field">
+            <span>Three letters</span>
+            <input id="ciShort" type="text" maxlength="3" value="${id.short}">
+          </label>
+          <p class="p-note">Shown on the scoreboard and the perimeter of every match.</p>
+        </div>
+      </div>
+
+      <div class="ci-row">
+        <span class="ci-label">colours</span>
+        <div class="ci-opts">
+          ${KIT_PALETTES.map(([a, b]) => `
+            <button class="ci-kit ${id.crest.colors[0] === a && id.crest.colors[1] === b ? 'on' : ''}"
+                    data-kit="${a}|${b}" aria-label="${a}">
+              <i style="--a:${a};--b:${b}"></i>
+            </button>`).join('')}
+        </div>
+      </div>
+      ${row('shape', CREST_PARTS.shape)}
+      ${row('pattern', CREST_PARTS.pattern)}
+      ${row('device', CREST_PARTS.device)}
+    </section>`;
 }
 
 /* ------------------------------ Apex Division --------------------------- */
@@ -555,7 +651,7 @@ export function render() {
 
   const tabs = head + `
     <nav class="tabs" id="uTabs">
-      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['online', 'Online'],
+      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['club', 'Your Club'], ['online', 'Online'],
          ['objectives', 'Objectives'], ['challenges', 'Challenges'],
          ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
@@ -567,6 +663,7 @@ export function render() {
 
   if (tab === 'online') return tabs + sorry + onlineView();
   if (tab === 'division') return tabs + sorry + divisionView();
+  if (tab === 'club') return tabs + sorry + clubView();
   if (tab === 'objectives') return tabs + sorry + objectivesView();
   if (tab === 'challenges') return tabs + sorry + challengesView();
   if (tab === 'store') return tabs + sorry + storeView();
@@ -757,6 +854,63 @@ export function mount(root) {
     pickSlot = null;
     navigate('squad');
   });
+
+  /* Your club.
+   *
+   * The badge redraws in place rather than through a re-render, because a
+   * re-render would tear the text field out from under whoever is typing in it.
+   * Everything writes straight to state — there is no Save button, and nothing
+   * here can be invalid enough to need one. */
+  if (tab === 'club') {
+    const preview = root.querySelector('#ciPreview');
+    const nameEl = root.querySelector('#ciName');
+    const shortEl = root.querySelector('#ciShort');
+
+    const repaint = () => {
+      const id = clubIdentity();
+      preview.innerHTML = crestSVG(id.crest, id.short, 128);
+      /* Every option previews itself against the rest of the club rather than
+         in isolation, so picking a shape shows it in your colours with your
+         device on it. Written through innerHTML on a wrapper: crestSVG returns
+         a string with leading whitespace, so parsing it and grabbing the first
+         *node* hands back the whitespace rather than the badge. */
+      root.querySelectorAll('[data-part]').forEach((b) => {
+        const slot = b.querySelector('.ci-badge');
+        if (slot) slot.innerHTML = crestSVG({ ...id.crest, [b.dataset.part]: b.dataset.val }, id.short, 34);
+      });
+    };
+
+    root.querySelector('.panel')?.addEventListener('click', (e) => {
+      const part = e.target.closest('[data-part]');
+      if (part) {
+        update((s) => { s.club.identity = { ...clubIdentity(), crest: { ...clubIdentity().crest, [part.dataset.part]: part.dataset.val } }; });
+        root.querySelectorAll(`[data-part="${part.dataset.part}"]`)
+          .forEach((x) => x.classList.toggle('on', x === part));
+        repaint();
+        return;
+      }
+      const kit = e.target.closest('[data-kit]');
+      if (kit) {
+        const colors = kit.dataset.kit.split('|');
+        update((s) => { s.club.identity = { ...clubIdentity(), crest: { ...clubIdentity().crest, colors } }; });
+        root.querySelectorAll('[data-kit]').forEach((x) => x.classList.toggle('on', x === kit));
+        repaint();
+      }
+    });
+
+    nameEl?.addEventListener('input', () => {
+      const v = nameEl.value.trim() || 'Ultimate XI';
+      update((s) => { s.club.identity = { ...clubIdentity(), name: v }; });
+    });
+    shortEl?.addEventListener('input', () => {
+      // three letters is what the scoreboard and the badge have room for
+      shortEl.value = shortEl.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 3);
+      const v = shortEl.value || 'UXI';
+      update((s) => { s.club.identity = { ...clubIdentity(), short: v }; });
+      repaint();
+    });
+    return;
+  }
 
   if (tab === 'online') {
     return api.isSignedIn()
