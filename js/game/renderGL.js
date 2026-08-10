@@ -56,29 +56,152 @@ function pickAwayKit(match) {
   return new THREE.Color(0xf2f4f8);
 }
 
-/* --------------------------- pitch texture ------------------------- */
-function pitchTexture() {
-  const S = 16;                                   // pixels per metre
+/* --------------------------- pitch texture -------------------------
+ *
+ * The pitch is three textures, not one, and that split is the whole reason it
+ * stopped looking like a flat green rectangle with lines drawn on it.
+ *
+ *  - `pitchTexture`  colour: mown stripes, wear, and the markings. Low
+ *                    frequency, so it can be laid over the whole 105x68 m at a
+ *                    modest resolution without looking soft.
+ *  - `turfDetail`    a small tiling square of blade noise, repeated ~40 times
+ *                    across the pitch. This is where the actual grass lives.
+ *                    Baking blades into the colour map instead would need a
+ *                    canvas around 7000 px square.
+ *  - `pitchRoughness` where the mower left the grass lying towards you and
+ *                    where it left it lying away. Real broadcast turf reads as
+ *                    stripes because those two directions catch the floodlights
+ *                    differently — it is a *specular* difference far more than a
+ *                    colour one, which is what the old two-tone green missed.
+ */
+
+/** How many bands the mower leaves across the width. */
+const STRIPES = 16;
+
+/** Tiling blade noise, used as the turf's normal map. One square metre or so. */
+function turfDetail(size = 256) {
   const c = document.createElement('canvas');
-  c.width = PITCH.w * S;
-  c.height = PITCH.h * S;
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  g.fillStyle = '#8080ff';                       // flat normal
+  g.fillRect(0, 0, size, size);
+
+  // Individual blades, leaning slightly, drawn as tiny tilted normals. Drawn
+  // wrapped past every edge so the tile has no visible seam.
+  const rand = mulberry(9137);
+  g.lineWidth = 1.4;
+  for (let i = 0; i < size * 5; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const lean = (rand() - 0.5) * 1.1;
+    const len = 2 + rand() * 4;
+    // encode the lean into R (x) and G (y) around the 128 neutral
+    const r = Math.round(128 + lean * 62);
+    const gg = Math.round(128 - (0.35 + rand() * 0.5) * 52);
+    g.strokeStyle = `rgb(${r},${gg},235)`;
+    for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
+      g.beginPath();
+      g.moveTo(x + ox, y + oy);
+      g.lineTo(x + ox + lean * len, y + oy - len);
+      g.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Per-stripe gloss plus the worn patches, so the mow catches the lights. */
+function pitchRoughness() {
+  const S = 6;
+  const c = document.createElement('canvas');
+  c.width = Math.round(PITCH.w * S);
+  c.height = Math.round(PITCH.h * S);
   const g = c.getContext('2d');
   const m = (v) => v * S;
 
-  // mown stripes, then a fine noise pass so the turf is not a flat colour
-  for (let i = 0; i < 18; i++) {
-    g.fillStyle = i % 2 ? '#2f8a46' : '#28793d';
-    g.fillRect((c.width / 18) * i, 0, c.width / 18 + 1, c.height);
+  for (let i = 0; i < STRIPES; i++) {
+    // grass lying away from you is glossy, lying towards you is matt
+    g.fillStyle = i % 2 ? '#d2d2d2' : '#f0f0f0';
+    g.fillRect((c.width / STRIPES) * i, 0, c.width / STRIPES + 1, c.height);
   }
-  const grain = g.getImageData(0, 0, c.width, c.height);
-  const px = grain.data;
-  for (let i = 0; i < px.length; i += 4) {
-    const n = (Math.random() - 0.5) * 26;
-    px[i] += n; px[i + 1] += n * 1.2; px[i + 2] += n * 0.6;
+  // worn ground has no gloss left in it at all
+  wearPatches((x, y, r) => {
+    const grad = g.createRadialGradient(m(x), m(y), 0, m(x), m(y), m(r));
+    grad.addColorStop(0, 'rgba(255,255,255,.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(m(x), m(y), m(r), 0, 7); g.fill();
+  });
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 8;
+  return tex;
+}
+
+
+/**
+ * Where a pitch gets worn: both goalmouths, the penalty spots, the centre
+ * circle, and the two touchline strips the full-backs live in. Nothing says
+ * "played on" like a pitch that is not uniform, and nothing says "generated"
+ * like one that is.
+ *
+ * @param {(x:number, y:number, r:number) => void} put called per patch, in metres
+ */
+function wearPatches(put) {
+  for (const side of [0, 1]) {
+    const gx = side === 0 ? 0 : PITCH.w;
+    const inw = side === 0 ? 1 : -1;
+    put(gx + inw * 3.2, CY, 8.5);            // the goalmouth
+    put(gx + inw * 11, CY, 2.4);             // the penalty spot
+    put(gx + inw * 16.5, CY, 4.2);           // the edge of the D
   }
-  g.putImageData(grain, 0, 0);
-  // mower arcs
-  g.globalAlpha = 0.05;
+  put(PITCH.w / 2, CY, 7);                   // the centre circle
+  put(PITCH.w * 0.32, 4.5, 6);               // the channels the full-backs run
+  put(PITCH.w * 0.68, PITCH.h - 4.5, 6);
+}
+
+function pitchTexture(detail = true) {
+  const S = detail ? 22 : 12;                     // pixels per metre
+  const c = document.createElement('canvas');
+  c.width = Math.round(PITCH.w * S);
+  c.height = Math.round(PITCH.h * S);
+  const g = c.getContext('2d');
+  const m = (v) => v * S;
+
+  /* Mown stripes: flat bands, with the blend only at the seam.
+     A first attempt ran a gradient across the full width of each band, which
+     put a shade change down the *middle* of every stripe and made sixteen
+     stripes read as thirty-two. A mower leaves each pass uniform; the only soft
+     edge is where two passes meet, and it is about a boot's width wide. */
+  const sw = c.width / STRIPES;
+  for (let i = 0; i < STRIPES; i++) {
+    g.fillStyle = i % 2 ? '#2e8845' : '#256f38';
+    g.fillRect(sw * i - 1, 0, sw + 2, c.height);
+  }
+  const feather = m(0.35);
+  for (let i = 1; i < STRIPES; i++) {
+    const x = sw * i;
+    const grad = g.createLinearGradient(x - feather, 0, x + feather, 0);
+    grad.addColorStop(0, i % 2 ? '#256f38' : '#2e8845');
+    grad.addColorStop(1, i % 2 ? '#2e8845' : '#256f38');
+    g.fillStyle = grad;
+    g.fillRect(x - feather, 0, feather * 2, c.height);
+  }
+
+  // worn, paler, yellower ground before anything else goes on top
+  wearPatches((x, y, r) => {
+    const grad = g.createRadialGradient(m(x), m(y), 0, m(x), m(y), m(r));
+    grad.addColorStop(0, 'rgba(150,158,96,.34)');
+    grad.addColorStop(0.6, 'rgba(140,150,92,.16)');
+    grad.addColorStop(1, 'rgba(140,150,92,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(m(x), m(y), m(r), 0, 7); g.fill();
+  });
+
+  // mower arcs — the long sweeping curves a triple gang leaves behind
+  g.globalAlpha = 0.028;
   for (let i = 0; i < 40; i++) {
     g.strokeStyle = i % 2 ? '#ffffff' : '#000000';
     g.lineWidth = 2 + Math.random() * 5;
@@ -90,24 +213,80 @@ function pitchTexture() {
   }
   g.globalAlpha = 1;
 
-  g.strokeStyle = 'rgba(255,255,255,.88)';
+  /* Two octaves of grain: patchiness, then per-texel speckle.
+     The patches have to stay under about a metre. A first pass used blobs up to
+     2.4 m across at four times this opacity and the pitch came out looking
+     mouldy — at that scale a circle reads as a circle, not as grass. */
+  g.globalAlpha = 0.05;
+  for (let i = 0; i < 2200; i++) {
+    const r = m(0.18 + Math.random() * 0.85);
+    g.fillStyle = Math.random() < 0.5 ? '#1d6030' : '#43a05c';
+    g.beginPath();
+    g.arc(Math.random() * c.width, Math.random() * c.height, r, 0, 7);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+  const grain = g.getImageData(0, 0, c.width, c.height);
+  const px = grain.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const n = (Math.random() - 0.5) * 22;
+    px[i] += n; px[i + 1] += n * 1.2; px[i + 2] += n * 0.6;
+  }
+  g.putImageData(grain, 0, 0);
+
+  /* Markings.
+   *
+   * Painted, not drawn: a touch of blur and a hair under full white, because
+   * pin-sharp pure-white vector lines were a large part of why this read as a
+   * diagram. The corner arcs and the two penalty arcs were simply missing
+   * before — the most conspicuous omission on the whole surface. */
+  g.save();
+  g.strokeStyle = 'rgba(248,252,255,.82)';
+  g.fillStyle = 'rgba(248,252,255,.82)';
   g.lineWidth = Math.max(2, m(0.12));
-  g.strokeRect(m(0.3), m(0.3), m(PITCH.w - 0.6), m(PITCH.h - 0.6));
-  g.beginPath(); g.moveTo(m(PITCH.w / 2), 0); g.lineTo(m(PITCH.w / 2), c.height); g.stroke();
+  g.shadowColor = 'rgba(255,255,255,.35)';
+  g.shadowBlur = Math.max(1, m(0.05));
+  const L = 0.3;                                   // inset of the touchline
+
+  g.strokeRect(m(L), m(L), m(PITCH.w - L * 2), m(PITCH.h - L * 2));
+  g.beginPath(); g.moveTo(m(PITCH.w / 2), m(L)); g.lineTo(m(PITCH.w / 2), m(PITCH.h - L)); g.stroke();
   g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(9.15), 0, 7); g.stroke();
-  g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(0.35), 0, 7); g.fillStyle = '#fff'; g.fill();
+  g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(0.35), 0, 7); g.fill();
 
   for (const side of [0, 1]) {
-    const gx = side === 0 ? 0 : PITCH.w;
+    const gx = side === 0 ? L : PITCH.w - L;
     const inw = side === 0 ? 1 : -1;
-    g.strokeRect(
-      m(side === 0 ? 0.3 : PITCH.w - 0.3 - BOX.w), m(CY - BOX.half),
+    const spot = gx + inw * 11;
+    g.strokeRect(side === 0 ? m(L) : m(PITCH.w - L - BOX.w), m(CY - BOX.half),
       m(BOX.w), m(BOX.half * 2));
-    g.strokeRect(
-      m(side === 0 ? 0.3 : PITCH.w - 0.3 - 5.5), m(CY - 9.16),
+    g.strokeRect(side === 0 ? m(L) : m(PITCH.w - L - 5.5), m(CY - 9.16),
       m(5.5), m(18.32));
-    g.beginPath(); g.arc(m(gx + inw * 11), m(CY), m(0.3), 0, 7); g.fillStyle = '#fff'; g.fill();
+    g.beginPath(); g.arc(m(spot), m(CY), m(0.3), 0, 7); g.fill();
+
+    /* The D: a 9.15 m arc about the penalty spot, clipped to the part that
+       falls outside the box — which is the only part that gets painted. */
+    const boxEdge = gx + inw * BOX.w;
+    const half = Math.acos(Math.abs(boxEdge - spot) / 9.15);
+    const face = side === 0 ? 0 : Math.PI;
+    g.beginPath();
+    g.arc(m(spot), m(CY), m(9.15), face - half, face + half);
+    g.stroke();
+
+    /* Corner arcs: 1 m radius, a quarter turn, always the quarter that faces
+       into the field of play. Canvas angles run from +x with +y pointing down,
+       so the start angle is picked from which corner this is. */
+    const left = side === 0;
+    for (const top of [true, false]) {
+      const cy = top ? L : PITCH.h - L;
+      const from = left
+        ? (top ? 0 : Math.PI * 1.5)
+        : (top ? Math.PI * 0.5 : Math.PI);
+      g.beginPath();
+      g.arc(m(gx), m(cy), m(1), from, from + Math.PI / 2);
+      g.stroke();
+    }
   }
+  g.restore();
 
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 16;
@@ -200,6 +379,23 @@ const SPONSORS = [
   { name: 'MERIDIAN', tag: 'TIMEPIECES', bg: '#0a0d16', fg: '#dfe6f5', accent: '#9fb4d8', mark: 'ring' },
   { name: 'ZEPHYR', tag: 'ELECTRIC MOTORS', bg: '#06202a', fg: '#65e8ff', accent: '#c9f7ff', mark: 'bolt' },
   { name: 'PULSE', tag: 'SPORTS DRINK', bg: '#2b0713', fg: '#ff6b8a', accent: '#ffd0da', mark: 'arc' },
+  // A touchline is 125 m long. Ten sponsors could not fill it without the run
+  // tiling back on itself every few metres, which is what made the ground look
+  // like one company had bought the whole stadium.
+  { name: 'HALCYON', tag: 'HOTELS & RESORTS', bg: '#0d1f1c', fg: '#8fe0c4', accent: '#e6fff5', mark: 'wave' },
+  { name: 'GRIDIRON', tag: 'LOGISTICS', bg: '#1a1206', fg: '#ffc94d', accent: '#3a2a08', mark: 'blocks' },
+  { name: 'CASTELLAN', tag: 'PROPERTY', bg: '#0e1526', fg: '#a9c2ff', accent: '#e8efff', mark: 'crown' },
+  { name: 'OBSIDIAN', tag: 'GAMING', bg: '#150a20', fg: '#b968ff', accent: '#f0dcff', mark: 'chevron' },
+  { name: 'SALTWORKS', tag: 'BREWERY', bg: '#231404', fg: '#ffb45e', accent: '#fff0d8', mark: 'wave' },
+  { name: 'ORBIS', tag: 'SATELLITE TV', bg: '#040c1e', fg: '#6fa8ff', accent: '#cfe2ff', mark: 'orbit' },
+  { name: 'VERDANT', tag: 'GARDEN CENTRES', bg: '#0c1c0e', fg: '#8ddb63', accent: '#e2ffd4', mark: 'leaf' },
+  { name: 'FLINT & CO', tag: 'MENSWEAR', bg: '#16161a', fg: '#e8e4dc', accent: '#b8a27a', mark: 'chevron' },
+  { name: 'NIMBUS', tag: 'CLOUD SERVICES', bg: '#08161f', fg: '#7fdcff', accent: '#dff6ff', mark: 'orbit' },
+  { name: 'ROOKWOOD', tag: 'BUILDING SOCIETY', bg: '#1b1010', fg: '#ff8b7a', accent: '#ffdcd6', mark: 'shield' },
+  { name: 'AMPERSAND', tag: 'RECRUITMENT', bg: '#0a1418', fg: '#5fe0b8', accent: '#d6fff2', mark: 'ring' },
+  { name: 'STARLING', tag: 'MOBILE', bg: '#1d0a17', fg: '#ff7ac0', accent: '#ffd9ee', mark: 'wing' },
+  { name: 'PENNANT', tag: 'SPORTSBOOK', bg: '#0f1a0c', fg: '#bfe85a', accent: '#f0ffd0', mark: 'tri' },
+  { name: 'CALDERA', tag: 'HEATING', bg: '#200c06', fg: '#ff8a3d', accent: '#ffd9bd', mark: 'bolt' },
 ];
 
 function drawMark(g, kind, x, y, r, col) {
@@ -229,58 +425,182 @@ function drawMark(g, kind, x, y, r, col) {
     g.moveTo(x - r, y + r * 0.5); g.quadraticCurveTo(x, y - r * 1.1, x + r, y - r * 0.2);
     g.quadraticCurveTo(x * 1, y + r * 0.1, x - r, y + r * 0.5);
     g.closePath(); g.fill();
+  } else if (kind === 'chevron') {
+    g.moveTo(x - r * 0.8, y + r * 0.65); g.lineTo(x, y - r * 0.5);
+    g.lineTo(x + r * 0.8, y + r * 0.65);
+    g.lineWidth = r * 0.34; g.stroke();
+    g.beginPath();
+    g.moveTo(x - r * 0.8, y - r * 0.05); g.lineTo(x, y - r * 1.2);
+    g.lineTo(x + r * 0.8, y - r * 0.05);
+    g.stroke();
+  } else if (kind === 'orbit') {
+    g.arc(x, y, r * 0.42, 0, 7); g.fill();
+    g.beginPath();
+    g.ellipse(x, y, r * 0.95, r * 0.38, -0.5, 0, 7);
+    g.lineWidth = r * 0.16; g.stroke();
+  } else if (kind === 'blocks') {
+    const u = r * 0.62;
+    g.fillRect(x - u, y - u, u * 0.82, u * 0.82);
+    g.fillRect(x + u * 0.18, y - u, u * 0.82, u * 0.82);
+    g.fillRect(x - u, y + u * 0.18, u * 0.82, u * 0.82);
+  } else if (kind === 'leaf') {
+    g.moveTo(x, y + r);
+    g.quadraticCurveTo(x - r * 0.95, y - r * 0.1, x, y - r);
+    g.quadraticCurveTo(x + r * 0.95, y - r * 0.1, x, y + r);
+    g.closePath(); g.fill();
+  } else if (kind === 'crown') {
+    g.moveTo(x - r, y + r * 0.6); g.lineTo(x - r * 0.78, y - r * 0.7);
+    g.lineTo(x - r * 0.34, y + r * 0.02); g.lineTo(x, y - r);
+    g.lineTo(x + r * 0.34, y + r * 0.02); g.lineTo(x + r * 0.78, y - r * 0.7);
+    g.lineTo(x + r, y + r * 0.6);
+    g.closePath(); g.fill();
+  } else if (kind === 'wave') {
+    g.lineWidth = r * 0.2;
+    for (let k = -1; k <= 1; k++) {
+      g.beginPath();
+      g.moveTo(x - r, y + k * r * 0.5);
+      g.bezierCurveTo(x - r * 0.35, y + k * r * 0.5 - r * 0.42,
+        x + r * 0.35, y + k * r * 0.5 + r * 0.42, x + r, y + k * r * 0.5);
+      g.stroke();
+    }
   } else {                                   // arc
     g.arc(x, y + r * 0.3, r * 0.85, Math.PI, 0); g.stroke();
   }
 }
 
-/** Perimeter LED board texture — a run of different sponsor panels. */
-function ledTexture(seed = 1) {
+/**
+ * The four ways a panel is laid out.
+ *
+ * Every board used to be drawn the same way — mark on the left, wordmark, then
+ * a strapline under it — so even with ten different names the run read as one
+ * advert repeated, which is exactly what a real ground does not look like. Some
+ * boards are a full-bleed colour with nothing but a wordmark; some centre the
+ * mark; some are split down the middle. Varying the *composition* does more for
+ * the illusion than varying the names.
+ *
+ * Each writes into the box (x, 0, w, h) and is handed the sponsor it belongs to.
+ */
+const PANEL_LAYOUTS = [
+  /** Mark left, wordmark and strapline stacked beside it. The classic. */
+  (g, s, x, w, h) => {
+    drawMark(g, s.mark, x + w * 0.085, h / 2 - h * 0.03, h * 0.24, s.fg);
+    g.textAlign = 'left';
+    g.font = `italic 800 ${h * 0.46}px Bahnschrift, "Arial Narrow", system-ui, sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.fillText(s.name, x + w * 0.17, h * 0.42);
+    g.font = `600 ${h * 0.17}px Inter, system-ui, sans-serif`;
+    g.fillStyle = s.accent;
+    g.fillText(s.tag, x + w * 0.175, h * 0.72);
+  },
+
+  /** Wordmark only, filling the board. What a big sponsor actually buys. */
+  (g, s, x, w, h) => {
+    g.textAlign = 'center';
+    g.font = `italic 800 ${h * 0.66}px Bahnschrift, "Arial Narrow", system-ui, sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.fillText(s.name, x + w / 2, h * 0.54, w * 0.86);
+  },
+
+  /** Split: a solid block of brand colour on the left with the mark in it. */
+  (g, s, x, w, h) => {
+    g.fillStyle = s.fg;
+    g.fillRect(x, 0, w * 0.26, h);
+    drawMark(g, s.mark, x + w * 0.13, h / 2, h * 0.28, s.bg);
+    g.textAlign = 'left';
+    g.font = `italic 800 ${h * 0.42}px Bahnschrift, "Arial Narrow", system-ui, sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.fillText(s.name, x + w * 0.32, h * 0.44);
+    g.font = `600 ${h * 0.16}px Inter, system-ui, sans-serif`;
+    g.fillStyle = s.accent;
+    g.fillText(s.tag, x + w * 0.325, h * 0.71);
+  },
+
+  /** Centred lockup: mark above a small wordmark, strapline rules either side. */
+  (g, s, x, w, h) => {
+    g.textAlign = 'center';
+    drawMark(g, s.mark, x + w / 2, h * 0.3, h * 0.2, s.fg);
+    g.font = `italic 800 ${h * 0.34}px Bahnschrift, "Arial Narrow", system-ui, sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.fillText(s.name, x + w / 2, h * 0.74, w * 0.7);
+    g.fillStyle = s.accent;
+    g.globalAlpha = 0.55;
+    g.fillRect(x + w * 0.08, h * 0.72, w * 0.14, 2);
+    g.fillRect(x + w * 0.78, h * 0.72, w * 0.14, 2);
+    g.globalAlpha = 1;
+  },
+];
+
+/**
+ * Perimeter LED board texture — a run of different sponsor panels.
+ *
+ * `panels` is however many fit the physical run, so the texture is laid end to
+ * end **once** rather than tiled. That is the whole fix: the boards used to be
+ * eight panels wrapped five times down a 125 m touchline, which is why the same
+ * three adverts kept coming back every few metres.
+ *
+ * @param {number} panels how many distinct boards to draw
+ * @param {number} panelPx width of each in texture pixels — chosen by the caller
+ *   against the GPU's max texture size, because a run this long can otherwise
+ *   ask for a canvas wider than a mobile GL context will allocate
+ */
+function ledTexture(seed = 1, panels = 8, panelPx = 512) {
   const rand = mulberry(seed);
-  const PANEL = 512;
-  const panels = 8;
   const c = document.createElement('canvas');
-  c.width = PANEL * panels;
-  c.height = 128;
+  c.width = panelPx * panels;
+  c.height = Math.round(panelPx * 0.22);
   const g = c.getContext('2d');
+  const h = c.height;
 
-  const order = SPONSORS.slice().sort(() => rand() - 0.5);
+  /* Deal the sponsors out of a shuffled deck and only reshuffle when it runs
+     out, so a name can never appear twice inside one pass of the list. */
+  let deck = [];
+  const nextSponsor = () => {
+    if (!deck.length) deck = SPONSORS.slice().sort(() => rand() - 0.5);
+    return deck.pop();
+  };
+
   for (let i = 0; i < panels; i++) {
-    const s = order[i % order.length];
-    const x = i * PANEL;
+    const s = nextSponsor();
+    const x = i * panelPx;
 
-    const grad = g.createLinearGradient(x, 0, x + PANEL, c.height);
+    const grad = g.createLinearGradient(x, 0, x + panelPx, h);
     grad.addColorStop(0, s.bg);
     grad.addColorStop(1, '#04060b');
     g.fillStyle = grad;
-    g.fillRect(x, 0, PANEL, c.height);
+    g.fillRect(x, 0, panelPx, h);
 
     // accent sweep + hairline, so panels read as lit signage not flat blocks
     g.save();
     g.globalAlpha = 0.16;
     g.fillStyle = s.fg;
     g.beginPath();
-    g.moveTo(x + PANEL * 0.62, 0);
-    g.lineTo(x + PANEL, 0);
-    g.lineTo(x + PANEL, c.height);
-    g.lineTo(x + PANEL * 0.44, c.height);
+    g.moveTo(x + panelPx * 0.62, 0);
+    g.lineTo(x + panelPx, 0);
+    g.lineTo(x + panelPx, h);
+    g.lineTo(x + panelPx * 0.44, h);
     g.closePath();
     g.fill();
     g.restore();
     g.fillStyle = s.accent;
-    g.fillRect(x, c.height - 5, PANEL, 5);
+    g.fillRect(x, h - Math.max(2, h * 0.045), panelPx, Math.max(2, h * 0.045));
 
-    drawMark(g, s.mark, x + 62, c.height / 2 - 4, 30, s.fg);
-
-    g.textAlign = 'left';
+    g.save();
     g.textBaseline = 'middle';
-    g.font = 'italic 800 60px Bahnschrift, "Arial Narrow", system-ui, sans-serif';
-    g.fillStyle = '#ffffff';
-    g.fillText(s.name, x + 108, c.height / 2 - 12);
-    g.font = '600 22px Inter, system-ui, sans-serif';
-    g.fillStyle = s.accent;
-    g.fillText(s.tag, x + 110, c.height / 2 + 30);
+    PANEL_LAYOUTS[Math.floor(rand() * PANEL_LAYOUTS.length)](g, s, x, panelPx, h);
+    g.restore();
+
+    // hairline seam between hoardings — real runs are separate units
+    g.fillStyle = 'rgba(0,0,0,.55)';
+    g.fillRect(x + panelPx - 2, 0, 2, h);
   }
+
+  /* The LED pixel grid. A board is thousands of discrete emitters, and the fine
+     dark lattice over the artwork is most of what separates one on camera from
+     a printed vinyl banner. */
+  g.globalAlpha = 0.14;
+  g.fillStyle = '#000000';
+  for (let y = 0; y < h; y += 3) g.fillRect(0, y, c.width, 1);
+  g.globalAlpha = 1;
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -592,6 +912,15 @@ function poseDive(rig, p, fine) {
 }
 
 /* ------------------------------- main ------------------------------ */
+/**
+ * Test hook: hand back the raw pitch artwork so the markings and the mow can be
+ * inspected flat, without a camera, a floodlight or a bloom pass in the way.
+ * Nothing in the game calls this.
+ */
+export function __pitchCanvas() {
+  return { colour: pitchTexture(true).image.toDataURL(), rough: pitchRoughness().image.toDataURL() };
+}
+
 export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
@@ -607,7 +936,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   // filmic tone mapping is what stops floodlit whites blowing out to flat grey
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.28;
+  renderer.toneMappingExposure = 1.14;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
@@ -628,7 +957,11 @@ export function createRenderer(canvas, match, quality, models = false) {
   const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 900);
   camera.up.set(0, 0, 1);
 
-  scene.add(new THREE.HemisphereLight(0x9fc0ff, 0x1c3324, 0.95));
+    /* Lifted from 0.95. The base level matters as much as the lamps do: the
+     brighter the fill, the smaller the *relative* step between a floodlight
+     pool and the ground beside it, and it was that step — not the absolute
+     brightness — that read as four spotlights pointed at a field. */
+  scene.add(new THREE.HemisphereLight(0x9fc0ff, 0x1c3324, 1.35));
   const sun = new THREE.DirectionalLight(0xdfe8ff, 0.85);
   sun.position.set(-46, -30, 88);
   sun.target.position.set(PITCH.w / 2, CY, 0);
@@ -650,17 +983,30 @@ export function createRenderer(canvas, match, quality, models = false) {
   surround.receiveShadow = true;
   scene.add(surround);
 
-  const turf = new THREE.Mesh(
-    new THREE.PlaneGeometry(PITCH.w, PITCH.h),
-    new THREE.MeshStandardMaterial({
-      map: pitchTexture(),
-      // Not the flat 0.97 it was. Cut grass under floodlights is faintly
-      // specular — that sheen sweeping across the stripes as the camera moves is
-      // most of what separates a lit pitch from a green rectangle.
-      roughness: 0.74,
-      metalness: 0.02,
-      envMapIntensity: 0.35,
-    }));
+  const turfMat = new THREE.MeshStandardMaterial({
+    map: pitchTexture(quality !== 'low'),
+    /* Cut grass under floodlights is *faintly* specular — that sheen sweeping
+       across the stripes is most of what separates a lit pitch from a green
+       rectangle. Faintly is the operative word. At 0.74, with a roughness map
+       taking the glossy stripes down to 0.41, the turf behaved like a mirror at
+       grazing angles and threw a blown-out white sheet across the near corners
+       of every camera angle. Grass is never that shiny. */
+    roughness: 0.9,
+    metalness: 0.02,
+    envMapIntensity: 0.35,
+  });
+  /* Blade detail and the mow's gloss, on everything but the low path — this is
+     the difference between grass and a green rectangle with lines on it. The
+     normal map tiles roughly once per 2.6 m so individual blades stay under a
+     centimetre, and its own `repeat` is independent of the colour map's. */
+  if (quality !== 'low') {
+    const detail = turfDetail(ultra ? 512 : 256);
+    detail.repeat.set(PITCH.w / 2.6, PITCH.h / 2.6);
+    turfMat.normalMap = detail;
+    turfMat.normalScale = new THREE.Vector2(0.55, 0.55);
+    turfMat.roughnessMap = pitchRoughness();
+  }
+  const turf = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.w, PITCH.h), turfMat);
   turf.position.set(PITCH.w / 2, CY, 0);
   turf.receiveShadow = true;
   scene.add(turf);
@@ -676,17 +1022,37 @@ export function createRenderer(canvas, match, quality, models = false) {
     [PITCH.w / 2, -MARGIN + 1.2, PITCH.w + 20, 0],
     [PITCH.w / 2, PITCH.h + MARGIN - 1.2, PITCH.w + 20, Math.PI],
   ];
-  boards.forEach(([bx, by, len, rot], i) => {
-    const led = ledTexture(1471 + i * 733);
-    led.wrapS = THREE.RepeatWrapping;
-    led.repeat.x = Math.max(1, Math.round(len / 26));
-    const mat = new THREE.MeshStandardMaterial({
-      map: led, emissive: 0xffffff, emissiveMap: led, emissiveIntensity: 1.15, roughness: 0.5,
-    });
-    const bd = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.05), mat);
-    bd.position.set(bx, by, 0.55);
-    bd.rotation.set(Math.PI / 2, 0, rot);
-    scene.add(bd);
+  /* One hoarding every ~5.2 m, which is what a real unit measures, and enough of
+     them to cover the run **once**. The old code drew eight and wrapped them
+     five times down a 125 m touchline, which is why the same three adverts kept
+     coming back every few metres.
+
+     A run that long at legible resolution is wider than a texture is allowed to
+     be — some mobile GL contexts cap at 4096, and an oversized canvas comes back
+     blank rather than merely soft — so the run is split into as many mesh
+     segments as the limit demands, each with its own texture and its own draw of
+     the sponsor deck. */
+  const PANEL_M = 5.2;
+  const PANEL_PX = 384;
+  const maxTex = renderer.capabilities.maxTextureSize || 4096;
+  const panelsPerTex = Math.max(4, Math.floor(maxTex / PANEL_PX));
+  let ledSeed = 1471;
+
+  boards.forEach(([bx, by, len, rot]) => {
+    const wanted = Math.max(1, Math.round(len / PANEL_M));
+    const segs = Math.ceil(wanted / panelsPerTex);
+    const perSeg = Math.ceil(wanted / segs);
+    const segLen = len / segs;
+    for (let sgi = 0; sgi < segs; sgi++) {
+      const led = ledTexture(ledSeed += 733, perSeg, PANEL_PX);
+      const mat = new THREE.MeshStandardMaterial({
+        map: led, emissive: 0xffffff, emissiveMap: led, emissiveIntensity: 1.15, roughness: 0.5,
+      });
+      const bd = new THREE.Mesh(new THREE.PlaneGeometry(segLen, 1.05), mat);
+      bd.position.set(bx - len / 2 + (sgi + 0.5) * segLen, by, 0.55);
+      bd.rotation.set(Math.PI / 2, 0, rot);
+      scene.add(bd);
+    }
   });
 
   // goals — frame plus a simulated net
@@ -822,7 +1188,34 @@ export function createRenderer(canvas, match, quality, models = false) {
     rig.lookAt(PITCH.w / 2, CY, 0);
     scene.add(rig);
 
-    const lamp = new THREE.SpotLight(0xfff2d6, 3200, 240, Math.PI / 5, 0.5, 1.5);
+    /* Wide, soft and a good deal dimmer than it was.
+     *
+     * At 3200 with a 36-degree cone and a hard-ish penumbra, the two near lamps
+     * overlapped into a pool that clipped to flat white along the touchline —
+     * ACES rolls highlights off but it cannot rescue a value that far over, so
+     * the grass detail simply stopped existing exactly where the camera spends
+     * most of its time. A real rig is many lamps covering the whole surface,
+     * not four hotspots, so the cone opens up and the intensity comes down. */
+    /* Wide cone, gentle falloff, aimed at the middle.
+     *
+     * The corners used to clip to flat white. Two things caused it and only one
+     * was obvious: the falloff. At decay 1.5 the pitch corner under a pylon is
+     * 40 m from it against 90 m for the centre, so the near ground took three
+     * times the light, and ACES cannot rescue a value that far over — the grass
+     * detail stopped existing exactly where the camera spends its time. Decay
+     * 0.9 flattens that ratio to about 1.9.
+     *
+     * Aiming the lamps diagonally across the pitch instead was tried and is
+     * worse, not better: four spot axes have to land *somewhere*, and moving
+     * them off the centre just relocates four hotspots onto four corners.
+     *
+     * The second cause was the cone. At 44 degrees, four masts 35 m up cannot
+     * cover a 105 x 68 m pitch, so the *rim* of each cone fell on the grass and
+     * drew a visible edge around each pool. It has to be wide enough that the
+     * falloff happens off the pitch entirely. Widening costs nothing in three:
+     * intensity is candela, so a broader cone spreads the lit area without
+     * dimming the middle. */
+    const lamp = new THREE.SpotLight(0xfff2d6, 150, 320, Math.PI / 2.9, 0.95, 0.85);
     lamp.position.set(px, py, 35);
     lamp.target.position.set(PITCH.w / 2, CY, 0);
     scene.add(lamp, lamp.target);
@@ -864,8 +1257,15 @@ export function createRenderer(canvas, match, quality, models = false) {
             varying vec2 vUv;
             varying vec3 vNormalV;
             void main() {
-              // brightest at the lamp, gone by the time it reaches the grass
-              float along = pow(1.0 - vUv.y, 1.9);
+              /* Brightest at the lamp, gone by the time it reaches the grass.
+               *
+               * This read (1.0 - vUv.y), which is the wrong way round: a cone's
+               * tip sits at uv.y = 1 and the tip is the end held up at the
+               * lamp, so the beam was brightest at its wide base — the end that
+               * punches through the pitch. That is what put four white fans on
+               * the grass under the pylons. It was invisible until the
+               * floodlights stopped blowing the turf out on their own. */
+              float along = pow(vUv.y, 1.9);
               // and brightest edge-on, which is what gives a cone its soft rim
               float rim = 1.0 - abs(dot(normalize(vNormalV), vec3(0.0, 0.0, 1.0)));
               gl_FragColor = vec4(uColor, along * pow(rim, 1.5) * uStrength);
