@@ -23,7 +23,7 @@ const defaults = () => ({
     simSpeed: 'normal',      // instant | fast | normal
     commentary: true,
     reduceMotion: false,
-    accent: 'cyan',
+    accent: 'green',       // matches the cover; the picker recolours the rest
     // Everything ships at the top setting. A phone that cannot hold it says so
     // in the frame rate, and the one-time prompt after the first full match
     // offers to turn it down — better than starting everyone on "safe" and

@@ -283,9 +283,9 @@ select {
 /* The swoosh, carried down from the cover.
    Sits in the lower corner of every tile and sweeps up to the right, so the
    four buttons read as a set and as the same product as the title screen. The
-   green is fixed rather than taken from the accent: it is the brand mark, not
-   a theme colour, and it is the one thing that must not change when someone
-   picks a different accent. */
+   It follows the accent. The one thing that does not is the APEX roundel: that
+   is the publisher's mark, and a logo that changes colour with a preference is
+   not a logo. Everything else in the interface is the player's to recolour. */
 .tile-swoosh {
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 0;
@@ -293,10 +293,10 @@ select {
 }
 .tile-swoosh path { fill: none; stroke-linecap: square; }
 .ts-a {
-  stroke: #23c55e; stroke-width: 13;
-  filter: drop-shadow(0 0 14px rgba(35, 197, 94, .55));
+  stroke: var(--accent); stroke-width: 13;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 55%, transparent));
 }
-.ts-b { stroke: rgba(35, 197, 94, .3); stroke-width: 5; }
+.ts-b { stroke: color-mix(in srgb, var(--accent) 30%, transparent); stroke-width: 5; }
 
 .tile:hover .tile-swoosh { opacity: 1; transform: translate(6px, -6px); }
 .reduce-motion .tile-swoosh { transition: none; }
@@ -305,17 +305,17 @@ select {
 /* everything else in the tile sits above the artwork */
 .tile-icon, .tile-name, .tile-blurb, .tile-cta { position: relative; z-index: 1; }
 
-.tile:hover { transform: translateY(-5px); border-color: #23c55e; box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
+.tile:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
 .tile:hover::before { opacity: .4; transform: translateY(12px); }
 .tile:active { transform: translateY(-1px) scale(.99); }
 
-/* A single family of greens rather than four unrelated pastels — the tiles were
-   cyan, lime, pink and amber, which is why they read as bland placeholders
-   next to a cover built on one bold colour. */
-.tone-a { --tone: #23c55e; }
+/* One family shaded off the accent, rather than the four unrelated pastels the
+   tiles used to carry — cyan, lime, pink and amber all at once, which is why
+   they read as bland placeholders next to a cover built on one bold colour. */
+.tone-a { --tone: var(--accent); }
 .tone-b { --tone: #4b5563; }   /* Career Mode is locked; it should look it */
-.tone-c { --tone: #3ff08a; }
-.tone-d { --tone: #7ee7a8; }
+.tone-c { --tone: color-mix(in srgb, var(--accent) 78%, #ffffff); }
+.tone-d { --tone: color-mix(in srgb, var(--accent) 55%, #ffffff); }
 .tile-icon {
   width: 46px; height: 46px; border-radius: 13px;
   display: grid; place-items: center; color: var(--tone);
@@ -345,7 +345,7 @@ select {
 }
 .menu-wordmark .t1 { color: #f6f9ff; }
 .menu-wordmark .t2 {
-  background: linear-gradient(180deg, #3ff08a, #12c46a);
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep, var(--accent)));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -912,13 +912,13 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
 .swoosh { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .swoosh path { fill: none; stroke-linecap: square; }
 .swoosh-a {
-  stroke: #3ff08a; stroke-width: 15;
+  stroke: var(--accent); stroke-width: 15;
   stroke-dasharray: 2200; stroke-dashoffset: 2200;
   animation: swoosh 1.5s cubic-bezier(.2, .8, .25, 1) .25s forwards;
-  filter: drop-shadow(0 0 22px rgba(63, 240, 138, .5));
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 50%, transparent));
 }
 .swoosh-b {
-  stroke: rgba(63, 240, 138, .32); stroke-width: 5;
+  stroke: color-mix(in srgb, var(--accent) 32%, transparent); stroke-width: 5;
   stroke-dasharray: 2200; stroke-dashoffset: 2200;
   animation: swoosh 1.7s cubic-bezier(.2, .8, .25, 1) .42s forwards;
 }
@@ -952,6 +952,7 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
 }
 .mark-sports {
   font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: .42em;
+  /* part of the logo lockup, so it holds the brand green whatever the accent */
   color: #7fe3a8; padding-top: 4px;
   border-top: 1px solid rgba(63, 240, 138, .35);
 }
@@ -964,7 +965,7 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
 }
 .splash-title .t1 { color: #f6f9ff; }
 .splash-title .t2 {
-  background: linear-gradient(180deg, #3ff08a, #12c46a);
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep, var(--accent)));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .splash-tag {
@@ -975,16 +976,16 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
   margin-top: 30px; padding: 16px 62px; cursor: pointer; position: relative;
   font-family: var(--font-num); font-size: 20px; font-weight: 800; letter-spacing: .3em;
   color: #04121a; border: 0; border-radius: 999px;
-  background: linear-gradient(120deg, #7bd0ff, #a48cff 55%, #7bd0ff);
-  box-shadow: 0 14px 44px rgba(123, 208, 255, .4);
+  background: linear-gradient(120deg, var(--accent), var(--accent-deep, var(--accent)) 55%, var(--accent));
+  box-shadow: 0 14px 44px color-mix(in srgb, var(--accent) 40%, transparent);
   opacity: 0; animation: riseIn .7s ease .68s forwards, pulseBtn 2.6s ease-in-out 1.6s infinite;
   transition: transform .18s, box-shadow .18s;
 }
-.start-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 54px rgba(123, 208, 255, .58); }
+.start-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 54px color-mix(in srgb, var(--accent) 58%, transparent); }
 .start-btn:active { transform: translateY(0) scale(.99); }
 @keyframes pulseBtn {
-  0%, 100% { box-shadow: 0 14px 44px rgba(123, 208, 255, .35); }
-  50% { box-shadow: 0 14px 56px rgba(164, 140, 255, .6); }
+  0%, 100% { box-shadow: 0 14px 44px color-mix(in srgb, var(--accent) 35%, transparent); }
+  50% { box-shadow: 0 14px 56px color-mix(in srgb, var(--accent) 60%, transparent); }
 }
 .splash-note {
   margin: 22px 0 0; font-size: 10.5px; letter-spacing: .1em; color: var(--text-mute);
@@ -1036,8 +1037,8 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
   position: relative; overflow: hidden;
   display: block; height: 100%; width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #7bd0ff, #a48cff 60%, #7bd0ff);
-  box-shadow: 0 0 14px rgba(123, 208, 255, .7);
+  background: linear-gradient(90deg, var(--accent), var(--accent-deep, var(--accent)) 60%, var(--accent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
   transition: width .22s ease-out;
 }
 /* a sheen travelling along the filled part, so it reads as working even while
@@ -1055,7 +1056,7 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
 .up-row { display: flex; justify-content: space-between; align-items: baseline; }
 .up-stage { font-size: 11px; letter-spacing: .08em; color: var(--text-dim); }
 .up-pct {
-  font-family: var(--font-num); font-size: 13px; font-weight: 800; color: #a9dcff;
+  font-family: var(--font-num); font-size: 13px; font-weight: 800; color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 
