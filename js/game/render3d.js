@@ -711,7 +711,13 @@ function shadowAt(ctx, V, x, y, r) {
 }
 
 /* ------------------------------- main ------------------------------ */
-export function draw(ctx, match, cam, w, h, quality, dt) {
+/**
+ * @param {object} [opts]
+ *   hideBanner  a menu is open over the pitch, so the in-world phase banner
+ *               would be painted underneath it — HALF TIME printed across a
+ *               half-time menu that already says HALF TIME.
+ */
+export function draw(ctx, match, cam, w, h, quality, dt, opts = {}) {
   const V = setupView(cam, w, h);
 
   const sky = ctx.createLinearGradient(0, 0, 0, h);
@@ -762,7 +768,7 @@ export function draw(ctx, match, cam, w, h, quality, dt) {
     if (p === active) drawMarker(ctx, V, p, match.teams[it.team].colors[0]);
   }
 
-  if (match.phase !== 'play' && match.banner) drawBanner(ctx, match, w, h, kits);
+  if (match.phase !== 'play' && match.banner && !opts.hideBanner) drawBanner(ctx, match, w, h, kits);
 }
 
 function drawBall(ctx, V, b) {

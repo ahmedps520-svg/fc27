@@ -1150,6 +1150,47 @@ body.in-game #screen {
 .gm:fullscreen { width: 100vw; height: 100vh; }
 #gmCanvas { display: block; width: 100%; height: 100%; }
 
+/* ------------------------- Loading screen -------------------------
+   Over everything, including the touch pad, until the match is genuinely worth
+   looking at. z-index sits above the HUD and the pause overlay both. */
+.gm-load {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 24px;
+  background:
+    radial-gradient(900px 520px at 50% 0%, rgba(35, 197, 94, .1), transparent 62%),
+    linear-gradient(180deg, #070d18 0%, #04070e 100%);
+  transition: opacity .4s ease;
+}
+.gm-load[hidden] { display: none; }
+.gm-load.done { opacity: 0; pointer-events: none; }
+.gl-inner { width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.gl-teams { display: flex; align-items: center; gap: clamp(18px, 6vw, 46px); }
+.gl-team {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  font-family: var(--font-num); font-size: 15px; font-weight: 800; letter-spacing: .12em;
+}
+.gl-vs {
+  font-family: var(--font-num); font-style: italic; font-weight: 800;
+  font-size: clamp(26px, 6vw, 40px); letter-spacing: -.03em; color: var(--accent);
+}
+.gl-bar {
+  width: 100%; height: 6px; border-radius: 999px; overflow: hidden;
+  background: rgba(255, 255, 255, .09);
+}
+.gl-bar i {
+  display: block; height: 100%; width: 0%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-deep, var(--accent)), var(--accent));
+  transition: width .28s ease;
+}
+.gl-status {
+  margin: 0; min-height: 1.3em;
+  font-family: var(--font-num); font-size: 12.5px; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--text-dim);
+}
+.gl-status::after {
+  content: '…'; margin-left: 2px;
+}
+
 .gm-hud {
   position: absolute; top: 0; left: 0; right: 0; z-index: 3;
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -1718,6 +1759,52 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 }
 .rt-skip:active { background: var(--accent); color: #07130c; }
 
+/* -------------------------- Club identity ------------------------- */
+.ci-top { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 8px; }
+.ci-preview {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 156px; height: 156px; border-radius: var(--radius);
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--line);
+}
+.ci-names { flex: 1 1 240px; display: flex; flex-direction: column; gap: 10px; }
+.ci-names .field input {
+  width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .05);
+  color: var(--text); font: inherit; font-size: 15px;
+}
+.ci-names .field input:focus { outline: none; border-color: var(--accent); }
+#ciShort { font-family: var(--font-num); letter-spacing: .22em; text-transform: uppercase; }
+
+.ci-row { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--line); }
+.ci-label {
+  flex: 0 0 84px; padding-top: 8px;
+  font-family: var(--font-num); font-size: 11px; font-weight: 800;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--text-mute);
+}
+.ci-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ci-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 10px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .04);
+  color: var(--text-dim); font: inherit;
+  transition: border-color .16s, background .16s;
+}
+.ci-opt em { font-style: normal; font-size: 10px; letter-spacing: .08em; text-transform: capitalize; }
+.ci-opt:hover { border-color: var(--line-strong); }
+.ci-opt.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* the kit swatch is the two colours side by side — which is what a shirt is */
+.ci-kit {
+  width: 46px; height: 40px; padding: 4px; cursor: pointer;
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .04);
+}
+.ci-kit i {
+  display: block; width: 100%; height: 100%; border-radius: 6px;
+  background: linear-gradient(105deg, var(--a) 0 52%, var(--b) 52% 100%);
+}
+.ci-kit.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
 /* Which gameplay preset a mode runs. Stated up front rather than buried in
    Settings, because the two modes deliberately do not play the same. */
 .preset-note {
@@ -1779,6 +1866,27 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   grid-column: 1 / -1; display: flex; align-items: center; gap: 10px;
   padding: 20px 26px 0; font-size: 14px; font-weight: 700; letter-spacing: .02em;
 }
+/* Half time: the pause menu standing in for the interval, so it announces
+   itself rather than looking like the player hit the button by accident. */
+.half-head {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; gap: 3px;
+  /* clears the score bug and the stamina bar, which stay on screen behind the
+     menu — the interval title is large enough to collide with both */
+  padding: 62px 26px 0;
+  border-left: 3px solid var(--accent); margin-left: 23px;
+}
+.half-word {
+  font-family: var(--font-num); font-weight: 800; font-style: italic;
+  font-size: clamp(30px, 5vw, 46px); line-height: 1; letter-spacing: -.035em;
+  color: #f6f9ff;
+}
+.half-score {
+  font-family: var(--font-num); font-size: 17px; font-weight: 800;
+  letter-spacing: .06em; color: var(--accent);
+}
+.half-note { font-size: 12.5px; color: var(--text-dim); }
+
 .pause-nav {
   grid-column: 1; align-self: start;
   display: flex; flex-direction: column; gap: 2px; padding: 34px 0 0 26px;

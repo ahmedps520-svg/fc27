@@ -54,6 +54,19 @@ const defaults = () => ({
     // merge in loadState.
     packs: ['gold', 'silver', 'silver', 'bronze'],
     challengesDone: [],       // one-off SBCs already claimed
+    /* The club you actually take onto the pitch.
+     *
+     * Ultimate XI used to be called "Ultimate XI" in a fixed cyan, on every
+     * save, for everybody — the one mode built entirely out of your choices had
+     * no identity of its own. The shape here is exactly what `crestSVG` already
+     * consumes and exactly what `makeTeam`'s custom-squad path already accepts,
+     * so this is a stored preference rather than a new system: the badge draws
+     * itself and the two colours are what the kit shader tints from. */
+    identity: {
+      name: 'Ultimate XI',
+      short: 'UXI',
+      crest: { shape: 'shield', pattern: 'solid', device: 'star', colors: ['#41d3ff', '#0b1020'] },
+    },
   },
   flags: {                    // one-off UI state that has to outlive a reload
     apology: false,           // show the "we reset your club" card once

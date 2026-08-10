@@ -107,6 +107,13 @@ let seq = 0;
  * @param {string} short 3-letter club code
  * @param {number} size rendered width in pixels; under 28 draws the simple build
  */
+/** Everything a badge can be built out of, so a picker can offer all of it. */
+export const CREST_PARTS = {
+  shape: Object.keys(SHAPES),
+  pattern: Object.keys(PATTERNS),
+  device: Object.keys(DEVICES),
+};
+
 export function crestSVG(crest, short, size = 40) {
   const [a, b] = crest.colors;
   // ids have to be unique per badge on the page, and two crests can be built in
