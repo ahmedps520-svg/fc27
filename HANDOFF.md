@@ -497,6 +497,21 @@ excluded for the same reason pausing is.
 The 2D renderer's phase banner takes a `hideBanner` option now, or HALF TIME gets
 painted across a half-time menu that already says HALF TIME.
 
+### The Club tab
+Squad and the identity editor were two top-level tabs sitting next to each
+other, which put "pick your eleven" at the same level as "play a match". They
+are one **Club** tab now with its own second row: Squad, Club Badge, Club Name.
+
+Two things to know if you touch it:
+- `clubTab` is separate module state from `tab`. The squad wiring is the
+  *fallback* at the end of `mount()`, so the identity editor's block is gated on
+  `tab === 'club' && clubTab !== 'squad'` — gating it on `tab === 'club'` alone
+  would return early and the squad's own listeners would never attach. This is
+  the same shape as the long-standing store-tab gotcha noted below.
+- The second row is styled as a rule with an underline rather than as pills, on
+  purpose: two rows of pills stacked read as one run of fourteen buttons instead
+  of as a hierarchy.
+
 ### Your club
 `club.identity` — a name, three letters, and a crest of shape/pattern/device plus
 two colours. It is deliberately **not a new system**: that object is exactly what

@@ -18,6 +18,36 @@
  */
 export const RELEASES = [
   {
+    version: 'v28',
+    date: '2026-08-10',
+    tag: 'Interface',
+    title: 'One Club tab',
+    lede: 'Squad and Your Club were two tabs doing one job. They are now one '
+        + 'tab with three faces.',
+    entries: [
+      {
+        head: 'Squad, Club Badge and Club Name live together',
+        summary: 'The Club tab opens on your eleven, with the badge and the name a tap away on '
+               + 'its own second row.',
+        detail: 'Picking your eleven and picking your badge are the same job — running your '
+              + 'club — but they sat at the same level as "play a match" and "buy a pack", which '
+              + 'made the top row longer without making anything easier to find. The second row '
+              + 'is deliberately a different shape from the first: condensed capitals on a rule '
+              + 'with the accent underlining the open one, rather than a second set of pills, so '
+              + 'two navigations stacked together read as a hierarchy instead of as one long run '
+              + 'of buttons.',
+      },
+      {
+        head: 'The name page shows the scoreboard',
+        summary: 'Choosing your three letters now previews the actual in-match scoreboard, badge '
+               + 'and all.',
+        detail: 'Three letters is what fits beside the score during a match, so that is the '
+              + 'thing they should be chosen against. The preview is the real component, not a '
+              + 'drawing of it, and it updates as you type.',
+      },
+    ],
+  },
+  {
     version: 'v27',
     date: '2026-08-10',
     tag: 'Housekeeping',
