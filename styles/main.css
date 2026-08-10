@@ -899,6 +899,74 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
   opacity: 0; animation: riseIn .8s ease .9s forwards;
 }
 @keyframes riseIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------ the updater ----------------------------- *
+ * Sits where the START button was, on the title screen's own plate, so it
+ * reads as part of the cover rather than an error that happened to it.       */
+.updater {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 10px; margin-top: 26px;
+  /* an explicit width, not just a max: a flex column shrinks to its widest
+     child, which left the progress bar about half the length it should be */
+  width: min(420px, 100%);
+  opacity: 0; animation: riseIn .5s ease forwards;
+}
+.up-kicker {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 999px;
+  background: rgba(255, 183, 3, .14); border: 1px solid rgba(255, 183, 3, .45);
+  color: #ffc63d;
+  font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+}
+.up-kicker::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: #ffc63d; box-shadow: 0 0 8px #ffc63d;
+  animation: upBlink 1.6s ease-in-out infinite;
+}
+@keyframes upBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.up-copy {
+  margin: 0; max-width: 38ch;
+  font-size: 13px; line-height: 1.5; color: var(--text-dim);
+}
+/* the update button starts immediately rather than waiting out the cover's
+   staggered entrance — it is the only thing on screen that can be pressed */
+.up-start { margin-top: 4px; animation: riseIn .5s ease .05s forwards, pulseBtn 2.6s ease-in-out 1s infinite; }
+
+.up-progress { width: 100%; display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+.up-track {
+  position: relative; height: 8px; border-radius: 999px; overflow: hidden;
+  background: rgba(255, 255, 255, .1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+}
+.up-track i {
+  /* positioned, so the sheen below is clipped to the filled part — without it
+     the sheen anchors to the track and lights up the empty section too */
+  position: relative; overflow: hidden;
+  display: block; height: 100%; width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7bd0ff, #a48cff 60%, #7bd0ff);
+  box-shadow: 0 0 14px rgba(123, 208, 255, .7);
+  transition: width .22s ease-out;
+}
+/* a sheen travelling along the filled part, so it reads as working even while
+   a stage is easing towards its ceiling */
+.up-track i::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .55) 50%, transparent 80%);
+  background-size: 220px 100%;
+  animation: upSheen 1.15s linear infinite;
+}
+@keyframes upSheen { from { background-position: -220px 0; } to { background-position: 220px 0; } }
+.reduce-motion .up-track i::after,
+.reduce-motion .up-kicker::before { animation: none; }
+
+.up-row { display: flex; justify-content: space-between; align-items: baseline; }
+.up-stage { font-size: 11px; letter-spacing: .08em; color: var(--text-dim); }
+.up-pct {
+  font-family: var(--font-num); font-size: 13px; font-weight: 800; color: #a9dcff;
+  font-variant-numeric: tabular-nums;
+}
+
 .reduce-motion .swoosh path { animation-duration: .01s; }
 .reduce-motion .splash-body * { animation-delay: 0s !important; animation-duration: .01s !important; }
 

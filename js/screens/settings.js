@@ -1,6 +1,7 @@
 import { getState, update, resetAll } from '../state.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION } from '../app.js';
+import { installUpdate } from '../update.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
 
 /** Push the saved audio preferences into the engine. */
@@ -134,7 +135,7 @@ export function render() {
     <section class="panel glass">
       <header class="panel-head"><h2>App</h2></header>
       <div class="setting-row">
-        <div><b>Version</b><span>Updates install themselves in the background.</span></div>
+        <div><b>Version</b><span>New builds are offered on the title screen.</span></div>
         <span class="tag">${APP_VERSION}</span>
       </div>
       <div class="setting-row">
@@ -146,15 +147,16 @@ export function render() {
     <section class="panel glass about">
       <header class="panel-head"><h2>Controls</h2></header>
       <div class="ctrl-grid">
-        ${[['✕ / Space', 'Pass · tackle'], ['◯ / K', 'Shoot — hold for power'],
+        ${[['✕ / Space', 'Pass — hold for a longer ball · tackle'], ['◯ / K', 'Shoot — hold for power'],
            ['◯+R1 / K+I', 'Curl it up and bend'], ['□ / J', 'Cross'],
            ['△ / L', 'Through ball'], ['L1 · R1 / Q', 'Switch player'], ['R2 / Shift', 'Sprint'],
            ['Options / Esc', 'Pause']]
           .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
       </div>
       <p class="disclaimer">${WORLD.clubs.length} clubs · ${WORLD.players.length} players.
-        Clubs, leagues and players are fictional, apart from the eight Icon cards,
-        which name real footballers and are not endorsed by or affiliated with them.</p>
+        Clubs, leagues and competitions are fictional, apart from the Icon and Star
+        cards, which name real footballers and are not endorsed by or affiliated
+        with them.</p>
     </section>`;
 }
 
@@ -232,29 +234,21 @@ export function mount(root) {
   /**
    * The manual way out of a stale install.
    *
-   * The app updates itself now, but a device that is already stuck on an old
-   * build is stuck precisely because its worker will not let go — so there has
-   * to be a button that throws the offline copy away rather than asking the
-   * thing that is broken to fix itself. The reload carries a cache-busting
-   * query so even the shell has to come from the server.
+   * The title screen offers an update when the server is on a newer build, but
+   * a device wedged on an old copy may never be told there is one — so there
+   * has to be a button that throws the offline copy away regardless. It runs
+   * the same installer the gate does rather than a second copy of it, and
+   * borrows the button itself as the progress readout.
    */
   root.querySelector('#forceUpdate').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = 'Updating…';
+    let build = 'unknown';
     try {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-      }
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-    } catch { /* whatever failed, the reload below is still worth doing */ }
-    const url = new URL(window.location.href);
-    url.searchParams.set('u', Date.now().toString(36));
-    window.location.replace(url.toString());
+      const res = await fetch('api/version', { cache: 'no-store' });
+      if (res.ok) build = (await res.json()).build || 'unknown';
+    } catch { /* offline — reload anyway, it can hardly make things worse */ }
+    installUpdate(build, (pct) => { btn.textContent = `${Math.round(pct)}%`; });
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {

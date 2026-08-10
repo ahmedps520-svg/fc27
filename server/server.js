@@ -14,6 +14,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const ws = require('./ws');
 const store = require('./store');
 
@@ -40,6 +41,47 @@ const TYPES = {
   '.gltf': 'model/gltf+json',
   '.bin': 'application/octet-stream',
 };
+
+/* ------------------------------------------------------------------ *
+ * Build identity
+ *
+ * A short hash of everything the browser is served. It changes when — and only
+ * when — the code changes, which is what the client needs to know whether the
+ * copy it has cached is the current one.
+ *
+ * Deliberately not the process start time and not a deploy timestamp: this host
+ * spins down when idle, and a restart with identical code must not tell every
+ * player there is an update. Deliberately not a hand-bumped constant either,
+ * because the whole point is that pushing a commit is enough.
+ * ------------------------------------------------------------------ */
+const BUILD_DIRS = ['js', 'styles'];
+const BUILD_FILES = ['index.html', 'sw.js', 'manifest.webmanifest'];
+
+function computeBuild() {
+  const h = crypto.createHash('sha256');
+  const walk = (dir) => {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    // sorted, or two machines hashing the same tree disagree
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (/\.(js|mjs|css|html|json|webmanifest)$/i.test(e.name)) {
+        h.update(path.relative(ROOT, full));
+        try { h.update(fs.readFileSync(full)); } catch { /* unreadable, skip */ }
+      }
+    }
+  };
+  for (const d of BUILD_DIRS) walk(path.join(ROOT, d));
+  for (const f of BUILD_FILES) {
+    const full = path.join(ROOT, f);
+    h.update(f);
+    try { h.update(fs.readFileSync(full)); } catch { /* not present */ }
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
+const BUILD = computeBuild();
 
 /* ------------------------------------------------------------------ *
  * HTTP: JSON API + static files
@@ -104,7 +146,14 @@ async function api(req, res, route) {
   // Somewhere to look when accounts go missing: says where they are being
   // stored and whether that storage survives a restart.
   if (route === '/api/health') {
-    return json(res, 200, { ok: true, uptime: Math.round(process.uptime()), store: store.status() });
+    return json(res, 200, {
+      ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(),
+    });
+  }
+
+  // What the client polls on boot to decide whether it is running current code.
+  if (route === '/api/version') {
+    return json(res, 200, { build: BUILD });
   }
 
   // Lists whatever models have been dropped into assets/candidates, so the

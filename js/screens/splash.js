@@ -1,5 +1,6 @@
 import { WORLD } from '../data/generator.js';
 import { navigate } from '../app.js';
+import { checkForUpdate, installUpdate } from '../update.js';
 
 export const TITLE = 'APEX XI';
 
@@ -38,7 +39,25 @@ export function render() {
         <button class="start-btn" id="startBtn">
           <span>START</span>
         </button>
-        <p class="splash-note">All clubs, players and competitions are fictional.</p>
+
+        <!-- Swapped in over the start button when the server is on a newer
+             build. Hidden markup rather than a re-render, so the title screen's
+             entrance animation is not restarted underneath it. -->
+        <div class="updater" id="updater" hidden>
+          <span class="up-kicker">Update required</span>
+          <p class="up-copy" id="upCopy">A new version of APEX XI is available.
+            Install it to carry on.</p>
+          <button class="start-btn up-start" id="updateBtn"><span>UPDATE</span></button>
+          <div class="up-progress" id="upProgress" hidden>
+            <div class="up-track"><i id="upFill"></i></div>
+            <div class="up-row">
+              <span class="up-stage" id="upStage">Contacting server</span>
+              <span class="up-pct" id="upPct">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="splash-note">Clubs, leagues and competitions are fictional.</p>
       </div>
     </div>`;
 }
@@ -109,8 +128,40 @@ export function mount(root) {
   };
   raf = requestAnimationFrame(frame);
 
-  const go = () => navigate('menu');
-  root.querySelector('#startBtn').addEventListener('click', go);
+  /* ------------------------------ updating ------------------------------ *
+   * Asked once, here, because this is the only screen the app is guaranteed to
+   * pass through on a cold start and the only one where interrupting somebody
+   * costs them nothing.                                                       */
+  const startBtn = root.querySelector('#startBtn');
+  const updater = root.querySelector('#updater');
+  let blocked = false;
+
+  const go = () => { if (!blocked) navigate('menu'); };
+  startBtn.addEventListener('click', go);
+
+  checkForUpdate().then(({ pending, build }) => {
+    if (!pending || !build) return;
+    blocked = true;
+    startBtn.hidden = true;
+    updater.hidden = false;
+
+    const fill = root.querySelector('#upFill');
+    const pctEl = root.querySelector('#upPct');
+    const stageEl = root.querySelector('#upStage');
+
+    root.querySelector('#updateBtn').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.hidden = true;
+      root.querySelector('#upCopy').textContent = 'Installing the latest version…';
+      root.querySelector('#upProgress').hidden = false;
+      installUpdate(build, (pct, label) => {
+        fill.style.width = `${pct}%`;
+        pctEl.textContent = `${Math.round(pct)}%`;
+        stageEl.textContent = label;
+      });
+    }, { once: true });
+  });
 
   const onKey = (e) => {
     if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); go(); }
