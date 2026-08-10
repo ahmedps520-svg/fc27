@@ -1,4 +1,5 @@
 import { navigate, toast } from '../app.js';
+import { notesPending, showNotes } from './notes.js';
 
 export const TITLE = 'APEX XI';
 
@@ -92,4 +93,15 @@ export function mount(root) {
   root.querySelectorAll('[data-locked]').forEach((el) => {
     el.addEventListener('click', () => toast(`Career Mode is ${el.dataset.locked.toLowerCase()}`, 'info'));
   });
+
+  /* What's new, once per build.
+   *
+   * Here rather than on the title screen because the title screen already owns
+   * one interruption — the update gate — and stacking a second one in front of
+   * a START button is how a game gets a reputation for being in the way. By the
+   * time this fires the menu is drawn behind it, so dismissing it leaves you
+   * where you were already heading. */
+  let closeNotes = null;
+  if (notesPending()) closeNotes = showNotes(root);
+  return () => { closeNotes?.(); };
 }

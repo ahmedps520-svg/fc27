@@ -55,7 +55,7 @@ const TYPES = {
  * because the whole point is that pushing a commit is enough.
  * ------------------------------------------------------------------ */
 const BUILD_DIRS = ['js', 'styles'];
-const BUILD_FILES = ['index.html', 'sw.js', 'manifest.webmanifest'];
+const BUILD_FILES = ['index.html', 'notes.html', 'sw.js', 'manifest.webmanifest'];
 
 function computeBuild() {
   const h = crypto.createHash('sha256');

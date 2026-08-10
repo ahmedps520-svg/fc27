@@ -70,6 +70,10 @@ const defaults = () => ({
   },
   flags: {                    // one-off UI state that has to outlive a reload
     apology: false,           // show the "we reset your club" card once
+    // which build's release notes this device has already been shown. Compared
+    // against the newest entry in data/patchNotes.js, so a new release
+    // announces itself exactly once and an existing one never does.
+    notesSeen: null,
   },
   meta: { reset: RESET_TAG }, // which wipe this save has already been through
   career: null,               // set once a career is started

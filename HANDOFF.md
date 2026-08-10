@@ -392,6 +392,30 @@ Three effects:
   card behaves exactly as it did before and only the ends of the range moved.
   That is deliberate — it is how the mechanic went in without moving balance.
 
+### Release notes
+`js/data/patchNotes.js` is the single source. Two readers: `screens/notes.js`
+shows the newest entry as a card over the menu the first time a device opens a
+build, and `notes.html` renders the whole archive as a page. Neither holds its
+own copy of the text, so a release cannot ship with a card that says one thing
+and a page that says another.
+
+Each entry carries **two lengths of the same story**: `summary` is one sentence
+for the in-game card, written for someone who wants to get back to playing;
+`detail` is the full page — why it changed and what it cost.
+
+**Shipping a release is: add an entry at the top of `RELEASES` with `version` set
+to the new `APP_VERSION`.** That is the whole job. The card compares against
+`flags.notesSeen` and announces itself once per device; the page picks it up on
+its own. `notes.html` is in `BUILD_FILES` so editing it moves the build hash, and
+in the `ASSETS` list so it works offline.
+
+The card lives on the **menu**, not the title screen. The title screen already
+owns one interruption — the update gate — and stacking a second in front of a
+START button is how a game gets a reputation for being in the way. By the time
+the card fires the menu is drawn behind it, so dismissing it leaves you where you
+were already heading. It marks itself seen when *shown*, not when dismissed: a
+player who closes the app mid-read should not be handed it again every launch.
+
 ### The loading screen
 Two jobs, and the second is the real one. The obvious job is to look like a game
 instead of dumping you onto a pitch the instant the screen changes. The
@@ -782,7 +806,10 @@ which silently removed the wallet pills from the header.
   touchline and both goal ends are stands. Outside
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.
 - `server/data/` is gitignored — it holds password hashes. Keep it that way.
-- **Bump `CACHE` in `sw.js` and `APP_VERSION` in `app.js` on every release.**
+- **Bump `CACHE` in `sw.js` and `APP_VERSION` in `app.js` on every release, and
+  add a matching entry at the top of `RELEASES` in `js/data/patchNotes.js`.**
+  Without the third one the update ships silently — the in-game card and the
+  notes page both key off that version.
   The cache name is what evicts the previous build. `APP_VERSION` is only a
   human-readable label — the authority on what is deployed is the build hash
   shown under it in Settings, which the server derives from the bytes it is
