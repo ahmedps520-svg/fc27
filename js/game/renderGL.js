@@ -925,8 +925,19 @@ export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
   const ultra = quality === 'ultra';
+  /* No MSAA above Low, and that is not a downgrade.
+   *
+   * Every tier above Low renders through the EffectComposer: the scene goes
+   * into a render target, the passes chew on it, and OutputPass draws the
+   * result as a fullscreen quad. The canvas's own multisample buffer is never
+   * what you see — but the browser still allocates it, and at an iPad's native
+   * resolution a 4x multisampled default framebuffer is tens of megabytes of
+   * GPU memory and the bandwidth to resolve it, every frame, for nothing.
+   * The composer's own antialiasing is what is actually doing the work. */
   const renderer = new THREE.WebGLRenderer({
-    canvas, antialias: quality !== 'low', powerPreference: 'high-performance',
+    canvas,
+    antialias: quality === 'low',
+    powerPreference: 'high-performance',
   });
   const dpr = window.devicePixelRatio || 1;
   renderer.setPixelRatio(ultra
@@ -968,7 +979,12 @@ export function createRenderer(canvas, match, quality, models = false) {
   scene.add(sun, sun.target);
   if (renderer.shadowMap.enabled) {
     sun.castShadow = true;
-    const shadowRes = quality === 'low' ? 1024 : ultra ? 4096 : 2048;
+    /* 2048 at the top, not 4096. The shadow camera covers 160x140 world units,
+       so 2048 is about thirteen texels per metre — past the point where more
+       resolution is visible on a player-sized object, and a 4096 depth map is
+       67 MB of GPU memory on a device that has to hold the composer targets,
+       the bloom mip chain and a 14 MB player model at the same time. */
+    const shadowRes = quality === 'low' ? 1024 : ultra ? 2048 : 1536;
     sun.shadow.mapSize.set(shadowRes, shadowRes);
     sun.shadow.bias = -0.0008;
     const c = sun.shadow.camera;
