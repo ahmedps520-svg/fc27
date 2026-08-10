@@ -497,6 +497,31 @@ excluded for the same reason pausing is.
 The 2D renderer's phase banner takes a `hideBanner` option now, or HALF TIME gets
 painted across a half-time menu that already says HALF TIME.
 
+### The objective ladder
+`js/data/objectives.js` holds 24 rungs in order; the player carries **seven**
+(`SLATE_SIZE`). `ultimate.objClaimed` records which rungs are finished — that is
+what the "6/24 done" counter reads, not the slate. `ultimate.objRefresh` is a
+timestamp; `refreshObjectives()` compares it on sight and refills **only the
+completed slots**, dealing the next unclaimed rungs in. An objective you are
+midway through keeps its progress and its place.
+
+Nothing runs on a timer. The refresh happens when `objectivesView()` is drawn,
+which is also why it survives the app being shut for a week.
+
+**Objectives are matched by `metric`, not by id.** That is what lets 24 rungs
+reuse six ways a match can feed one, so adding a rung is a line of data rather
+than a branch in `settleDivisionMatch`. `streak` and `rank` are *set-to* rather
+than added-to — your best run and the division you have reached are states, not
+tallies, and a loss must not walk them backwards once banked.
+
+The **last six rungs are the only objectives that pay Ultimate**, worth 50
+between them, and they ask for Division 1, Apex Elite, seven in a row, 75 goals
+and 40 wins. `legend` (Limited: Legends) is a new pack sitting at the bottom of
+the ladder.
+
+Old saves are migrated by detecting objectives with no `metric` and redealing
+from the top — the slate is lost, nothing else is.
+
 ### The Club tab
 Squad and the identity editor were two top-level tabs sitting next to each
 other, which put "pick your eleven" at the same level as "play a match". They

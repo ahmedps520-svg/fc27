@@ -1,4 +1,5 @@
 import { WORLD } from './data/generator.js';
+import { dealSlate, LADDER, REFRESH_MS } from './data/objectives.js';
 import { pushSave } from './net/api.js';
 
 const KEY = 'apexxi.save.v1';
@@ -105,23 +106,41 @@ export function freshUltimate() {
     streak: 0, bestStreak: 0,
     goalsFor: 0, goalsAgainst: 0,
     objectives: freshObjectives(),
+    /* Which rungs of the ladder have been finished, and when the finished slots
+       get refilled. Kept separately from the slate so the counter can read
+       "6/24 done" — progress through the whole ladder, not through the seven
+       currently on screen. */
+    objClaimed: [],
+    objRefresh: Date.now() + REFRESH_MS,
     packsOwed: 0,
   };
 }
 
 export function freshObjectives() {
-  return [
-    { id: 'win3', text: 'Win 3 Apex Division matches', need: 3, done: 0, apex: 1200, pack: 'silver' },
-    { id: 'score8', text: 'Score 8 goals in the division', need: 8, done: 0, apex: 1500, pack: 'gold' },
-    { id: 'streak3', text: 'Win 3 in a row', need: 3, done: 0, apex: 2500, pack: 'gold' },
-    { id: 'clean2', text: 'Keep 2 clean sheets', need: 2, done: 0, apex: 1800, pack: 'silver' },
-    { id: 'div5', text: 'Reach Division 5', need: 1, done: 0, apex: 4000, pack: 'prime' },
-    // the only way to a Limited Edition pack that does not cost 75,000
-    { id: 'win12', text: 'Win 12 Apex Division matches', need: 12, done: 0, apex: 8000, pack: 'limited' },
-    // the only objective that pays the premium currency
-    { id: 'elite', text: 'Reach Apex Elite', need: 1, done: 0, apex: 6000, ultimate: 6, pack: 'stars' },
-  ];
+  return dealSlate([]);
 }
+
+/**
+ * Refill the finished slots, if the clock says so.
+ *
+ * Only the completed ones are replaced. An objective you are halfway through
+ * keeps its progress and its place — a refresh rewards finishing things, it does
+ * not reset the board. Returns true if anything actually changed.
+ */
+export function refreshObjectives(u, now = Date.now()) {
+  if (!Array.isArray(u.objectives)) return false;
+  if (!u.objRefresh) { u.objRefresh = now + REFRESH_MS; return false; }
+  if (now < u.objRefresh) return false;
+
+  const keep = u.objectives.filter((o) => o.done < o.need);
+  u.objRefresh = now + REFRESH_MS;
+  if (keep.length === u.objectives.length) return false;   // nothing was finished
+  u.objectives = dealSlate(u.objClaimed || [], keep);
+  return true;
+}
+
+/** Everything the ladder has, for the "x/24 done" counter. */
+export const LADDER_SIZE = LADDER.length;
 
 let state = defaults();
 
@@ -136,7 +155,17 @@ export function loadState() {
       state.ultimate = { ...freshUltimate(), ...(parsed.ultimate || {}) };
       state.flags = { ...defaults().flags, ...(parsed.flags || {}) };
       state.meta = { ...(parsed.meta || {}) };
-      if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
+      /* Objectives changed shape: they carry a `metric` now and are dealt from
+         a 24-rung ladder. A save written before that holds the old seven, whose
+         ids mean nothing to the new matcher, so it is redealt from the top.
+         Nothing else in the save is touched — cards, coins and division stand. */
+      if (!Array.isArray(state.ultimate.objectives)
+          || !state.ultimate.objectives.every((o) => o && o.metric)) {
+        state.ultimate.objectives = freshObjectives();
+        state.ultimate.objClaimed = [];
+        state.ultimate.objRefresh = Date.now() + REFRESH_MS;
+      }
+      if (!Array.isArray(state.ultimate.objClaimed)) state.ultimate.objClaimed = [];
       // Persist the wipe the moment it happens. Leaving it in memory would mean
       // re-running it on the next load — and by then the player may have earned
       // something, which the second wipe would take back off them.

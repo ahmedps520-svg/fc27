@@ -1,4 +1,4 @@
-import { getState, update, DIVISIONS } from '../state.js';
+import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
@@ -58,6 +58,16 @@ const PACKS = [
     odds: { bronze: 0.00, silver: 0.00, gold: 0.30, special: 0.70 },
     note: '3 cards · 79+ min',
     promise: '1 guaranteed 99-rated Icon',
+  },
+  /* The top of the objective ladder pays this, and almost nothing else does.
+     It is in the store so it has a stated price, but 200,000 Apex is roughly
+     forty division wins — the intended way to hold one is to earn it. */
+  {
+    id: 'legend', name: 'Limited: Legends', cost: 200000, size: 5, limited: true,
+    guarantee: 'icon',
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.14, special: 0.86 },
+    note: '5 cards · 84+ min',
+    promise: '1 guaranteed Icon · best odds in the game',
   },
 ];
 
@@ -640,11 +650,37 @@ function sbcPoolHTML() {
 }
 
 export function objectivesView() {
+  /* Refill before drawing, so opening the tab is what makes a due refresh
+     happen. There is no timer running in the background — the clock is stored
+     and compared on sight, which also means it works after the app has been
+     shut for a week. */
+  let refreshed = false;
+  update((st) => { refreshed = refreshObjectives(st.ultimate); });
   const u = getState().ultimate;
+  const claimed = (u.objClaimed || []).length;
+
+  const left = Math.max(0, (u.objRefresh || 0) - Date.now());
+  const hrs = Math.floor(left / 3600000);
+  const mins = Math.floor((left % 3600000) / 60000);
+  const anyDone = u.objectives.some((o) => o.done >= o.need);
+
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>Objectives</h2>
-        <span class="tag">${u.objectives.filter((o) => o.done >= o.need).length}/${u.objectives.length} done</span></header>
+        <span class="tag">${claimed}/${LADDER_SIZE} done</span></header>
+      <p class="hint">Seven at a time out of ${LADDER_SIZE}, and they get harder and pay
+        better the further down you go. The last six are the only objectives in
+        the game that pay Ultimate.</p>
+
+      <div class="obj-clock ${anyDone ? 'is-due' : ''}">
+        <span class="oc-dot"></span>
+        <b>${hrs}h ${String(mins).padStart(2, '0')}m</b>
+        <span>${anyDone
+          ? 'until your finished objectives are replaced'
+          : 'until the next refresh — finish some to get new ones'}</span>
+      </div>
+      ${refreshed ? '<p class="obj-fresh">New objectives dealt.</p>' : ''}
+
       <ul class="obj-list">
         ${u.objectives.map((o) => {
           const done = o.done >= o.need;
@@ -655,14 +691,13 @@ export function objectivesView() {
               <div class="obj-body">
                 <b>${o.text}</b>
                 <i class="obj-bar"><b style="width:${pct}%"></b></i>
-                <span>${Math.min(o.done, o.need)}/${o.need}</span>
+                <span>${done ? 'Complete — replaced at the next refresh'
+                    : `${Math.min(o.done, o.need)}/${o.need}`}</span>
               </div>
-              <!-- Ultimate is the whole reason the top objectives are worth chasing, and
-                   this row was the one place a reward that pays it did not say so. -->
               <span class="obj-reward">
                 ◈${(o.apex ?? 0).toLocaleString()}
                 ${o.ultimate ? `<b class="obj-ult">✦ ${o.ultimate}</b>` : ''}
-                <em>${o.pack} pack</em>
+                <em>${PACK_BY_ID(o.pack).name}</em>
               </span>
             </li>`;
         }).join('')}
