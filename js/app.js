@@ -27,7 +27,7 @@ const ACCENTS = {
 };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v11';
+export const APP_VERSION = 'v13';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -209,7 +209,7 @@ if ('serviceWorker' in navigator) {
           // only a *replacement* matters; the very first install has no
           // controller and must not trigger a reload
           if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('Update ready — reloading', 'info');
+            // installed and waiting; the gate on the next launch offers it
             nudge();
           }
         });
@@ -225,12 +225,8 @@ if ('serviceWorker' in navigator) {
     } catch { /* offline play just won't be available */ }
   });
 
-  // The new worker has taken control. Reload once so the running page is the
-  // build the worker is now serving; the guard stops a reload loop.
-  let reloading = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
-    reloading = true;
-    window.location.reload();
-  });
+  // Deliberately no reload on `controllerchange`. A new worker taking over
+  // mid-session used to reload the page immediately, which could happen during
+  // a match. The title screen's update gate is the only place the app restarts
+  // itself now, and it does so because somebody pressed a button.
 }

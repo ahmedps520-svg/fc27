@@ -380,6 +380,35 @@ exposure deliberately, and should stay:
 Reverting is one edit: `ICONS` in `pools.js` is a plain list, and nothing else
 in the codebase knows or cares what the names are.
 
+### The update gate
+`/api/version` returns a short hash of everything the server serves — every js,
+css and html file plus `index.html`, `sw.js` and the manifest. It changes when
+the code changes and at no other time: **not** the process start time, because
+this host spins down when idle and a restart with identical code must not tell
+every player there is an update, and **not** a hand-bumped constant, because the
+point is that pushing a commit is enough.
+
+The client stores the build it last launched on. On the title screen it asks the
+server; if the answer differs, START is replaced by an update panel and nothing
+gets past it — Enter, a gamepad button and the button itself are all blocked
+until the install runs. A first run records the build silently, and a failed
+request (offline) never blocks: the game runs perfectly well without a server.
+
+Three things about the install were learned the hard way:
+- **The bar is driven by the wall clock, not by counting steps.** The first
+  version advanced a fixed amount per `setTimeout` and assumed the timers would
+  fire on schedule. Clearing the cache stalls the main thread in bursts, the
+  timers got starved, and a bar budgeted at 2.6 seconds took **58**.
+- **The cache deletion is started and never awaited.** It holds a 14 MB model
+  among several hundred files and took over six seconds. Nothing depends on it
+  finishing — the worker is unregistered first, the reload is cache-busted, and
+  the next worker's `activate` deletes every cache that is not its own anyway.
+- **The tail creeps rather than parking at 99%.** Unregistering the worker can
+  take a couple of seconds on its own, and a bar frozen at 99 reads as a hang,
+  which is the one thing an update screen must never look like.
+
+Settings → Force update runs the same installer rather than a second copy of it.
+
 ### Updates and the stale-cache problem
 Symptom: a deployed change never reaches the installed app. An installed PWA is
 almost never fully closed, so the page keeps talking to the worker it launched
@@ -393,8 +422,11 @@ What is in place now, all of it needed:
 - `CACHE` is the eviction mechanism — `activate` deletes every cache that is not
   the current name, so **bump it on every release**.
 - The page registers with `updateViaCache: 'none'`, calls `update()` on load, on
-  every return to the foreground and hourly, tells a waiting worker to
-  `skip-waiting`, and reloads once on `controllerchange`.
+  every return to the foreground and hourly, and tells a waiting worker to
+  `skip-waiting`. It deliberately does **not** reload on `controllerchange` any
+  more: that could yank someone out of a match. The title screen's update gate
+  is the only place the app restarts itself, and only because a button was
+  pressed.
 - Settings → **Force update** unregisters every worker, deletes every cache and
   reloads with a cache-busting query. That is the escape hatch for a device that
   is *already* stuck, since a stuck device cannot be fixed by the thing that is
