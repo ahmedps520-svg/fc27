@@ -343,7 +343,8 @@ net.on('match', (m) => {
     // the host is always the home side, so both machines lay the pitch out the same way
     homeId: WORLD.clubs[0].id,
     awayId: WORLD.clubs[1].id,
-    duration: 240,
+    // three minutes — see the note on the division fixture in squad.js
+    duration: 180,
     mode: 'versus',
     online: {
       matchId: m.matchId,
