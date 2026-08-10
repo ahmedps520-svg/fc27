@@ -17,7 +17,8 @@ function applyAudio() {
 export const TITLE = 'Settings';
 
 const ACCENTS = [
-  ['cyan', '#41d3ff'], ['lime', '#b8ff3d'], ['magenta', '#ff2e88'], ['amber', '#ffb703'],
+  ['green', '#23c55e'], ['cyan', '#41d3ff'], ['lime', '#b8ff3d'],
+  ['magenta', '#ff2e88'], ['amber', '#ffb703'],
 ];
 
 const QUALITY_NOTE = (q) => (q === 'ultra' || !q
@@ -74,7 +75,7 @@ export function render() {
     <section class="panel glass">
       <header class="panel-head"><h2>Look</h2></header>
       <div class="setting-row">
-        <div><b>Accent</b></div>
+        <div><b>Accent</b><span>Recolours the interface. The APEX mark stays as it is.</span></div>
         <div class="swatches" id="accents">
           ${ACCENTS.map(([id, hex]) =>
             `<button class="swatch ${s.accent === id ? 'on' : ''}" data-accent="${id}"

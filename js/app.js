@@ -19,15 +19,21 @@ const SCREENS = {
   settings: Settings, match: MatchScreen, play: Play, online: Online,
 };
 
+/**
+ * `deep` is the shade the bright accent is graded down into — the wordmark's
+ * vertical gradient, the swoosh's shadow half, the START button. Derived
+ * shades looked muddy on the warm colours, so each one is picked.
+ */
 const ACCENTS = {
-  cyan:  { accent: '#41d3ff', soft: 'rgba(65,211,255,.18)' },
-  lime:  { accent: '#b8ff3d', soft: 'rgba(184,255,61,.18)' },
-  magenta:{ accent: '#ff2e88', soft: 'rgba(255,46,136,.18)' },
-  amber: { accent: '#ffb703', soft: 'rgba(255,183,3,.18)' },
+  green: { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' },
+  cyan:  { accent: '#41d3ff', deep: '#1b8fc7', soft: 'rgba(65,211,255,.18)' },
+  lime:  { accent: '#b8ff3d', deep: '#7fc41b', soft: 'rgba(184,255,61,.18)' },
+  magenta:{ accent: '#ff2e88', deep: '#c01062', soft: 'rgba(255,46,136,.18)' },
+  amber: { accent: '#ffb703', deep: '#d18700', soft: 'rgba(255,183,3,.18)' },
 };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v16';
+export const APP_VERSION = 'v17';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -40,8 +46,9 @@ let activeCleanup = null;
 
 export function applyTheme() {
   const s = getState().settings;
-  const a = ACCENTS[s.accent] || ACCENTS.cyan;
+  const a = ACCENTS[s.accent] || ACCENTS.green;
   document.documentElement.style.setProperty('--accent', a.accent);
+  document.documentElement.style.setProperty('--accent-deep', a.deep);
   document.documentElement.style.setProperty('--accent-soft', a.soft);
   document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
 }

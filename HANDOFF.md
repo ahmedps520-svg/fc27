@@ -493,9 +493,23 @@ What is there now is the wordmark — set exactly as the cover sets it, heavy
 The wordmark came back after being removed with the counters; the counters were
 the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
-text, with a scrim under it so it can never take a bite out of a word — and the
-green is hard-coded rather than taken from the accent, because it is the brand
-mark and not a theme colour.
+text, with a scrim under it so it can never take a bite out of a word.
+
+### What the accent picker owns
+Hard-coding the swoosh green left the accent picker with nothing visible to
+change: *"when i put yellow it stays green nothing changes."* The line is now
+drawn in one place and it is worth keeping there —
+
+- **The interface follows `--accent`:** both swooshes, both wordmarks' XI, the
+  START button, tile tones, icons and CTAs, the update bar. `--accent-deep` is
+  the shade each one grades into; the deep shades are picked per colour rather
+  than derived, because derived ones went muddy on the warm accents.
+- **The APEX SPORTS mark does not.** A logo that changes colour with a
+  preference is not a logo. The roundel and its `SPORTS` rule hold the brand
+  green at every accent — they are the only hard-coded greens left in the
+  stylesheet, and a grep for `#23c55e` should only ever find them.
+
+The default accent is `green`, which is what the cover was drawn in.
 
 The header badge is the publisher mark at 30px: dark disc, green ring, white A.
 It used to be a rounded square filled with a gradient from the user's accent to
