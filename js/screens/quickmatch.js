@@ -1,6 +1,7 @@
 import { WORLD, clubRating, rosterOf } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { padCount } from '../game/input.js';
+import { PRESETS } from '../game/sim.js';
 import { navigate } from '../app.js';
 import { enterFullscreen } from '../fullscreen.js';
 
@@ -158,6 +159,7 @@ export function render() {
               `<button class="${skill === v ? 'on' : ''}" data-skill="${v}">${l}</button>`).join('')}
           </div>
         </div>
+        <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
         <button class="btn primary big" id="kickOff">Kick Off</button>
       </div>
 

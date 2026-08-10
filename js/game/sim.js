@@ -10,6 +10,50 @@ const BOX_W = 16.5;
 const BOX_HALF = 20;
 
 /**
+ * Gameplay presets.
+ *
+ * The same match engine tuned two ways, because the two modes want opposite
+ * things. Kick Off is a game of football and should behave like one: the ball
+ * is heavy, defenders hold their shape, a tackle is a real risk and a parry
+ * goes where physics sends it. Ultimate XI is a competition, and a competition
+ * has to be readable — passes arrive quicker, the touch is tighter, keepers
+ * steer their saves to safety, and defenders press rather than sit.
+ *
+ * Every field is a multiplier centred on 1, so the previous behaviour is
+ * roughly the midpoint of the two. That is deliberate: it means neither preset
+ * is "the old game" and both had to be swept.
+ *
+ * @see Match#preset
+ */
+export const PRESETS = {
+  authentic: {
+    id: 'authentic',
+    name: 'Authentic',
+    blurb: 'Heavier ball, disciplined shape, physics-driven rebounds.',
+    passSpeed: 0.93,     // the ball takes its time
+    control: 0.9,        // looser first touch
+    hands: 0.95,         // keepers spill more
+    deflect: 0.3,        // and a parry mostly goes where it was hit
+    tackle: 1.08,        // defenders win what real defenders win
+    discipline: 1.15,    // hold the line instead of chasing
+  },
+  competitive: {
+    id: 'competitive',
+    name: 'Competitive',
+    blurb: 'Quicker passing, tighter control, keepers steer their saves.',
+    passSpeed: 1.1,
+    control: 1.12,
+    // deliberately not raised: "sharper rebounds" is the steering below, not
+    // better shot-stopping. Giving keepers both put the mode a third of a goal
+    // a match under Authentic, which is backwards for the attacking preset.
+    hands: 1,
+    deflect: 0.85,
+    tackle: 0.94,
+    discipline: 0.9,
+  },
+};
+
+/**
  * Formations in normalised coords: x = 0 own goal line, 1 = opponent goal line,
  * y = 0..1 across the pitch. Every shape is exactly 11 slots with one keeper.
  */
@@ -82,6 +126,9 @@ export const GOAL_HEIGHT = 2.44;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** +1 for a right-footed player, -1 for a left-footed one. */
+const strongSide = (p) => (p.ref.foot === 'L' ? -1 : 1);
 
 function pickXI(clubId) {
   const pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall);
@@ -190,6 +237,9 @@ export class Match {
     }
     this.duration = opts.duration ?? 240;      // real seconds for the whole match
     this.skill = opts.skill ?? 1;              // CPU aggression multiplier
+    // Authentic unless asked otherwise, so a mode that has not thought about it
+    // gets the football one rather than the esports one.
+    this.preset = PRESETS[opts.preset] || PRESETS.authentic;
     this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null };
     this.t = 0;
     this.half = 1;
@@ -678,23 +728,41 @@ export class Match {
       // touches. Fully detaching it was tried and it simply rolled away — the
       // carrier AI runs at the goal, not at the ball.
       const lead = 0.85 + speed * 0.13;
-      const tx = o.x + o.dirX * lead;
-      const ty = o.y + o.dirY * lead;
+      // Foot preference: the ball sits on the strong side rather than dead in
+      // front, so a right-footed winger carries it on his right and has to
+      // shift it to strike with the other one. `strongSide` is +1 for a right
+      // foot, and (dirY, -dirX) is the player's own right-hand direction.
+      const off = 0.34 * strongSide(o);
+      const tx = o.x + o.dirX * lead + o.dirY * off;
+      const ty = o.y + o.dirY * lead - o.dirX * off;
 
-      const stiff = 30 + skill * 26;               // better dribblers keep it tighter
+      const stiff = (30 + skill * 26) * this.preset.control;   // better dribblers keep it tighter
       const damp = 10;
       b.vx += ((tx - b.x) * stiff - b.vx * damp) * dt;
       b.vy += ((ty - b.y) * stiff - b.vy * damp) * dt;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
 
-      // a visible knock-on every so often so it is played, not towed
+      /* Touch intervals.
+       *
+       * A knock-on every so often, so the ball is played rather than towed —
+       * but how often, and how far, is the difference between a dribbler and
+       * someone running alongside a football. A good one takes many small
+       * touches and keeps it under him; a poor one hits it a long way and
+       * chases. Everybody shortens up with an opponent breathing on them.
+       *
+       * Both multipliers are centred on skill 0.75, so a typical gold card
+       * behaves exactly as it did before any of this existed and only the ends
+       * of the range moved.
+       */
       o.touchT = (o.touchT || 0) - dt;
       if (o.touchT <= 0 && speed > 1.2) {
-        const push = 0.7 + speed * 0.18;
+        const foe = this.nearestTo(1 - o.team, o);
+        const tight = foe && dist(o, foe) < 4 ? 0.75 : 1;
+        const push = (0.7 + speed * 0.18) * (1.3 - skill * 0.4);
         b.vx += o.dirX * push;
         b.vy += o.dirY * push;
-        o.touchT = 0.3 + Math.random() * 0.16;
+        o.touchT = (0.3 + Math.random() * 0.16) * tight * (1.25 - skill * 0.33);
         this.cue('touch');
       }
 
@@ -786,7 +854,7 @@ export class Match {
           if (Math.hypot(goalX - best.x, CY - best.y) < 19) {
             b.lastTouch = best;
             this.cue('header');
-            this.shoot(best, null, 0.5, { loft: 0.2 });   // headers are steered down
+            this.shoot(best, null, 0.5, { loft: 0.2, placed: true });   // headers are steered down
             return;
           }
         }
@@ -1217,7 +1285,7 @@ export class Match {
     this.cue('pass');
     // nobody in range: hit it where you were aiming, as hard as you were holding
     if (!best) {
-      const punt = 16 + power * 22;
+      const punt = (16 + power * 22) * this.preset.passSpeed;
       this.release(p, ax * punt, ay * punt);
       return;
     }
@@ -1229,12 +1297,13 @@ export class Match {
     let dy = ty - p.y;
     const d = Math.hypot(dx, dy) || 1;
     const err = ((100 - p.ref.stats.passing) / 100) * (0.13 + power * 0.1)
+      * (this.weakFoot(p) ? 1.55 : 1)
       * (Math.random() - 0.5) * 2;
     const c = Math.cos(err);
     const s = Math.sin(err);
     const nx = (dx * c - dy * s) / d;
     const ny = (dx * s + dy * c) / d;
-    const speed = clamp((d * 1.35 + 9) * (0.8 + power * 0.6), 14, 44);
+    const speed = clamp((d * 1.35 + 9) * (0.8 + power * 0.6) * this.preset.passSpeed, 14, 48);
     this.release(p, nx * speed, ny * speed);
   }
 
@@ -1242,9 +1311,11 @@ export class Match {
    * @param {object} opts
    *   loft  multiplier on how much the strike lifts (0 = drilled along the floor)
    *   curl  bend the flight sideways; sign picked from aim, or inward towards goal
+   *   placed  a header or a set piece — no weak-foot penalty, because the ball
+   *           is not at anyone's feet when it is struck
    */
   shoot(p, aim, power, opts = {}) {
-    const { loft = 1, curl = 0 } = opts;
+    const { loft = 1, curl = 0, placed = false } = opts;
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
     const dx = goalX - p.x;
@@ -1252,7 +1323,8 @@ export class Match {
     const d = Math.hypot(dx, dy) || 1;
     const acc = p.ref.stats.shooting / 100;
     // accuracy falls off with distance and with a rushed (low power) strike
-    const spread = (1.05 - acc) * 0.3 + d / 230 + (1 - power) * 0.06;
+    const weak = !placed && this.weakFoot(p);
+    const spread = ((1.05 - acc) * 0.3 + d / 230 + (1 - power) * 0.06) * (weak ? 1.5 : 1);
     const err = (Math.random() - 0.5) * 2 * spread;
     const c = Math.cos(err);
     const s = Math.sin(err);
@@ -1260,7 +1332,7 @@ export class Match {
     const ny = (dx * s + dy * c) / d;
 
     this.cue('shot', power);
-    const speed = 21 + power * 17 + acc * 6;
+    const speed = (21 + power * 17 + acc * 6) * (weak ? 0.93 : 1);
     // Longer hold = harder and higher. Overcook it close in and it clears the bar.
     const rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
 
@@ -1293,7 +1365,7 @@ export class Match {
     if (d > (sliding ? 3.4 : 2.6)) { if (!sliding) p.stumble = 0.25; return; }
 
     const win = (p.ref.stats.defending + (sliding ? 16 : 0)) /
-      (p.ref.stats.defending + owner.ref.stats.dribbling + 16);
+      (p.ref.stats.defending + owner.ref.stats.dribbling + 16) * this.preset.tackle;
     if (Math.random() < win) {
       b.owner = p;
       b.lastTouch = p;
@@ -1391,7 +1463,7 @@ export class Match {
     const spread = (100 - p.ref.stats.shooting) / 100;
     const aimY = CY + side * (GOAL_HALF - 1.1) + (Math.random() - 0.5) * spread * 5.2;
     this.shoot(p, { x: goalX > PITCH.w / 2 ? 1 : -1, y: (aimY - CY) / 12 },
-      0.72 + Math.random() * 0.22, { loft: 0.16 });
+      0.72 + Math.random() * 0.22, { loft: 0.16, placed: true });
     this.penaltyTaker = null;
     this.phase = 'play';
   }
@@ -1513,13 +1585,33 @@ export class Match {
   /** Defenders never collapse onto their own keeper — hold a line off the goal. */
   holdLine(team, x) {
     const gx = team.dir > 0 ? 0 : PITCH.w;
-    const MIN = 7.5;
+    const MIN = 7.5 * this.preset.discipline;
     return team.dir > 0 ? Math.max(x, gx + MIN) : Math.min(x, gx - MIN);
+  }
+
+  /**
+   * Is this player about to strike the ball with his weaker foot?
+   *
+   * Read off where the ball actually is relative to which way he is facing,
+   * rather than off the direction of the pass — so it changes shot to shot as
+   * he shifts it, which is the point. A ball dead in front of him is neither
+   * foot and never counts as weak.
+   */
+  weakFoot(p) {
+    const b = this.ball;
+    // the player's own right-hand direction, from his facing
+    const across = (b.x - p.x) * p.dirY + (b.y - p.y) * -p.dirX;
+    if (Math.abs(across) < 0.15) return false;
+    return Math.sign(across) !== strongSide(p);
   }
 
   /** Nearest opponent no other defender has claimed this tick. */
   markFor(p) {
     const gx = this.teams[p.team].dir > 0 ? 0 : PITCH.w;
+    // How far a defender will travel to pick someone up. A positionally
+    // responsible side tracks the runner; a looser one lets him go and leaves
+    // the space an attacking mode wants.
+    const reach = 18 * this.preset.discipline;
     let best = null;
     let bestD = Infinity;
     for (const f of this.teams[1 - p.team].players) {
@@ -1527,7 +1619,7 @@ export class Match {
       if (Math.abs(f.x - gx) > 26) continue;             // only real threats
       if (f._markTick === this._tick && f._markedBy !== p) continue;
       const d = dist(p, f);
-      if (d < bestD && d < 18) { bestD = d; best = f; }
+      if (d < bestD && d < reach) { bestD = d; best = f; }
     }
     if (best) { best._markedBy = p; best._markTick = this._tick; }
     return best;
@@ -1647,6 +1739,44 @@ export class Match {
   }
 
   /**
+   * Where a keeper steers a parry.
+   *
+   * Reflecting the shot puts the ball straight back out in front of goal,
+   * which is exactly where the striker is standing — for a long time that was
+   * the cheapest goal in this game. A keeper does not do that. He puts it round
+   * the post, out for a throw, or wide of the box away from anyone in an
+   * attacking shirt, and this picks whichever of a fan of angles is emptiest.
+   *
+   * Returns a unit vector in pitch space.
+   */
+  deflectionAim(gk) {
+    const inward = this.teams[gk.team].dir > 0 ? 1 : -1;
+    let best = { x: inward, y: 0 };
+    let bestScore = -Infinity;
+    for (let i = 0; i <= 10; i++) {
+      // a fan from square across one post round to the other
+      const a = -1.35 + (i / 10) * 2.7;
+      const dx = inward * Math.cos(a);
+      const dy = Math.sin(a);
+      let score = Math.abs(a) * 0.9;              // sideways beats straight back out
+      for (const team of this.teams) {
+        for (const q of team.players) {
+          if (q === gk) continue;
+          const rx = q.x - gk.x;
+          const ry = q.y - gk.y;
+          const along = rx * dx + ry * dy;
+          if (along < 1 || along > 22) continue;
+          const off = Math.abs(rx * dy - ry * dx);         // perpendicular miss
+          const near = Math.max(0, 1 - off / 5);           // 1 = dead in the path
+          score += (q.team === gk.team ? 0.8 : -2.6) * near * (1 - along / 26);
+        }
+      }
+      if (score > bestScore) { bestScore = score; best = { x: dx, y: dy }; }
+    }
+    return best;
+  }
+
+  /**
    * Keeper contact. A tame shot is gathered; anything struck with real pace is
    * parried away — often wide, which is what turns into a corner.
    * @returns {boolean} true if the keeper kept hold of it
@@ -1655,7 +1785,7 @@ export class Match {
     const b = this.ball;
     const team = this.teams[gk.team];
     const inward = team.dir > 0 ? 1 : -1;
-    const hands = gk.ref.overall / 100;
+    const hands = (gk.ref.overall / 100) * this.preset.hands;
     const holdable = 17 + hands * 13;                 // ~26-30 m/s for a good keeper
 
     if (speed < holdable && gk.diveT <= 0 && Math.random() < 0.55 + hands * 0.35) {
@@ -1676,9 +1806,23 @@ export class Match {
       b.vy = side * out * 1.1;
       b.vz = 2 + Math.random() * 3;
     } else {
+      /* Deflection control.
+       *
+       * Blend where the ball was going anyway against where the keeper wants
+       * it. How much of the second he gets is the preset's call and his own
+       * quality: on Authentic a parry is mostly physics and a scramble is a
+       * real possibility, on Competitive a good keeper puts it where he means
+       * to nearly every time.
+       */
       const wide = Math.random() < 0.62;
-      b.vx = inward * out * (wide ? 0.45 : 0.9);
-      b.vy = side * out * (wide ? 1.05 : 0.5);
+      const raw = { x: inward * (wide ? 0.45 : 0.9), y: side * (wide ? 1.05 : 0.5) };
+      const aim = this.deflectionAim(gk);
+      const w = clamp(this.preset.deflect * (0.55 + hands * 0.5), 0, 1);
+      let dx = raw.x * (1 - w) + aim.x * w;
+      let dy = raw.y * (1 - w) + aim.y * w;
+      const m = Math.hypot(dx, dy) || 1;
+      b.vx = (dx / m) * out;
+      b.vy = (dy / m) * out;
       b.vz = 1.5 + Math.random() * 2.5;
     }
     b.owner = null;

@@ -308,6 +308,63 @@ costs a little accuracy at the top. Three things are load-bearing:
   had before power existed. That was the point: add the mechanic, don't move the
   balance.
 
+### Gameplay presets
+`PRESETS` in `sim.js` — one object, two tunings, six multipliers each, all
+centred on 1 so the old behaviour is roughly the midpoint and *neither* preset
+is "the game as it was". Kick Off runs **Authentic**, Ultimate XI runs
+**Competitive**; `play.js` derives it from `params.ultimate`, which both sides
+of an online match compute from the same flag, so host and guest never disagree.
+Anything constructing a `Match` without a `preset` gets Authentic.
+
+The knobs are `passSpeed`, `control` (dribble stiffness), `hands` (keeper
+shot-stopping), `deflect` (how much a parry is steered — see below), `tackle`
+and `discipline`. Two things were got wrong on the way in and are worth not
+repeating:
+- **`hands` and `deflect` double-count.** Giving Competitive keepers both better
+  hands and better deflection control put the *attacking* preset a third of a
+  goal a match below Authentic. `hands` stays at 1 there; "sharper rebounds"
+  means steering, not shot-stopping.
+- **`discipline` reads backwards if you wire it to the marking radius the
+  obvious way.** Low discipline was implemented as defenders chasing *further*,
+  which made the loose preset better at winning the ball back. It multiplies the
+  radius now: high discipline tracks the runner, low discipline leaves space.
+
+Swept at 120 matches on seeds 12345 and 777. Authentic 2.40/2.43 goals, 13.0
+shots, 18.5%/18.8% conversion. Competitive 2.34/2.40 goals, 12.2 shots,
+19.3%/19.7%. Baseline before this batch was 2.76/2.37 — the ~0.15 drop is the
+deflection fix removing rebound tap-ins and is the point of it.
+
+### Keeper deflection control
+A parry used to reflect the shot, which put the ball back out in front of goal
+into the striker's feet — for a long time the cheapest goal in the game.
+`deflectionAim` scores a fan of eleven angles from post to post, penalising any
+line an opponent is standing in and rewarding one a team-mate is on, and the
+result is blended against the raw physics direction by
+`preset.deflect * (0.55 + hands * 0.5)`. So on Authentic a parry is mostly
+physics and a scramble is a real possibility; on Competitive a good keeper puts
+it where he means to. The tip-round-the-post branch is untouched — it was
+already correct.
+
+### Dynamic dribbling and foot preference
+Every card carries `foot`. It is hashed off the id in `generator.js`, **not
+drawn from `rand`** — taking a number from the generator's stream there would
+have shifted every name, stat and nation after it, and saved collections store
+ids whose cards have to keep being the same cards. About 22% left-footed; the
+named Icons and Stars state their own.
+
+Three effects:
+- The ball sits 0.34 m to the strong side rather than dead in front, so a
+  right-footed winger carries it on his right (`updateBall`).
+- `weakFoot(p)` reads which side of the body the ball is actually on, from the
+  player's own facing — so it changes shot to shot as he shifts it. Weak foot
+  costs 50% accuracy on a shot, 55% on a pass, and 7% shot pace. Headers and
+  penalties pass `placed: true` and skip it, because the ball is not at anyone's
+  feet when it is struck.
+- Touch interval and knock size scale with `dribbling` and shorten under
+  pressure. **Both multipliers are centred on skill 0.75**, so a typical gold
+  card behaves exactly as it did before and only the ends of the range moved.
+  That is deliberate — it is how the mechanic went in without moving balance.
+
 ### The crowd
 People, not capsules: a seated figure of about sixty triangles, two instanced
 meshes sharing one set of transforms — bodies tinted with a shirt colour, heads

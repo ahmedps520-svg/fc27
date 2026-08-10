@@ -96,7 +96,7 @@ export function playerCard(p, opts = {}) {
       ${size === 'mini' ? '' : statBars(p.stats)}
       <footer class="pc-foot">
         <span class="pc-club">${club ? club.name : 'Free Agent'}</span>
-        <span class="pc-meta">${p.nation} · ${p.age}y</span>
+        <span class="pc-meta">${p.nation} · ${p.age}y · ${p.foot === 'L' ? 'Left' : 'Right'} foot</span>
       </footer>
       ${chemPip}
       <span class="pc-rar-tag">${r.label}</span>

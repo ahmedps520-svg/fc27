@@ -17,8 +17,9 @@
  * Nothing in the game is modified; the substitution lives and dies in this
  * process.
  *
- *   node tools/sweep.mjs                  # 60 matches, default seed
- *   node tools/sweep.mjs 120 777          # 120 matches, seed 777
+ *   node tools/sweep.mjs                          # 60 matches, default seed
+ *   node tools/sweep.mjs 120 777                 # 120 matches, seed 777
+ *   node tools/sweep.mjs 120 777 competitive     # ...on the Competitive preset
  *
  * To compare a change: run it on a clean checkout, apply the change, run it
  * again with the same arguments. Anything that does not move a number across
@@ -29,6 +30,7 @@ import { WORLD } from '../js/data/generator.js';
 
 const N = Number(process.argv[2] || 60);
 const SEED = Number(process.argv[3] || 12345);
+const PRESET = process.argv[4] || 'authentic';
 const DURATION = 240;          // what Apex Division and Quick Match use
 
 function mulberry32(a) {
@@ -64,7 +66,7 @@ for (let i = 0; i < N; i++) {
   let awayId = WORLD.clubs[(i * 3 + 1) % WORLD.clubs.length].id;
   if (awayId === home.id) awayId = WORLD.clubs[(i + 5) % WORLD.clubs.length].id;
 
-  const m = new Match(home.id, awayId, { human: null, duration: DURATION });
+  const m = new Match(home.id, awayId, { human: null, duration: DURATION, preset: PRESET });
   const steps = Math.ceil(DURATION * 60);
   for (let s = 0; s < steps && m.phase !== 'end'; s++) m.update(1 / 60);
 
@@ -75,7 +77,7 @@ for (let i = 0; i < N; i++) {
 }
 
 const per = (v) => (v / N).toFixed(2);
-console.log(`${N} matches, seed ${SEED}`);
+console.log(`${N} matches, seed ${SEED}, ${PRESET}`);
 console.log(`  goals        ${per(total.goals)}        (target 2-3)`);
 console.log(`  shots        ${per(total.shots)}       (target ~11)`);
 console.log(`  on target    ${per(total.onTarget)}`);

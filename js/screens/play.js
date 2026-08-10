@@ -79,7 +79,8 @@ export function render(params) {
 
       <div class="replay-tag" id="replayTag" hidden>
         <span class="rt-dot"></span>REPLAY
-        <em>hold ◯ to skip</em>
+        <em>hold ◯</em>
+        <button class="rt-skip" id="rtSkip" type="button">SKIP</button>
       </div>
 
       <div class="gm-overlay" id="gmOverlay" hidden></div>
@@ -120,6 +121,10 @@ export function mount(root, params) {
     duration: params.duration || 240,
     skill: params.skill || 1,
     mode,
+    // Kick Off is a game of football; Ultimate XI is a competition. Both sides
+    // of an online match derive this from the same `ultimate` flag, so host and
+    // guest never disagree about which engine they are watching.
+    preset: params.ultimate ? 'competitive' : 'authentic',
     homeSquad: params.homeSquad || null,
     awaySquad: params.awaySquad || null,
   });
@@ -251,6 +256,15 @@ export function mount(root, params) {
     replay = null;
     replayTag.hidden = true;
   };
+
+  /* Skipping a replay used to be a controller-only gesture — hold ◯ — which on
+   * a phone meant sitting through every one of them. The tag doubles as the
+   * button. `pointerdown` rather than `click` so it lands on the first touch
+   * instead of waiting for the release. */
+  root.querySelector('#rtSkip')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    endReplay();
+  });
 
   /* ------------------------------ online ------------------------------ */
   // Host: simulate, broadcast snapshots, consume the guest's input stream.
