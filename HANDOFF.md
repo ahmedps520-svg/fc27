@@ -479,12 +479,24 @@ guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
 went 446 → 731 players and every position now has gold, special, star and icon
 cards in it.
 
-### The menu — leave it alone
-A "hub" was built under the tiles carrying division, record, squad rating,
-chemistry, best card, locker count and next objective. It was reverted on sight:
-*"janky and cluttered and there is too many things happening at once."* The
-empty space below the tiles is not a problem to be solved. If something really
-has to be surfaced there, it is one thing, not seven.
+### The menu — four doors, nothing else
+Twice now the answer has been *less*. A hub of division, record, squad rating,
+chemistry, best card, locker count and next objective was reverted on sight —
+*"janky and cluttered and there is too many things happening at once"* — and
+then the wordmark, the club/player count and the three counters went too. The
+title screen already says APEX XI at forty times the size; repeating it above a
+row of statistics nobody opened the app to read pushed the only thing anyone
+came for below the fold on a phone.
+
+What is there now is four tiles, vertically centred, and the small print. The
+tiles carry the cover's swoosh in their right third — clear of the left-aligned
+text, with a scrim under it so it can never take a bite out of a word — and the
+green is hard-coded rather than taken from the accent, because it is the brand
+mark and not a theme colour.
+
+The header badge is the same roundel. It used to be a rounded square filled
+with a gradient from the user's accent to near-white, which on the amber accent
+read as a stray yellow box next to the title.
 
 ## Rules that keep biting
 
