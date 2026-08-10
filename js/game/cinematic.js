@@ -50,6 +50,7 @@ uniform float uTime;
 uniform float uAoStrength;
 uniform float uAoRadius;     // world units
 uniform float uDofScale;     // 0 disables the bokeh entirely
+uniform float uDepthValid;   // 0 when there is no depth to read this frame
 uniform float uFocus;        // distance to the focal plane, world units
 uniform float uGrain;
 uniform float uVignette;
@@ -102,6 +103,13 @@ void main() {
   }
 
   vec3 base = texture2D(tDiffuse, vUv).rgb;
+
+  // No depth this frame: hand back the scene ungraded rather than inventing an
+  // occlusion term out of a buffer full of zeroes. See the note in render().
+  if (uDepthValid < 0.5) {
+    gl_FragColor = vec4(base, 1.0);
+    return;
+  }
 
   // Sky and anything at the far plane are left alone: there is no geometry
   // there to occlude, and blurring the sky just smears the floodlights.
@@ -231,6 +239,7 @@ export class CinematicPass extends Pass {
         uFar: { value: camera.far },
         uFocalPx: { value: 800 },
         uTime: { value: 0 },
+        uDepthValid: { value: 1 },
         uAoStrength: { value: opts.ao ?? 1.0 },
         uAoRadius: { value: opts.aoRadius ?? 0.55 },
         uDofScale: { value: opts.dof ?? 0 },
@@ -264,7 +273,18 @@ export class CinematicPass extends Pass {
     // so its depth attachment is the one to sample. Taking it from a fixed
     // render target would work only on frames where the buffer parity happened
     // to line up.
-    u.tDepth.value = readBuffer.depthTexture;
+    /* A frame with no depth attachment must not be allowed to guess.
+     *
+     * If this is ever missing, three binds a default texture in its place and
+     * every sample reads as zero — which linearises to "everything is at the
+     * near plane, touching everything else", so the occlusion term collapses
+     * and the pass paints a dark slab across whatever region it was asked
+     * about. Both composer targets are given an attachment at construction, so
+     * this should never fire; the point is that when it does, the frame comes
+     * out ungraded rather than black. */
+    const depth = readBuffer.depthTexture || null;
+    u.tDepth.value = depth;
+    u.uDepthValid.value = depth ? 1 : 0;
     u.uNear.value = this.camera.near;
     u.uFar.value = this.camera.far;
     u.uProjInv.value.copy(this.camera.projectionMatrixInverse);

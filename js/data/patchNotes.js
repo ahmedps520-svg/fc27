@@ -18,6 +18,46 @@
  */
 export const RELEASES = [
   {
+    version: 'v26',
+    date: '2026-08-10',
+    tag: 'Performance',
+    title: 'Cutting the memory the match holds',
+    lede: 'Chasing the black flicker some devices show mid-match. Two large '
+        + 'allocations were being made for nothing.',
+    entries: [
+      {
+        head: 'No more wasted antialiasing buffer',
+        summary: 'The game was asking the browser for a multisampled canvas it never actually '
+               + 'drew to. On a tablet that is tens of megabytes of graphics memory, every frame, '
+               + 'for no picture at all.',
+        detail: 'Every detail level above Low renders through a chain of post-processing passes: '
+              + 'the scene goes into an off-screen buffer, the passes work on it, and the result '
+              + 'is drawn as a single image at the end. The canvas\u2019s own multisample buffer is '
+              + 'never what you see — but it was still being allocated and resolved every frame. '
+              + 'The picture is unchanged; the antialiasing was already being done further down '
+              + 'the chain.',
+      },
+      {
+        head: 'A smaller shadow map at Ultra',
+        summary: 'Ultra now uses a 2048 shadow map instead of 4096 — 67 MB of graphics memory '
+               + 'back, with no visible difference.',
+        detail: 'The shadow camera covers about 160 by 140 metres, so 2048 works out at roughly '
+              + 'thirteen shadow pixels per metre. That is already past the point where more '
+              + 'resolution shows up on something the size of a footballer, while the larger map '
+              + 'had to share memory with the post-processing buffers and a 14 MB player model.',
+      },
+      {
+        head: 'The lens pass can no longer guess',
+        summary: 'If the depth information is ever missing for a frame, the picture now comes '
+               + 'through ungraded instead of being darkened.',
+        detail: 'The occlusion and depth-of-field pass reads how far away every pixel is. Given '
+              + 'nothing to read, it would previously treat the whole frame as touching itself '
+              + 'and shade a dark slab across it. It now detects that and passes the frame '
+              + 'through untouched.',
+      },
+    ],
+  },
+  {
     version: 'v25',
     date: '2026-08-10',
     tag: 'Balance',

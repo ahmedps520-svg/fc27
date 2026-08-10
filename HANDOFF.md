@@ -517,6 +517,38 @@ The picker rebuilds each swatch through `innerHTML` on a wrapper span. `crestSVG
 returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
+### The black flicker (open)
+A player on an iPad reports a large black rectangle appearing for a split second
+mid-match, in a different place each time, starting after the graphics work. The
+screenshot shows **stair-stepped edges on a tile grid** — that is the GPU's
+tiling, not our geometry, so it is a frame that failed to resolve rather than
+anything being drawn black.
+
+**It has not been reproduced here** — there is no iPad on this machine, and
+SwiftShader will not show a driver-level tile failure. What was done is to
+remove the two allocations that were provably wasted, on the theory that this is
+memory pressure:
+
+- **`antialias` is now off above Low.** Every tier above Low renders through the
+  composer, so the canvas's own multisample buffer is never what you see — but
+  it was still being allocated and resolved at native resolution every frame.
+  This is correct regardless of the flicker; verified the picture is unchanged.
+- **Ultra's shadow map 4096 → 2048** (and High 2048 → 1536). The shadow camera
+  covers 160x140 units, so 2048 is ~13 texels/metre — past the point where more
+  shows on a player-sized object, and 4096 is 67 MB competing with the composer
+  targets, the bloom mip chain and a 14 MB model.
+- `CinematicPass` now carries `uDepthValid`. With no depth attachment three binds
+  a default texture, every sample reads zero, everything linearises to the near
+  plane "touching" everything else, and the occlusion term paints a dark slab.
+  It should never fire — both targets get an attachment at construction — but if
+  it does the frame now comes through ungraded instead of black.
+
+**If it persists**, the next thing to ask the player is whether dropping 3D
+detail to High (which turns off the depth-of-field and halves the render
+resolution) stops it. If High is clean and Ultra is not, it is memory or
+bandwidth and the answer is to cap the Ultra pixel ratio at native. If it
+happens on High too, suspect the composer chain rather than memory.
+
 ### The pitch, and the four white pools
 The turf is **three** textures, and that split is the point. `pitchTexture` is
 the colour — stripes, wear and markings, low frequency, so a modest resolution
