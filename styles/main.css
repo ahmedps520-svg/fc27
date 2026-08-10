@@ -91,11 +91,25 @@ body {
   margin-right: auto; min-width: 0;
 }
 .brand span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The header badge. It used to be a rounded square filled with a gradient from
+   the user's accent colour to near-white, which on the amber accent read as a
+   stray yellow box sitting next to the title. It is now the same roundel the
+   cover uses — a white disc with the APEX chevron — so the header, the title
+   screen and the app icon are recognisably one mark. */
 .brand-mark {
   display: grid; place-items: center;
-  width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px;
-  background: linear-gradient(140deg, var(--accent), rgba(255, 255, 255, .1));
-  color: #041018; font-family: var(--font-num); font-weight: 800; font-size: 14px;
+  width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%;
+  background: #f4f8ff;
+  color: transparent;                 /* the "XI" text is replaced by the glyph */
+  font-size: 0;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .18), 0 2px 10px rgba(0, 0, 0, .5);
+}
+.brand-mark::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: no-repeat center / 62% 62%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M22 74 L50 26 L78 74 M33 59 L67 59' fill='none' stroke='%2323c55e' stroke-width='11' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
 }
 .coin-chip {
   font-family: var(--font-num); font-weight: 700; font-size: 13px;
@@ -259,7 +273,7 @@ select {
 .tile {
   position: relative; overflow: hidden; cursor: pointer; text-align: left;
   display: flex; flex-direction: column; gap: 8px;
-  padding: 22px 20px 20px; min-height: 190px;
+  padding: 24px 22px 22px; min-height: 208px;
   border-radius: var(--radius); border: 1px solid var(--line);
   background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
   color: var(--text); font: inherit;
@@ -271,13 +285,43 @@ select {
   background: radial-gradient(closest-side, var(--tone, var(--accent)), transparent 70%);
   opacity: .22; transition: opacity .3s, transform .4s; pointer-events: none;
 }
-.tile:hover { transform: translateY(-5px); border-color: var(--tone, var(--accent)); box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
+
+/* The swoosh, carried down from the cover.
+   Sits in the lower corner of every tile and sweeps up to the right, so the
+   four buttons read as a set and as the same product as the title screen. The
+   green is fixed rather than taken from the accent: it is the brand mark, not
+   a theme colour, and it is the one thing that must not change when someone
+   picks a different accent. */
+.tile-swoosh {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+  opacity: .85; transition: opacity .3s, transform .45s cubic-bezier(.2, .9, .3, 1);
+}
+.tile-swoosh path { fill: none; stroke-linecap: square; }
+.ts-a {
+  stroke: #23c55e; stroke-width: 13;
+  filter: drop-shadow(0 0 14px rgba(35, 197, 94, .55));
+}
+.ts-b { stroke: rgba(35, 197, 94, .3); stroke-width: 5; }
+
+.tile:hover .tile-swoosh { opacity: 1; transform: translate(6px, -6px); }
+.reduce-motion .tile-swoosh { transition: none; }
+.reduce-motion .tile:hover .tile-swoosh { transform: none; }
+
+/* everything else in the tile sits above the artwork */
+.tile-icon, .tile-name, .tile-blurb, .tile-cta { position: relative; z-index: 1; }
+
+.tile:hover { transform: translateY(-5px); border-color: #23c55e; box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
 .tile:hover::before { opacity: .4; transform: translateY(12px); }
 .tile:active { transform: translateY(-1px) scale(.99); }
-.tone-a { --tone: #41d3ff; }
-.tone-b { --tone: #b8ff3d; }
-.tone-c { --tone: #ff2e88; }
-.tone-d { --tone: #ffb703; }
+
+/* A single family of greens rather than four unrelated pastels — the tiles were
+   cyan, lime, pink and amber, which is why they read as bland placeholders
+   next to a cover built on one bold colour. */
+.tone-a { --tone: #23c55e; }
+.tone-b { --tone: #4b5563; }   /* Career Mode is locked; it should look it */
+.tone-c { --tone: #3ff08a; }
+.tone-d { --tone: #7ee7a8; }
 .tile-icon {
   font-size: 26px; width: 46px; height: 46px; border-radius: 13px;
   display: grid; place-items: center; color: var(--tone);
@@ -290,6 +334,27 @@ select {
   margin-top: auto; font-size: 12px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--tone);
 }
+.tile.is-locked .tile-swoosh { opacity: .12; filter: grayscale(1); }
+.tile.is-locked:hover { border-color: var(--line); transform: none; }
+.tile.is-locked:hover .tile-swoosh { transform: none; opacity: .12; }
+
+/* The tiles are the whole screen now, so they sit in the middle of it rather
+   than clinging to the header with a void underneath. `dvh` because iOS counts
+   the address bar in `vh` and the row ends up pushed off the bottom. */
+.menu-screen {
+  min-height: calc(100dvh - 150px);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.menu-screen .disclaimer { margin-top: 26px; }
+
+/* A little air above them, and a scrim under the left column so the swoosh can
+   never take a bite out of the words. */
+.tile-grid { margin-top: 10px; }
+.tile::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(100deg, rgba(8, 12, 22, .82) 32%, transparent 68%);
+}
+
 .disclaimer {
   margin: 28px auto 0; max-width: 66ch; text-align: center;
   font-size: 11.5px; line-height: 1.65; color: var(--text-mute);
