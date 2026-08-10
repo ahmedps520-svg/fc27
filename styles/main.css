@@ -1886,6 +1886,11 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .rn-sum { margin: 0 0 10px; font-size: 15px; line-height: 1.6; color: var(--text); }
 .rn-detail { margin: 0; max-width: 68ch; font-size: 14.5px; line-height: 1.75; color: var(--text-dim); }
 
+/* what the ladder looks like after this result — the stakes for next time */
+.dr-ladder {
+  font-size: 12px; letter-spacing: .04em; color: var(--text-mute); margin-top: 2px;
+}
+
 /* -------------------------- Club identity ------------------------- */
 .ci-top { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 8px; }
 .ci-preview {

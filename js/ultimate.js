@@ -1,4 +1,146 @@
 import { getState, update, DIVISIONS } from './state.js';
+import { WORLD } from './data/generator.js';
+import { SHAPES } from './game/sim.js';
+
+/* ------------------------- the division opponent -------------------------
+ *
+ * The ladder used to field a real club: division 10 played the worst club in
+ * the world, Apex Elite played the best. The best club in the world is rated
+ * 86. An Ultimate XI with a few Icons in it is 90+, so the *ceiling of the
+ * entire ladder* sat below a decent squad — you could reach division 5 without
+ * losing a match and win 6-0, 9-0, 4-0, which is exactly what happened.
+ *
+ * The opponent is now built to measure. It tracks the squad you actually field,
+ * so improving your team raises the bar rather than lowering it, and the
+ * division decides whether you are favourite or underdog:
+ *
+ *     division 10   0.86x your rating   comfortable
+ *     division 5    0.96x               a real game
+ *     Apex Elite    1.06x               you are the underdog
+ *
+ * That is where the stress lives. A ladder you climb by collecting is not a
+ * ladder; the collection has to buy you a *chance*, not a result.
+ */
+
+/** Positions a 4-3-3 asks for, in the order `SHAPES` lists them. */
+const OPP_FORMATION = '4-3-3';
+
+/** Club names down the ladder, so the run of fixtures reads as a competition. */
+const OPP_CLUBS = [
+  { name: 'Harrowgate Town', short: 'HGT', colors: ['#8a8f98', '#15171c'] },
+  { name: 'Peldon Rangers', short: 'PEL', colors: ['#c0552f', '#1a1210'] },
+  { name: 'Vasquine United', short: 'VAS', colors: ['#3f7fbf', '#0b1220'] },
+  { name: 'Okrant Athletic', short: 'OKR', colors: ['#d4b03c', '#1c1809'] },
+  { name: 'Serravalle FC', short: 'SRV', colors: ['#2f9e6b', '#0a1712'] },
+  { name: 'Brackwater City', short: 'BRK', colors: ['#6b4fbf', '#120c1e'] },
+  { name: 'Tarn Volante', short: 'TRN', colors: ['#bf3f5f', '#1a0c12'] },
+  { name: 'Ashgrove Select', short: 'ASH', colors: ['#4fb8bf', '#08181a'] },
+  { name: 'Kolvane Sporting', short: 'KOL', colors: ['#bf7a2f', '#1a1208'] },
+  { name: 'Norvik Dynamo', short: 'NRV', colors: ['#e04a4a', '#160a0a'] },
+  { name: 'Apex Select', short: 'APX', colors: ['#f0f4ff', '#0a0d16'] },
+];
+
+const clampStat = (v) => Math.max(28, Math.min(99, Math.round(v)));
+
+/**
+ * A card built to a target rating.
+ *
+ * Cloned off a real player so the name, nation and shape of the profile are a
+ * footballer's rather than a spreadsheet's, then scaled to the number this
+ * division needs. Scaling rather than searching the world for a 94 matters:
+ * there are only 68 players above 88 in existence and they are the Icons and
+ * Stars the *player* is collecting — pulling from that pool would field an
+ * opponent made of the cards you are trying to win.
+ */
+function scaledCard(src, target, seq) {
+  const scale = target / Math.max(40, src.overall);
+  const stats = {};
+  for (const k of Object.keys(src.stats)) stats[k] = clampStat(src.stats[k] * scale);
+  return {
+    ...src,
+    id: `cpu${seq}`,
+    overall: clampStat(target),
+    stats,
+    clubId: null,
+  };
+}
+
+/**
+ * @param {number} divIdx  index into DIVISIONS, 0 = Division 10
+ * @param {number} yourRating  the average overall of the XI being fielded
+ */
+export function divisionOpponent(divIdx, yourRating) {
+  const top = DIVISIONS.length - 1;
+  const idx = Math.max(0, Math.min(top, divIdx));
+  const club = OPP_CLUBS[idx] || OPP_CLUBS[OPP_CLUBS.length - 1];
+
+  // relative to you, plus a floor so an unbuilt squad still meets a real team
+  const relative = yourRating * (0.88 + idx * 0.022);
+  const floor = 60 + idx * 2.6;
+  const target = clampStat(Math.max(relative, floor));
+
+  /* Pick the donor players by position so the profile fits the shirt — a
+   * scaled-up centre-back should still be a centre-back. Donors are taken from
+   * the middle of the world rather than the top, because a low-rated donor
+   * scaled to 94 ends up with a shape nothing like a 94. */
+  const shape = SHAPES[OPP_FORMATION];
+  const pool = WORLD.players.filter((p) => p.clubId);
+  const used = new Set();
+  const pickDonor = (role) => {
+    const wantGK = role === 'GK';
+    let best = null;
+    let bestD = Infinity;
+    for (const p of pool) {
+      if (used.has(p.id)) continue;
+      if ((p.position === 'GK') !== wantGK) continue;
+      const d = Math.abs(p.overall - target);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    if (best) used.add(best.id);
+    return best;
+  };
+
+  let seq = 0;
+  const xi = shape.map((s) => {
+    const donor = pickDonor(s.role);
+    return donor ? scaledCard(donor, target, seq++) : null;
+  }).filter(Boolean);
+
+  const bench = Array.from({ length: 5 }, () => {
+    const donor = pickDonor(seq % 5 === 0 ? 'GK' : 'MID');
+    return donor ? scaledCard(donor, target - 2, seq++) : null;
+  }).filter(Boolean);
+
+  return {
+    xi,
+    bench,
+    name: club.name,
+    short: club.short,
+    colors: club.colors,
+    crest: { shape: 'shield', pattern: 'stripes', device: 'peak', colors: club.colors },
+    /* Higher divisions press and push up. This is a second difficulty lever and
+     * a distinct one: `skill` decides how often the CPU tries something, while
+     * the tactics decide how much room you get to do anything. */
+    tactics: {
+      mentality: idx >= 6 ? 'attacking' : 'balanced',
+      /* High pressing from division 5 up, and this is the lever that actually
+         bites a human. `pressing >= 1.4` is the threshold at which the sim
+         sends a *second* presser at the ball carrier, so from here on you are
+         not given time on the ball — which is the difference between a scoreline
+         and a contest. Rating alone cannot do this: AI against AI, a 13-point
+         rating advantage is worth about four points of win rate, while a human
+         beats a same-rated CPU nearly every time. Competence is the lever. */
+      pressing: idx >= 5 ? 'high' : idx >= 2 ? 'normal' : 'low',
+    },
+    rating: target,
+  };
+}
+
+/** How hard the CPU tries, by rung. Was 0.75 -> 1.45; the top end was too kind. */
+export function divisionSkill(divIdx) {
+  return 0.8 + Math.max(0, divIdx) * 0.11;
+}
+
 
 /**
  * Settles an Apex Division result: moves you up or down the ladder, banks the
@@ -51,6 +193,10 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
     toDivision: beforeDiv.name,
     apex: 0,
     ultimate: 0,
+    // where the ladder now stands, so the result screen can say what is at
+    // stake next time rather than only what just happened
+    progress: 0,
+    need: 0,
     possession: Math.round(possession),
     packs: [],
     objectivesDone: [],
@@ -87,6 +233,8 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
       else u.progress = 0;
     }
     out.toDivision = DIVISIONS[u.divIdx].name;
+    out.progress = u.progress;
+    out.need = DIVISIONS[u.divIdx].need;
 
     // match reward — division sets the purse, possession scales it
     const reward = matchApex(div, { won, drew, poss: possession });

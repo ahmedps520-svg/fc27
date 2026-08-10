@@ -208,7 +208,9 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     players, bench, subsLeft: MAX_SUBS,
     score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
     formation: '4-4-2',
-    tactics: { mentality: 'balanced', pressing: 'normal' },
+    // a custom squad may bring an instruction with it — the Apex Division uses
+    // this to make the CPU press and push up the higher you climb
+    tactics: { mentality: 'balanced', pressing: 'normal', ...(custom?.tactics || {}) },
   };
 }
 

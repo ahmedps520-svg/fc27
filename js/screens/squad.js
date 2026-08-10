@@ -3,6 +3,7 @@ import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
 import { PRESETS } from '../game/sim.js';
+import { divisionOpponent, divisionSkill } from '../ultimate.js';
 import { screenHead } from '../components/screenHead.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG, CREST_PARTS } from '../components/crest.js';
@@ -331,6 +332,21 @@ export function divisionView() {
   const pips = Array.from({ length: div.need }, (_, i) =>
     `<i class="${i < u.progress ? 'on' : ''}"></i>`).join('');
 
+  /* Tell the player who they are about to face and whether they are favourite.
+     The opponent is now built against their own squad rather than being a fixed
+     club, and a difficulty that moves with you is worth stating out loud —
+     otherwise a sudden hard match reads as the game cheating. */
+  const mine = ultimateSquad();
+  const myRating = mine
+    ? Math.round(mine.xi.reduce((t, p) => t + p.overall, 0) / mine.xi.length) : 0;
+  const opp = mine ? divisionOpponent(u.divIdx, myRating) : null;
+  const oppLine = opp
+    ? `Next up: <b>${opp.name}</b>, rated ${opp.rating} against your ${myRating}. `
+      + (opp.rating > myRating + 1 ? 'You are the underdog here.'
+        : opp.rating < myRating - 1 ? 'You should be favourite.'
+          : 'Evenly matched.')
+    : 'Opponents are built to match your squad, and get harder the higher you climb.';
+
   return `
     <section class="panel glass div-hero">
       <div class="div-badge">
@@ -355,7 +371,7 @@ export function divisionView() {
     <section class="panel glass">
       <header class="panel-head"><h2>Next fixture</h2>
         <span class="tag">Win ◈${div.reward.toLocaleString()} + pack</span></header>
-      <p class="hint">Opponents get stronger the higher you climb. A loss drops you back a rung.</p>
+      <p class="hint">${oppLine}</p>
       <p class="preset-note"><b>${PRESETS.competitive.name}</b> ${PRESETS.competitive.blurb}</p>
       <div class="nm-actions">
         <button class="btn primary big" id="playDivision" ${ready ? '' : 'disabled'}>
@@ -923,18 +939,22 @@ export function mount(root) {
       const squad = ultimateSquad();
       if (!squad) return toast('Fill all 11 positions first', 'warn');
       const u = getState().ultimate;
-      const div = DIVISIONS[u.divIdx];
-      // opponent scales with the rung you are on
-      const tier = Math.max(1, Math.min(10, 10 - u.divIdx));
-      const opp = WORLD.clubs.find((c) => c.tier === tier) || WORLD.clubs[0];
+      /* The opponent is built to measure against the squad you are actually
+         fielding — see divisionOpponent. Fielding a real club here is what made
+         the ladder a walkover: the best club in the world is an 86, so every
+         rung was beatable by collecting rather than by playing. */
+      const rating = Math.round(
+        squad.xi.reduce((t, p) => t + p.overall, 0) / squad.xi.length);
+      const opp = divisionOpponent(u.divIdx, rating);
       navigate('play', {
         homeId: WORLD.clubs[0].id,
-        awayId: opp.id,
+        awayId: WORLD.clubs[1].id,
         duration: 240,
-        skill: 0.75 + u.divIdx * 0.07,
+        skill: divisionSkill(u.divIdx),
         mode: 'single',
         ultimate: true,
         homeSquad: squad,
+        awaySquad: opp,
       });
     });
     return;
