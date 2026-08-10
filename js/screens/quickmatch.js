@@ -2,10 +2,11 @@ import { WORLD, clubRating, rosterOf } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { padCount } from '../game/input.js';
 import { PRESETS } from '../game/sim.js';
+import { screenHead } from '../components/screenHead.js';
 import { navigate } from '../app.js';
 import { enterFullscreen } from '../fullscreen.js';
 
-export const TITLE = 'Select Teams';
+export const TITLE = 'Kick Off';
 
 let homeIdx = 0;
 let awayIdx = 1;
@@ -125,6 +126,12 @@ function h2h(hIdx, aIdx) {
 
 export function render() {
   return `
+    ${screenHead({
+      kicker: 'Mode 01',
+      title: 'Kick Off',
+      sub: 'Pick two clubs and play. Nothing is saved, nothing is at stake.',
+      motif: 'pitch', tone: 'c',
+    })}
     <div class="teamsel">
       <div class="ts-side ts-home">
         <span class="ts-label">HOME</span>

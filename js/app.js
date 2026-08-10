@@ -20,20 +20,21 @@ const SCREENS = {
 };
 
 /**
- * `deep` is the shade the bright accent is graded down into — the wordmark's
- * vertical gradient, the swoosh's shadow half, the START button. Derived
- * shades looked muddy on the warm colours, so each one is picked.
+ * The one colour.
+ *
+ * There used to be a picker offering five of these. It is gone, and so is the
+ * choice: APEX green is not decoration, it is the cover, the app icon, the
+ * swooshes on every tile and banner, and the mark on the top bar. A magenta
+ * build of this game was a different game wearing its badge, and every screen
+ * designed since had to be checked against five palettes instead of one.
+ *
+ * `deep` is the shade the bright accent grades into — the wordmark's vertical
+ * gradient, the swoosh's shadow half, the START button.
  */
-const ACCENTS = {
-  green: { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' },
-  cyan:  { accent: '#41d3ff', deep: '#1b8fc7', soft: 'rgba(65,211,255,.18)' },
-  lime:  { accent: '#b8ff3d', deep: '#7fc41b', soft: 'rgba(184,255,61,.18)' },
-  magenta:{ accent: '#ff2e88', deep: '#c01062', soft: 'rgba(255,46,136,.18)' },
-  amber: { accent: '#ffb703', deep: '#d18700', soft: 'rgba(255,183,3,.18)' },
-};
+const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v20';
+export const APP_VERSION = 'v21';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -46,10 +47,9 @@ let activeCleanup = null;
 
 export function applyTheme() {
   const s = getState().settings;
-  const a = ACCENTS[s.accent] || ACCENTS.green;
-  document.documentElement.style.setProperty('--accent', a.accent);
-  document.documentElement.style.setProperty('--accent-deep', a.deep);
-  document.documentElement.style.setProperty('--accent-soft', a.soft);
+  document.documentElement.style.setProperty('--accent', GREEN.accent);
+  document.documentElement.style.setProperty('--accent-deep', GREEN.deep);
+  document.documentElement.style.setProperty('--accent-soft', GREEN.soft);
   document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
 }
 

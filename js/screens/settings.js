@@ -2,6 +2,7 @@ import { getState, update, resetAll } from '../state.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
+import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
 
 /** Push the saved audio preferences into the engine. */
@@ -16,11 +17,6 @@ function applyAudio() {
 
 export const TITLE = 'Settings';
 
-const ACCENTS = [
-  ['green', '#23c55e'], ['cyan', '#41d3ff'], ['lime', '#b8ff3d'],
-  ['magenta', '#ff2e88'], ['amber', '#ffb703'],
-];
-
 const QUALITY_NOTE = (q) => (q === 'ultra' || !q
   ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
@@ -33,6 +29,12 @@ export function render() {
   const s = getState().settings;
   const st = getState();
   return `
+    ${screenHead({
+      kicker: 'System',
+      title: 'Settings',
+      sub: 'How the game looks, sounds and runs on this device.',
+      motif: 'faders', tone: 'd',
+    })}
     <section class="panel glass">
       <header class="panel-head"><h2>Career sim</h2></header>
       <div class="setting-row">
@@ -74,14 +76,6 @@ export function render() {
 
     <section class="panel glass">
       <header class="panel-head"><h2>Look</h2></header>
-      <div class="setting-row">
-        <div><b>Accent</b><span>Recolours the interface. The APEX mark stays as it is.</span></div>
-        <div class="swatches" id="accents">
-          ${ACCENTS.map(([id, hex]) =>
-            `<button class="swatch ${s.accent === id ? 'on' : ''}" data-accent="${id}"
-                     style="--sw:${hex}" aria-label="${id}"></button>`).join('')}
-        </div>
-      </div>
       <div class="setting-row">
         <div><b>Reduce motion</b></div>
         <button class="switch ${s.reduceMotion ? 'on' : ''}" id="motionTgl" role="switch"
@@ -247,13 +241,9 @@ export function mount(root) {
     note.innerHTML = MODEL_NOTE(m);
   });
 
-  root.querySelector('#accents').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-accent]');
-    if (!b) return;
-    update((s) => { s.settings.accent = b.dataset.accent; });
-    root.querySelectorAll('[data-accent]').forEach((x) => x.classList.toggle('on', x === b));
-    applyTheme();
-  });
+  /* The accent picker used to live here, with a listener that wrote
+     settings.accent and re-ran applyTheme. Both are gone on purpose — see the
+     note on GREEN in app.js. Nothing replaced the row; it is simply not there. */
 
   /**
    * The manual way out of a stale install.

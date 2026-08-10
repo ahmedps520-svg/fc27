@@ -11,8 +11,11 @@
   --text: #eef2fb;
   --text-dim: #8b97b0;
   --text-mute: #5c6780;
-  --accent: #41d3ff;
-  --accent-soft: rgba(65, 211, 255, .18);
+  /* APEX green. `applyTheme` sets these on <html> too, but they are stated here
+     so the first paint is already the right colour rather than a cyan flash. */
+  --accent: #23c55e;
+  --accent-deep: #0f9e56;
+  --accent-soft: rgba(35, 197, 94, .18);
   --good: #3ddc97;
   --warn: #ffb703;
   --bad: #ff5d6c;
@@ -137,9 +140,19 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
 }
+/* Panel titles carry a short accent rule. It is small, but it is the reason a
+   stack of panels reads as this game rather than as a settings app: the same
+   bold green mark the cover is built on, repeated down the page. */
 .panel-head h2 {
-  margin: 0; font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--text-dim); font-weight: 700;
+  position: relative; margin: 0; padding-left: 13px;
+  font-family: var(--font-num);
+  font-size: 13px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-dim); font-weight: 800;
+}
+.panel-head h2::before {
+  content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%;
+  width: 4px; height: 1.05em; border-radius: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep, var(--accent)));
 }
 .panel-head h2 small {
   font-family: var(--font-num); color: var(--accent); margin-left: 6px;
@@ -334,6 +347,58 @@ select {
 .tile.is-locked .tile-swoosh { opacity: .12; filter: grayscale(1); }
 .tile.is-locked:hover { border-color: var(--line); transform: none; }
 .tile.is-locked:hover .tile-swoosh { transform: none; opacity: .12; }
+
+/* ------------------------- Screen banner -------------------------
+   Every mode screen opens with one of these. See components/screenHead.js for
+   what the parts are and why the game needed them. */
+.screen-head {
+  position: relative; overflow: hidden; isolation: isolate;
+  margin: 0 0 18px; padding: 22px 24px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--tone, var(--accent));
+  background:
+    linear-gradient(100deg, rgba(8, 12, 22, .92) 42%, rgba(8, 12, 22, .3) 78%),
+    linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+/* the tinted wash behind the type, the same one the menu tiles carry */
+.screen-head::before {
+  content: ''; position: absolute; inset: -60% 40% auto -10%; height: 260px; z-index: -2;
+  background: radial-gradient(closest-side, var(--tone, var(--accent)), transparent 70%);
+  opacity: .2; pointer-events: none;
+}
+.sh-motif {
+  position: absolute; right: 0; top: 0; height: 100%; width: min(58%, 420px);
+  z-index: -1; color: var(--tone, var(--accent)); opacity: .3; pointer-events: none;
+}
+.sh-swoosh {
+  position: absolute; right: 0; top: 0; height: 100%; width: min(38%, 300px);
+  z-index: -1; opacity: .9; pointer-events: none;
+}
+.sh-swoosh path { fill: none; stroke-linecap: square; }
+
+.sh-kicker {
+  margin: 0 0 2px; font-family: var(--font-num);
+  font-size: 11px; font-weight: 800; letter-spacing: .3em; text-transform: uppercase;
+  color: var(--tone, var(--accent));
+}
+/* the cover's typography, one step down: same family, same 800 italic, same
+   negative tracking — this is what makes the screen feel like the title card */
+.sh-title {
+  margin: 0; font-family: var(--font-num); font-weight: 800; font-style: italic;
+  font-size: clamp(34px, 6vw, 54px); line-height: .9; letter-spacing: -.04em;
+  color: #f6f9ff;
+}
+.sh-sub {
+  margin: 8px 0 0; max-width: 46ch;
+  font-size: 12.5px; line-height: 1.5; color: var(--text-dim);
+}
+
+@media (max-width: 640px) {
+  .screen-head { padding: 16px 18px 15px; }
+  .sh-motif { opacity: .2; }
+}
 
 /* The wordmark on the menu, sharing the cover's typography exactly — same
    family, same 800 italic, same white-over-green split — just sized for a
@@ -1845,13 +1910,6 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .switch i { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--text-mute); transition: transform .2s, background .2s; }
 .switch.on { background: var(--accent-soft); border-color: var(--accent); }
 .switch.on i { transform: translateX(22px); background: var(--accent); }
-.swatches { display: flex; gap: 8px; }
-.swatch {
-  width: 32px; height: 32px; border-radius: 50%; cursor: pointer; padding: 0;
-  background: var(--sw); border: 2px solid transparent; transition: transform .16s, box-shadow .16s;
-}
-.swatch:hover { transform: scale(1.12); }
-.swatch.on { border-color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sw) 40%, transparent); }
 .about p { margin: 0 0 9px; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
 .about .disclaimer { text-align: left; margin: 12px 0 0; }
 .ctrl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 16px; }
