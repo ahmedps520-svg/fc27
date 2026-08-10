@@ -557,7 +557,32 @@ The picker rebuilds each swatch through `innerHTML` on a wrapper span. `crestSVG
 returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
-### The black flicker (open)
+### The black flicker
+**Current best explanation: lazy shader compilation.** three builds a material's
+GPU program the first time that material is *drawn*, not when it is created.
+This scene has many distinct programs — turf with its normal and roughness maps,
+the kit-tint and skin-tint variants, the instanced crowd, the boards, the light
+shafts, the nets — and on a tablet each compile is tens of milliseconds on the
+main thread mid-frame. A frame that stalls that long is presented half-drawn:
+the tiles that made it are there, the rest are black, edges on the GPU's tile
+grid. It re-fires whenever another variant is first seen — a substitute entering
+the frustum, a replay cutting the camera somewhere new — which matches "a lot,
+in a different spot every time" far better than memory pressure did.
+
+`warmUp()` in `renderGL.js` calls `compileAsync` (falling back to `compile`)
+before resolving `ready`, so the loading screen — which was waiting anyway —
+absorbs the cost. **Two call sites, and the ordering matters:** the models path
+compiles after its rigs are in the scene; the no-models path is called at the
+*end* of `createRenderer`, because the ball and the markers are added after the
+model block and their programs have to be in the same batch. The post-processing
+passes are not covered by `compile()`, but they run every frame behind the veil,
+so they are warm by kick-off.
+
+Still not reproduced here — no iPad, and SwiftShader will not show a tile
+failure. If it survives this, the next suspects are a resize firing mid-play and
+the compositor presenting before the GL command buffer completes.
+
+### The earlier memory theory (did not fix it)
 A player on an iPad reports a large black rectangle appearing for a split second
 mid-match, in a different place each time, starting after the graphics work. The
 screenshot shows **stair-stepped edges on a tile grid** — that is the GPU's
