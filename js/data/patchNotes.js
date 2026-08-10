@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v33',
+    date: '2026-08-10',
+    tag: 'Performance',
+    title: 'Shaders built before kick-off',
+    lede: 'A second go at the black flash some devices show mid-match — this '
+        + 'time at the thing that actually stalls a frame.',
+    entries: [
+      {
+        head: 'Everything is compiled during the loading screen',
+        summary: 'The graphics code the match needs is now built up front instead of the first '
+               + 'time each piece happens to appear on screen.',
+        detail: 'Graphics drivers build a shader the first time the thing that uses it is '
+              + 'actually drawn. This match has a lot of them — the turf, each kit and skin tint, '
+              + 'the crowd, the boards, the light shafts, the nets — and on a tablet each one can '
+              + 'take tens of milliseconds, on the main thread, in the middle of a frame. A frame '
+              + 'that stalls that long gets shown half-drawn: the parts that finished are there '
+              + 'and the rest is black. It would fire again every time something new came into '
+              + 'view — a substitute, a replay cutting the camera somewhere new — which is why it '
+              + 'kept happening and in a different place each time. They are all built during the '
+              + 'loading screen now, which was already waiting anyway.',
+      },
+    ],
+  },
+  {
     version: 'v32',
     date: '2026-08-10',
     tag: 'Balance',

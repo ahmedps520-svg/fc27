@@ -1615,10 +1615,44 @@ export function createRenderer(canvas, match, quality, models = false) {
    * mid-play, so the first ten seconds looked like a different, worse game. */
   let markReady;
   const ready = new Promise((res) => { markReady = res; });
-  if (!models) markReady();
+
+  /* Compile every shader before the match is allowed to start.
+   *
+   * This is the fix for the black rectangle that flashed mid-match on iPads:
+   * three builds a material's GPU program lazily, the *first time that material
+   * is actually drawn*. This scene has a lot of distinct programs — the turf
+   * with its normal and roughness maps, the kit-tint and skin-tint variants,
+   * the instanced crowd, the boards, the light shafts, the nets, the post
+   * passes — and on a tablet each one can take tens of milliseconds to compile,
+   * on the main thread, in the middle of a frame.
+   *
+   * A frame that stalls that long is presented half-drawn: the tiles that made
+   * it are there and the rest are black, with edges on the GPU's tile grid. It
+   * fires again every time another variant is first *seen* — a substitute
+   * entering the frustum, a replay cutting the camera somewhere new, the ball
+   * hitting the net — which is why it kept happening, and somewhere different
+   * each time.
+   *
+   * The loading screen already holds the match still and already waits on this
+   * promise, so this is free: the wait was there anyway.
+   */
+  const warmUp = () => {
+    try {
+      const done = renderer.compileAsync
+        ? renderer.compileAsync(scene, camera)
+        : Promise.resolve(renderer.compile(scene, camera));
+      done.then(markReady, markReady);
+    } catch {
+      markReady();          // a driver that refuses is not a reason to not play
+    }
+  };
+
+  // The models path warms up once its rigs are in the scene; without them the
+  // call waits until the end of construction, because the ball and the markers
+  // are added after this point and their programs have to be in the batch too.
   if (models) {
     loadPlayerModel().then((model) => {
-      if (!model || disposed) { markReady(); return; }
+      if (!model || disposed) { warmUp(); return; }
       let index = 0;
       for (let t = 0; t < 2; t++) {
         for (const p of match.teams[t].players) {
@@ -1642,8 +1676,10 @@ export function createRenderer(canvas, match, quality, models = false) {
       // be turned back down mid-match without rebuilding anything
       for (const rig of rigs.values()) rig.grp.visible = false;
       useModels = true;
-      markReady();
-    }).catch(() => markReady());
+      // compiled after the rigs are in the scene, so their programs are
+      // included rather than being built on the first frame of play
+      warmUp();
+    }).catch(() => warmUp());
   }
 
   const ball = new THREE.Mesh(
@@ -1716,6 +1752,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   }
+
+  if (!models) warmUp();
 
   return {
     /** Settles when every asset that would change the picture has landed. */
