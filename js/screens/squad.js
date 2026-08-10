@@ -14,7 +14,12 @@ import * as api from '../net/api.js';
 
 export const TITLE = 'Ultimate XI';
 
-let tab = 'squad';           // squad | division | online | objectives | challenges | store
+let tab = 'club';            // club | division | online | objectives | challenges | store
+/* The Club tab's own three. Squad and the identity editor used to be two
+   top-level tabs sitting next to each other, which put "pick your eleven" and
+   "pick your badge" at the same level as "play a match" — they are both the
+   same job, so they are one tab with three faces now. */
+let clubTab = 'squad';       // squad | badge | name
 let openChallenge = null;    // the SBC being filled in, if any
 let submission = [];         // card ids staged for it
 
@@ -271,7 +276,14 @@ const KIT_PALETTES = [
   ['#b8ff3d', '#14210a'], ['#ff2e88', '#160b16'], ['#8ecae6', '#023047'],
 ];
 
-function clubView() {
+/**
+ * The badge, on its own page.
+ *
+ * A live preview beside the pickers, and every option previews *itself* wearing
+ * the rest of the club — pick a shape and you see it in your colours with your
+ * device on it, rather than in a vacuum.
+ */
+function badgeView() {
   const id = clubIdentity();
   const row = (key, opts) => `
     <div class="ci-row">
@@ -287,22 +299,16 @@ function clubView() {
 
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Your club</h2></header>
-      <p class="hint">The badge and the kit your Ultimate XI takes onto the pitch,
-        and what an opponent sees when you play online.</p>
+      <header class="panel-head"><h2>Club badge</h2></header>
+      <p class="hint">Worn on the pitch, on the scoreboard, and shown to whoever
+        you play online. The two colours are the kit your players run out in.</p>
 
       <div class="ci-top">
-        <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 128)}</div>
-        <div class="ci-names">
-          <label class="field">
-            <span>Club name</span>
-            <input id="ciName" type="text" maxlength="22" value="${id.name.replace(/"/g, '&quot;')}">
-          </label>
-          <label class="field">
-            <span>Three letters</span>
-            <input id="ciShort" type="text" maxlength="3" value="${id.short}">
-          </label>
-          <p class="p-note">Shown on the scoreboard and the perimeter of every match.</p>
+        <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 148)}</div>
+        <div class="ci-kitnote">
+          <b>${id.name}</b>
+          <span>${id.short}</span>
+          <p class="p-note">Change the name and the three letters on the Club Name tab.</p>
         </div>
       </div>
 
@@ -319,6 +325,48 @@ function clubView() {
       ${row('shape', CREST_PARTS.shape)}
       ${row('pattern', CREST_PARTS.pattern)}
       ${row('device', CREST_PARTS.device)}
+    </section>`;
+}
+
+/** The name, and the three letters the scoreboard has room for. */
+function nameView() {
+  const id = clubIdentity();
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Club name</h2></header>
+      <p class="hint">What your side is called on the team sheet, the scoreboard
+        and in an opponent\u2019s match report.</p>
+
+      <div class="ci-top">
+        <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 148)}</div>
+        <div class="ci-names">
+          <label class="field">
+            <span>Club name</span>
+            <input id="ciName" type="text" maxlength="22" value="${id.name.replace(/"/g, '&quot;')}">
+          </label>
+          <label class="field">
+            <span>Three letters</span>
+            <input id="ciShort" type="text" maxlength="3" value="${id.short}">
+          </label>
+          <p class="p-note">The three letters are what fits beside the score during a match.</p>
+        </div>
+      </div>
+
+      <!-- what it will actually look like in the corner of the screen -->
+      <div class="ci-scorebug">
+        <span class="ci-sb-label">On the scoreboard</span>
+        <div class="gm-bug">
+          <span class="bug-team" style="--team:${id.crest.colors[0]}">
+            ${crestSVG(id.crest, id.short, 20)}<b>${id.short}</b>
+          </span>
+          <b class="bug-score">2</b><b class="bug-score">1</b>
+          <span class="bug-team" style="--team:#8a8f98">
+            <b>HGT</b>${crestSVG({ shape: 'shield', pattern: 'stripes', device: 'peak',
+              colors: ['#8a8f98', '#15171c'] }, 'HGT', 20)}
+          </span>
+          <span class="bug-clock">67\u2032</span>
+        </div>
+      </div>
     </section>`;
 }
 
@@ -673,7 +721,7 @@ export function render() {
 
   const tabs = head + `
     <nav class="tabs" id="uTabs">
-      ${[['squad', 'Squad'], ['division', 'Apex Division'], ['club', 'Your Club'], ['online', 'Online'],
+      ${[['club', 'Club'], ['division', 'Apex Division'], ['online', 'Online'],
          ['objectives', 'Objectives'], ['challenges', 'Challenges'],
          ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
@@ -685,12 +733,26 @@ export function render() {
 
   if (tab === 'online') return tabs + sorry + onlineView();
   if (tab === 'division') return tabs + sorry + divisionView();
-  if (tab === 'club') return tabs + sorry + clubView();
   if (tab === 'objectives') return tabs + sorry + objectivesView();
   if (tab === 'challenges') return tabs + sorry + challengesView();
   if (tab === 'store') return tabs + sorry + storeView();
 
-  return tabs + sorry + `
+  /* The Club tab's second row.
+   *
+   * Deliberately a different shape from the row above it — a rule and an
+   * underline rather than pills — so two navigations stacked on top of each
+   * other read as a hierarchy instead of as fourteen buttons. */
+  const sub = `
+    <nav class="subtabs" id="cSubs">
+      ${[['squad', 'Squad'], ['badge', 'Club Badge'], ['name', 'Club Name']]
+        .map(([id, label]) =>
+          `<button class="subtab ${clubTab === id ? 'on' : ''}" data-ctab="${id}">${label}</button>`).join('')}
+    </nav>`;
+
+  if (clubTab === 'badge') return tabs + sorry + sub + badgeView();
+  if (clubTab === 'name') return tabs + sorry + sub + nameView();
+
+  return tabs + sorry + sub + `
     <div class="sb-head">
       <div class="sb-metrics glass">
         <div class="metric"><b class="big">${chem.rating || '--'}</b><span>Squad rating</span></div>
@@ -877,20 +939,29 @@ export function mount(root) {
     navigate('squad');
   });
 
+  // and the Club tab's own row
+  root.querySelector('#cSubs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ctab]');
+    if (!b) return;
+    clubTab = b.dataset.ctab;
+    pickSlot = null;
+    navigate('squad');
+  });
+
   /* Your club.
    *
    * The badge redraws in place rather than through a re-render, because a
    * re-render would tear the text field out from under whoever is typing in it.
    * Everything writes straight to state — there is no Save button, and nothing
    * here can be invalid enough to need one. */
-  if (tab === 'club') {
+  if (tab === 'club' && clubTab !== 'squad') {
     const preview = root.querySelector('#ciPreview');
     const nameEl = root.querySelector('#ciName');
     const shortEl = root.querySelector('#ciShort');
 
     const repaint = () => {
       const id = clubIdentity();
-      preview.innerHTML = crestSVG(id.crest, id.short, 128);
+      if (preview) preview.innerHTML = crestSVG(id.crest, id.short, 148);
       /* Every option previews itself against the rest of the club rather than
          in isolation, so picking a shape shows it in your colours with your
          device on it. Written through innerHTML on a wrapper: crestSVG returns
@@ -900,6 +971,9 @@ export function mount(root) {
         const slot = b.querySelector('.ci-badge');
         if (slot) slot.innerHTML = crestSVG({ ...id.crest, [b.dataset.part]: b.dataset.val }, id.short, 34);
       });
+      // the Club Name page previews the in-match scoreboard, so it follows too
+      const bug = root.querySelector('.ci-scorebug .bug-team');
+      if (bug) bug.innerHTML = `${crestSVG(id.crest, id.short, 20)}<b>${id.short}</b>`;
     };
 
     root.querySelector('.panel')?.addEventListener('click', (e) => {
