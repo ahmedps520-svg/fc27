@@ -148,27 +148,27 @@ export function rarityFor(overall) {
  * is the fictional list the rest of the world is built from.
  */
 export const ICONS = [
-  { name: 'Lionel Messi',      short: 'L. Messi',    position: 'RW',  nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair' },
-  { name: 'Cristiano Ronaldo', short: 'C. Ronaldo',  position: 'ST',  nation: 'Portugal',  colors: ['#da291c', '#046a38'], trait: 'power' },
-  { name: 'Neymar Jr',         short: 'Neymar Jr',   position: 'LW',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
-  { name: 'Diego Maradona',    short: 'D. Maradona', position: 'CAM', nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair' },
-  { name: 'Zinedine Zidane',   short: 'Z. Zidane',   position: 'CM',  nation: 'France',    colors: ['#0055a4', '#ef4135'], trait: 'engine' },
-  { name: 'Lothar Matthaus',   short: 'L. Matthaus', position: 'CDM', nation: 'Germany',   colors: ['#000000', '#dd0000'], trait: 'engine' },
-  { name: 'Paolo Maldini',     short: 'P. Maldini',  position: 'CB',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'wall' },
-  { name: 'Gianluigi Buffon',  short: 'G. Buffon',   position: 'GK',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'keeper' },
+  { name: 'Lionel Messi',      short: 'L. Messi',    position: 'RW',  nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair', foot: 'L' },
+  { name: 'Cristiano Ronaldo', short: 'C. Ronaldo',  position: 'ST',  nation: 'Portugal',  colors: ['#da291c', '#046a38'], trait: 'power', foot: 'R' },
+  { name: 'Neymar Jr',         short: 'Neymar Jr',   position: 'LW',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'flair', foot: 'R' },
+  { name: 'Diego Maradona',    short: 'D. Maradona', position: 'CAM', nation: 'Argentina', colors: ['#75aadb', '#ffffff'], trait: 'flair', foot: 'L' },
+  { name: 'Zinedine Zidane',   short: 'Z. Zidane',   position: 'CM',  nation: 'France',    colors: ['#0055a4', '#ef4135'], trait: 'engine', foot: 'R' },
+  { name: 'Lothar Matthaus',   short: 'L. Matthaus', position: 'CDM', nation: 'Germany',   colors: ['#000000', '#dd0000'], trait: 'engine', foot: 'R' },
+  { name: 'Paolo Maldini',     short: 'P. Maldini',  position: 'CB',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'wall', foot: 'R' },
+  { name: 'Gianluigi Buffon',  short: 'G. Buffon',   position: 'GK',  nation: 'Italy',     colors: ['#0064aa', '#ffffff'], trait: 'keeper', foot: 'R' },
   // `added` marks everything appended after the first eight. It exists purely
   // so the generator can hand these ids out after the Stars below, leaving the
   // original twenty named cards pointing at the same players they always did.
-  { name: 'Roberto Carlos',    short: 'R. Carlos',   position: 'LB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', added: true },
-  { name: 'Cafu',              short: 'Cafu',        position: 'RB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', added: true },
-  { name: 'Ryan Giggs',        short: 'R. Giggs',    position: 'LM',  nation: 'Wales',     colors: ['#c8102e', '#00b140'], trait: 'flair',    added: true },
-  { name: 'David Beckham',     short: 'D. Beckham',  position: 'RM',  nation: 'England',   colors: ['#ffffff', '#ce1124'], trait: 'engine',   added: true },
+  { name: 'Roberto Carlos',    short: 'R. Carlos',   position: 'LB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', foot: 'L', added: true },
+  { name: 'Cafu',              short: 'Cafu',        position: 'RB',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'fullback', foot: 'R', added: true },
+  { name: 'Ryan Giggs',        short: 'R. Giggs',    position: 'LM',  nation: 'Wales',     colors: ['#c8102e', '#00b140'], trait: 'flair', foot: 'L',    added: true },
+  { name: 'David Beckham',     short: 'D. Beckham',  position: 'RM',  nation: 'England',   colors: ['#ffffff', '#ce1124'], trait: 'engine', foot: 'R',   added: true },
   // A 4-3-3 asks for two centre-backs and two central midfielders, and 4-4-2
   // for two strikers, so one Icon per position still could not field an Icon
   // XI. These three are the duplicates that close it.
-  { name: 'Franz Beckenbauer', short: 'F. Beckenbauer', position: 'CB', nation: 'Germany', colors: ['#000000', '#dd0000'], trait: 'wall',   added: true },
-  { name: 'Xavi Hernandez',    short: 'Xavi',        position: 'CM',  nation: 'Spain',     colors: ['#c60b1e', '#ffc400'], trait: 'engine',   added: true },
-  { name: 'Ronaldo Nazario',   short: 'R. Nazario',  position: 'ST',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'power',    added: true },
+  { name: 'Franz Beckenbauer', short: 'F. Beckenbauer', position: 'CB', nation: 'Germany', colors: ['#000000', '#dd0000'], trait: 'wall', foot: 'R',   added: true },
+  { name: 'Xavi Hernandez',    short: 'Xavi',        position: 'CM',  nation: 'Spain',     colors: ['#c60b1e', '#ffc400'], trait: 'engine', foot: 'R',   added: true },
+  { name: 'Ronaldo Nazario',   short: 'R. Nazario',  position: 'ST',  nation: 'Brazil',    colors: ['#009c3b', '#ffdf00'], trait: 'power', foot: 'R',    added: true },
 ];
 
 /**
@@ -180,27 +180,27 @@ export const ICONS = [
  * having whatever hole is left in a squad.
  */
 export const STARS = [
-  { name: 'Lamine Yamal',    short: 'L. Yamal',    position: 'RW',  nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'flair' },
-  { name: 'Raphinha',        short: 'Raphinha',    position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
-  { name: 'Vinicius Jr',     short: 'Vinicius Jr', position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair' },
-  { name: 'Kylian Mbappe',   short: 'K. Mbappe',   position: 'ST',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'power' },
-  { name: 'Erling Haaland',  short: 'E. Haaland',  position: 'ST',  nation: 'Norway',      colors: ['#ba0c2f', '#00205b'], trait: 'power' },
-  { name: 'Jude Bellingham', short: 'J. Bellingham', position: 'CM', nation: 'England',    colors: ['#ffffff', '#ce1124'], trait: 'engine' },
-  { name: 'Kevin De Bruyne', short: 'K. De Bruyne', position: 'CAM', nation: 'Belgium',    colors: ['#000000', '#fdda24'], trait: 'engine' },
-  { name: 'Federico Valverde', short: 'F. Valverde', position: 'CM', nation: 'Uruguay',    colors: ['#0038a8', '#ffffff'], trait: 'engine' },
-  { name: 'Rodri',           short: 'Rodri',       position: 'CDM', nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'wall' },
-  { name: 'Virgil van Dijk', short: 'V. van Dijk', position: 'CB',  nation: 'Netherlands', colors: ['#ae1c28', '#21468b'], trait: 'wall' },
-  { name: 'Achraf Hakimi',   short: 'A. Hakimi',   position: 'RB',  nation: 'Morocco',     colors: ['#c1272d', '#006233'], trait: 'engine' },
-  { name: 'Alisson',         short: 'Alisson',     position: 'GK',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'keeper' },
+  { name: 'Lamine Yamal',    short: 'L. Yamal',    position: 'RW',  nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'flair', foot: 'L' },
+  { name: 'Raphinha',        short: 'Raphinha',    position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair', foot: 'R' },
+  { name: 'Vinicius Jr',     short: 'Vinicius Jr', position: 'LW',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'flair', foot: 'R' },
+  { name: 'Kylian Mbappe',   short: 'K. Mbappe',   position: 'ST',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'power', foot: 'R' },
+  { name: 'Erling Haaland',  short: 'E. Haaland',  position: 'ST',  nation: 'Norway',      colors: ['#ba0c2f', '#00205b'], trait: 'power', foot: 'L' },
+  { name: 'Jude Bellingham', short: 'J. Bellingham', position: 'CM', nation: 'England',    colors: ['#ffffff', '#ce1124'], trait: 'engine', foot: 'R' },
+  { name: 'Kevin De Bruyne', short: 'K. De Bruyne', position: 'CAM', nation: 'Belgium',    colors: ['#000000', '#fdda24'], trait: 'engine', foot: 'R' },
+  { name: 'Federico Valverde', short: 'F. Valverde', position: 'CM', nation: 'Uruguay',    colors: ['#0038a8', '#ffffff'], trait: 'engine', foot: 'R' },
+  { name: 'Rodri',           short: 'Rodri',       position: 'CDM', nation: 'Spain',       colors: ['#c60b1e', '#ffc400'], trait: 'wall', foot: 'R' },
+  { name: 'Virgil van Dijk', short: 'V. van Dijk', position: 'CB',  nation: 'Netherlands', colors: ['#ae1c28', '#21468b'], trait: 'wall', foot: 'R' },
+  { name: 'Achraf Hakimi',   short: 'A. Hakimi',   position: 'RB',  nation: 'Morocco',     colors: ['#c1272d', '#006233'], trait: 'engine', foot: 'R' },
+  { name: 'Alisson',         short: 'Alisson',     position: 'GK',  nation: 'Brazil',      colors: ['#009c3b', '#ffdf00'], trait: 'keeper', foot: 'R' },
   // appended after the originals — see the note on ICONS
-  { name: 'Alphonso Davies', short: 'A. Davies',   position: 'LB',  nation: 'Canada',      colors: ['#ff0000', '#ffffff'], trait: 'fullback', added: true },
-  { name: 'Jeremy Doku',     short: 'J. Doku',     position: 'LM',  nation: 'Belgium',     colors: ['#000000', '#fdda24'], trait: 'flair',    added: true },
-  { name: 'Bukayo Saka',     short: 'B. Saka',     position: 'RM',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'flair',    added: true },
-  { name: 'William Saliba',  short: 'W. Saliba',   position: 'CB',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'wall',     added: true },
-  { name: 'Declan Rice',     short: 'D. Rice',     position: 'CDM', nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'wall',     added: true },
-  { name: 'Mohamed Salah',   short: 'M. Salah',    position: 'RW',  nation: 'Egypt',       colors: ['#c8102e', '#ffffff'], trait: 'power',    added: true },
-  { name: 'Harry Kane',      short: 'H. Kane',     position: 'ST',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'power',    added: true },
-  { name: 'Gianluigi Donnarumma', short: 'G. Donnarumma', position: 'GK', nation: 'Italy', colors: ['#0064aa', '#ffffff'], trait: 'keeper',   added: true },
+  { name: 'Alphonso Davies', short: 'A. Davies',   position: 'LB',  nation: 'Canada',      colors: ['#ff0000', '#ffffff'], trait: 'fullback', foot: 'L', added: true },
+  { name: 'Jeremy Doku',     short: 'J. Doku',     position: 'LM',  nation: 'Belgium',     colors: ['#000000', '#fdda24'], trait: 'flair', foot: 'R',    added: true },
+  { name: 'Bukayo Saka',     short: 'B. Saka',     position: 'RM',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'flair', foot: 'L',    added: true },
+  { name: 'William Saliba',  short: 'W. Saliba',   position: 'CB',  nation: 'France',      colors: ['#0055a4', '#ef4135'], trait: 'wall', foot: 'R',     added: true },
+  { name: 'Declan Rice',     short: 'D. Rice',     position: 'CDM', nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'wall', foot: 'R',     added: true },
+  { name: 'Mohamed Salah',   short: 'M. Salah',    position: 'RW',  nation: 'Egypt',       colors: ['#c8102e', '#ffffff'], trait: 'power', foot: 'L',    added: true },
+  { name: 'Harry Kane',      short: 'H. Kane',     position: 'ST',  nation: 'England',     colors: ['#ffffff', '#ce1124'], trait: 'power', foot: 'R',    added: true },
+  { name: 'Gianluigi Donnarumma', short: 'G. Donnarumma', position: 'GK', nation: 'Italy', colors: ['#0064aa', '#ffffff'], trait: 'keeper', foot: 'R',   added: true },
 ];
 
 /** Star radars — the same shapes as the Icons, a rung down. */

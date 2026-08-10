@@ -86,6 +86,18 @@ function marketValue(overall, age) {
   return Math.round(raw / 50_000) * 50_000 || 50_000;
 }
 
+/**
+ * Strong foot, about one player in five left-footed.
+ *
+ * Hashed off the id rather than drawn from `rand`, and that is the whole point:
+ * pulling a number from the generator's stream here would have shifted every
+ * name, stat and nation that came after it, and every saved collection points
+ * at ids whose cards have to keep being the same cards.
+ */
+function footFor(id) {
+  return ((id * 2654435761) % 100) < 22 ? 'L' : 'R';
+}
+
 let idCounter = 0;
 
 function makePlayer(rand, position, baseLevel, clubId) {
@@ -111,9 +123,10 @@ function makePlayer(rand, position, baseLevel, clubId) {
   const nation = rand.pick(NATIONS);
   const first = rand.pick(FIRST_NAMES);
   const last = rand.pick(LAST_NAMES);
+  const id = ++idCounter;
 
   return {
-    id: `p${++idCounter}`,
+    id: `p${id}`,
     name: `${first} ${last}`,
     short: `${first[0]}. ${last}`,
     position,
@@ -124,6 +137,7 @@ function makePlayer(rand, position, baseLevel, clubId) {
     nation: nation.name,
     nationColors: nation.colors,
     age,
+    foot: footFor(id),
     value: marketValue(overall, age),
     form: 0,
   };
@@ -151,6 +165,8 @@ function namedCard(def, stats, overall, rarity, value, id) {
     nation: def.nation,
     nationColors: def.colors,
     age: 29,
+    // named cards state their own foot; the rest fall back to the hash
+    foot: def.foot || footFor(id),
     value,
     form: 0,
   };

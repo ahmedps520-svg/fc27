@@ -2,6 +2,7 @@ import { getState, update, DIVISIONS } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
+import { PRESETS } from '../game/sim.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
@@ -258,6 +259,7 @@ export function divisionView() {
       <header class="panel-head"><h2>Next fixture</h2>
         <span class="tag">Win ◈${div.reward.toLocaleString()} + pack</span></header>
       <p class="hint">Opponents get stronger the higher you climb. A loss drops you back a rung.</p>
+      <p class="preset-note"><b>${PRESETS.competitive.name}</b> ${PRESETS.competitive.blurb}</p>
       <div class="nm-actions">
         <button class="btn primary big" id="playDivision" ${ready ? '' : 'disabled'}>
           ${ready ? 'Play match' : `Fill your XI (${chem.placedCount}/11)`}

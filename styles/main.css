@@ -1622,8 +1622,10 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 /* Replay banner */
 .replay-tag {
   position: absolute; left: 50%; top: 16px; translate: -50% 0; z-index: 5;
-  display: flex; align-items: center; gap: 9px; pointer-events: none;
-  padding: 7px 16px; border-radius: 999px;
+  display: flex; align-items: center; gap: 9px;
+  /* the tag itself is not a target — only the skip button inside it is */
+  pointer-events: none;
+  padding: 7px 8px 7px 16px; border-radius: 999px;
   background: rgba(8, 12, 24, .8); border: 1px solid rgba(255, 255, 255, .16);
   font-family: var(--font-num); font-size: 13px; font-weight: 800; letter-spacing: .22em;
   color: #fff;
@@ -1637,6 +1639,32 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .replay-tag em {
   font-style: normal; font-family: var(--font); font-size: 10.5px;
   letter-spacing: .08em; color: var(--text-dim); font-weight: 600;
+}
+/* Tap target for the same thing the controller does by holding ◯. Sized to the
+   44px minimum with padding rather than height so the tag stays a slim pill. */
+.rt-skip {
+  pointer-events: auto; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  appearance: none; cursor: pointer;
+  padding: 7px 14px; margin: -4px 0; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  font-family: var(--font-num); font-size: 11.5px; font-weight: 800; letter-spacing: .16em;
+  color: var(--accent);
+}
+.rt-skip:active { background: var(--accent); color: #07130c; }
+
+/* Which gameplay preset a mode runs. Stated up front rather than buried in
+   Settings, because the two modes deliberately do not play the same. */
+.preset-note {
+  margin: 0 0 12px; padding: 9px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-left: 3px solid var(--accent);
+  font-size: 12.5px; line-height: 1.45; color: var(--text-dim);
+}
+.preset-note b {
+  display: block; color: var(--accent);
+  font-family: var(--font-num); font-size: 11px; font-weight: 800; letter-spacing: .18em;
+  text-transform: uppercase;
 }
 
 /* Goal card — rides the celebration, then clears for the restart. */
