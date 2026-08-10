@@ -27,7 +27,7 @@ const ACCENTS = {
 };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v15';
+export const APP_VERSION = 'v16';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');

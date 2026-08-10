@@ -488,15 +488,35 @@ title screen already says APEX XI at forty times the size; repeating it above a
 row of statistics nobody opened the app to read pushed the only thing anyone
 came for below the fold on a phone.
 
-What is there now is four tiles, vertically centred, and the small print. The
+What is there now is the wordmark — set exactly as the cover sets it, heavy
+800 italic, white APEX against a green XI — four tiles, and the small print.
+The wordmark came back after being removed with the counters; the counters were
+the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word — and the
 green is hard-coded rather than taken from the accent, because it is the brand
 mark and not a theme colour.
 
-The header badge is the same roundel. It used to be a rounded square filled
-with a gradient from the user's accent to near-white, which on the amber accent
-read as a stray yellow box next to the title.
+The header badge is the publisher mark at 30px: dark disc, green ring, white A.
+It used to be a rounded square filled with a gradient from the user's accent to
+near-white, which on the amber accent read as a stray yellow box next to the
+title.
+
+**Tile icons are drawn, not typed.** They were ⬢ ▦ ⚡ ⚙ and a padlock emoji —
+characters borrowed from whatever font the device had, so they rendered as
+Apple's artwork on an iPad and as something else everywhere else, and none of
+them said anything about the mode they sat on. A hexagon is not a squad and a
+lightning bolt is not a kick-off. They are now line drawings of a card, a
+trophy, a ball and a set of faders, on one 24-unit grid at one stroke weight.
+
+**The publisher mark** (`.mark` on the splash) is a dark disc with a green rim,
+an A built from two heavy angled bars, and a clipped diagonal accent behind it,
+beside a two-line lockup. The old one was a thin outlined A on a plain white
+disc, which punched a white hole in the artwork.
+
+Careful with the CSS block around `.brand-mark`: `.coin-chip` lives directly
+under it and was deleted by a careless replace-through-to-the-next-comment,
+which silently removed the wallet pills from the header.
 
 ## Rules that keep biting
 

@@ -21,12 +21,36 @@ export function render() {
       </svg>
 
       <div class="splash-body">
+        <!-- The publisher mark.
+             It was a thin outlined A on a plain white disc with two lines of
+             letter-spaced caps beside it, which read as a placeholder rather
+             than a logo. This is built out of the same parts as everything
+             else on the cover: the A is two heavy angled bars, its right leg
+             carries on past the apex as the swoosh, and the disc is dark with
+             a green rim so it sits on the artwork instead of punching a white
+             hole in it. -->
         <div class="mark">
           <svg viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="47" class="mark-disc" />
-            <path class="mark-glyph" d="M28 68 L50 30 L72 68 M37 56 L63 56" />
+            <defs>
+              <linearGradient id="markG" x1="0" y1="0" x2="0.3" y2="1">
+                <stop offset="0%" stop-color="#3ff08a"/>
+                <stop offset="100%" stop-color="#0f9e56"/>
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="46" class="mark-disc" />
+            <circle cx="50" cy="50" r="46" class="mark-ring" />
+            <!-- the swoosh, clipped to the disc so it reads as part of the badge -->
+            <clipPath id="markClip"><circle cx="50" cy="50" r="46" /></clipPath>
+            <g clip-path="url(#markClip)">
+              <path class="mark-sweep" d="M-8 84 L30 92 L108 26" />
+            </g>
+            <path class="mark-a" d="M25 75 L50 26 L75 75" />
+            <path class="mark-bar" d="M35 59 H65" />
           </svg>
-          <span>APEX<br /><b>SPORTS</b></span>
+          <span class="mark-type">
+            <b class="mark-apex">APEX</b>
+            <i class="mark-sports">SPORTS</i>
+          </span>
         </div>
 
         <h1 class="splash-title">
