@@ -589,6 +589,27 @@ resolution) stops it. If High is clean and Ultra is not, it is memory or
 bandwidth and the answer is to cap the Ultra pixel ratio at native. If it
 happens on High too, suspect the composer chain rather than memory.
 
+### Stadium variety
+`stadiumSpec(seed)` in `renderGL.js` invents a ground: terracing depth and
+height, roof or open, curved corners or not, seat palette, attendance, and
+whether the floodlights are tall corner pylons or short masts over a roof.
+
+The seed is `hashName(home.name + '|' + away.name)` — **the two team names, not
+the club ids**. Ultimate XI always fields `WORLD.clubs[0]` against
+`WORLD.clubs[1]` with custom squads, so club ids would have given one stadium
+forever; the names vary because `divisionOpponent` fields a different club on
+every rung, which is what makes climbing the ladder walk through eleven grounds.
+
+Two things are deliberate:
+- **Size and attendance are independent draws.** A packed small ground and a
+  half-empty bowl are both real, and both beat every stadium being sold out.
+- **Only the two *far* corners curve.** The near touchline is open because the
+  camera lives there — closing the near corners would put terracing in front of
+  the lens.
+
+The lamps themselves do **not** vary. They are the scene's main illumination and
+were tuned carefully (see below); only the mast geometry changes with the ground.
+
 ### The pitch, and the four white pools
 The turf is **three** textures, and that split is the point. `pitchTexture` is
 the colour — stripes, wear and markings, low frequency, so a modest resolution

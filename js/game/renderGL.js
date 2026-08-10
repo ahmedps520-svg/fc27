@@ -19,11 +19,65 @@ const CY = PITCH.h / 2;
 const GOAL_H = 2.44;
 const MARGIN = 6;
 const STAND_FRONT_Z = 1.9;
-const STAND_BACK_Z = 15;
-const STAND_DEPTH = 22;
-const ROOF_Z = 19.5;
+/* The stand's front wall is fixed — it is the wall the perimeter boards lean
+   against. Its depth, height and roof come from `stadiumSpec` per ground. */
 
 const SKINS = [0xf5d0b0, 0xe2b085, 0xc68960, 0x965e3c, 0x623e28];
+
+/* ------------------------------ the ground ------------------------------
+ *
+ * Every match used to be played in the same stadium: the same three stands, the
+ * same height, the same roof, the same crowd, every time. One ground for a
+ * whole game is the sort of thing you stop seeing after a week and never stop
+ * feeling.
+ *
+ * `stadiumSpec` invents one from a seed. The seed is the two team names, so a
+ * fixture always looks the same ground twice — and because the Apex Division
+ * fields a different opponent club on every rung, climbing the ladder walks you
+ * through eleven different stadiums, each bigger and louder than the last only
+ * because you happen to be meeting them in that order.
+ *
+ * Size and attendance are drawn **independently**. A packed small ground and a
+ * half-empty bowl are both real, and both more interesting than every stadium
+ * being full.
+ */
+const SEAT_PALETTES = [
+  [0x1c3f6e, 0x14335c],   // navy
+  [0x7a1f2b, 0x5e1520],   // claret
+  [0x1d5236, 0x143b27],   // green
+  [0x4a3570, 0x352550],   // purple
+  [0x8a6a1e, 0x6b5216],   // gold
+  [0x2b3138, 0x1e2329],   // graphite
+  [0x0e5a63, 0x0a4248],   // teal
+];
+
+const hashName = (s) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+};
+
+function stadiumSpec(seed) {
+  const r = mulberry(seed || 1);
+  const scale = r();                         // 0 = a small ground, 1 = a big one
+  const packed = 0.42 + r() * 0.56;          // and how many of them turned up
+
+  return {
+    scale,
+    /** How far back the terracing runs, and how high it climbs. */
+    depth: 11 + scale * 21,
+    backZ: 7 + scale * 16,
+    /** Small grounds are open to the sky; anything mid-size up is covered. */
+    roof: scale > 0.30,
+    /** Only the genuinely big ones close their corners into a bowl. */
+    bowl: scale > 0.64,
+    /** Occupancy, 0..1. Independent of size on purpose. */
+    fill: Math.min(0.97, packed + scale * 0.1),
+    seats: SEAT_PALETTES[(r() * SEAT_PALETTES.length) | 0],
+    /** Tall corner pylons, or short masts on the roof of a covered ground. */
+    tallPylons: scale < 0.64,
+  };
+}
 const HAIRS = [0x1c1614, 0x3a2618, 0x7a542a, 0x141212, 0x5a422c];
 const CROWD_COLS = [
   0xced4e0, 0x3a4256, 0x962834, 0x1e283e, 0xd6b05c,
@@ -1132,6 +1186,13 @@ export function createRenderer(canvas, match, quality, models = false) {
     nets.push({ cloth, geo, gx, inw });
   }
 
+  /* This ground. Seeded off the two team names so a fixture is always the same
+     stadium, and different fixtures are different stadiums. */
+  const VENUE = stadiumSpec(hashName(`${match.teams[0].name}|${match.teams[1].name}`));
+  const SD = VENUE.depth;           // how far back the terracing runs
+  const SBZ = VENUE.backZ;          // how high it climbs
+  const RZ = SBZ + 4.5;             // the roof sits just above the back row
+
   // stands: stepped terracing rather than one flat ramp, plus roof trusses
   const standMat = new THREE.MeshStandardMaterial({ color: 0x2a3142, roughness: 0.92 });
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x11151f, roughness: 0.85, metalness: 0.25 });
@@ -1148,8 +1209,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     g.rotation.z = bk.rot;
 
     // each row is a physical step you can see the edge of
-    const stepD = STAND_DEPTH / TERRACE_ROWS;
-    const stepH = (STAND_BACK_Z - STAND_FRONT_Z) / TERRACE_ROWS;
+    const stepD = SD / TERRACE_ROWS;
+    const stepH = (SBZ - STAND_FRONT_Z) / TERRACE_ROWS;
     for (let r = 0; r < TERRACE_ROWS; r++) {
       const z = STAND_FRONT_Z + r * stepH;
       const step = new THREE.Mesh(new THREE.BoxGeometry(bk.len, stepD, stepH + 0.5), standMat);
@@ -1163,25 +1224,63 @@ export function createRenderer(canvas, match, quality, models = false) {
     front.castShadow = true;
     g.add(front);
 
-    const back = new THREE.Mesh(new THREE.BoxGeometry(bk.len, 0.8, ROOF_Z), roofMat);
-    back.position.set(0, STAND_DEPTH, ROOF_Z / 2);
+    // The back wall always closes the ground off. The roof does not: a small
+    // ground is open terracing, and seeing the sky over the far end is most of
+    // what makes it read as a smaller place than the last one.
+    const back = new THREE.Mesh(new THREE.BoxGeometry(bk.len, 0.8, SBZ + 1.5), roofMat);
+    back.position.set(0, SD, (SBZ + 1.5) / 2);
     g.add(back);
 
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(bk.len, STAND_DEPTH * 0.68, 0.55), roofMat);
-    roof.position.set(0, STAND_DEPTH * 0.68, ROOF_Z);
-    roof.castShadow = true;
-    g.add(roof);
+    if (VENUE.roof) {
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(bk.len, SD * 0.68, 0.55), roofMat);
+      roof.position.set(0, SD * 0.68, RZ);
+      roof.castShadow = true;
+      g.add(roof);
 
-    // roof trusses so the underside is not a blank slab
-    if (quality !== 'low') {
-      for (let i = -4; i <= 4; i++) {
-        const truss = new THREE.Mesh(
-          new THREE.BoxGeometry(0.5, STAND_DEPTH * 0.68, 0.45), trussMat);
-        truss.position.set((bk.len / 9) * i, STAND_DEPTH * 0.68, ROOF_Z - 0.55);
-        g.add(truss);
+      // roof trusses so the underside is not a blank slab
+      if (quality !== 'low') {
+        for (let i = -4; i <= 4; i++) {
+          const truss = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, SD * 0.68, 0.45), trussMat);
+          truss.position.set((bk.len / 9) * i, SD * 0.68, RZ - 0.55);
+          g.add(truss);
+        }
       }
     }
     scene.add(g);
+  }
+
+  /* Curved corners, on the big grounds only.
+   *
+   * A quarter-ring of terracing joining the far bank to each side, so the
+   * stadium closes into a bowl instead of being three separate stands with a
+   * gap you can see the night through. Built as open-ended cylinder segments —
+   * one per terrace row, radius growing with depth — which is the cheapest
+   * geometry that actually curves.
+   *
+   * Only the two *far* corners. The near touchline is deliberately open (the
+   * camera lives there), so closing the near corners would put terracing in
+   * front of the lens. */
+  if (VENUE.bowl) {
+    const stepD = SD / TERRACE_ROWS;
+    const stepH = (SBZ - STAND_FRONT_Z) / TERRACE_ROWS;
+    for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
+      const g = new THREE.Group();
+      g.position.set(cx, cy, 0);
+      for (let r = 0; r < TERRACE_ROWS; r++) {
+        const rad = MARGIN + (r + 0.5) * stepD;
+        const z = STAND_FRONT_Z + r * stepH;
+        const ring = new THREE.Mesh(
+          new THREE.CylinderGeometry(rad, rad, stepH + 0.5, 14, 1, true, from, Math.PI / 2),
+          standMat);
+        // CylinderGeometry stands along +Y; the world here is z-up
+        ring.rotation.x = Math.PI / 2;
+        ring.position.z = z;
+        ring.receiveShadow = true;
+        g.add(ring);
+      }
+      scene.add(g);
+    }
   }
 
   // floodlight pylons at the corners: emissive panels plus real light
@@ -1194,12 +1293,19 @@ export function createRenderer(canvas, match, quality, models = false) {
     [-MARGIN - 6, PITCH.h + MARGIN + 6], [PITCH.w + MARGIN + 6, PITCH.h + MARGIN + 6],
   ];
   for (const [px, py] of corners) {
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 34, 8), pylonMat);
-    mast.position.set(px, py, 17);
+    /* Tall lattice pylons on an open ground, stubby masts poking over the roof
+       of a covered one — which is what the two kinds of stadium actually look
+       like. The *lights* are identical either way: they are the scene's main
+       illumination and were tuned carefully, so only the mast varies. */
+    const mastH = VENUE.tallPylons ? 34 : Math.max(8, 36 - RZ);
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, VENUE.tallPylons ? 0.9 : 0.7, mastH, 8), pylonMat);
+    mast.position.set(px, py, 35 - mastH / 2);
     mast.rotation.x = Math.PI / 2;
     scene.add(mast);
 
-    const rig = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 4.5), lampMat);
+    const rig = new THREE.Mesh(
+      new THREE.BoxGeometry(VENUE.tallPylons ? 7 : 9, 1.2, 4.5), lampMat);
     rig.position.set(px, py, 35);
     rig.lookAt(PITCH.w / 2, CY, 0);
     scene.add(rig);
@@ -1308,24 +1414,49 @@ export function createRenderer(canvas, match, quality, models = false) {
     { kind: 'left', from: -18, to: PITCH.h + 18 },
     { kind: 'right', from: -18, to: PITCH.h + 18 },
   ];
+  const [SEAT_A, SEAT_B] = VENUE.seats;
+  const put = (x, y, z, face, r) => seats.push({
+    x, y, z, face,
+    seatCol: r % 3 === 0 ? SEAT_A : SEAT_B,          // two-tone seating bowl
+    // Attendance is this ground's, not a fixed 82%. A half-empty big stadium
+    // and a packed small one both happen, and both beat every ground being full.
+    occupied: rand() < VENUE.fill,
+    c: CROWD_COLS[(rand() * CROWD_COLS.length) | 0],
+  });
+
   for (const bd of bankDefs) {
     for (let r = 0; r < rows; r++) {
       const t = r / (rows - 1);
-      const depth = MARGIN + t * STAND_DEPTH;
-      const z = STAND_FRONT_Z + t * (STAND_BACK_Z - STAND_FRONT_Z) + 0.5;
+      const depth = MARGIN + t * SD;
+      const z = STAND_FRONT_Z + t * (SBZ - STAND_FRONT_Z) + 0.5;
       for (let u = bd.from; u < bd.to; u += step) {
-        let x;
-        let y;
-        let face;
-        if (bd.kind === 'far') { x = u; y = PITCH.h + depth; face = Math.PI; }
-        else if (bd.kind === 'left') { x = -depth; y = u; face = -Math.PI / 2; }
-        else { x = PITCH.w + depth; y = u; face = Math.PI / 2; }
-        seats.push({
-          x, y, z, face,
-          seatCol: r % 3 === 0 ? 0x1c3f6e : 0x14335c,   // two-tone seating bowl
-          occupied: rand() > 0.18,
-          c: CROWD_COLS[(rand() * CROWD_COLS.length) | 0],
-        });
+        if (bd.kind === 'far') put(u, PITCH.h + depth, z, Math.PI, r);
+        else if (bd.kind === 'left') put(-depth, u, z, -Math.PI / 2, r);
+        else put(PITCH.w + depth, u, z, Math.PI / 2, r);
+      }
+    }
+  }
+
+  /* And the people in the curved corners.
+   *
+   * Swept round the same quarter-circles the corner terracing follows, spaced
+   * by arc length so the density matches the straight banks rather than
+   * bunching up on the inside rows. `face` is the angle that turns a figure —
+   * authored facing +Y — to look back at the corner's centre. */
+  if (VENUE.bowl) {
+    for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
+      for (let r = 0; r < rows; r++) {
+        const t = r / (rows - 1);
+        const depth = MARGIN + t * SD;
+        const z = STAND_FRONT_Z + t * (SBZ - STAND_FRONT_Z) + 0.5;
+        const span = Math.PI / 2;
+        const n = Math.max(3, Math.round((span * depth) / step));
+        for (let i = 0; i < n; i++) {
+          const a = from + span * ((i + 0.5) / n);
+          const ca = Math.cos(a);
+          const sa = Math.sin(a);
+          put(cx + ca * depth, cy + sa * depth, z, Math.atan2(ca, -sa), r);
+        }
       }
     }
   }
