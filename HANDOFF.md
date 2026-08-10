@@ -392,6 +392,58 @@ Three effects:
   card behaves exactly as it did before and only the ends of the range moved.
   That is deliberate — it is how the mechanic went in without moving balance.
 
+### The pitch, and the four white pools
+The turf is **three** textures, and that split is the point. `pitchTexture` is
+the colour — stripes, wear and markings, low frequency, so a modest resolution
+covers 105x68 m without looking soft. `turfDetail` is a small tiling square of
+blade noise used as a normal map, repeated once every 2.6 m; baking blades into
+the colour map instead would need a canvas about 7000 px square. `pitchRoughness`
+carries the mow: real broadcast turf reads as stripes because the two mowing
+directions catch the light differently, which is a *specular* difference far more
+than a colour one. `__pitchCanvas()` is exported purely so the artwork can be
+dumped flat and looked at without a camera or a bloom pass in the way.
+
+Things that were wrong and are worth not redoing:
+- **Stripe gradients belong at the seam, not across the band.** A gradient run
+  over the full width of each stripe puts a shade change down the middle and
+  makes sixteen stripes read as thirty-two.
+- **Grain patches have to stay under about a metre.** At 2.4 m a circle reads as
+  a circle and the pitch looks mouldy.
+- **The corner arcs and both penalty arcs were simply missing** for the whole
+  life of this renderer. They are drawn now.
+
+The four blown-out white pools at the corners of every camera angle took four
+wrong guesses to find, so the answer is written down: **it was a specular
+highlight on the grass, not the lights.** Turf roughness was 0.74 with a
+roughness map taking the glossy stripes to 0.41, and at a grazing angle that
+behaves like a mirror. It is 0.9 now with the map held in a narrow band. Ruled
+out along the way, in order: the spotlight intensity (changing it barely moved
+the pools), aiming the lamps diagonally across the pitch (worse — four spot axes
+land *somewhere*, and moving them off the centre just relocates four hotspots
+onto four corners), the volumetric beam cones, and the distance falloff. The
+quick way to have found it: remove the lamps entirely and see if the pools go.
+
+Two real bugs did fall out of that hunt and are fixed. The beam cone shader read
+`1.0 - vUv.y`, but a cone's tip is at uv.y = 1 and the tip is the end held up at
+the lamp — so every beam was brightest at its wide base, the end that punches
+through the pitch. And the lamps now use `decay: 0`: four masts are standing in
+for a rig of dozens of luminaires covering the surface evenly, so modelling their
+inverse-square models the wrong thing, and any exponent that looks right in the
+middle clips at the edges.
+
+### The perimeter boards
+The run is laid end to end **once**. It used to be eight sponsor panels wrapped
+five times down a 125 m touchline, which is why the same three adverts came back
+every few metres and the ground looked like one company had bought the stadium.
+There are 24 sponsors now, dealt from a shuffled deck that only reshuffles when
+it empties, and four different **panel layouts** — varying the composition does
+more for the illusion than varying the names.
+
+A run that long at legible resolution is wider than a texture is allowed to be
+(some mobile GL contexts cap at 4096, and an oversized canvas comes back blank
+rather than merely soft), so the run splits into as many mesh segments as
+`renderer.capabilities.maxTextureSize` demands, each with its own texture.
+
 ### The crowd
 People, not capsules: a seated figure of about sixty triangles, two instanced
 meshes sharing one set of transforms — bodies tinted with a shirt colour, heads
