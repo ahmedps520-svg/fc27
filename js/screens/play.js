@@ -1142,6 +1142,13 @@ export function mount(root, params) {
             <b>${div.toDivision}</b>
             <span class="dr-reward">◈ ${div.apex.toLocaleString()}${div.packs.length ? ` · ${div.packs.length} pack${div.packs.length > 1 ? 's' : ''}` : ''}</span>
             <span class="dr-why">${div.possession}% of the ball</span>
+            <span class="dr-ladder">${
+              div.promoted || div.relegated
+                ? 'The ladder resets from here.'
+                : div.progress <= 0
+                  ? 'One more defeat and you drop a division.'
+                  : `${div.progress}/${div.need} wins toward promotion`
+            }</span>
             ${div.objectivesDone.length
               ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
               : ''}

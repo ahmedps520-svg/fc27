@@ -18,6 +18,47 @@
  */
 export const RELEASES = [
   {
+    version: 'v25',
+    date: '2026-08-10',
+    tag: 'Balance',
+    title: 'The division fights back',
+    lede: 'Apex Division opponents are now built to match the squad you field. '
+        + 'The ladder is a contest instead of a formality.',
+    entries: [
+      {
+        head: 'Opponents that scale with you',
+        summary: 'Division matches now field a side built against your own squad rating, so '
+               + 'improving your team raises the bar instead of lowering it.',
+        detail: 'The ladder used to put you against a real club — the worst in the world at '
+              + 'division 10, the best at Apex Elite. The best club in the world is rated 86, so '
+              + 'the ceiling of the entire ladder sat below any Ultimate XI with an Icon in it. '
+              + 'You could climb to division 5 without losing a match and win 6-0, 9-0, 4-0. The '
+              + 'opponent is now built to measure: about 0.88x your rating at division 10, level '
+              + 'with you around division 5, and 1.10x by Apex Elite — where you are the '
+              + 'underdog and are expected to lose some.',
+      },
+      {
+        head: 'They press you from division 5 up',
+        summary: 'From division 5 the CPU sends a second man at whoever has the ball. You will '
+               + 'not get time to pick a pass.',
+        detail: 'Rating alone could never have fixed this. Measured over hundreds of simulated '
+              + 'matches, a thirteen-point rating advantage is worth only about four points of '
+              + 'win rate — while a human beats a same-rated CPU nearly every time. Competence '
+              + 'is the lever that matters, so the higher divisions press harder, push further '
+              + 'up the pitch, and commit to their chances more often.',
+      },
+      {
+        head: 'You can see what you are walking into',
+        summary: 'The division screen names your next opponent, their rating against yours, and '
+               + 'whether you are favourite.',
+        detail: 'A difficulty that moves with your squad has to be stated out loud, or a sudden '
+              + 'hard match reads as the game cheating. The result screen also now tells you '
+              + 'where the ladder stands — how many wins from promotion, or that one more defeat '
+              + 'sends you down.',
+      },
+    ],
+  },
+  {
     version: 'v24',
     date: '2026-08-10',
     tag: 'Presentation',

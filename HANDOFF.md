@@ -392,6 +392,54 @@ Three effects:
   card behaves exactly as it did before and only the ends of the range moved.
   That is deliberate — it is how the mechanic went in without moving balance.
 
+### The Apex Division difficulty
+The ladder used to field a **real club**: division 10 played the worst club in
+the world, Apex Elite the best. The best club in the world is rated 86, and an
+Ultimate XI with an Icon in it is 90+ — so *the ceiling of the entire ladder sat
+below a decent squad*. It was possible to reach division 5 unbeaten winning 6-0,
+9-0, 4-0, which is exactly what a player reported.
+
+`divisionOpponent(divIdx, yourRating)` in `ultimate.js` builds the opponent to
+measure instead: ~0.88x your rating at division 10, level around division 5,
+1.10x by Apex Elite. Cards are **cloned off real players and scaled**, not picked
+from the world — there are only 68 players above 88 in existence and they are the
+Icons and Stars the player is collecting, so drawing from that pool would field
+an opponent made of the cards you are trying to win.
+
+**The most important thing measured here, and the reason rating alone was never
+going to fix it:** AI against AI, a *thirteen-point* rating advantage is worth
+about four points of win rate — this sim compresses stat gaps hard. A human, by
+contrast, beats a same-rated CPU nearly every time. So the dominant lever is CPU
+**competence**, not CPU ratings:
+- `divisionSkill()` — how often the CPU commits to a shot, pass or cross.
+- `tactics.pressing` — `high` from division 5 up. `PRESSING.high` is 1.4, which
+  is the threshold at which the sim sends a *second* presser at the carrier. That
+  is what takes time on the ball away from a human, and it shows up in the sweep
+  as the attack drying up (goals for 1.20 → 0.47) rather than as more defeats.
+
+`tools/ladder.mjs` measures this — a stated-rating squad against the real
+opponent at every rung, reporting win rate. `sweep.mjs` asks whether a *match* is
+balanced; this asks whether the *ladder* is, which is a different question and
+the one that was got wrong. **A flat line of high win rates is the bug it exists
+to catch.** Read the shape, not the absolute numbers: both sides are AI, and a
+person plays better than the CPU by a very large margin.
+
+Two seeds, 40 matches a rung, a 90-rated squad, after the change (win % is the
+mean of the two seeds):
+
+| Division | 10 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | Elite |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| opponent | 79 | 81 | 83 | 85 | 87 | 89 | 91 | 93 | 95 | 97 | 99 |
+| win % | 58 | 43 | 47 | 40 | 22 | 20 | 29 | 18 | 22 | 15 | 18 |
+
+Per-rung noise is large — the rungs are only two rating points apart, and single
+seeds disagree by up to 23 points on one row. **Judge the slope end to end**
+(58% down to ~17%), not one row against its neighbour.
+
+Against a 96-rated squad the opponent rating saturates at 99 from division 3 up.
+That is fine and deliberate: past that point `divisionSkill` and the pressing
+keep climbing, and neither is capped.
+
 ### Release notes
 `js/data/patchNotes.js` is the single source. Two readers: `screens/notes.js`
 shows the newest entry as a card over the menu the first time a device opens a
