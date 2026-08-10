@@ -58,6 +58,7 @@ let filter = 'all';      // rarity chip
 let group = 'all';       // GK / DEF / MID / FWD chip
 let sortBy = 'rating';   // rating | position | value | name
 let pickSlot = null;     // tapping an empty slot puts the list into "fill this" mode
+let pickBench = null;    // the same, for a seat on the bench
 
 const GROUPS = [['all', 'All'], ['GK', 'GK'], ['DEF', 'Defence'], ['MID', 'Midfield'], ['FWD', 'Attack']];
 
@@ -203,7 +204,9 @@ export function ultimateSquad() {
   if (ids.some((id) => !id)) return null;
   const xi = ids.map(getPlayer);
   if (xi.some((p) => !p)) return null;
-  return { xi, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
+  // The bench is optional — an empty seat simply means nobody to bring on there.
+  const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean);
+  return { xi, bench, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
 }
 
 /* ------------------------------ Apex Division --------------------------- */
@@ -367,6 +370,7 @@ function apologyCard() {
 export function render() {
   const s = getState();
   const { formation, lineup } = s.club;
+  const bench = s.club.bench || Array(5).fill(null);
   const chem = chemistryFor(lineup, formation);
 
   const owned = s.club.packs.length;
@@ -420,6 +424,15 @@ export function render() {
           ${FORMATIONS[formation].map((slot, i) => slotHTML(slot, i, lineup[i], chem.per[i])).join('')}
         </div>
         <p class="pitch-hint">Tap an empty slot to see who can play there, or drag a card onto the pitch.</p>
+
+        <!-- Five seats. Three of them can come on in a match; a keeper can only
+             be replaced by a keeper, so it is worth carrying one. -->
+        <div class="bench-strip">
+          <span class="bench-label">Bench</span>
+          <div class="bench-slots" id="bench">
+            ${bench.map((id, i) => benchHTML(i, id)).join('')}
+          </div>
+        </div>
       </div>
 
       <div class="sb-side">
@@ -478,14 +491,29 @@ function slotHTML(slot, i, playerId, chem) {
     </div>`;
 }
 
+function benchHTML(i, playerId) {
+  const p = playerId ? getPlayer(playerId) : null;
+  const r = p ? RARITY[p.rarity] : null;
+  return `
+    <div class="bslot ${p ? 'filled' : ''}" data-bench="${i}"
+         ${p ? `style="--rar:${r.color};--rar-glow:${r.glow}"` : ''}>
+      ${p ? `
+        <span class="bslot-ovr">${p.overall}</span>
+        <span class="bslot-name">${p.short}</span>
+        <span class="bslot-pos">${p.position}</span>
+        <button class="slot-x" data-bclear="${i}" aria-label="Remove ${p.name}">×</button>
+      ` : '<span class="slot-plus">+</span><span class="bslot-pos empty">SUB</span>'}
+    </div>`;
+}
+
 /** How well a player suits a slot: 0 exact, 1 same group, 2 out of position. */
 const fitFor = (p, slotPos) =>
   (p.position === slotPos ? 0 : POSITIONS[p.position].group === POSITIONS[slotPos].group ? 1 : 2);
 
 function collectionHTML() {
   const s = getState();
-  // anyone already on the pitch is hidden here — the list is the bench, not a duplicate
-  const used = new Set(s.club.lineup.filter(Boolean));
+  // anyone already named — on the pitch or on the bench — is hidden here
+  const used = new Set([...s.club.lineup, ...(s.club.bench || [])].filter(Boolean));
   const slot = pickSlot === null ? null : FORMATIONS[s.club.formation][pickSlot];
 
   let items = s.club.collection
@@ -636,6 +664,7 @@ export function mount(root) {
   }
 
   const pitch = root.querySelector('#pitch');
+  const benchEl = root.querySelector('#bench');
   const collectionEl = root.querySelector('#collection');
 
   const rerenderPitch = () => {
@@ -652,15 +681,37 @@ export function mount(root) {
     chemEl.dataset.chem = chem.team;
     metrics.querySelector('.chem-bar b').style.width = `${chem.team}%`;
     metrics.querySelectorAll('.metric')[2].querySelector('.big').innerHTML = `${chem.placedCount}<small>/11</small>`;
+    if (benchEl) {
+      benchEl.innerHTML = (s.club.bench || []).map((id, i) => benchHTML(i, id)).join('');
+      if (pickBench !== null) {
+        benchEl.querySelector(`[data-bench="${pickBench}"]`)?.classList.add('is-picking');
+      }
+    }
     collectionEl.innerHTML = collectionHTML();
     // slots are re-rendered wholesale, so the highlight has to go back on
     if (pickSlot !== null) pitch.querySelector(`[data-slot="${pickSlot}"]`)?.classList.add('is-picking');
+  };
+
+  const placeBench = (playerId, seat) => {
+    update((s) => {
+      // a player can be in exactly one place: pull him out of wherever he was
+      const inXI = s.club.lineup.indexOf(playerId);
+      if (inXI >= 0) s.club.lineup[inXI] = null;
+      const onBench = s.club.bench.indexOf(playerId);
+      if (onBench >= 0) s.club.bench[onBench] = null;
+      s.club.bench[seat] = playerId;
+    });
+    selectedId = null;
+    pickBench = null;
+    rerenderPitch();
   };
 
   const place = (playerId, slotIndex) => {
     update((s) => {
       const existing = s.club.lineup.indexOf(playerId);
       if (existing >= 0) s.club.lineup[existing] = null;   // move, don't duplicate
+      const onBench = (s.club.bench || []).indexOf(playerId);
+      if (onBench >= 0) s.club.bench[onBench] = null;      // ...including off the bench
       s.club.lineup[slotIndex] = playerId;
     });
     selectedId = null;
@@ -741,11 +792,18 @@ export function mount(root) {
 
     // filling a named slot: one tap on a card puts them straight in it
     const card = e.target.closest('[data-player]');
-    if (pickSlot !== null && card && !e.target.closest('button')) {
-      const slotIndex = pickSlot;
-      pickSlot = null;
-      pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
-      return place(card.dataset.player, slotIndex);
+    if (card && !e.target.closest('button')) {
+      if (pickSlot !== null) {
+        const slotIndex = pickSlot;
+        pickSlot = null;
+        pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+        return place(card.dataset.player, slotIndex);
+      }
+      if (pickBench !== null) {
+        const seat = pickBench;
+        pickBench = null;
+        return placeBench(card.dataset.player, seat);
+      }
     }
 
     const sell = e.target.closest('[data-sell]');
@@ -755,6 +813,7 @@ export function mount(root) {
       update((s) => {
         s.club.collection = s.club.collection.filter((id) => id !== p.id);
         s.club.lineup = s.club.lineup.map((id) => (id === p.id ? null : id));
+        s.club.bench = (s.club.bench || []).map((id) => (id === p.id ? null : id));
         s.club.apex += coins;
       });
       refreshCoins();
@@ -767,9 +826,30 @@ export function mount(root) {
   /* --- slot clear + tap-to-place --- */
   const endPick = () => {
     pickSlot = null;
-    pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+    pickBench = null;
+    root.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
     collectionEl.innerHTML = collectionHTML();
   };
+
+  benchEl?.addEventListener('click', (e) => {
+    const x = e.target.closest('[data-bclear]');
+    if (x) {
+      update((s) => { s.club.bench[+x.dataset.bclear] = null; });
+      return rerenderPitch();
+    }
+    const seat = e.target.closest('[data-bench]');
+    if (!seat) return;
+    const i = +seat.dataset.bench;
+    if (selectedId) return placeBench(selectedId, i);
+    if (!getState().club.bench[i]) {
+      pickBench = pickBench === i ? null : i;
+      pickSlot = null;
+      root.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+      if (pickBench !== null) seat.classList.add('is-picking');
+      collectionEl.innerHTML = collectionHTML();
+      collectionEl.scrollTop = 0;
+    }
+  });
 
   pitch.addEventListener('click', (e) => {
     const x = e.target.closest('[data-clear]');

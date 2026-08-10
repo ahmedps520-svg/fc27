@@ -2207,3 +2207,76 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   user-select: all;
 }
 .tag.mono.stale { color: var(--warn); border-color: rgba(255, 183, 3, .5); }
+
+/* ------------------------------- the bench ------------------------------ */
+.bench-strip { margin-top: 12px; }
+.bench-label {
+  display: block; margin-bottom: 7px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.bench-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.bslot {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 1px;
+  min-height: 74px; padding: 8px 4px;
+  border-radius: 11px; cursor: pointer;
+  border: 1px dashed var(--line); background: rgba(255, 255, 255, .03);
+  transition: border-color .16s, background .16s, transform .16s;
+}
+.bslot.filled {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--rar) 55%, transparent);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--rar) 20%, transparent), rgba(10, 14, 26, .9));
+}
+.bslot:hover { transform: translateY(-2px); border-color: var(--accent); }
+.bslot.is-picking { border-color: var(--accent); background: var(--accent-soft); }
+.bslot-ovr { font-family: var(--font-num); font-size: 19px; font-weight: 800; line-height: 1; color: var(--rar, var(--text)); }
+.bslot-name { font-size: 9.5px; font-weight: 600; text-align: center; line-height: 1.15;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bslot-pos { font-size: 8.5px; letter-spacing: .1em; color: var(--text-dim); text-transform: uppercase; }
+.bslot-pos.empty { color: var(--text-mute); }
+.bslot .slot-x { top: 2px; right: 2px; }
+
+@media (max-width: 520px) {
+  .bench-slots { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* --------------------------- substitutions --------------------------- */
+.sub-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 6px; }
+.sub-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sub-head {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 2px;
+}
+.sub-row {
+  position: relative; display: grid; align-items: center; gap: 8px;
+  grid-template-columns: 26px 1fr auto;
+  padding: 7px 9px 9px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .04);
+  color: inherit; font: inherit; text-align: left;
+  transition: border-color .14s, background .14s;
+}
+.sub-row:hover:not(:disabled) { border-color: var(--accent); }
+.sub-row.on { border-color: var(--accent); background: var(--accent-soft); }
+.sub-row:disabled, .sub-row.is-off { opacity: .34; cursor: default; }
+.sub-row b { font-family: var(--font-num); font-size: 15px; font-weight: 800; }
+.sub-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-row em {
+  font-style: normal; font-size: 9px; letter-spacing: .08em;
+  color: var(--text-dim); text-transform: uppercase;
+}
+/* how much he has left, along the foot of his row */
+.sub-stam {
+  position: absolute; left: 9px; right: 9px; bottom: 3px; height: 3px;
+  border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden;
+}
+.sub-stam::before {
+  content: ''; display: block; height: 100%; width: var(--s, 100%);
+  background: var(--good, #3ddc97); border-radius: 2px;
+}
+.sub-stam.low::before { background: #ff5d6c; }
+
+@media (max-width: 480px) {
+  .sub-cols { grid-template-columns: 1fr; }
+}

@@ -73,6 +73,10 @@ const ROLE_OF = {
 export const MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32 };
 export const PRESSING = { low: 0.7, normal: 1, high: 1.4 };
 
+/** How many can sit on the bench, and how many of them can come on. */
+export const BENCH_SIZE = 5;
+export const MAX_SUBS = 3;
+
 const GRAV = 16;                   // arcade gravity, m/s^2
 export const GOAL_HEIGHT = 2.44;
 
@@ -98,6 +102,24 @@ function pickXI(clubId) {
  * @param {object} custom optional { xi, name, short, colors } to field a squad
  *   that is not a club roster — how an Ultimate XI takes the pitch.
  */
+/**
+ * Everything about a player that comes off his card. Split out because a
+ * substitution swaps the card underneath a shirt and every one of these has to
+ * be recomputed — a fresh 90-pace winger coming on for a spent 70-pace one has
+ * to actually be faster.
+ *
+ * `stamina` starts full, which is the whole point of a bench.
+ */
+function attributesOf(ref) {
+  return {
+    maxSpeed: 5.4 + (ref.stats.pace / 100) * 3.8,
+    // 1 is fresh, 0 is spent. A strong physical player empties slower and
+    // fills faster, which is most of what the stat is for.
+    stamina: 1,
+    stamCost: 1.35 - (ref.stats.physical / 100) * 0.6,
+  };
+}
+
 function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
   const xi = custom?.xi?.length === 11 ? custom.xi : pickXI(clubId);
@@ -111,14 +133,24 @@ function makeTeam(clubId, side, isHuman, custom = null) {
       ref, num: i + 1, team: side, role: s.role, sx, sy,
       x: sx * PITCH.w, y: sy * PITCH.h, vx: 0, vy: 0,
       dirX: dir, dirY: 0,
-      maxSpeed: 5.4 + (ref.stats.pace / 100) * 3.8,
-      // 1 is fresh, 0 is spent. A strong physical player empties slower and
-      // fills faster, which is most of what the stat is for.
-      stamina: 1,
-      stamCost: 1.35 - (ref.stats.physical / 100) * 0.6,
+      ...attributesOf(ref),
       touchLock: 0, stumble: 0, holdT: 0, slide: 0, diveT: 0, diveDir: 0,
     };
   });
+
+  /* The bench.
+   *
+   * A custom squad brings its own; a club falls back to the best of its roster
+   * that did not make the eleven. Without that, a Quick Match against a real
+   * club would have nobody to bring on and substitutions would be a feature
+   * only one side of the pitch had.
+   */
+  const onPitch = new Set(xi.map((r) => r.id));
+  const bench = (custom?.bench?.filter(Boolean).length ? custom.bench.filter(Boolean) : null)
+    || rosterOf(clubId)
+      .filter((r) => !onPitch.has(r.id))
+      .sort((a, b) => b.overall - a.overall)
+      .slice(0, BENCH_SIZE);
 
   return {
     clubId, club,
@@ -126,7 +158,8 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     short: custom?.short || club.short,
     colors: custom?.colors || club.crest.colors,
     dir, side, isHuman,
-    players, score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
+    players, bench, subsLeft: MAX_SUBS,
+    score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
     formation: '4-4-2',
     tactics: { mentality: 'balanced', pressing: 'normal' },
   };
@@ -344,6 +377,40 @@ export class Match {
       }
       if (best) c.activeIdx = this.teams[c.team].players.indexOf(best);
     }
+  }
+
+  /* -------------------------- substitutions -------------------------- */
+  /**
+   * Bring a bench player on for someone on the pitch.
+   *
+   * The shirt stays where it is — same slot, same role, same shape duty — and
+   * only the card underneath it changes, so a substitution can never leave a
+   * formation with a hole in it. Position, velocity and possession are all
+   * inherited: swapping a man carrying the ball hands the ball to the man
+   * coming on rather than dropping it, which is wrong but is a great deal
+   * better than a loose ball appearing from nowhere.
+   *
+   * @param {number} teamIdx
+   * @param {number} pitchIdx index into `team.players`
+   * @param {number} benchIdx index into `team.bench`
+   * @returns {boolean} whether it happened
+   */
+  substitute(teamIdx, pitchIdx, benchIdx) {
+    const team = this.teams[teamIdx];
+    if (!team || team.subsLeft <= 0) return false;
+    const p = team.players[pitchIdx];
+    const incoming = team.bench?.[benchIdx];
+    if (!p || !incoming) return false;
+    // A keeper comes off for a keeper or the goal is left to a winger.
+    if (p.role === 'GK' && incoming.position !== 'GK') return false;
+
+    team.bench[benchIdx] = p.ref;      // the man coming off takes the seat
+    p.ref = incoming;
+    Object.assign(p, attributesOf(incoming));
+    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.diveT = 0;
+    team.subsLeft -= 1;
+    this.cue('whistle');
+    return true;
   }
 
   /* ----------------------------- movement ---------------------------- */

@@ -678,12 +678,14 @@ export function mount(root, params) {
   const PAUSE_ITEMS = [
     { id: 'resume', label: 'Resume Match' },
     { id: 'team', label: 'Team Management' },
+    { id: 'subs', label: 'Substitutions' },
     { id: 'facts', label: 'Match Facts' },
     { id: 'controls', label: 'Controls' },
     { id: 'leave', label: 'Leave Match' },
   ];
   let navIdx = 1;
   let section = 'team';
+  let subFrom = null;      // the shirt selected to come off, if any
 
   const formationSVG = (name) => {
     const shape = SHAPES[name] || [];
@@ -728,6 +730,50 @@ export function mount(root, params) {
         ${seg('pressing', ['low', 'normal', 'high'])}
         <p class="p-note">Changes apply immediately — your shape shifts on the next touch.</p>`;
     }
+    /* ------------------------------ subs ------------------------------ *
+     * Two columns, tap one then the other. Deliberately not drag-and-drop:
+     * this is a pause menu that on a phone is being operated with a thumb, and
+     * online it does not pause anything, so the fewer gestures between opening
+     * it and the change taking effect the better.                            */
+    if (id === 'subs') {
+      const bench = team.bench || [];
+      const gkOnly = subFrom !== null && team.players[subFrom]?.role === 'GK';
+      return `
+        <h3>Substitutions <small>${team.subsLeft} left</small></h3>
+        ${team.subsLeft <= 0 ? '<p class="p-note">No substitutions remaining.</p>' : ''}
+        <div class="sub-cols">
+          <div class="sub-col">
+            <span class="sub-head">On the pitch</span>
+            ${team.players.map((p, i) => `
+              <button class="sub-row ${subFrom === i ? 'on' : ''}"
+                      data-suboff="${i}" ${team.subsLeft <= 0 ? 'disabled' : ''}>
+                <b>${p.ref.overall}</b>
+                <span class="sub-name">${p.ref.short}</span>
+                <em>${p.role}</em>
+                <i class="sub-stam ${p.stamina < 0.45 ? 'low' : ''}"
+                   style="--s:${Math.round((p.stamina ?? 1) * 100)}%"></i>
+              </button>`).join('')}
+          </div>
+          <div class="sub-col">
+            <span class="sub-head">Bench</span>
+            ${bench.length ? bench.map((r, i) => {
+              // a keeper may only be replaced by a keeper, so the rest grey out
+              const ok = !gkOnly || r.position === 'GK';
+              return `
+                <button class="sub-row ${ok ? '' : 'is-off'}" data-subon="${i}"
+                        ${subFrom === null || !ok || team.subsLeft <= 0 ? 'disabled' : ''}>
+                  <b>${r.overall}</b>
+                  <span class="sub-name">${r.short}</span>
+                  <em>${r.position}</em>
+                </button>`;
+            }).join('') : '<p class="p-note">Nobody named on the bench.</p>'}
+          </div>
+        </div>
+        <p class="p-note">${subFrom === null
+          ? 'Pick the player coming off, then who replaces him. The bar is how much he has left.'
+          : 'Now pick his replacement.'}</p>`;
+    }
+
     if (id === 'facts') {
       const [ph, pa] = match.possession();
       const [h, a] = match.teams;
@@ -936,8 +982,44 @@ export function mount(root, params) {
     if (form) { setShape('formation', form.dataset.form); paintPause(); return; }
 
     const tac = e.target.closest('[data-tactic]');
-    if (tac) { setShape(tac.dataset.tactic, tac.dataset.val); paintPause(); }
+    if (tac) { setShape(tac.dataset.tactic, tac.dataset.val); paintPause(); return; }
+
+    const off = e.target.closest('[data-suboff]');
+    if (off) {
+      const i = +off.dataset.suboff;
+      subFrom = subFrom === i ? null : i;
+      paintPause();
+      return;
+    }
+    const on = e.target.closest('[data-subon]');
+    if (on && subFrom !== null) {
+      makeSub(subFrom, +on.dataset.subon);
+      subFrom = null;
+      paintPause();
+    }
   });
+
+  /**
+   * A substitution belongs to the team you are managing, and online the host
+   * owns the simulation — so a guest asks rather than acts, exactly as it does
+   * for a formation change.
+   */
+  function makeSub(pitchIdx, benchIdx) {
+    const teamIdx = online ? online.seat : match.human;
+    if (online && !online.host) {
+      net.send({ t: 'evt', k: 'sub', team: teamIdx, pitchIdx, benchIdx });
+      toast('Substitution sent', 'info');
+      return;
+    }
+    const team = match.teams[teamIdx];
+    const coming = team.bench?.[benchIdx];
+    const going = team.players[pitchIdx];
+    if (match.substitute(teamIdx, pitchIdx, benchIdx)) {
+      toast(`${coming.short} on for ${going.ref.short}`);
+    } else {
+      toast('That substitution is not allowed', 'warn');
+    }
+  }
 
   /**
    * Shape and tactics belong to the team you are actually managing. Offline that
@@ -952,6 +1034,7 @@ export function mount(root, params) {
   }
   if (online?.host) {
     netOffs.push(net.on('evt', (m) => {
+      if (m.k === 'sub') { match.substitute(m.team, m.pitchIdx, m.benchIdx); return; }
       if (m.k !== 'shape') return;
       if (m.key === 'formation') match.applyFormation(m.team, m.val);
       else match.setTactic(m.team, m.key, m.val);
