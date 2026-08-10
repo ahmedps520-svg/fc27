@@ -204,6 +204,7 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
 
   update((s) => {
     const u = s.ultimate;
+    if (!Array.isArray(u.objClaimed)) u.objClaimed = [];
     u.played += 1;
     u.goalsFor += scored;
     u.goalsAgainst += conceded;
@@ -253,31 +254,44 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
       s.club.apex += 1500;
     }
 
-    // objectives
-    const bump = (id, by = 1) => {
-      const o = u.objectives.find((x) => x.id === id);
-      if (!o || o.done >= o.need) return;
-      const wasDone = o.done >= o.need;
-      o.done += by;
-      if (!wasDone && o.done >= o.need) {
-        out.objectivesDone.push(o.text);
-        out.apex += o.apex;
-        s.club.apex += o.apex;
-        if (o.ultimate) {
-          out.ultimate += o.ultimate;
-          s.club.ultimate = (s.club.ultimate || 0) + o.ultimate;
-        }
-        out.packs.push(o.pack);
-        s.club.packs.push(o.pack);
-      }
+    /* Objectives.
+     *
+     * Matched by `metric` rather than by id, which is what lets a 24-rung
+     * ladder reuse the same handful of ways a match can feed an objective —
+     * adding a rung is a line of data, not a line of code here.
+     *
+     * `streak` and `rank` are set-to rather than added-to: your best run and
+     * the division you have reached are states, not tallies, so a loss must not
+     * be able to walk them backwards once banked. */
+    const gain = {
+      played: 1,
+      win: won ? 1 : 0,
+      goal: scored,
+      clean: conceded === 0 ? 1 : 0,
+      bigwin: won && scored - conceded >= 3 ? 1 : 0,
+      control: won && possession >= 60 ? 1 : 0,
     };
-    if (won) bump('win3');
-    if (scored) bump('score8', scored);
-    if (u.streak >= 3) bump('streak3', 3);
-    if (conceded === 0) bump('clean2');
-    if (u.divIdx >= 5) bump('div5');
-    if (u.divIdx >= DIVISIONS.length - 1) bump('elite');
-    if (won) bump('win12');
+
+    for (const o of u.objectives) {
+      if (!o || o.done >= o.need) continue;
+      if (o.metric === 'streak') o.done = Math.max(o.done, u.streak);
+      else if (o.metric === 'rank') { if (u.divIdx >= (o.rank ?? 99)) o.done = o.need; }
+      else o.done += gain[o.metric] || 0;
+      if (o.done < o.need) continue;
+
+      o.done = o.need;
+      out.objectivesDone.push(o.text);
+      out.apex += o.apex;
+      s.club.apex += o.apex;
+      if (o.ultimate) {
+        out.ultimate += o.ultimate;
+        s.club.ultimate = (s.club.ultimate || 0) + o.ultimate;
+      }
+      out.packs.push(o.pack);
+      s.club.packs.push(o.pack);
+      // banked against the ladder, so the finished rung is never dealt again
+      if (!u.objClaimed.includes(o.id)) u.objClaimed.push(o.id);
+    }
   });
 
   return out;

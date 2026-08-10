@@ -18,6 +18,45 @@
  */
 export const RELEASES = [
   {
+    version: 'v29',
+    date: '2026-08-10',
+    tag: 'Progression',
+    title: 'Objectives that keep coming',
+    lede: 'A ladder of 24, seven at a time, refreshing daily — and the last six '
+        + 'pay Ultimate.',
+    entries: [
+      {
+        head: 'A 24-rung ladder',
+        summary: 'You hold seven objectives at a time out of twenty-four, and the counter now '
+               + 'reads how far through the whole ladder you are.',
+        detail: 'The old seven were fixed: finish them and objectives were over. There are '
+              + 'twenty-four now, in order, and they get harder and pay better the further down '
+              + 'you go — from a silver pack and pocket change at the top to a Limited pack and '
+              + 'a five-figure sum at the bottom.',
+      },
+      {
+        head: 'Finished ones refresh every 24 hours',
+        summary: 'Complete an objective and it is replaced at the next daily refresh. Ones you '
+               + 'are midway through keep their progress and their place.',
+        detail: 'Only the finished slots are refilled — a refresh rewards finishing things '
+              + 'rather than resetting the board, so a long objective you are grinding is never '
+              + 'taken away from you. The countdown is on the tab, and it only lights up when '
+              + 'there is actually something waiting to be swapped out. Nothing runs in the '
+              + 'background: the clock is stored and checked when you look, so it works after '
+              + 'the app has been closed for a week.',
+      },
+      {
+        head: 'The last six pay Ultimate',
+        summary: 'Ultimate was only obtainable by winning in Division 1 and Apex Elite. The '
+               + 'bottom six rungs of the ladder now pay it too.',
+        detail: 'Between them they are worth 50 Ultimate — but they ask for Division 1, Apex '
+              + 'Elite, seven wins in a row, 75 goals and 40 division wins, so it is a season\u2019s '
+              + 'work rather than an afternoon. A new Limited: Legends pack sits at the very '
+              + 'bottom, with the best odds in the game.',
+      },
+    ],
+  },
+  {
     version: 'v28',
     date: '2026-08-10',
     tag: 'Interface',

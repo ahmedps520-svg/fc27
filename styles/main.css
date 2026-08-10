@@ -1672,6 +1672,27 @@ body.in-game #screen {
 /* the premium currency, on the one or two objectives that pay it */
 .obj-ult { color: #c9a4ff; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
 
+/* When the finished ones get swapped out. Lit only when there is actually
+   something waiting to be replaced — a countdown to nothing is just noise. */
+.obj-clock {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  font-size: 12.5px; color: var(--text-dim);
+}
+.obj-clock b {
+  font-family: var(--font-num); font-size: 15px; font-weight: 800;
+  letter-spacing: .06em; color: var(--text);
+}
+.oc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); }
+.obj-clock.is-due { border-left-color: var(--accent); }
+.obj-clock.is-due b { color: var(--accent); }
+.obj-clock.is-due .oc-dot { background: var(--accent); animation: rtBlink 1.4s steps(2) infinite; }
+.obj-fresh {
+  margin: -6px 0 14px; font-size: 12.5px; font-weight: 650; color: var(--accent);
+}
+
 .mystery-pack {
   position: relative; overflow: hidden; width: 100%; cursor: pointer; text-align: left;
   display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; margin-bottom: 10px;
