@@ -33,7 +33,7 @@ const ACCENTS = {
 };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v18';
+export const APP_VERSION = 'v19';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');

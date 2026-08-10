@@ -54,6 +54,7 @@ const defaults = () => ({
     // saves get these: an existing save brings its own `packs` through the
     // merge in loadState.
     packs: ['gold', 'silver', 'silver', 'bronze'],
+    challengesDone: [],       // one-off SBCs already claimed
   },
   flags: {                    // one-off UI state that has to outlive a reload
     apology: false,           // show the "we reset your club" card once
@@ -101,6 +102,8 @@ export function freshObjectives() {
     { id: 'div5', text: 'Reach Division 5', need: 1, done: 0, apex: 4000, pack: 'prime' },
     // the only way to a Limited Edition pack that does not cost 75,000
     { id: 'win12', text: 'Win 12 Apex Division matches', need: 12, done: 0, apex: 8000, pack: 'limited' },
+    // the only objective that pays the premium currency
+    { id: 'elite', text: 'Reach Apex Elite', need: 1, done: 0, apex: 6000, ultimate: 6, pack: 'stars' },
   ];
 }
 
@@ -131,6 +134,7 @@ export function loadState() {
   // A save from an older world could reference ids that no longer exist.
   if (!Array.isArray(state.club.packs)) state.club.packs = [];
   if (!Array.isArray(state.club.bench)) state.club.bench = Array(5).fill(null);
+  if (!Array.isArray(state.club.challengesDone)) state.club.challengesDone = [];
   state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
   state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
   state.club.bench = state.club.bench.map((id) => (id && WORLD.playersById[id] ? id : null));
