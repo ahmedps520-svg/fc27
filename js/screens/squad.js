@@ -1,6 +1,7 @@
 import { getState, update, DIVISIONS } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
+import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
 import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
@@ -10,7 +11,9 @@ import * as api from '../net/api.js';
 
 export const TITLE = 'Ultimate XI';
 
-let tab = 'squad';           // squad | division | online | objectives | store
+let tab = 'squad';           // squad | division | online | objectives | challenges | store
+let openChallenge = null;    // the SBC being filled in, if any
+let submission = [];         // card ids staged for it
 
 /**
  * Prices.
@@ -53,11 +56,23 @@ const PACKS = [
 /** Limited Edition is also the reward for the hardest objective. */
 export const PACK_BY_ID = (id) => PACKS.find((p) => p.id === id) || PACKS[0];
 
+/**
+ * What an Icon costs in the premium currency.
+ *
+ * The Limited: Icons pack hands over a *random* one. This hands over the one
+ * you want, which is the only thing Apex genuinely cannot buy — and it is
+ * priced so that it is a season's work at the top of the ladder rather than an
+ * afternoon: an Apex Elite win pays 2, so twenty is ten wins in the hardest
+ * division in the game.
+ */
+const ICON_PRICE = 20;
+
 let selectedId = null;   // tap-to-place selection
 let filter = 'all';      // rarity chip
 let group = 'all';       // GK / DEF / MID / FWD chip
 let sortBy = 'rating';   // rating | position | value | name
 let pickSlot = null;     // tapping an empty slot puts the list into "fill this" mode
+let pickBench = null;    // the same, for a seat on the bench
 
 const GROUPS = [['all', 'All'], ['GK', 'GK'], ['DEF', 'Defence'], ['MID', 'Midfield'], ['FWD', 'Attack']];
 
@@ -203,7 +218,9 @@ export function ultimateSquad() {
   if (ids.some((id) => !id)) return null;
   const xi = ids.map(getPlayer);
   if (xi.some((p) => !p)) return null;
-  return { xi, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
+  // The bench is optional — an empty seat simply means nobody to bring on there.
+  const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean);
+  return { xi, bench, name: 'Ultimate XI', short: 'UXI', colors: ['#41d3ff', '#0b1020'] };
 }
 
 /* ------------------------------ Apex Division --------------------------- */
@@ -301,6 +318,50 @@ export function storeView() {
               </button>`;
           }).join('')}
         </div>` : '<p class="empty">No packs yet — buy one above or win in Apex Division.</p>'}
+    </section>
+
+    ${iconExchangeView()}`;
+}
+
+/**
+ * The Icon Exchange.
+ *
+ * Pick the Icon you want rather than the one a pack decided to give you. The
+ * only sink for Ultimate, and the only place in the game where a specific named
+ * card can be bought outright.
+ */
+function iconExchangeView() {
+  const s = getState();
+  const have = new Set(s.club.collection);
+  const bank = s.club.ultimate || 0;
+  const icons = WORLD.icons.map(getPlayer);
+
+  return `
+    <section class="panel glass exchange">
+      <header class="panel-head">
+        <h2>Icon Exchange</h2>
+        <span class="coin-chip ult">✦ ${bank.toLocaleString()}</span>
+      </header>
+      <p class="hint">A pack gives you a random Icon. This gives you the one you
+        want. Ultimate is only paid for wins in Division 1 and Apex Elite.</p>
+      <div class="xchg-grid">
+        ${icons.map((p) => {
+          const owned = have.has(p.id);
+          const afford = bank >= ICON_PRICE;
+          return `
+            <article class="xchg rar-icon ${owned ? 'owned' : ''}">
+              <b class="xchg-ovr">${p.overall}</b>
+              <span class="xchg-name">${p.name}</span>
+              <span class="xchg-meta">${p.position} · ${p.nation}</span>
+              ${owned
+                ? '<span class="xchg-owned">In your club</span>'
+                : `<button class="btn ${afford ? 'primary' : 'ghost'} xchg-buy"
+                           data-buy-icon="${p.id}" ${afford ? '' : 'disabled'}>
+                     ✦ ${ICON_PRICE}
+                   </button>`}
+            </article>`;
+        }).join('')}
+      </div>
     </section>`;
 }
 
@@ -309,6 +370,110 @@ function oddsLine(p) {
     .filter(([, v]) => v > 0.001)
     .map(([k, v]) => `${RARITY[k].label} ${Math.round(v * 100)}%`);
   return parts.join(' · ');
+}
+
+/* ---------------------------- Challenges ---------------------------- */
+/** The cards staged for the open challenge, as player objects. */
+const submittedCards = () => submission.map(getPlayer).filter(Boolean);
+
+function challengesView() {
+  const s = getState();
+  const doneIds = new Set(s.club.challengesDone || []);
+
+  if (!openChallenge) {
+    return `
+      <section class="panel glass">
+        <header class="panel-head"><h2>Squad-Building Challenges</h2></header>
+        <p class="hint">Submit eleven cards that meet the conditions. They are
+          spent — this is what a duplicate is really for.</p>
+        <div class="sbc-list">
+          ${CHALLENGES.map((c) => {
+            const done = doneIds.has(c.id) && !c.repeatable;
+            return `
+              <article class="sbc ${done ? 'done' : ''}">
+                <div class="sbc-body">
+                  <b>${c.name}</b>
+                  <span class="sbc-brief">${c.brief}</span>
+                  <ul class="sbc-reqs">${c.reqs.map((r) => `<li>${r.text}</li>`).join('')}</ul>
+                </div>
+                <div class="sbc-side">
+                  <span class="sbc-reward">◈ ${c.reward.apex.toLocaleString()}</span>
+                  ${c.reward.ultimate ? `<span class="sbc-reward ult">✦ ${c.reward.ultimate}</span>` : ''}
+                  <span class="sbc-pack">${c.reward.pack} pack</span>
+                  ${done
+                    ? '<span class="sbc-tick">Completed</span>'
+                    : `<button class="btn primary" data-sbc="${c.id}">Start</button>`}
+                  ${c.repeatable ? '<span class="sbc-rep">Repeatable</span>' : ''}
+                </div>
+              </article>`;
+          }).join('')}
+        </div>
+      </section>`;
+  }
+
+  const cards = submittedCards();
+  // Chemistry needs a formation to score against; the challenge is about the
+  // set rather than the shape, so it is measured in the club's own formation.
+  const chem = chemistryFor(
+    [...submission, ...Array(11).fill(null)].slice(0, 11), s.club.formation);
+  const { rows, ok } = evaluate(openChallenge, cards, chem);
+
+  return `
+    <section class="panel glass">
+      <header class="panel-head">
+        <h2>${openChallenge.name}</h2>
+        <button class="btn ghost" id="sbcBack">Back</button>
+      </header>
+      <p class="hint">${openChallenge.brief}</p>
+
+      <div class="sbc-check">
+        ${rows.map((r) => `
+          <div class="sbc-row ${r.ok ? 'ok' : ''}">
+            <i></i><span>${r.text}</span><b>${r.got}/${r.need}</b>
+          </div>`).join('')}
+      </div>
+
+      <div class="sbc-tray" id="sbcTray">
+        ${Array.from({ length: 11 }, (_, i) => {
+          const p = cards[i];
+          const r = p ? RARITY[p.rarity] : null;
+          return `
+            <div class="bslot ${p ? 'filled' : ''}" ${p ? `data-unsubmit="${p.id}"` : ''}
+                 ${p ? `style="--rar:${r.color};--rar-glow:${r.glow}"` : ''}>
+              ${p ? `
+                <span class="bslot-ovr">${p.overall}</span>
+                <span class="bslot-name">${p.short}</span>
+                <span class="bslot-pos">${p.position}</span>`
+                : '<span class="slot-plus">+</span><span class="bslot-pos empty">Empty</span>'}
+            </div>`;
+        }).join('')}
+      </div>
+
+      <div class="sbc-actions">
+        <button class="btn ${ok ? 'primary' : 'ghost'}" id="sbcSubmit" ${ok ? '' : 'disabled'}>
+          ${ok ? 'Submit and claim' : `${cards.length}/11 — conditions not met`}
+        </button>
+        <button class="btn ghost" id="sbcClear">Clear</button>
+      </div>
+      <p class="setting-note warn">Submitting spends these cards permanently.</p>
+    </section>
+
+    <section class="panel glass">
+      <header class="panel-head"><h2>Your collection <small>${s.club.collection.length}</small></h2></header>
+      <div class="collection" id="sbcPool">${sbcPoolHTML()}</div>
+    </section>`;
+}
+
+function sbcPoolHTML() {
+  const s = getState();
+  const staged = new Set(submission);
+  const items = s.club.collection
+    .map(getPlayer)
+    .filter((p) => p && !staged.has(p.id))
+    .sort(SORTS[sortBy] || SORTS.rating);
+  if (!items.length) return '<p class="empty">Nothing left to submit.</p>';
+  return items.map((p) => `
+    <div class="coll-card" data-submit="${p.id}">${playerCard(p, { size: 'mini' })}</div>`).join('');
 }
 
 export function objectivesView() {
@@ -367,13 +532,14 @@ function apologyCard() {
 export function render() {
   const s = getState();
   const { formation, lineup } = s.club;
+  const bench = s.club.bench || Array(5).fill(null);
   const chem = chemistryFor(lineup, formation);
 
   const owned = s.club.packs.length;
   const tabs = `
     <nav class="tabs" id="uTabs">
       ${[['squad', 'Squad'], ['division', 'Apex Division'], ['online', 'Online'],
-         ['objectives', 'Objectives'],
+         ['objectives', 'Objectives'], ['challenges', 'Challenges'],
          ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -385,6 +551,7 @@ export function render() {
   if (tab === 'online') return tabs + sorry + onlineView();
   if (tab === 'division') return tabs + sorry + divisionView();
   if (tab === 'objectives') return tabs + sorry + objectivesView();
+  if (tab === 'challenges') return tabs + sorry + challengesView();
   if (tab === 'store') return tabs + sorry + storeView();
 
   return tabs + sorry + `
@@ -420,6 +587,15 @@ export function render() {
           ${FORMATIONS[formation].map((slot, i) => slotHTML(slot, i, lineup[i], chem.per[i])).join('')}
         </div>
         <p class="pitch-hint">Tap an empty slot to see who can play there, or drag a card onto the pitch.</p>
+
+        <!-- Five seats. Three of them can come on in a match; a keeper can only
+             be replaced by a keeper, so it is worth carrying one. -->
+        <div class="bench-strip">
+          <span class="bench-label">Bench</span>
+          <div class="bench-slots" id="bench">
+            ${bench.map((id, i) => benchHTML(i, id)).join('')}
+          </div>
+        </div>
       </div>
 
       <div class="sb-side">
@@ -478,14 +654,29 @@ function slotHTML(slot, i, playerId, chem) {
     </div>`;
 }
 
+function benchHTML(i, playerId) {
+  const p = playerId ? getPlayer(playerId) : null;
+  const r = p ? RARITY[p.rarity] : null;
+  return `
+    <div class="bslot ${p ? 'filled' : ''}" data-bench="${i}"
+         ${p ? `style="--rar:${r.color};--rar-glow:${r.glow}"` : ''}>
+      ${p ? `
+        <span class="bslot-ovr">${p.overall}</span>
+        <span class="bslot-name">${p.short}</span>
+        <span class="bslot-pos">${p.position}</span>
+        <button class="slot-x" data-bclear="${i}" aria-label="Remove ${p.name}">×</button>
+      ` : '<span class="slot-plus">+</span><span class="bslot-pos empty">SUB</span>'}
+    </div>`;
+}
+
 /** How well a player suits a slot: 0 exact, 1 same group, 2 out of position. */
 const fitFor = (p, slotPos) =>
   (p.position === slotPos ? 0 : POSITIONS[p.position].group === POSITIONS[slotPos].group ? 1 : 2);
 
 function collectionHTML() {
   const s = getState();
-  // anyone already on the pitch is hidden here — the list is the bench, not a duplicate
-  const used = new Set(s.club.lineup.filter(Boolean));
+  // anyone already named — on the pitch or on the bench — is hidden here
+  const used = new Set([...s.club.lineup, ...(s.club.bench || [])].filter(Boolean));
   const slot = pickSlot === null ? null : FORMATIONS[s.club.formation][pickSlot];
 
   let items = s.club.collection
@@ -579,6 +770,67 @@ export function mount(root) {
   }
   if (tab === 'objectives') return;
 
+  if (tab === 'challenges') {
+    const refresh = () => navigate('squad');
+
+    root.querySelector('.sbc-list')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sbc]');
+      if (!b) return;
+      openChallenge = challengeById(b.dataset.sbc);
+      submission = [];
+      refresh();
+    });
+
+    root.querySelector('#sbcBack')?.addEventListener('click', () => {
+      openChallenge = null;
+      submission = [];
+      refresh();
+    });
+    root.querySelector('#sbcClear')?.addEventListener('click', () => { submission = []; refresh(); });
+
+    root.querySelector('#sbcPool')?.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-submit]');
+      if (!card || submission.length >= 11) return;
+      submission.push(card.dataset.submit);
+      refresh();
+    });
+    root.querySelector('#sbcTray')?.addEventListener('click', (e) => {
+      const slot = e.target.closest('[data-unsubmit]');
+      if (!slot) return;
+      submission = submission.filter((id) => id !== slot.dataset.unsubmit);
+      refresh();
+    });
+
+    root.querySelector('#sbcSubmit')?.addEventListener('click', () => {
+      const c = openChallenge;
+      const cards = submittedCards();
+      const chem = chemistryFor([...submission, ...Array(11).fill(null)].slice(0, 11),
+        getState().club.formation);
+      if (!c || !evaluate(c, cards, chem).ok) return toast('Conditions not met', 'warn');
+
+      const spent = new Set(submission);
+      update((st) => {
+        // the cards are gone, and gone from the XI and the bench with them
+        st.club.collection = st.club.collection.filter((id) => !spent.has(id));
+        st.club.lineup = st.club.lineup.map((id) => (spent.has(id) ? null : id));
+        st.club.bench = (st.club.bench || []).map((id) => (spent.has(id) ? null : id));
+        st.club.apex += c.reward.apex;
+        if (c.reward.ultimate) st.club.ultimate = (st.club.ultimate || 0) + c.reward.ultimate;
+        if (c.reward.pack) st.club.packs.push(c.reward.pack);
+        if (!Array.isArray(st.club.challengesDone)) st.club.challengesDone = [];
+        if (!st.club.challengesDone.includes(c.id)) st.club.challengesDone.push(c.id);
+      });
+      refreshCoins();
+      sfx('coin');
+      toast(`${c.name} complete — ◈${c.reward.apex.toLocaleString()}`
+        + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''} · ${c.reward.pack} pack`);
+      openChallenge = null;
+      submission = [];
+      refresh();
+    });
+    return;
+  }
+
   if (tab === 'store') {
     // buy -> straight into the locker, never auto-opened
     root.querySelectorAll('[data-buy-pack]').forEach((btn) => {
@@ -632,10 +884,33 @@ export function mount(root) {
       if (!all.length) return;
       openPacks(all);
     });
+
+    /* The Icon Exchange lives on the store tab, so its listener has to be bound
+     * inside this branch — the branch returns, and a listener attached after it
+     * simply never ran. That is why the first version of this looked correct
+     * and bought nothing. */
+    root.querySelector('.xchg-grid')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-buy-icon]');
+      if (!btn) return;
+      const p = getPlayer(btn.dataset.buyIcon);
+      const st0 = getState();
+      if ((st0.club.ultimate || 0) < ICON_PRICE) return toast('Not enough Ultimate', 'warn');
+      if (st0.club.collection.includes(p.id)) return toast(`${p.name} is already yours`, 'info');
+      update((st) => {
+        st.club.ultimate -= ICON_PRICE;
+        st.club.collection.push(p.id);
+      });
+      refreshCoins();
+      sfx('reveal');
+      toast(`${p.name} joins your club`);
+      navigate('squad');
+    });
+
     return;
   }
 
   const pitch = root.querySelector('#pitch');
+  const benchEl = root.querySelector('#bench');
   const collectionEl = root.querySelector('#collection');
 
   const rerenderPitch = () => {
@@ -652,15 +927,37 @@ export function mount(root) {
     chemEl.dataset.chem = chem.team;
     metrics.querySelector('.chem-bar b').style.width = `${chem.team}%`;
     metrics.querySelectorAll('.metric')[2].querySelector('.big').innerHTML = `${chem.placedCount}<small>/11</small>`;
+    if (benchEl) {
+      benchEl.innerHTML = (s.club.bench || []).map((id, i) => benchHTML(i, id)).join('');
+      if (pickBench !== null) {
+        benchEl.querySelector(`[data-bench="${pickBench}"]`)?.classList.add('is-picking');
+      }
+    }
     collectionEl.innerHTML = collectionHTML();
     // slots are re-rendered wholesale, so the highlight has to go back on
     if (pickSlot !== null) pitch.querySelector(`[data-slot="${pickSlot}"]`)?.classList.add('is-picking');
+  };
+
+  const placeBench = (playerId, seat) => {
+    update((s) => {
+      // a player can be in exactly one place: pull him out of wherever he was
+      const inXI = s.club.lineup.indexOf(playerId);
+      if (inXI >= 0) s.club.lineup[inXI] = null;
+      const onBench = s.club.bench.indexOf(playerId);
+      if (onBench >= 0) s.club.bench[onBench] = null;
+      s.club.bench[seat] = playerId;
+    });
+    selectedId = null;
+    pickBench = null;
+    rerenderPitch();
   };
 
   const place = (playerId, slotIndex) => {
     update((s) => {
       const existing = s.club.lineup.indexOf(playerId);
       if (existing >= 0) s.club.lineup[existing] = null;   // move, don't duplicate
+      const onBench = (s.club.bench || []).indexOf(playerId);
+      if (onBench >= 0) s.club.bench[onBench] = null;      // ...including off the bench
       s.club.lineup[slotIndex] = playerId;
     });
     selectedId = null;
@@ -741,11 +1038,18 @@ export function mount(root) {
 
     // filling a named slot: one tap on a card puts them straight in it
     const card = e.target.closest('[data-player]');
-    if (pickSlot !== null && card && !e.target.closest('button')) {
-      const slotIndex = pickSlot;
-      pickSlot = null;
-      pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
-      return place(card.dataset.player, slotIndex);
+    if (card && !e.target.closest('button')) {
+      if (pickSlot !== null) {
+        const slotIndex = pickSlot;
+        pickSlot = null;
+        pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+        return place(card.dataset.player, slotIndex);
+      }
+      if (pickBench !== null) {
+        const seat = pickBench;
+        pickBench = null;
+        return placeBench(card.dataset.player, seat);
+      }
     }
 
     const sell = e.target.closest('[data-sell]');
@@ -755,6 +1059,7 @@ export function mount(root) {
       update((s) => {
         s.club.collection = s.club.collection.filter((id) => id !== p.id);
         s.club.lineup = s.club.lineup.map((id) => (id === p.id ? null : id));
+        s.club.bench = (s.club.bench || []).map((id) => (id === p.id ? null : id));
         s.club.apex += coins;
       });
       refreshCoins();
@@ -767,9 +1072,30 @@ export function mount(root) {
   /* --- slot clear + tap-to-place --- */
   const endPick = () => {
     pickSlot = null;
-    pitch.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+    pickBench = null;
+    root.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
     collectionEl.innerHTML = collectionHTML();
   };
+
+  benchEl?.addEventListener('click', (e) => {
+    const x = e.target.closest('[data-bclear]');
+    if (x) {
+      update((s) => { s.club.bench[+x.dataset.bclear] = null; });
+      return rerenderPitch();
+    }
+    const seat = e.target.closest('[data-bench]');
+    if (!seat) return;
+    const i = +seat.dataset.bench;
+    if (selectedId) return placeBench(selectedId, i);
+    if (!getState().club.bench[i]) {
+      pickBench = pickBench === i ? null : i;
+      pickSlot = null;
+      root.querySelectorAll('.is-picking').forEach((el) => el.classList.remove('is-picking'));
+      if (pickBench !== null) seat.classList.add('is-picking');
+      collectionEl.innerHTML = collectionHTML();
+      collectionEl.scrollTop = 0;
+    }
+  });
 
   pitch.addEventListener('click', (e) => {
     const x = e.target.closest('[data-clear]');

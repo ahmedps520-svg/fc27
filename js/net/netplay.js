@@ -125,7 +125,7 @@ export class RemoteInput {
  * but never reordered — a host and a guest on different builds have to agree.
  * `half` was missing, which made the guest read half time as ordinary play.
  */
-const PHASES = ['kickoff', 'play', 'goal', 'corner', 'goalkick', 'throwin', 'freekick', 'end', 'half'];
+const PHASES = ['kickoff', 'play', 'goal', 'corner', 'goalkick', 'throwin', 'freekick', 'end', 'half', 'penalty'];
 
 export function encodeSnapshot(match) {
   const all = [...match.teams[0].players, ...match.teams[1].players];

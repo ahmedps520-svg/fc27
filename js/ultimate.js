@@ -22,6 +22,22 @@ export function matchApex(div, { won, drew, poss }) {
   return Math.round(div.reward * outcome * control);
 }
 
+/**
+ * Ultimate, the second currency.
+ *
+ * Only the top of the ladder pays it, and only for a win. It is not a faster
+ * Apex — it is the thing you cannot grind, which is what makes the Icon
+ * Exchange it buys into worth wanting. A promotion into the top two divisions
+ * is the entry fee.
+ */
+export function matchUltimate(divIdx, won) {
+  if (!won) return 0;
+  const top = DIVISIONS.length - 1;
+  if (divIdx >= top) return 2;          // Apex Elite
+  if (divIdx >= top - 1) return 1;      // Division 1
+  return 0;
+}
+
 export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
   const before = getState().ultimate;
   const beforeDiv = DIVISIONS[before.divIdx];
@@ -34,6 +50,7 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
     fromDivision: beforeDiv.name,
     toDivision: beforeDiv.name,
     apex: 0,
+    ultimate: 0,
     possession: Math.round(possession),
     packs: [],
     objectivesDone: [],
@@ -75,6 +92,10 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
     const reward = matchApex(div, { won, drew, poss: possession });
     out.apex += reward;
     s.club.apex += reward;
+
+    // and the premium currency, which only the top of the ladder pays
+    const ult = matchUltimate(u.divIdx, won);
+    if (ult) { out.ultimate += ult; s.club.ultimate = (s.club.ultimate || 0) + ult; }
     // packs land in the store inventory unopened — you choose when to rip them
     if (won) { out.packs.push('silver'); s.club.packs.push('silver'); }
     if (out.promoted) {
@@ -94,6 +115,10 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
         out.objectivesDone.push(o.text);
         out.apex += o.apex;
         s.club.apex += o.apex;
+        if (o.ultimate) {
+          out.ultimate += o.ultimate;
+          s.club.ultimate = (s.club.ultimate || 0) + o.ultimate;
+        }
         out.packs.push(o.pack);
         s.club.packs.push(o.pack);
       }
@@ -103,6 +128,7 @@ export function settleDivisionMatch({ scored, conceded, possession = 50 }) {
     if (u.streak >= 3) bump('streak3', 3);
     if (conceded === 0) bump('clean2');
     if (u.divIdx >= 5) bump('div5');
+    if (u.divIdx >= DIVISIONS.length - 1) bump('elite');
     if (won) bump('win12');
   });
 

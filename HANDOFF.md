@@ -470,6 +470,39 @@ What is in place now, all of it needed:
 `APP_VERSION` in `app.js` is shown in Settings so a bug report can say which
 build it came from. Bump it with `CACHE`.
 
+### Substitutions, penalties, Ultimate and SBCs
+Four features added together; each is small on its own and they lean on each
+other, so they are described in one place.
+
+- **Bench and subs.** Five seats in the Ultimate XI screen, three changes per
+  match from the pause menu. A substitution keeps the shirt and swaps the card
+  underneath — same slot, same role, same shape duty — so it can never leave a
+  hole in a formation, and every attribute that comes off the card is
+  recomputed. A club side gets a bench off its own roster or only one side of
+  the pitch would have the feature. Guest asks, host acts, same as formations.
+- **Penalties.** Fouls exist *only* inside the box and *only* on a failed
+  tackle. That is a limit, not an oversight: with no free-kick set piece, a foul
+  anywhere else would be a turnover with a whistle on it. Swept on two seeds —
+  0.17 and 0.22 penalties a match against ~0.27 in real football, goals 2.72
+  against 2.45.
+- **The shootout** (`screens/shootout.js`) is its own machine, not a `Match`
+  phase, and is offered only on a drawn Kick Off. It does not touch the
+  scoreline; football does not either.
+- **Ultimate** is paid only for wins in Division 1 (1) and Apex Elite (2), plus
+  one objective. Its only sink is the **Icon Exchange** in the store: 20 for the
+  specific Icon you want, against a pack that gives a random one. Ten Apex Elite
+  wins per Icon, on purpose.
+- **SBCs** (`data/challenges.js`) are about the *set*, not positions — no
+  formation puzzle, no chemistry links to line up, because those stop being fun
+  with a partial collection. A requirement is a function of the eleven cards
+  plus their chemistry, so a new challenge is one row.
+
+Two bugs worth not repeating, both found by driving the UI rather than looking
+at it: the shootout's Continue button stayed `disabled` because only the
+carry-on branch re-enabled it, and the Icon Exchange's click listener was bound
+after the store tab's `return` in `mount`, so it never ran and buying did
+nothing while looking perfectly correct.
+
 ### The thin positions
 LM and RM had no `special` cards in the entire world and full-backs had one or
 two, so a Prime pack literally could not find a right-back worth playing. A
@@ -545,6 +578,12 @@ which silently removed the wallet pills from the header.
   on 40, and an off-ball change that looked like it added goals on one sample
   and removed them on the next. The tool substitutes a seeded generator so
   before and after play the same fixtures with the same dice.
+
+  **A caveat found while adding penalties:** seeding makes runs *reproducible*,
+  but a change that consumes a different number of random draws desynchronises
+  the stream from the first difference onward, so before/after is only exact for
+  changes that do not alter RNG consumption. Anything that adds a dice roll —
+  fouls, a new AI branch — still needs two seeds and a tolerance for drift.
 
   **Anything that does not move a number across two different seeds has not
   moved it.** Run the sweep on a clean checkout, apply the change, run it again

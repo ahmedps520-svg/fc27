@@ -73,6 +73,10 @@ const ROLE_OF = {
 export const MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32 };
 export const PRESSING = { low: 0.7, normal: 1, high: 1.4 };
 
+/** How many can sit on the bench, and how many of them can come on. */
+export const BENCH_SIZE = 5;
+export const MAX_SUBS = 3;
+
 const GRAV = 16;                   // arcade gravity, m/s^2
 export const GOAL_HEIGHT = 2.44;
 
@@ -98,6 +102,24 @@ function pickXI(clubId) {
  * @param {object} custom optional { xi, name, short, colors } to field a squad
  *   that is not a club roster — how an Ultimate XI takes the pitch.
  */
+/**
+ * Everything about a player that comes off his card. Split out because a
+ * substitution swaps the card underneath a shirt and every one of these has to
+ * be recomputed — a fresh 90-pace winger coming on for a spent 70-pace one has
+ * to actually be faster.
+ *
+ * `stamina` starts full, which is the whole point of a bench.
+ */
+function attributesOf(ref) {
+  return {
+    maxSpeed: 5.4 + (ref.stats.pace / 100) * 3.8,
+    // 1 is fresh, 0 is spent. A strong physical player empties slower and
+    // fills faster, which is most of what the stat is for.
+    stamina: 1,
+    stamCost: 1.35 - (ref.stats.physical / 100) * 0.6,
+  };
+}
+
 function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
   const xi = custom?.xi?.length === 11 ? custom.xi : pickXI(clubId);
@@ -111,14 +133,24 @@ function makeTeam(clubId, side, isHuman, custom = null) {
       ref, num: i + 1, team: side, role: s.role, sx, sy,
       x: sx * PITCH.w, y: sy * PITCH.h, vx: 0, vy: 0,
       dirX: dir, dirY: 0,
-      maxSpeed: 5.4 + (ref.stats.pace / 100) * 3.8,
-      // 1 is fresh, 0 is spent. A strong physical player empties slower and
-      // fills faster, which is most of what the stat is for.
-      stamina: 1,
-      stamCost: 1.35 - (ref.stats.physical / 100) * 0.6,
+      ...attributesOf(ref),
       touchLock: 0, stumble: 0, holdT: 0, slide: 0, diveT: 0, diveDir: 0,
     };
   });
+
+  /* The bench.
+   *
+   * A custom squad brings its own; a club falls back to the best of its roster
+   * that did not make the eleven. Without that, a Quick Match against a real
+   * club would have nobody to bring on and substitutions would be a feature
+   * only one side of the pitch had.
+   */
+  const onPitch = new Set(xi.map((r) => r.id));
+  const bench = (custom?.bench?.filter(Boolean).length ? custom.bench.filter(Boolean) : null)
+    || rosterOf(clubId)
+      .filter((r) => !onPitch.has(r.id))
+      .sort((a, b) => b.overall - a.overall)
+      .slice(0, BENCH_SIZE);
 
   return {
     clubId, club,
@@ -126,7 +158,8 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     short: custom?.short || club.short,
     colors: custom?.colors || club.crest.colors,
     dir, side, isHuman,
-    players, score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
+    players, bench, subsLeft: MAX_SUBS,
+    score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
     formation: '4-4-2',
     tactics: { mentality: 'balanced', pressing: 'normal' },
   };
@@ -239,6 +272,7 @@ export class Match {
       if (this.phase === 'goal') this.updateCelebration(dt);
       if (this.phaseT <= 0) {
         if (this.phase === 'corner') { this.takeCorner(); return; }
+        if (this.phase === 'penalty') { this.takePenalty(); return; }
         if (this.phase === 'goal') this.resetPositions(this.pendingKickoff ?? 0);
         if (this.phase === 'half') { this.half = 2; this.resetPositions(0); }
         this.startPlay();
@@ -344,6 +378,40 @@ export class Match {
       }
       if (best) c.activeIdx = this.teams[c.team].players.indexOf(best);
     }
+  }
+
+  /* -------------------------- substitutions -------------------------- */
+  /**
+   * Bring a bench player on for someone on the pitch.
+   *
+   * The shirt stays where it is — same slot, same role, same shape duty — and
+   * only the card underneath it changes, so a substitution can never leave a
+   * formation with a hole in it. Position, velocity and possession are all
+   * inherited: swapping a man carrying the ball hands the ball to the man
+   * coming on rather than dropping it, which is wrong but is a great deal
+   * better than a loose ball appearing from nowhere.
+   *
+   * @param {number} teamIdx
+   * @param {number} pitchIdx index into `team.players`
+   * @param {number} benchIdx index into `team.bench`
+   * @returns {boolean} whether it happened
+   */
+  substitute(teamIdx, pitchIdx, benchIdx) {
+    const team = this.teams[teamIdx];
+    if (!team || team.subsLeft <= 0) return false;
+    const p = team.players[pitchIdx];
+    const incoming = team.bench?.[benchIdx];
+    if (!p || !incoming) return false;
+    // A keeper comes off for a keeper or the goal is left to a winger.
+    if (p.role === 'GK' && incoming.position !== 'GK') return false;
+
+    team.bench[benchIdx] = p.ref;      // the man coming off takes the seat
+    p.ref = incoming;
+    Object.assign(p, attributesOf(incoming));
+    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.diveT = 0;
+    team.subsLeft -= 1;
+    this.cue('whistle');
+    return true;
   }
 
   /* ----------------------------- movement ---------------------------- */
@@ -1233,7 +1301,99 @@ export class Match {
       owner.stumble = 0.35;
     } else {
       p.stumble = sliding ? 1.15 : 0.5;
+      /* A mistimed challenge in your own box is a penalty.
+       *
+       * Fouls exist only here, and only inside the area. That is a deliberate
+       * limit rather than an oversight: there is no free-kick set piece in this
+       * game, so a foul anywhere else would have nowhere to go and would just
+       * be a turnover with a whistle on it. Inside the box there is somewhere
+       * for it to go, and it is the moment that matters.
+       *
+       * A slide is far more likely to give one away than a standing tackle,
+       * which is exactly the risk a slide is supposed to carry. */
+      const chance = sliding ? 0.34 : 0.1;
+      if (this.inPenaltyArea(owner, p.team) && Math.random() < chance) {
+        this.awardPenalty(1 - p.team, p);
+      }
     }
+  }
+
+  /** Is `pt` inside the box that `defending` is protecting? */
+  inPenaltyArea(pt, defending) {
+    const goalX = this.teams[defending].dir > 0 ? 0 : PITCH.w;
+    return Math.abs(pt.x - goalX) < BOX_W && Math.abs(pt.y - CY) < BOX_HALF;
+  }
+
+  /**
+   * Set a penalty. Everyone but the taker and the keeper leaves the box, the
+   * ball goes on the spot, and the taker is the best finisher on the pitch —
+   * which is what a manager would do and saves inventing a taker order.
+   */
+  awardPenalty(attacking, conceded) {
+    const atk = this.teams[attacking];
+    const goalX = atk.dir > 0 ? PITCH.w : 0;
+    const spotX = goalX + (atk.dir > 0 ? -11 : 11);
+
+    const b = this.ball;
+    Object.assign(b, {
+      x: spotX, y: CY, z: 0, vx: 0, vy: 0, vz: 0,
+      owner: null, lastTouch: null, inNet: null, curl: 0, shotBy: null,
+    });
+
+    const taker = atk.players
+      .filter((p) => p.role !== 'GK')
+      .sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
+    taker.x = spotX - atk.dir * 2.2;
+    taker.y = CY;
+    taker.vx = taker.vy = 0;
+    taker.touchLock = 0;
+
+    // everyone else outside the area, spread across the D
+    let n = 0;
+    for (const t of [0, 1]) {
+      for (const p of this.teams[t].players) {
+        if (p === taker) continue;
+        if (p.role === 'GK') {
+          if (t === attacking) { p.x = this.teams[t].dir > 0 ? 6 : PITCH.w - 6; p.y = CY; }
+          else { p.x = goalX + (atk.dir > 0 ? -0.7 : 0.7); p.y = CY; }
+          p.vx = p.vy = 0;
+          continue;
+        }
+        const side = n % 2 ? 1 : -1;
+        p.x = spotX - atk.dir * (7 + (n % 3) * 2.2);
+        p.y = clamp(CY + side * (5 + (n % 4) * 3.4), 3, PITCH.h - 3);
+        p.vx = p.vy = 0;
+        p.touchLock = 0.4;
+        n += 1;
+      }
+    }
+
+    this.penaltyTaker = taker;
+    this.conceded = conceded;
+    this.phase = 'penalty';
+    this.phaseT = 1.6;
+    this.banner = 'PENALTY';
+    this.cue('whistle', 1);
+    this.penalties = (this.penalties || 0) + 1;
+  }
+
+  /** Strike the penalty once the phase timer runs out. */
+  takePenalty() {
+    const p = this.penaltyTaker;
+    if (!p) { this.startPlay(); return; }
+    const atk = this.teams[p.team];
+    const goalX = atk.dir > 0 ? PITCH.w : 0;
+    this.ball.owner = p;
+    p.touchLock = 0;
+    // Aimed into a corner with an error that shrinks as shooting rises: a 99
+    // buries it, a centre-back does not.
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const spread = (100 - p.ref.stats.shooting) / 100;
+    const aimY = CY + side * (GOAL_HALF - 1.1) + (Math.random() - 0.5) * spread * 5.2;
+    this.shoot(p, { x: goalX > PITCH.w / 2 ? 1 : -1, y: (aimY - CY) / 12 },
+      0.72 + Math.random() * 0.22, { loft: 0.16 });
+    this.penaltyTaker = null;
+    this.phase = 'play';
   }
 
   /* -------------------------------- AI ------------------------------- */
