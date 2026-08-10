@@ -1064,7 +1064,13 @@ export function mount(root) {
       navigate('play', {
         homeId: WORLD.clubs[0].id,
         awayId: WORLD.clubs[1].id,
-        duration: 240,
+        /* Three minutes, not four. Four was long enough to drag, and shorter
+           than this stops being a football match: measured over 40 matches a
+           side, 240s gives 2.38 goals with 10% goalless, 180s gives 1.85 with
+           5%, and 120s collapses to 1.20 with a quarter of matches finishing
+           0-0 — which trades "boring because it is long" for "boring because
+           nothing happened". */
+        duration: 180,
         skill: divisionSkill(u.divIdx),
         mode: 'single',
         ultimate: true,

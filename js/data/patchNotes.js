@@ -18,6 +18,27 @@
  */
 export const RELEASES = [
   {
+    version: 'v32',
+    date: '2026-08-10',
+    tag: 'Balance',
+    title: 'Shorter division matches',
+    lede: 'Apex Division and online matches are three minutes instead of four.',
+    entries: [
+      {
+        head: 'Three minutes a match',
+        summary: 'Division and online matches are a quarter shorter, so a session gets through '
+               + 'more of the ladder.',
+        detail: 'Four minutes was long enough to drag. Three is not simply "as short as '
+              + 'possible", though: a shorter match has less football in it, and past a point '
+              + 'that is boring in a different way. Measured over forty matches at each length, '
+              + 'four minutes gives 2.38 goals a game with one in ten finishing goalless, three '
+              + 'minutes gives 1.85 with one in twenty, and two minutes collapses to 1.20 with a '
+              + 'quarter of matches ending 0-0. Three is where it stops dragging without '
+              + 'starting to feel empty.',
+      },
+    ],
+  },
+  {
     version: 'v31',
     date: '2026-08-10',
     tag: 'Graphics',
