@@ -7,6 +7,7 @@ import { PITCH, GOAL_HALF, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
+import { CinematicPass } from './cinematic.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -651,7 +652,15 @@ export function createRenderer(canvas, match, quality, models = false) {
 
   const turf = new THREE.Mesh(
     new THREE.PlaneGeometry(PITCH.w, PITCH.h),
-    new THREE.MeshStandardMaterial({ map: pitchTexture(), roughness: 0.97, metalness: 0 }));
+    new THREE.MeshStandardMaterial({
+      map: pitchTexture(),
+      // Not the flat 0.97 it was. Cut grass under floodlights is faintly
+      // specular — that sheen sweeping across the stripes as the camera moves is
+      // most of what separates a lit pitch from a green rectangle.
+      roughness: 0.74,
+      metalness: 0.02,
+      envMapIntensity: 0.35,
+    }));
   turf.position.set(PITCH.w / 2, CY, 0);
   turf.receiveShadow = true;
   scene.add(turf);
@@ -817,6 +826,60 @@ export function createRenderer(canvas, match, quality, models = false) {
     lamp.position.set(px, py, 35);
     lamp.target.position.set(PITCH.w / 2, CY, 0);
     scene.add(lamp, lamp.target);
+
+    /* The beam itself, hanging in the night air.
+     *
+     * Real volumetrics would mean marching the shadow map per pixel. This is the
+     * cheap version every stadium game uses: a cone of additive geometry that
+     * fades at its rim and along its length, with depth writing off so it never
+     * occludes anything and never sorts against the crowd. Four of them, at the
+     * cost of four transparent draws.
+     *
+     * It is the single most "expensive-looking" thing on the screen for the
+     * least work, because a floodlit pitch at night is defined by its haze. */
+    if (quality !== 'low') {
+      const beamLen = 60;
+      const beam = new THREE.Mesh(
+        new THREE.ConeGeometry(24, beamLen, 26, 1, true),
+        new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide,
+          uniforms: {
+            uColor: { value: new THREE.Color(0xfff0cf) },
+            uStrength: { value: ultra ? 0.2 : 0.13 },
+          },
+          vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vNormalV;
+            void main() {
+              vUv = uv;
+              vNormalV = normalize(normalMatrix * normal);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }`,
+          fragmentShader: `
+            uniform vec3 uColor;
+            uniform float uStrength;
+            varying vec2 vUv;
+            varying vec3 vNormalV;
+            void main() {
+              // brightest at the lamp, gone by the time it reaches the grass
+              float along = pow(1.0 - vUv.y, 1.9);
+              // and brightest edge-on, which is what gives a cone its soft rim
+              float rim = 1.0 - abs(dot(normalize(vNormalV), vec3(0.0, 0.0, 1.0)));
+              gl_FragColor = vec4(uColor, along * pow(rim, 1.5) * uStrength);
+            }`,
+        }));
+      // the cone is built along +Y with its point at the top, so it is aimed by
+      // pointing that axis at the centre circle
+      beam.position.set(px, py, 35);
+      const dir = new THREE.Vector3(PITCH.w / 2 - px, CY - py, -35).normalize();
+      beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+      beam.translateY(-beamLen / 2);
+      beam.renderOrder = 2;
+      scene.add(beam);
+    }
   }
 
   // crowd — one instanced mesh, so thousands of seats cost a single draw call
@@ -1047,6 +1110,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   });
 
   const fine = quality !== 'low';
+  let focusDist = 40;
   let disposed = false;
   let lastNetHit = -1;
 
@@ -1061,9 +1125,36 @@ export function createRenderer(canvas, match, quality, models = false) {
   // Bloom: floodlight rigs and LED boards spill light the way stadium optics do.
   // Skipped entirely on low detail, where the extra passes are not worth it.
   let composer = null;
+  let cine = null;
   if (quality !== 'low') {
     composer = new EffectComposer(renderer);
+
+    /* The cinematic pass needs the scene's depth, and the only place that
+     * exists is on the buffer the scene was rendered into. EffectComposer
+     * swaps its two targets and does not reset them between frames, so which
+     * one that is alternates — both get an attachment, and the pass reads
+     * whichever it is handed. */
+    for (const rt of [composer.renderTarget1, composer.renderTarget2]) {
+      rt.depthTexture = new THREE.DepthTexture(1, 1);
+      rt.depthTexture.type = THREE.UnsignedIntType;
+    }
+
     composer.addPass(new RenderPass(scene, camera));
+
+    // Occlusion, bokeh and the lens grade. Ultra pays for a proper sample count
+    // and a focal plane; High gets the occlusion and the grade without the
+    // bokeh, which is the expensive half.
+    cine = new CinematicPass(camera, {
+      samples: ultra ? 12 : 8,
+      ao: ultra ? 1.05 : 0.9,
+      aoRadius: 0.6,
+      dof: ultra ? 0.85 : 0,
+      grain: 0.03,
+      vignette: 0.5,
+      aberration: ultra ? 0.7 : 0.4,
+    });
+    composer.addPass(cine);
+
     // High threshold on purpose: only the floodlights and LED boards should
     // bloom. Lower and the lit turf itself hazes over.
     const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.34, 0.55, 0.95);
@@ -1078,6 +1169,13 @@ export function createRenderer(canvas, match, quality, models = false) {
     resize(w, h) {
       renderer.setSize(w, h, false);
       composer?.setSize(w, h);
+      if (composer) {
+        // the attachments do not follow the colour targets on resize
+        const px = renderer.getPixelRatio();
+        // WebGLRenderTarget.setSize already resizes an attached depthTexture,
+        // so the composer's own setSize above has done it.
+        cine?.setSize(Math.round(w * px), Math.round(h * px));
+      }
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     },
@@ -1102,6 +1200,18 @@ export function createRenderer(canvas, match, quality, models = false) {
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
       }
+      /* Focus follows the ball, which is where a broadcast camera operator
+       * would be pulling to. Eased rather than snapped: a lens that rack-focuses
+       * instantly on every pass looks like a bug, not a camera. */
+      if (cine) {
+        const dx = m.ball.x - cam.x;
+        const dy = m.ball.y - cam.y;
+        const dz = (m.ball.z || 0) - cam.z;
+        const want = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        focusDist += (want - focusDist) * Math.min(1, dt * 3.4);
+        cine.setFocus(focusDist);
+      }
+
       ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19);
       // Roll it. Angular speed is v/r about the axis perpendicular to travel,
       // so the ball visibly spins along the ground instead of sliding.

@@ -380,6 +380,41 @@ exposure deliberately, and should stay:
 Reverting is one edit: `ICONS` in `pools.js` is a plain list, and nothing else
 in the codebase knows or cares what the names are.
 
+### The cinematic render path
+`js/game/cinematic.js` is one full-screen pass doing ambient occlusion, far-field
+depth of field, vignette, grain and chromatic aberration from the colour buffer
+and the depth buffer. One pass rather than a chain, because each pass is another
+read and write of a buffer that is up to three times native resolution.
+
+**There is no ray tracing and there cannot be.** WebGL has no ray query and a
+browser cannot reach the hardware that would make it real time. This is the
+screen-space family of tricks, which is what shipped in console games for a
+decade and is a long way from nothing.
+
+Four things here were got wrong first and are worth not repeating:
+- **The depth attachment must come from the buffer handed to the pass.**
+  EffectComposer swaps its two targets and does not reset them between frames,
+  so the scene lands in a different one on alternate frames. Both get a
+  `DepthTexture`; the pass reads `readBuffer.depthTexture`.
+- **Depth of field is far field only, with a dead zone.** The first version
+  blurred either side of the focal plane and put a seven-pixel smear across the
+  foreground grass. A broadcast camera on a football match is stopped down and a
+  long way back: the whole playing surface is sharp and only the crowd is soft.
+- **The focal length is recomputed every frame.** `renderGL` rewrites
+  `camera.fov` each frame to hold its framing, so caching pixels-per-unit at
+  resize left the occlusion radius wrong at every zoom but the boot one.
+- **Diagnose with `debug: true`** on the pass options rather than by reasoning
+  about it. It dumps raw depth, stretched depth and linear distance into the
+  three colour channels, which is one screenshot and an answer.
+
+Also in this path: additive cones on the floodlights for the beam haze, which is
+the most expensive-looking thing on screen for four transparent draws, and a
+turf roughness of 0.74 rather than 0.97 so the stripes catch a sheen.
+
+Ultra runs 12 AO taps plus the bokeh; High runs 8 and no bokeh. **Neither has
+been measured on a real device** — the FPS counter in Settings is how that gets
+answered.
+
 ### The update gate
 `/api/version` returns a short hash of everything the server serves — every js,
 css and html file plus `index.html`, `sw.js` and the manifest. It changes when
@@ -474,7 +509,10 @@ has to be surfaced there, it is one thing, not seven.
   `x ∈ [-6, PITCH.w+6]`, `y < PITCH.h+6` is inside terracing.
 - `server/data/` is gitignored — it holds password hashes. Keep it that way.
 - **Bump `CACHE` in `sw.js` and `APP_VERSION` in `app.js` on every release.**
-  The cache name is what evicts the previous build.
+  The cache name is what evicts the previous build. `APP_VERSION` is only a
+  human-readable label — the authority on what is deployed is the build hash
+  shown under it in Settings, which the server derives from the bytes it is
+  serving and which therefore cannot be forgotten.
 - **New modules must be added to `ASSETS` in `sw.js`.** Network-first means a
   missing entry does not break an online player, so the omission is invisible
   until someone opens the game offline.
