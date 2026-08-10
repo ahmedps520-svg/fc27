@@ -18,6 +18,39 @@
  */
 export const RELEASES = [
   {
+    version: 'v27',
+    date: '2026-08-10',
+    tag: 'Housekeeping',
+    title: 'A pass over the small things',
+    lede: 'A code and interface audit — a missing reward, cards that did not '
+        + 'look clickable, and a module every device was downloading for nothing.',
+    entries: [
+      {
+        head: 'Objectives now show their Ultimate reward',
+        summary: 'Reaching Apex Elite pays 6 Ultimate. The objectives list was the one place '
+               + 'that never said so.',
+        detail: 'Ultimate is the currency you cannot grind, and the Icon Exchange is what it '
+              + 'buys — so the two places that pay it need to advertise it. The challenges list '
+              + 'already did; the objectives list showed only the Apex and the pack.',
+      },
+      {
+        head: 'Submission cards look clickable',
+        summary: 'The cards you pick from when building a squad challenge now respond to hover '
+               + 'and touch.',
+        detail: 'They carried no styling at all, so a clickable card showed a text cursor and '
+              + 'gave no sign that tapping it would do anything.',
+      },
+      {
+        head: 'A dead module off the download',
+        summary: 'An unused physics module was being cached on every device, and listed twice.',
+        detail: 'A cloth simulation written for goal netting was never wired up, but it sat in '
+              + 'the offline file list — twice — so every install downloaded and stored code '
+              + 'nothing runs. The file is still in the project for whenever the nets get built; '
+              + 'it just is not shipped any more.',
+      },
+    ],
+  },
+  {
     version: 'v26',
     date: '2026-08-10',
     tag: 'Performance',

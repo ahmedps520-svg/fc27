@@ -609,7 +609,13 @@ export function objectivesView() {
                 <i class="obj-bar"><b style="width:${pct}%"></b></i>
                 <span>${Math.min(o.done, o.need)}/${o.need}</span>
               </div>
-              <span class="obj-reward">◈${(o.apex ?? 0).toLocaleString()}<em>${o.pack} pack</em></span>
+              <!-- Ultimate is the whole reason the top objectives are worth chasing, and
+                   this row was the one place a reward that pays it did not say so. -->
+              <span class="obj-reward">
+                ◈${(o.apex ?? 0).toLocaleString()}
+                ${o.ultimate ? `<b class="obj-ult">✦ ${o.ultimate}</b>` : ''}
+                <em>${o.pack} pack</em>
+              </span>
             </li>`;
         }).join('')}
       </ul>

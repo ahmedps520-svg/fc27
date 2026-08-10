@@ -627,6 +627,12 @@ select {
   transform: translateY(-3px); box-shadow: 0 14px 32px var(--accent-soft);
 }
 .coll-tools { display: flex; gap: 5px; }
+
+/* Cards in the challenge submission picker. They are clickable and had no rule
+   at all, so they showed a text cursor and gave no sign anything would happen. */
+.coll-card { cursor: pointer; border-radius: var(--radius-sm); transition: transform .16s, filter .16s; }
+.coll-card:hover { transform: translateY(-3px); filter: brightness(1.08); }
+.coll-card:active { transform: translateY(-1px) scale(.985); }
 /* full-width rows inside the collection grid */
 .collection > .empty, .coll-banner { grid-column: 1 / -1; }
 .coll-banner {
@@ -1638,6 +1644,8 @@ body.in-game #screen {
   font-family: var(--font-num); font-size: 13px; color: var(--warn);
 }
 .obj-reward em { font-style: normal; font-family: var(--font); font-size: 10px; color: var(--text-mute); text-transform: capitalize; }
+/* the premium currency, on the one or two objectives that pay it */
+.obj-ult { color: #c9a4ff; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
 
 .mystery-pack {
   position: relative; overflow: hidden; width: 100%; cursor: pointer; text-align: left;
@@ -1921,6 +1929,8 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   color: var(--text-dim); font: inherit;
   transition: border-color .16s, background .16s;
 }
+/* wrapper the live badge is written into on every change — see the repaint note */
+.ci-badge { display: grid; place-items: center; }
 .ci-opt em { font-style: normal; font-size: 10px; letter-spacing: .08em; text-transform: capitalize; }
 .ci-opt:hover { border-color: var(--line-strong); }
 .ci-opt.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
