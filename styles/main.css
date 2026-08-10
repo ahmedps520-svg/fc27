@@ -2106,3 +2106,11 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   font-size: 10px; font-weight: 800; letter-spacing: .04em; text-align: center;
 }
 
+
+/* build stamp in Settings — monospaced so a hash is readable and copyable */
+.tag.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px; letter-spacing: .02em;
+  user-select: all;
+}
+.tag.mono.stale { color: var(--warn); border-color: rgba(255, 183, 3, .5); }

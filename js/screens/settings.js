@@ -1,7 +1,7 @@
 import { getState, update, resetAll } from '../state.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION } from '../app.js';
-import { installUpdate } from '../update.js';
+import { installUpdate, knownBuild } from '../update.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
 
 /** Push the saved audio preferences into the engine. */
@@ -21,8 +21,8 @@ const ACCENTS = [
 ];
 
 const QUALITY_NOTE = (q) => (q === 'ultra' || !q
-  ? '<b>Ultra:</b> renders above native resolution, 4K shadows, ~3× the crowd and a full terrace of seats. It will work your GPU hard — drop to High if the match stutters.'
-  : 'Ultra maxes out shadows, crowd density and resolution. Demanding.');
+  ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
+  : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
 const MODEL_NOTE = (m) => (m === 'simple'
   ? 'Light figures are built in code — no download, and they run on anything.'
@@ -139,6 +139,10 @@ export function render() {
         <span class="tag">${APP_VERSION}</span>
       </div>
       <div class="setting-row">
+        <div><b>Build</b><span>Changes with every commit. Quote this in a bug report.</span></div>
+        <span class="tag mono" id="buildTag">checking…</span>
+      </div>
+      <div class="setting-row">
         <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
       </div>
@@ -161,6 +165,25 @@ export function render() {
 }
 
 export function mount(root) {
+  /* The build the server is actually serving, which is the only way to tell
+   * from the device whether a push has landed. `APP_VERSION` above is written
+   * by hand and can lag; this cannot, because the server derives it from the
+   * bytes it is sending. A mismatch with the stored build is worth calling
+   * out — it means the title screen has an update waiting. */
+  const buildTag = root.querySelector('#buildTag');
+  fetch('api/version', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((v) => {
+      if (!v?.build) { buildTag.textContent = 'offline'; return; }
+      buildTag.textContent = v.build;
+      const known = knownBuild();
+      if (known && known !== v.build) {
+        buildTag.classList.add('stale');
+        buildTag.title = 'A newer build is available — restart to install it';
+      }
+    })
+    .catch(() => { buildTag.textContent = 'offline'; });
+
   root.querySelector('#speedSeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-speed]');
     if (!b) return;
