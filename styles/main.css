@@ -1262,7 +1262,19 @@ body.in-game #screen {
 /* ---------------------------- Touch controls ---------------------------- *
  * A stick that appears under the thumb rather than waiting in a corner, and
  * buttons big enough to hit at a sprint. Sizes are deliberately generous: the
- * old 46px circles were under the 44px minimum once a thumb covered them.     */
+ * old 46px circles were under the 44px minimum once a thumb covered them.
+ *
+ * Below the base size, `(pointer: coarse)` is the tier that actually matters —
+ * it is the one query guaranteed to be true on every touch device and false on
+ * every mouse — and a second, taller tier goes further still on an iPad.
+ *
+ * The size step used to be a `(max-width: 640px)` rule aimed at "short landscape
+ * phones". Width is the wrong axis for that: this screen only ever plays in
+ * landscape, where width is a phone's *long* edge — an iPhone in landscape is
+ * upwards of 660px wide, so the rule that was supposed to shrink the buttons
+ * for phones essentially never fired on one, and iPads never got anything
+ * bigger than the plain default. `(max-height: …)` is what "short" actually
+ * means once the device is sideways, and that is the query below.            */
 .gm-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .gm-touch[hidden] { display: none; }
 
@@ -1294,7 +1306,7 @@ body.in-game #screen {
 }
 .tbtn {
   pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent;
-  position: relative; width: 68px; height: 68px; border-radius: 50%; padding: 0;
+  position: relative; width: 74px; height: 74px; border-radius: 50%; padding: 0;
   display: grid; place-items: center; cursor: pointer;
   background: radial-gradient(circle at 50% 35%, rgba(28, 40, 34, .82), rgba(6, 12, 10, .88));
   border: 3px solid var(--tb, #9fb0c4);
@@ -1302,7 +1314,7 @@ body.in-game #screen {
   transition: transform .08s, box-shadow .08s;
 }
 .tbtn b {
-  font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #fff;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .04em; color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .9); line-height: 1;
 }
 .tbtn.is-down { transform: scale(.93); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tb) 35%, transparent); }
@@ -1310,8 +1322,40 @@ body.in-game #screen {
 .t-through { --tb: #ffc02e; grid-area: through; }
 .t-cross { --tb: #ff8b3d; grid-area: cross; }
 .t-shoot { --tb: #ff4d4d; grid-area: shoot; }
-.t-sprint { --tb: #34e06a; grid-area: sprint; width: 88px; height: 88px; }
-.t-sprint b { font-size: 12.5px; }
+.t-sprint { --tb: #34e06a; grid-area: sprint; width: 96px; height: 96px; }
+.t-sprint b { font-size: 13px; }
+
+/* Every touch device, phone or tablet: bigger again than the base above. */
+@media (pointer: coarse) {
+  .tpad { gap: 14px; }
+  .tbtn { width: 84px; height: 84px; }
+  .tbtn b { font-size: 12.5px; }
+  .t-sprint { width: 106px; height: 106px; }
+  .t-sprint b { font-size: 14px; }
+}
+
+/* iPad-class landscape: a lot of screen and nothing else fighting for the
+   corner, so the buttons get to be genuinely big rather than merely adequate. */
+@media (pointer: coarse) and (min-height: 620px) {
+  .tpad { gap: 20px; padding: 22px max(22px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) 22px; }
+  .tbtn { width: 100px; height: 100px; border-width: 4px; }
+  .tbtn b { font-size: 14.5px; }
+  .t-sprint { width: 124px; height: 124px; }
+  .t-sprint b { font-size: 16px; }
+}
+
+/* Short landscape phones — every iPhone in this game's own orientation lands
+   here. Pulled in from the coarse-pointer tier above to actually fit, but
+   still ahead of where this game started. */
+@media (pointer: coarse) and (max-height: 440px) {
+  .tpad { gap: 9px; }
+  .tbtn { width: 72px; height: 72px; }
+  .tbtn b { font-size: 11px; }
+  .t-sprint { width: 90px; height: 90px; }
+  .t-sprint b { font-size: 12.5px; }
+  .tstick { width: 132px; height: 132px; margin: -66px 0 0 -66px; }
+  .tstick i { width: 56px; height: 56px; }
+}
 /* how much power is on the shot, drawn round the rim while it is held */
 .tb-charge {
   position: absolute; inset: -3px; border-radius: 50%;
@@ -2275,13 +2319,9 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   .bug-team { padding: 5px 7px; font-size: 11px; }
   .bug-score { min-width: 24px; font-size: 15px; }
   .bug-clock { padding: 5px 8px; font-size: 11px; }
-  /* short landscape phones: keep the thumb targets big but pull them in */
-  .tpad { gap: 8px; }
-  .tbtn { width: 62px; height: 62px; }
-  .tbtn b { font-size: 10px; }
-  .t-sprint { width: 78px; height: 78px; }
-  .tstick { width: 128px; height: 128px; margin: -64px 0 0 -64px; }
-  .tstick i { width: 54px; height: 54px; }
+  /* Touch-control sizing lives with its own `(pointer: coarse)` rules above —
+     a width query is the wrong axis for a screen that only plays in landscape,
+     see the note there. */
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,6 +18,49 @@
  */
 export const RELEASES = [
   {
+    version: 'v34',
+    date: '2026-08-14',
+    tag: 'Gameplay',
+    title: 'One tackle, and bigger touch buttons',
+    lede: 'Standing tackle and slide tackle were the same move wearing two names — '
+        + 'now there is one, fouls only happen on a mistimed one, and touch controls '
+        + 'are sized for the screens people actually play on.',
+    entries: [
+      {
+        head: 'A single committed tackle',
+        summary: 'Tackling is now one action, on every button that used to throw a pass, '
+               + 'through ball, cross, or shot while off the ball — and it always commits, '
+               + 'the way a slide used to.',
+        detail: 'There used to be two tackle methods with a boolean between them: a standing '
+              + 'version with a short reach and a low foul chance, and a sliding version with a '
+              + 'lunge and a flat 34% chance of conceding a penalty in the box, regardless of '
+              + 'whether the challenge was actually late. Nothing about pressing one button over '
+              + 'the other read as a different move, and a flat foul chance meant a clean, '
+              + 'well-timed slide was punished exactly as often as a reckless one. Both are gone. '
+              + 'There is one tackle now, and it always lunges. Whether it concedes a foul is '
+              + 'driven by how far the defender was from the ball carrier the moment the tackle '
+              + 'was committed, as a fraction of the reach — close in, a fair contest for the '
+              + 'ball; a late stretch from further out, a foul risk that rises with the square of '
+              + 'that distance. A bad tackle is now one that was thrown from too far away, not a '
+              + 'coin flip.',
+      },
+      {
+        head: 'Touch buttons sized for the screen they are actually on',
+        summary: 'Touch controls are noticeably bigger on iPhone and iPad, with iPad getting its '
+               + 'own larger tier instead of sharing sizing with phones.',
+        detail: 'The old "make small screens smaller" rule keyed off CSS width, but this match '
+              + 'only ever plays in landscape, where a phone\'s width is its long edge — an '
+              + 'iPhone in landscape is wider than the breakpoint that was supposed to catch it, '
+              + 'so the rule almost never fired, and iPads never had a sizing tier of their own at '
+              + 'all. Sizing now keys off pointer type instead: any touch device gets bigger '
+              + 'buttons than the desktop default, phones (short landscape height) get a tier '
+              + 'tuned for a cramped screen, and tablets (tall landscape height) get the biggest '
+              + 'tier of all. The old tackle/slide split also freed up a button slot, which went '
+              + 'straight to making TACKLE bigger rather than sitting empty.',
+      },
+    ],
+  },
+  {
     version: 'v33',
     date: '2026-08-10',
     tag: 'Performance',
