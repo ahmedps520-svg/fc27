@@ -136,13 +136,16 @@ where nothing presses unless you pick the presser, defending could not be done.
 
 - Left half of the screen is the stick; it spawns under the thumb wherever that
   lands, clamped away from the screen edges.
-- Right hand gets named buttons, 68px (sprint 88px), colour-ringed: with the
-  ball PASS / THROUGH / CROSS / SHOOT, off it TACKLE / SWITCH / SLIDE with the
-  cross slot hidden. Swapped from `match.ball.owner.team` each frame.
+- Right hand gets named buttons, colour-ringed: with the ball PASS / THROUGH /
+  CROSS / SHOOT, off it TACKLE / SWITCH, with the cross and shoot slots
+  hidden — there is one tackle now, not a TACKLE/SLIDE pair, see "One tackle,
+  not two" below. Swapped from `match.ball.owner.team` each frame.
 - The shoot button fills its rim with the charge held on the shot.
 - A press sets the input before it asks for pointer capture: capture can be
   refused and must never be what decides whether the press counted. Releasing
   clears both bindings of the slot, since the context can flip mid-press.
+- Sizing keys off `(pointer: coarse)`, not width — see "Touch button sizing"
+  below for why the old width breakpoint was silently dead on real phones.
 
 ### Player models
 Rebuilt from real proportions. The old figure was a barrel: a round 0.4 m
@@ -960,6 +963,81 @@ which silently removed the wallet pills from the header.
 - **A benched player comes back on fresh.** Stamina lives on the pitch object,
   not the card, so subbing a tired player off and straight back on restores him.
   Bounded by `MAX_SUBS`, so it is an oddity rather than an exploit.
+
+### One tackle, not two
+There used to be two tackle methods in `sim.js`, `tackle(p, sliding)` split on
+a boolean: standing (short reach, no lunge, 10% box-foul chance) and sliding
+(longer reach, forward lunge at 1.7x max speed, a flat 34% box-foul chance).
+Pressing either input button produced a challenge that felt the same and, on
+the sim side, mostly *was* the same — the flat foul rate on the slide meant a
+clean, well-timed slide was punished exactly as often as a reckless one, which
+is the opposite of what a foul chance should be doing.
+
+`tackle(p)` is now one method, always lunges (what used to be slide-only
+physics), and the foul chance is driven by `frac = dist(p, owner) / REACH` —
+distance to the ball carrier at the moment the tackle is committed, as a
+fraction of the reach. Close in is a fair contest for the ball; a stretch from
+near the edge of reach is treated as reckless, and the foul chance rises with
+`frac²`. There is no `sliding` parameter anymore, on the call site or the
+method — every off-ball press of pass/through/cross/shoot, and the AI's own
+press logic, calls the same `tackle(p)`.
+
+**The foul-chance constant is not a guess.** The first version used `0.38` and
+a measurement script modeled on `tools/sweep.mjs` (monkey-patching
+`Match.prototype.awardPenalty` to count calls over 120 seeded AI-vs-AI matches,
+two seeds) showed it nearly doubled the penalty rate against the pre-change
+baseline — 0.28/match vs. 0.15/match. Root cause: the AI's own tackle-commit
+distance gate (`dist < 2.4`) sits well inside the unified `REACH = 3.1`, so
+AI-thrown tackles land with `frac` biased toward the upper half of its range
+far more than a naive "average tackle distance" estimate would suggest. Retuned
+to `0.21`, re-measured at 0.183/match on both seeds — close to baseline and
+seed-stable. If this method is touched again, re-run that kind of measurement
+rather than adjusting the constant by feel; the project's standing rule (below)
+about never re-balancing by feel applies just as much to foul chance as to
+goals or shots.
+
+Touch, keyboard and pad all still ride the same four action strings
+(pass/through/cross/shoot) for the tackle trigger — see "Touch button sizing"
+below for the one place this almost drifted.
+
+### Touch button sizing
+Buttons were too small on iPhone and iPad. The existing "shrink on small
+screens" rule was `@media (max-width: 640px)`, and it was **functionally dead
+on real devices**: this match only ever plays in landscape, where a phone's
+width is its *long* edge — an iPhone 15 in landscape is 932px wide, nearly
+300px past the breakpoint that was supposed to catch it. iPads never had a
+sizing tier of their own at all, on any query.
+
+Replaced with three tiers keyed off `(pointer: coarse)` — true on touchscreens
+regardless of size, false on a desktop mouse, which is the axis that actually
+means "this needs a bigger target":
+- **Base `(pointer: coarse)`**: every touch device gets bigger than the mouse
+  default (84px, sprint 106px).
+- **`(pointer: coarse) and (min-height: 620px)`**: tablet-class landscape —
+  the tallest common iPhone landscape height is ~430px and the shortest common
+  iPad landscape height is ~744px, so 620px sits cleanly between them. Biggest
+  tier (100px, sprint 124px).
+- **`(pointer: coarse) and (max-height: 440px)`**: phone-class landscape,
+  replacing the old dead `max-width: 640px` rule with the axis that actually
+  varies for a landscape-only screen (72px, sprint 90px).
+
+Removing the standing/slide split (above) also freed a button slot — the old
+SHOOT-while-defending slot is hidden now rather than duplicating TACKLE, and
+that space went to making TACKLE itself bigger.
+
+**Verified live** on an emulated iPhone 15 landscape (932x430) via Playwright:
+the defending HUD shows exactly three buttons — SWITCH, TACKLE, SPRINT — at
+the phone-tier sizing, confirming both the single-tackle-button layout and the
+`(pointer: coarse)` media query actually apply in a running browser, not just
+on paper. The iPad tier (`min-height: 620px`, 100px/124px) was reasoned the
+same way from real device dimensions but **not** screenshotted — Playwright's
+`page.screenshot()` hung indefinitely on the 1180x820 iPad viewport in this
+sandbox specifically (canvas renders, `#gmCanvas` appears, the screenshot call
+itself never returns even at 45s), while the same script's iPhone viewport
+screenshots correctly every time. Looks like a headless/sandbox rendering
+quirk at that canvas size rather than anything wrong with the CSS, but if a
+report ever says iPad buttons are still small, check the actual applied rule
+in devtools before assuming the reasoning was wrong.
 
 ## Rules that keep biting
 

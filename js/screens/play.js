@@ -520,9 +520,20 @@ export function mount(root, params) {
       pass: ['pass', 'PASS'], through: ['through', 'THROUGH'], cross: ['cross', 'CROSS'],
       shoot: ['shoot', 'SHOOT'], sprint: ['sprint', 'SPRINT'],
     };
+    /* One tackle button, not two. There used to be a TACKLE slot and a
+     * separately-bound SLIDE slot for the same underlying action with a boolean
+     * flipped — indistinguishable to press and, on sim.js's side, not much more
+     * distinguishable to feel either. sim.js now has one committed tackle, so
+     * there is one button for it: the shoot slot sits out while defending,
+     * which also hands its space back to the pad, letting TACKLE grow.
+     *
+     * Still bound to the plain 'pass' action rather than a new one — sim.js's
+     * off-ball branch already treats pass/through/cross/shoot as interchangeable
+     * tackle triggers, which is what keyboard and pad already ride on, so touch
+     * takes the same path rather than a parallel one that could drift from it. */
     const DEFENDING = {
       pass: ['pass', 'TACKLE'], through: ['switch', 'SWITCH'], cross: [null, ''],
-      shoot: ['shoot', 'SLIDE'], sprint: ['sprint', 'SPRINT'],
+      shoot: [null, ''], sprint: ['sprint', 'SPRINT'],
     };
 
     const buttons = [...root.querySelectorAll('.tbtn')].map((el) => {
@@ -955,9 +966,9 @@ export function mount(root, params) {
       return `
         <h3>Controls</h3>
         <div class="ctrl-grid compact">
-          ${[['✕', 'Pass · tackle'], ['◯', 'Shoot — hold for power'], ['◯+R1', 'Curl it up'],
-             ['□', 'Cross'], ['△', 'Through ball'], ['L1/R1', 'Switch to nearest'],
-             ['R2', 'Sprint'], ['Options', 'Pause']]
+          ${[['✕', 'Pass'], ['◯', 'Shoot — hold for power'], ['◯+R1', 'Curl it up'],
+             ['□', 'Cross'], ['△', 'Through ball'], ['✕ / □ / △ / ◯', 'Tackle, off the ball'],
+             ['L1/R1', 'Switch to nearest'], ['R2', 'Sprint'], ['Options', 'Pause']]
             .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
         </div>`;
     }
