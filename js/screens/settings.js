@@ -18,7 +18,7 @@ function applyAudio() {
 export const TITLE = 'Settings';
 
 const QUALITY_NOTE = (q) => (q === 'ultra' || !q
-  ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — [...]'
+  ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
 const MODEL_NOTE = (m) => (m === 'simple'
