@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v35',
+    date: '2026-08-15',
+    tag: 'App',
+    title: 'Support, and a changelog you can get back to',
+    lede: 'The App panel is the first thing in Settings now instead of the last, '
+        + 'and it has a way to email us and a link to these notes.',
+    entries: [
+      {
+        head: 'Email support from inside the game',
+        summary: 'Settings opens on a Support row with a Send email button, so getting hold of '
+               + 'us does not mean hunting for an address.',
+        detail: 'There was already a support address in the App panel, but that panel was last '
+              + 'on a screen about two thousand pixels tall, and a phone held sideways shows '
+              + 'about four hundred of them at a time. It sat three screens down, behind the '
+              + 'sim-speed, sound and graphics panels — the settings people change once and '
+              + 'never open again. The App panel is now first, so Support, the changelog, the '
+              + 'build stamp and Force update are all on screen the moment Settings opens.',
+      },
+      {
+        head: 'The changelog has a permanent home',
+        summary: 'A Changelog button in Settings opens the full release history, any time.',
+        detail: 'These notes appeared once, as a card over the menu, the first time you opened '
+              + 'a new build. Dismiss it and there was no way back to them from inside the game '
+              + 'at all — the full archive existed but nothing linked to it. Settings links to '
+              + 'it now.',
+      },
+    ],
+  },
+  {
     version: 'v34',
     date: '2026-08-14',
     tag: 'Gameplay',

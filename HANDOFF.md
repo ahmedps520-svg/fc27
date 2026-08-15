@@ -467,6 +467,22 @@ the card fires the menu is drawn behind it, so dismissing it leaves you where yo
 were already heading. It marks itself seen when *shown*, not when dismissed: a
 player who closes the app mid-read should not be handed it again every launch.
 
+Because it fires **once**, there has to be a way back to it. Settings links to
+`notes.html` ("What's new → Changelog"); before that link existed, dismissing
+the card put the release history permanently out of reach from inside the app,
+even though the full archive was sitting there being served.
+
+### The App panel is first in Settings, on purpose
+Everything in it — Support, the changelog, the build stamp, Force update — is
+what someone opens Settings to find when something is *wrong*. It used to be
+last, and that made it effectively unreachable on the device most likely to need
+it: the Settings screen is ~2000px tall, a phone in landscape shows ~430px of
+it, so the panel sat three screens down behind sim speed, sound and graphics —
+the settings a player changes once and never opens again. A support address
+nobody can find is not a support address.
+
+If a panel is added to Settings, add it **after** App, not before it.
+
 ### The loading screen
 Two jobs, and the second is the real one. The obvious job is to look like a game
 instead of dumping you onto a pitch the instant the screen changes. The
