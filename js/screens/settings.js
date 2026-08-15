@@ -143,7 +143,7 @@ export function render() {
       </div>
       <div class="setting-row">
         <div><b>Support</b><span>Contact us for help or feedback.</span></div>
-        <button class="btn ghost" id="supportBtn">Send email</button>
+        <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
       </div>
     </section>
 
@@ -267,10 +267,6 @@ export function mount(root) {
       if (res.ok) build = (await res.json()).build || 'unknown';
     } catch { /* offline — reload anyway, it can hardly make things worse */ }
     installUpdate(build, (pct) => { btn.textContent = `${Math.round(pct)}%`; });
-  });
-
-  root.querySelector('#supportBtn').addEventListener('click', () => {
-    window.location.href = 'mailto:support@apexxi.online';
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {
