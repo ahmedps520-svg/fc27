@@ -18,7 +18,7 @@ function applyAudio() {
 export const TITLE = 'Settings';
 
 const QUALITY_NOTE = (q) => (q === 'ultra' || !q
-  ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
+  ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — [...]
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
 const MODEL_NOTE = (m) => (m === 'simple'
@@ -140,6 +140,10 @@ export function render() {
       <div class="setting-row">
         <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
+      </div>
+      <div class="setting-row">
+        <div><b>Support</b><span>Contact us for help or feedback.</span></div>
+        <button class="btn ghost" id="supportBtn">Send email</button>
       </div>
     </section>
 
@@ -263,6 +267,10 @@ export function mount(root) {
       if (res.ok) build = (await res.json()).build || 'unknown';
     } catch { /* offline — reload anyway, it can hardly make things worse */ }
     installUpdate(build, (pct) => { btn.textContent = `${Math.round(pct)}%`; });
+  });
+
+  root.querySelector('#supportBtn').addEventListener('click', () => {
+    window.location.href = 'mailto:support@apexxi.online';
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {
