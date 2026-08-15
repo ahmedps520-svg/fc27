@@ -35,6 +35,36 @@ export function render() {
       sub: 'How the game looks, sounds and runs on this device.',
       motif: 'faders', tone: 'd',
     })}
+    <!-- App sits first on purpose. Everything in it is what someone opens
+         Settings to find when something is wrong — the build to quote in a bug
+         report, the update button, the changelog, and how to reach us. Last in
+         the list it was effectively unreachable: this screen is ~2000px tall and
+         a phone in landscape shows 430px of it, so the panel sat three screens
+         down behind the things people rarely change twice. -->
+    <section class="panel glass">
+      <header class="panel-head"><h2>App</h2></header>
+      <div class="setting-row">
+        <div><b>Support</b><span>Questions, bugs, feedback — we read all of it.</span></div>
+        <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
+      </div>
+      <div class="setting-row">
+        <div><b>What's new</b><span>Every change, newest first.</span></div>
+        <a href="notes.html" target="_blank" rel="noopener" class="btn ghost">Changelog</a>
+      </div>
+      <div class="setting-row">
+        <div><b>Version</b><span>New builds are offered on the title screen.</span></div>
+        <span class="tag">${APP_VERSION}</span>
+      </div>
+      <div class="setting-row">
+        <div><b>Build</b><span>Changes with every commit. Quote this in a bug report.</span></div>
+        <span class="tag mono" id="buildTag">checking…</span>
+      </div>
+      <div class="setting-row">
+        <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
+        <button class="btn ghost" id="forceUpdate">Update now</button>
+      </div>
+    </section>
+
     <section class="panel glass">
       <header class="panel-head"><h2>Career sim</h2></header>
       <div class="setting-row">
@@ -124,26 +154,6 @@ export function render() {
       <div class="setting-row">
         <div><b>Reset save</b></div>
         <button class="btn ghost danger" id="resetBtn">Reset</button>
-      </div>
-    </section>
-
-    <section class="panel glass">
-      <header class="panel-head"><h2>App</h2></header>
-      <div class="setting-row">
-        <div><b>Version</b><span>New builds are offered on the title screen.</span></div>
-        <span class="tag">${APP_VERSION}</span>
-      </div>
-      <div class="setting-row">
-        <div><b>Build</b><span>Changes with every commit. Quote this in a bug report.</span></div>
-        <span class="tag mono" id="buildTag">checking…</span>
-      </div>
-      <div class="setting-row">
-        <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
-        <button class="btn ghost" id="forceUpdate">Update now</button>
-      </div>
-      <div class="setting-row">
-        <div><b>Support</b><span>Contact us for help or feedback.</span></div>
-        <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
       </div>
     </section>
 
