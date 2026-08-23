@@ -527,7 +527,20 @@ pack that happened to want it first:
   grey that looked broken next to the rest.
 
 A store that grows by adding an `id ===` check to the opener for every new pack
-is a store that stops growing, which is the whole reason for the above.
+is a store that stops growing, which is the whole reason for the above. There
+are twelve packs now; adding a thirteenth should be one entry in `PACKS` and
+nothing else.
+
+**The reveal sorts worst-to-best** (`runPackAnimation`). It used to run in draw
+order, so a 92 could walk out first and leave three bronzes to sit through —
+the pack peaked and then apologised for four cards. Sorting turns the same pull
+into a climb and leaves the card everything built towards on screen at the end.
+Nothing about *what* you got changes, only when you see it. `drawn` is sorted
+alongside `pulls` because `dup` is looked up by index and the two lists have to
+keep pointing at the same card. This is also why `openPack` putting the
+guaranteed card in a random slot no longer matters — that existed to stop the
+reveal always ending on the same beat, which was the right worry for an
+unsorted order and is the wrong one now.
 
 **`minOverall` was a false promise before it was a field.** The replacement
 draw picked rarity `gold`, and gold starts at 79 — so Prime, whose store card
@@ -586,9 +599,9 @@ The 2D renderer's phase banner takes a `hideBanner` option now, or HALF TIME get
 painted across a half-time menu that already says HALF TIME.
 
 ### The objective ladder
-`js/data/objectives.js` holds 24 rungs in order; the player carries **seven**
-(`SLATE_SIZE`). `ultimate.objClaimed` records which rungs are finished — that is
-what the "6/24 done" counter reads, not the slate. `ultimate.objRefresh` is a
+`js/data/objectives.js` holds **32** rungs in order; the player carries
+**seven** (`SLATE_SIZE`). `ultimate.objClaimed` records which rungs are
+finished — that is what the "6/32 done" counter reads, not the slate. `ultimate.objRefresh` is a
 timestamp; `refreshObjectives()` compares it on sight and refills **only the
 completed slots**, dealing the next unclaimed rungs in. An objective you are
 midway through keeps its progress and its place.
@@ -596,19 +609,40 @@ midway through keeps its progress and its place.
 Nothing runs on a timer. The refresh happens when `objectivesView()` is drawn,
 which is also why it survives the app being shut for a week.
 
-**Objectives are matched by `metric`, not by id.** That is what lets 24 rungs
+**Objectives are matched by `metric`, not by id.** That is what lets 32 rungs
 reuse six ways a match can feed one, so adding a rung is a line of data rather
 than a branch in `settleDivisionMatch`. `streak` and `rank` are *set-to* rather
 than added-to — your best run and the division you have reached are states, not
 tallies, and a loss must not walk them backwards once banked.
 
-The **last six rungs are the only objectives that pay Ultimate**, worth 50
-between them, and they ask for Division 1, Apex Elite, seven in a row, 75 goals
-and 40 wins. `legend` (Limited: Legends) is a new pack sitting at the bottom of
-the ladder.
+The **deepest rungs are the only objectives that pay Ultimate** — they ask for
+Division 1, Division 2, Apex Elite, seven in a row, 75 goals and 40 wins.
+`legend` (Limited: Legends) sits at the bottom of the ladder.
+
+**How many that is comes from `ULTIMATE_RUNGS`, not from prose.** It is counted
+off the table (`LADDER.filter(e => e.ultimate).length`) and re-exported through
+`state.js` next to `LADDER_SIZE`, because the copy in this file and in the
+Objectives tab both said "the last six" and both went stale the moment a rung
+was added. If a number about the ladder appears in a sentence, derive it.
+
+**Array order is the ladder; ids are only save keys.** The eight rungs added
+later (`l25`-`l32`) sit where they belong on the difficulty curve rather than
+bolted on the end, so the ids run out of sequence in the table on purpose —
+renumbering the originals would strand every save that has claimed them. Apex
+rewards are strictly increasing down the array; keep it that way when
+inserting. Three of the new rungs pay the packs added alongside them (Keeper,
+Lucky Dip, Squad Builder), which is how a new pack gets a route that is not the
+store.
 
 Old saves are migrated by detecting objectives with no `metric` and redealing
-from the top — the slate is lost, nothing else is.
+from the top — the slate is lost, nothing else is. Adding rungs needs no
+migration at all: `dealSlate` skips anything in `objClaimed`, so an existing
+save simply starts being dealt the new ones.
+
+The tab shows the climb as one bar (`.obj-climb`) with a marker where the
+Ultimate rungs begin, and highlights any objective at **70% or more** — that is
+the one worth playing another match for, and it used to read exactly like one
+at 5%.
 
 ### The Club tab
 Squad and the identity editor were two top-level tabs sitting next to each
@@ -1267,6 +1301,13 @@ came for below the fold on a phone.
 
 What is there now is the wordmark — set exactly as the cover sets it, heavy
 800 italic, white APEX against a green XI — four tiles, and the small print.
+
+**"Make the menu nicer" means feel, not content.** Asked for it again, the
+answer was a staggered deal-in on the tiles, a snappier press, and hover fenced
+behind `hover: hover` — on a phone there is no hover state to enter, so the
+lift only ever appeared *after* a tap, as something left behind. Nothing was
+added to the screen. Given this has been reverted twice, treat any proposal
+that puts information here as needing evidence first.
 The wordmark came back after being removed with the counters; the counters were
 the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned

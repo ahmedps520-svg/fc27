@@ -318,9 +318,36 @@ select {
 /* everything else in the tile sits above the artwork */
 .tile-icon, .tile-name, .tile-blurb, .tile-cta { position: relative; z-index: 1; }
 
-.tile:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
-.tile:hover::before { opacity: .4; transform: translateY(12px); }
-.tile:active { transform: translateY(-1px) scale(.99); }
+/* Hover is a mouse idea. On a phone there is no hover state to enter, so the
+   lift only ever appeared *after* a tap, as a thing left behind — which is why
+   it is fenced behind `hover: hover` and the press below does the work on
+   touch. */
+@media (hover: hover) {
+  .tile:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 22px 50px rgba(0, 0, 0, .5); }
+  .tile:hover::before { opacity: .4; transform: translateY(12px); }
+}
+/* Snappier than the hover transition on purpose: a press has to feel like it
+   happened at the moment your thumb lands, and 260ms of easing reads as lag. */
+.tile:active { transform: scale(.975); transition-duration: .08s; }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* The tiles deal in rather than appearing all at once.
+   The menu is the screen you see most, so it is worth the third of a second —
+   four doors arriving in sequence reads as the app opening, where four doors
+   already there reads as a page load. Staggered off :nth-child so nothing has
+   to be numbered in the markup. */
+.menu-screen .tile { animation: tileIn .42s cubic-bezier(.2, .9, .3, 1) both; }
+.menu-screen .tile:nth-child(1) { animation-delay: .04s; }
+.menu-screen .tile:nth-child(2) { animation-delay: .10s; }
+.menu-screen .tile:nth-child(3) { animation-delay: .16s; }
+.menu-screen .tile:nth-child(4) { animation-delay: .22s; }
+@keyframes tileIn {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.menu-wordmark { animation: tileIn .42s cubic-bezier(.2, .9, .3, 1) both; }
+.reduce-motion .menu-screen .tile,
+.reduce-motion .menu-wordmark { animation: none; }
 
 /* One family shaded off the accent, rather than the four unrelated pastels the
    tiles used to carry — cyan, lime, pink and amber all at once, which is why
@@ -1760,6 +1787,14 @@ body.in-game #screen {
   background: rgba(255, 255, 255, .04); border: 1px solid var(--line);
 }
 .obj-list li.done { border-color: color-mix(in srgb, var(--good) 45%, transparent); background: rgba(61, 220, 151, .08); }
+/* 70% or more, and not finished: the one worth playing another match for. It
+   used to read exactly like an objective at 5% — same row, same bar. */
+.obj-list li.close {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.obj-list li.close .obj-bar b { box-shadow: 0 0 10px var(--accent); }
+.obj-list li.close .obj-body > span { color: var(--accent); font-weight: 700; }
 .obj-tick {
   width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line-strong); color: var(--good); font-size: 13px; font-weight: 800;
@@ -1769,7 +1804,35 @@ body.in-game #screen {
 .obj-body b { font-size: 13.5px; font-weight: 650; }
 .obj-body > span { font-family: var(--font-num); font-size: 12px; color: var(--text-dim); }
 .obj-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .1); overflow: hidden; }
-.obj-bar b { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.obj-bar b {
+  display: block; height: 100%; background: var(--accent); border-radius: 2px;
+  /* grows from wherever it was to where it is, on open — a bar that is simply
+     *there* says a number, a bar that moves says progress */
+  transform-origin: left center;
+  animation: objFill .55s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes objFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.reduce-motion .obj-bar b { animation: none; }
+
+/* The climb: the whole ladder as one bar, with a marker where the Ultimate
+   rungs begin. The per-objective bars say how a slot is going; this is the only
+   place the shape of the whole run is visible, and the run is what the rewards
+   are actually attached to. */
+.obj-climb {
+  position: relative; height: 8px; border-radius: 4px; margin: 0 0 14px;
+  background: rgba(255, 255, 255, .08); overflow: hidden;
+}
+.obj-climb i {
+  display: block; height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  transform-origin: left center;
+  animation: objFill .7s cubic-bezier(.2, .9, .3, 1) both;
+}
+.obj-climb u {
+  position: absolute; top: -2px; bottom: -2px; width: 2px; text-decoration: none;
+  background: #c9a4ff; box-shadow: 0 0 8px rgba(201, 164, 255, .8);
+}
+.reduce-motion .obj-climb i { animation: none; }
 .obj-reward {
   display: flex; flex-direction: column; align-items: flex-end;
   font-family: var(--font-num); font-size: 13px; color: var(--warn);
