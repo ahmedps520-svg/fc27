@@ -18,6 +18,43 @@
  */
 export const RELEASES = [
   {
+    version: 'v44',
+    date: '2026-08-23',
+    tag: 'New',
+    title: 'A guided tour of the whole game',
+    lede: 'New players now get walked through every mode, from Kick Off to '
+        + 'Ultimate XI — and anyone can replay it from Settings.',
+    entries: [
+      {
+        head: 'Twenty steps, ten chapters',
+        summary: 'A spotlight tour that highlights each part of the game in turn and explains '
+               + 'it in a sentence or two, starting with Kick Off and finishing with the '
+               + 'objective ladder.',
+        detail: 'It runs on the real interface rather than showing pictures of it: each step '
+              + 'moves the game to the right screen, opens the right tab, and puts a ring '
+              + 'around the actual thing being described while everything else dims. Chapters '
+              + 'go Welcome, Kick Off, Ultimate XI, Your squad, Packs, Apex Division, '
+              + 'Objectives, Challenges, Settings, Done — and each is short, so nothing arrives '
+              + 'all at once.\n\nThe two control chapters lay the buttons out as a map: the '
+              + 'key or pad button on the left, what it does on the right, for both moving and '
+              + 'passing and for defending. Every step has Back, Next and a progress bar of '
+              + 'chapter markers, and **Skip section** jumps straight past a chapter you '
+              + 'already understand. Escape, Enter and the arrow keys all work. It can be '
+              + 'closed at any point.',
+      },
+      {
+        head: 'Start or replay it whenever you like',
+        summary: 'Settings now has Replay tutorial as its very first row.',
+        detail: 'The tour runs itself once, the first time a new save reaches the menu, and '
+              + 'after that it lives at the top of Settings — the first row of the first '
+              + 'panel, because someone who does not know how the game works should not have '
+              + 'to know where to look for help. A brand new save gets the tour rather than '
+              + 'the changelog, since release notes for a version you have never run are noise '
+              + 'if you have not played the game at all.',
+      },
+    ],
+  },
+  {
     version: 'v43',
     date: '2026-08-23',
     tag: 'Interface',

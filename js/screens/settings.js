@@ -4,6 +4,7 @@ import { navigate, applyTheme, toast, APP_VERSION } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
+import { startTutorial, tutorialSeen } from '../tutorial.js';
 
 /** Push the saved audio preferences into the engine. */
 function applyAudio() {
@@ -43,6 +44,15 @@ export function render() {
          down behind the things people rarely change twice. -->
     <section class="panel glass">
       <header class="panel-head"><h2>App</h2></header>
+      <!-- First in the panel that is first on the screen: someone who does not
+           know how the game works should not have to know where to look. -->
+      <div class="setting-row">
+        <div><b>${tutorialSeen() ? 'Replay tutorial' : 'Start tutorial'}</b>
+          <span>A guided tour of every mode, from Kick Off to Ultimate XI.</span></div>
+        <button class="btn ghost" id="startTut">
+          ${tutorialSeen() ? 'Replay' : 'Start'}
+        </button>
+      </div>
       <div class="setting-row">
         <div><b>Support</b><span>Questions, bugs, feedback — we read all of it.</span></div>
         <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
@@ -268,6 +278,11 @@ export function mount(root) {
    * the same installer the gate does rather than a second copy of it, and
    * borrows the button itself as the progress readout.
    */
+  // The tour drives the app by navigating and clicking real controls, so it
+  // cannot be run from on top of the screen that launched it — it leaves
+  // Settings almost immediately anyway.
+  root.querySelector('#startTut')?.addEventListener('click', () => startTutorial(0));
+
   root.querySelector('#forceUpdate').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
