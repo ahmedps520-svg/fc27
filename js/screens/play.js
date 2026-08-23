@@ -623,37 +623,74 @@ export function mount(root, params) {
   let matchSeconds = 0;
 
   /* ---------------------- the black-frame detector ----------------------- *
-   * Three fixes for the black flash have now shipped on three different
-   * theories and it is still being reported, on desktop as well as iPad. The
-   * useful thing to ship next is not a fourth guess, it is a way to tell which
-   * half of the problem it is in.
+   * Six fixes have now shipped on six theories and the flash is still there,
+   * so the job is not a seventh theory, it is to make the thing catchable. It
+   * lasts a split second and repeats, which is why it never survives a
+   * screenshot — a person cannot press the key inside one frame.
    *
-   * A frame that goes black is either a frame *we* failed to draw, or a frame
-   * we drew that the browser then failed to put on screen. `renderer.info`
-   * counts the draw calls we actually issued, so a frame that issued almost
-   * none while the match was running is the first case; a black frame with a
-   * normal draw count is the second. That single bit is worth more than
-   * another round of speculation.
+   * Every counter below is one three already maintains, so watching them is
+   * free. No `readPixels`: that stalls the pipeline every frame to answer a
+   * question these can answer for nothing.
    *
-   * It reads a counter three already maintains, so it costs nothing — no
-   * `readPixels`, which would stall the pipeline every frame to answer a
-   * question we can get for free. Suspect frames are counted on the FPS badge
-   * and logged with enough context to say what the match was doing.          */
+   * Three different faults produce a one-frame black area, and each leaves a
+   * different fingerprint. Counting them separately is what makes the next
+   * report conclusive instead of another round of guessing:
+   *
+   * - **draw** — the frame issued almost no draw calls, so we did not draw it.
+   * - **prog** — a shader program was compiled *during* play. three builds a
+   *   material's program the first time it is actually drawn, and the object
+   *   can render black for the frame or two that takes. `warmUp()` exists to
+   *   do all of it behind the loading screen; if this counter moves after
+   *   kick-off then warmUp missed a material, and this is the original
+   *   compilation theory finally being measured rather than assumed.
+   * - **tex** — a texture or geometry was uploaded during play. An object
+   *   whose texture is not resident yet draws black, and a texture is a
+   *   rectangle, which is the shape being reported.
+   *
+   * A silent detector is itself a result: it means the frame was drawn, in
+   * full, with nothing newly compiled or uploaded, and the fault is in what
+   * the shading produced or in what the browser did with the finished frame. */
   let drawMedian = 0;
   let blackish = 0;
-  const checkDrawCall = (now) => {
-    const calls = gl?.info?.render?.calls;
+  let progHits = 0;
+  let texHits = 0;
+  let lastProg = -1;
+  let lastTex = -1;
+  const checkDrawCall = () => {
+    const info = gl?.info;
+    const calls = info?.render?.calls;
     if (!calls && calls !== 0) return;
+
+    const progs = info.programs?.length ?? -1;
+    const tex = (info.memory?.textures ?? 0) + (info.memory?.geometries ?? 0);
+
     // Only judge a frame once there is a normal to judge it against, and only
     // while the match is actually playing — the loading veil and the end card
-    // legitimately draw almost nothing.
-    if (match.phase !== 'play' || loading) { if (calls > 0) drawMedian = drawMedian || calls; return; }
-    if (!drawMedian) { drawMedian = calls; return; }
+    // legitimately draw almost nothing, and everything is still arriving.
+    if (match.phase !== 'play' || loading) {
+      if (calls > 0) drawMedian = drawMedian || calls;
+      lastProg = progs; lastTex = tex;
+      return;
+    }
+    if (!drawMedian) { drawMedian = calls; lastProg = progs; lastTex = tex; return; }
+
     if (calls < drawMedian * 0.35) {
       blackish += 1;
-      console.warn('[apexxi] suspect frame: drew %d calls (normal ~%d) at %ds, phase=%s',
-        calls, Math.round(drawMedian), Math.round(match.t), match.phase);
+      console.warn('[apexxi] suspect DRAW frame: %d calls (normal ~%d) at %ds',
+        calls, Math.round(drawMedian), Math.round(match.t));
     }
+    if (lastProg >= 0 && progs > lastProg) {
+      progHits += 1;
+      console.warn('[apexxi] shader compiled mid-match: %d -> %d programs at %ds — warmUp missed one',
+        lastProg, progs, Math.round(match.t));
+    }
+    if (lastTex >= 0 && tex > lastTex) {
+      texHits += 1;
+      console.warn('[apexxi] upload mid-match: %d -> %d textures+geometries at %ds',
+        lastTex, tex, Math.round(match.t));
+    }
+    lastProg = progs;
+    lastTex = tex;
     // slow-follow the normal so a quality change or a substitution does not
     // permanently poison the baseline
     drawMedian += (calls - drawMedian) * 0.02;
@@ -663,12 +700,16 @@ export function mount(root, params) {
     // stalls (tab hidden, a long GC) are not frame rate, and would poison an average
     if (dt > 0 && dt < 0.5) { matchFrames += 1; matchSeconds += dt; }
     fpsFrames += 1;
-    checkDrawCall(now);
+    checkDrawCall();
     const span = now - fpsSince;
     if (span < 500) return;
     if (showFps) {
+      // Each counter names its own fault, so one photo of the badge says which
+      // of the three it is — see the note on the detector above.
       fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`
-        + (blackish ? ` · ${blackish} suspect` : '');
+        + (blackish ? ` · ${blackish} draw` : '')
+        + (progHits ? ` · ${progHits} prog` : '')
+        + (texHits ? ` · ${texHits} tex` : '');
     }
     fpsFrames = 0;
     fpsSince = now;
