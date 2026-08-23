@@ -1,5 +1,5 @@
 import { WORLD } from './data/generator.js';
-import { dealSlate, LADDER, REFRESH_MS } from './data/objectives.js';
+import { dealSlate, LADDER, REFRESH_MS, ULTIMATE_RUNGS } from './data/objectives.js';
 import { pushSave } from './net/api.js';
 
 const KEY = 'apexxi.save.v1';
@@ -139,8 +139,10 @@ export function refreshObjectives(u, now = Date.now()) {
   return true;
 }
 
-/** Everything the ladder has, for the "x/24 done" counter. */
+/** Everything the ladder has, for the "x/32 done" counter. */
 export const LADDER_SIZE = LADDER.length;
+/** Re-exported so screens do not have to reach past state.js for one number. */
+export { ULTIMATE_RUNGS };
 
 let state = defaults();
 

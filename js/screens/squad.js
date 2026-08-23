@@ -1,4 +1,4 @@
-import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE } from '../state.js';
+import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE, ULTIMATE_RUNGS } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
@@ -74,6 +74,27 @@ const PACKS = [
     note: '8 · gold min',
   },
   { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
+  /* The other end of Lucky Dip: one card, no floor, no guarantee, and odds
+     that are genuinely top-heavy. It is the most volatile thing in the store —
+     a quarter of the time it is the best single card you can buy without
+     paying Limited money, and the rest of the time you paid Prime prices for
+     one gold. Priced so that is a real decision rather than an obvious yes. */
+  {
+    id: 'gamble', name: 'High Roller', cost: 26000, size: 1,
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.74, special: 0.26 },
+    minOverall: 79, tone: 'special',
+    note: '1 card · 79+ min',
+    promise: 'Best single-card odds in the store',
+  },
+  /* Eleven cards, one whole squad's worth, at odds a shade under Gold. The
+     bulk option above Squad Builder — bought to fill a squad or feed a
+     challenge in one go rather than to chase a headline. */
+  {
+    id: 'eleven', name: 'The Eleven', cost: 45000, size: 11,
+    odds: { bronze: 0.00, silver: 0.33, gold: 0.60, special: 0.07 },
+    floor: 'special', tone: 'gold',
+    note: '11 · one special min',
+  },
   {
     id: 'stars', name: 'Limited: Stars', cost: 40000, size: 3, limited: true,
     guarantee: 'star',
@@ -262,8 +283,10 @@ function openPack(pack, seen = new Set(), needGK = false) {
     pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
   }
   // The promised card, last, so nothing above can overwrite it — and in a
-  // random slot, so the reveal animation does not always end on the same beat.
-  // Slot 0 is skipped when a keeper was forced into it.
+  // Random slot, which no longer matters to the reveal — that now sorts by
+  // rating so the best card lands last, see runPackAnimation. Kept random
+  // anyway because nothing should depend on the guarantee sitting at a fixed
+  // index. Slot 0 is skipped when a keeper was forced into it.
   if (pack.guarantee) {
     const lo = wantGK ? 1 : 0;
     const at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
@@ -733,8 +756,19 @@ export function objectivesView() {
       <header class="panel-head"><h2>Objectives</h2>
         <span class="tag">${claimed}/${LADDER_SIZE} done</span></header>
       <p class="hint">Seven at a time out of ${LADDER_SIZE}, and they get harder and pay
-        better the further down you go. The last six are the only objectives in
-        the game that pay Ultimate.</p>
+        better the further down you go. The deepest ${ULTIMATE_RUNGS} are the only
+        objectives in the game that pay Ultimate.</p>
+
+      <!-- The climb, as one bar. The per-objective bars say how a slot is
+           going; this says how the *ladder* is going, which is the thing the
+           rewards are actually attached to and the only place the shape of the
+           whole run is visible. -->
+      <div class="obj-climb" role="img"
+           aria-label="${claimed} of ${LADDER_SIZE} objectives complete">
+        <i style="width:${(claimed / LADDER_SIZE) * 100}%"></i>
+        ${ULTIMATE_RUNGS ? `<u style="left:${((LADDER_SIZE - ULTIMATE_RUNGS) / LADDER_SIZE) * 100}%"
+             title="Ultimate rewards start here"></u>` : ''}
+      </div>
 
       <div class="obj-clock ${anyDone ? 'is-due' : ''}">
         <span class="oc-dot"></span>
@@ -749,14 +783,21 @@ export function objectivesView() {
         ${u.objectives.map((o) => {
           const done = o.done >= o.need;
           const pct = Math.min(100, (o.done / o.need) * 100);
+          /* "Nearly" is the whole reason to look at this list. An objective at
+             80% is the one worth playing one more match for, and it used to
+             read exactly like one at 5% — same row, same bar, no emphasis. */
+          const close = !done && pct >= 70;
+          const left = o.need - Math.min(o.done, o.need);
           return `
-            <li class="${done ? 'done' : ''}">
+            <li class="${done ? 'done' : ''} ${close ? 'close' : ''}">
               <span class="obj-tick">${done ? '✓' : ''}</span>
               <div class="obj-body">
                 <b>${o.text}</b>
                 <i class="obj-bar"><b style="width:${pct}%"></b></i>
                 <span>${done ? 'Complete — replaced at the next refresh'
-                    : `${Math.min(o.done, o.need)}/${o.need}`}</span>
+                    : close
+                      ? `${Math.min(o.done, o.need)}/${o.need} — ${left} to go`
+                      : `${Math.min(o.done, o.need)}/${o.need}`}</span>
               </div>
               <span class="obj-reward">
                 ◈${(o.apex ?? 0).toLocaleString()}
@@ -1598,6 +1639,26 @@ function attachDrag(root, place, clearSlot, refreshSelection) {
  * straight to the card.
  */
 function runPackAnimation(root, drawn, coins, onDone) {
+  /* Worst first, best last.
+   *
+   * The reveal used to run in draw order, so the 92 could walk out first and
+   * leave three bronzes to sit through afterwards — the pack peaked and then
+   * apologised for four cards. Sorting by rating turns the same pull into a
+   * climb, and the card everything has been building towards is the one still
+   * on screen when it ends.
+   *
+   * This is why `openPack` puts a guaranteed card in a random slot: that was
+   * there to stop the reveal always ending on the same beat, which was the
+   * right worry for an unsorted order and is the wrong one now. The order is
+   * decided here, at the point the cards are shown, and the pull itself is
+   * untouched — nothing about what you got changes, only when you see it.
+   *
+   * `drawn` is sorted alongside, because `dup` is looked up by index and the
+   * two lists have to keep pointing at the same card. */
+  const order = drawn
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => (a.d.p.overall - b.d.p.overall) || (a.i - b.i));
+  drawn = order.map((o) => o.d);
   const pulls = drawn.map((x) => x.p);
   const isDup = (i) => !!drawn[i].dup;
   const dupCount = drawn.filter((x) => x.dup).length;

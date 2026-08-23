@@ -18,6 +18,72 @@
  */
 export const RELEASES = [
   {
+    version: 'v42',
+    date: '2026-08-23',
+    tag: 'Progression',
+    title: 'Eight more objectives, two more packs, best card last',
+    lede: 'The ladder runs to thirty-two rungs, the store has twelve packs, and '
+        + 'a pack now builds to its best card instead of spending it first.',
+    entries: [
+      {
+        head: 'The best card in a pack comes out last',
+        summary: 'Packs now reveal worst to best, so every card is better than the one before '
+               + 'and the pack finishes on its biggest name.',
+        detail: 'Cards used to appear in whatever order they were drawn, which meant a 92 could '
+              + 'walk out first and leave you three bronzes to sit through afterwards — the '
+              + 'pack peaked in the first second and then apologised for the rest. They are now '
+              + 'ordered by rating, so a pack climbs and the card it was building towards is '
+              + 'the one still on screen at the end. Nothing about what you get has changed, '
+              + 'only when you see it.',
+      },
+      {
+        head: 'Eight more objectives',
+        summary: 'The ladder is thirty-two rungs instead of twenty-four, with the new ones '
+               + 'spread through it rather than bolted on the end.',
+        detail: 'The new rungs sit where they belong on the curve — a couple early, several '
+               + 'through the middle grind, and one more in the deep end that pays Ultimate for '
+               + 'reaching Division 2. Three of them pay the packs added in the last update, so '
+               + 'Keeper, Lucky Dip and Squad Builder can be earned rather than only bought. If '
+               + 'you have already finished objectives, nothing is lost or repeated: the ones '
+               + 'you have claimed stay claimed and you simply start being dealt the new ones.',
+      },
+      {
+        head: 'The Objectives tab shows the whole climb',
+        summary: 'A bar across the top tracks progress through all thirty-two, and anything you '
+               + 'are close to finishing is now highlighted.',
+        detail: 'The per-objective bars tell you how one slot is going, but there was nowhere '
+              + 'to see how the ladder itself was going — which is what the rewards are '
+              + 'actually attached to. There is now a single bar for the whole run, with a '
+              + 'marker showing where the Ultimate-paying rungs begin. Objectives at 70% or '
+              + 'more are picked out and tell you how many are left, because the one you are '
+              + 'two goals away from is the reason to play another match and it used to look '
+              + 'exactly like one you had barely started.',
+      },
+      {
+        head: 'High Roller and The Eleven',
+        summary: 'A one-card gamble with the best single-card odds in the store, and an '
+               + 'eleven-card pack for filling a squad in one go.',
+        detail: 'High Roller (26,000) is a single card, nothing below 79, and about a quarter '
+              + 'of the time it is the best one card you can buy without paying Limited money — '
+              + 'the rest of the time you paid Prime prices for one gold, which is what makes '
+              + 'it a decision. The Eleven (45,000) is a whole squad\u2019s worth in one pack '
+              + 'with a guaranteed special, for filling out a side or feeding a squad-building '
+              + 'challenge rather than chasing a headline.',
+      },
+      {
+        head: 'The menu opens rather than appears',
+        summary: 'The tiles deal in one after another, and pressing one now feels like it '
+               + 'happened when your finger landed.',
+        detail: 'Four doors arriving in sequence reads as the app opening; four doors already '
+              + 'there reads as a page load, and this is the screen you see most. The press '
+              + 'response is also much faster now, and the lift-on-hover is limited to devices '
+              + 'that actually have a pointer — on a phone there is no hover to enter, so it '
+              + 'only ever appeared after a tap, as something left behind. Nothing has been '
+              + 'added to the menu itself.',
+      },
+    ],
+  },
+  {
     version: 'v41',
     date: '2026-08-23',
     tag: 'Diagnostics',
