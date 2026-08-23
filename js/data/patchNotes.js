@@ -18,6 +18,38 @@
  */
 export const RELEASES = [
   {
+    version: 'v39',
+    date: '2026-08-23',
+    tag: 'Graphics',
+    title: 'A divide-by-zero in the lighting pass',
+    lede: 'Found an actual bug this time rather than a plausible story: one '
+        + 'calculation could divide by zero, and a pixel that does that comes '
+        + 'out black.',
+    entries: [
+      {
+        head: 'The black patches, again — but this one is a real defect',
+        summary: 'The shading pass could produce an invalid number in flat areas, and pixels '
+               + 'holding an invalid number draw as black. Fixed at the source, with a safety '
+               + 'net behind it.',
+        detail: 'The lighting pass works out which way each pixel faces by comparing how depth '
+              + 'changes across the screen. Where the picture is flat — a surface square to the '
+              + 'camera, a run of pixels all at the same distance, or far enough away that the '
+              + 'depth buffer runs out of precision — that comparison gives zero, and the next '
+              + 'step divided by it. Dividing by zero gives an invalid number, an invalid '
+              + 'number multiplied into a colour stays invalid, and a pixel holding one is '
+              + 'drawn black. A patch of screen where that happens is a black patch, which is '
+              + 'exactly what has been reported.\n\nIt is fixed where it starts: the '
+              + 'calculation now checks before dividing and falls back to a sensible default. '
+              + 'There is also a net at the end of the pass that catches an invalid pixel from '
+              + 'anywhere else and shows the normal picture for it instead — so the worst case '
+              + 'is now one frame slightly less shaded, rather than a black hole. Worth being '
+              + 'straight: this is the sixth attempt at this bug, but it is the first one that '
+              + 'fixes something demonstrably broken in the code rather than something that '
+              + 'merely fitted the symptoms.',
+      },
+    ],
+  },
+  {
     version: 'v38',
     date: '2026-08-23',
     tag: 'Graphics',

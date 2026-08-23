@@ -646,8 +646,39 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Status: the Ultra render budget is the first cause with actual evidence
-behind it. There is also a detector — read both before writing another theory.**
+**Status: a NaN in the cinematic pass is the current suspect, and unlike the
+five before it, it is a defect that was provably there rather than a story that
+fitted. The render-budget cap below did not fix it either.**
+
+`CinematicPass` reconstructs a normal from the depth buffer's slope, and did it
+with `normalize(cross(dFdx(pos), dFdy(pos)))`. That cross product collapses to
+zero wherever the two slopes are parallel or flat — a surface square to the
+camera, a run of pixels at one depth, the precision floor near the far plane —
+and `normalize` of a zero vector is 0/0.
+
+The NaN then runs: into `ao`, through a `clamp` that is **not** required to
+launder it (drivers differ, which is exactly the kind of thing that shows on one
+machine and not another), and into `col *= ao`, where a NaN pixel rasterises
+**black**. A region of degenerate slopes is a region of NaN, which is a black
+patch. That is the reported artefact, arrived at from the code rather than from
+the symptom.
+
+Fixed at source — length-checked, falling back to a camera-facing normal — plus
+a backstop before `gl_FragColor` that catches a NaN from anywhere else in the
+pass and returns the ungraded scene instead. GLSL ES 1.0 has no `isnan()`, so
+the backstop uses the property that defines NaN: it is the only value neither
+`>= 0` nor `< 0`. Losing a frame's occlusion beats a black hole.
+
+**Why this is not obviously the whole answer:** the AO path runs on High too,
+and the report is Ultra-only. Either the report is narrower than the bug, or the
+extra Ultra taps (12 against 8) and stronger `uAoStrength` (1.05 against 0.9)
+make it visible rather than causing it. If Ultra is now clean, that is settled.
+If it is not, **the detector is the next move, not a seventh theory.**
+
+---
+
+**Superseded: the Ultra render budget.** Real over-allocation, measured and
+fixed, but it did not stop the flashes.
 
 **It only happens on Ultra**, on desktop and iPad alike, in patches rather than
 whole frames, at no particular moment. That combination is the whole diagnosis,
