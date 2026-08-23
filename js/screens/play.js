@@ -622,13 +622,54 @@ export function mount(root, params) {
   let matchFrames = 0;
   let matchSeconds = 0;
 
+  /* ---------------------- the black-frame detector ----------------------- *
+   * Three fixes for the black flash have now shipped on three different
+   * theories and it is still being reported, on desktop as well as iPad. The
+   * useful thing to ship next is not a fourth guess, it is a way to tell which
+   * half of the problem it is in.
+   *
+   * A frame that goes black is either a frame *we* failed to draw, or a frame
+   * we drew that the browser then failed to put on screen. `renderer.info`
+   * counts the draw calls we actually issued, so a frame that issued almost
+   * none while the match was running is the first case; a black frame with a
+   * normal draw count is the second. That single bit is worth more than
+   * another round of speculation.
+   *
+   * It reads a counter three already maintains, so it costs nothing — no
+   * `readPixels`, which would stall the pipeline every frame to answer a
+   * question we can get for free. Suspect frames are counted on the FPS badge
+   * and logged with enough context to say what the match was doing.          */
+  let drawMedian = 0;
+  let blackish = 0;
+  const checkDrawCall = (now) => {
+    const calls = gl?.info?.render?.calls;
+    if (!calls && calls !== 0) return;
+    // Only judge a frame once there is a normal to judge it against, and only
+    // while the match is actually playing — the loading veil and the end card
+    // legitimately draw almost nothing.
+    if (match.phase !== 'play' || loading) { if (calls > 0) drawMedian = drawMedian || calls; return; }
+    if (!drawMedian) { drawMedian = calls; return; }
+    if (calls < drawMedian * 0.35) {
+      blackish += 1;
+      console.warn('[apexxi] suspect frame: drew %d calls (normal ~%d) at %ds, phase=%s',
+        calls, Math.round(drawMedian), Math.round(match.t), match.phase);
+    }
+    // slow-follow the normal so a quality change or a substitution does not
+    // permanently poison the baseline
+    drawMedian += (calls - drawMedian) * 0.02;
+  };
+
   const countFrame = (now, dt) => {
     // stalls (tab hidden, a long GC) are not frame rate, and would poison an average
     if (dt > 0 && dt < 0.5) { matchFrames += 1; matchSeconds += dt; }
     fpsFrames += 1;
+    checkDrawCall(now);
     const span = now - fpsSince;
     if (span < 500) return;
-    if (showFps) fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`;
+    if (showFps) {
+      fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`
+        + (blackish ? ` · ${blackish} suspect` : '');
+    }
     fpsFrames = 0;
     fpsSince = now;
   };

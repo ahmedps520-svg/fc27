@@ -646,7 +646,53 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Current best explanation: `backdrop-filter` over the live canvas.** Reported
+**Status: four theories tried, none confirmed. There is now a detector — use it
+before writing a fifth.**
+
+**It happens on desktop too, not only iPad.** That is the single most useful
+fact anyone has produced about this bug and it arrived late, so read the
+theories below knowing it invalidates most of what they assumed:
+
+- The tile-based-GPU reasoning is dead. Desktop GPUs are immediate-mode and
+  have no tile grid, so "stair-stepped edges on the GPU's tiles" cannot be the
+  mechanism on both.
+- iOS memory pressure is dead for the same reason.
+- The shader-compilation stall and the `backdrop-filter` compositor theory are
+  both still *possible* on desktop, but neither is now favoured, because
+  neither explains why a desktop with gigabytes of VRAM and a fast compositor
+  shows the same artefact as a tablet.
+
+**The detector** (`checkDrawCall` in `screens/play.js`) exists to stop the
+guessing. A black frame is either a frame we failed to draw or a frame we drew
+that the browser failed to present, and those want completely different fixes.
+It reads `renderer.info.render.calls` — a counter three already maintains, so
+it is free, unlike `readPixels`, which would stall the pipeline every frame to
+answer the same question. A frame that issues under 35% of the running normal
+while `phase === 'play'` is counted and logged with the match clock and phase.
+Turn on **Show FPS** and the badge carries the count.
+
+Read it like this:
+- **Suspect frames climbing in step with the flashes** → the fault is ours, in
+  the render loop. Look at what stops issuing draws: a culled scene, a NaN
+  camera matrix, a composer target unbound.
+- **Flashes with the counter stuck at zero** → we drew a normal frame and it
+  did not reach the screen. That is presentation: compositing, the swap chain,
+  or an overlay on top of the canvas. `backdrop-filter` was removed for exactly
+  this reason and can be re-examined; so can `.gm-overlay`, which is
+  full-screen, near-opaque and fires **on every goal**.
+
+It is deliberately quiet — measured across 45 seconds of normal play it
+reported nothing, so a non-zero count is a real signal rather than noise.
+
+Worth ruling out early next time, because both are cheap and neither has been
+checked: whether it happens with the picture completely **static** (paused with
+the overlay up — a flash there exonerates the whole animation path), and
+whether dropping 3D detail to **High or Low** stops it (Low skips the composer
+entirely, so a clean Low is a strong pointer at post-processing).
+
+---
+
+**Superseded theory: `backdrop-filter` over the live canvas.** Reported
 still happening after the shader fix below shipped, so that was not it either.
 
 A `backdrop-filter` makes the compositor copy the pixels *behind* the element
