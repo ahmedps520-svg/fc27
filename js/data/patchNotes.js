@@ -18,6 +18,40 @@
  */
 export const RELEASES = [
   {
+    version: 'v38',
+    date: '2026-08-23',
+    tag: 'Graphics',
+    title: 'Found it: Ultra was asking for too much',
+    lede: 'The black patches only ever happened on Ultra, and Ultra was quietly '
+        + 'rendering at four times the area of your screen.',
+    entries: [
+      {
+        head: 'Ultra no longer renders itself off a cliff',
+        summary: 'On a 1440p or 4K screen Ultra was allocating hundreds of megabytes more than '
+               + 'it needed. It now scales that back — and on 1080p screens, phones and tablets '
+               + 'nothing changes at all.',
+        detail: 'Ultra supersamples: it draws the match larger than your screen and shrinks it '
+              + 'down, which is what makes the edges clean. The problem was the "larger" had no '
+              + 'ceiling — it always asked for at least double, whatever you were playing on, '
+              + 'so a 4K screen was being drawn at 7680x4320. That is thirty-three million '
+              + 'pixels, and the match keeps several full-size buffers of it at once for the '
+              + 'lighting and blur passes, each one eight bytes a pixel. The total came to '
+              + 'roughly a gigabyte of graphics memory. When a card cannot find that much, the '
+              + 'buffer either fails outright — and something that failed to allocate draws '
+              + 'nothing, which is a black patch — or it succeeds by pushing something else '
+              + 'out, and then keeps fighting for the space, which is a black patch that moves '
+              + 'around and comes back. That is exactly what was being reported, and it '
+              + 'explains why it only ever happened on Ultra.\n\nThere is now a ceiling: the '
+              + 'card\'s own maximum buffer size, and a cap on total pixels. It is set so that '
+              + '1080p and below, and every phone and tablet, keep precisely the quality they '
+              + 'already had — most people will see no difference whatsoever. A 1440p screen '
+              + 'renders a little under 1.6x instead of 2x, and 4K renders at about its own '
+              + 'resolution, which is still the full Ultra effect chain, just not four times '
+              + 'the area of the screen it is being shown on.',
+      },
+    ],
+  },
+  {
     version: 'v37',
     date: '2026-08-23',
     tag: 'Diagnostics',
