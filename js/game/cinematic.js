@@ -116,9 +116,22 @@ void main() {
   bool isSky = dist >= uFar * 0.98;
 
   vec3 pos = viewPosOf(vUv, vz);
-  // Normals from the depth buffer's own slope. Cheaper than a normal buffer and
-  // accurate enough for occlusion, which only needs the hemisphere.
-  vec3 normal = normalize(cross(dFdx(pos), dFdy(pos)));
+  /* Normals from the depth buffer's own slope. Cheaper than a normal buffer and
+   * accurate enough for occlusion, which only needs the hemisphere.
+   *
+   * Not normalize(cross(...)), though that is what this was. The cross product
+   * collapses to zero wherever the two depth slopes are parallel or flat — a
+   * surface square to the camera, a run of pixels at the same depth, the
+   * precision floor out near the far plane — and normalize of a zero vector is
+   * 0/0. That NaN goes straight into ao, clamp is not required to launder it
+   * (drivers disagree, which is why this shows on some machines and not others),
+   * and col *= ao then rasterises the pixel black. A patch of NaN normals is a
+   * black patch, which is the artefact being chased. */
+  vec3 dpx = dFdx(pos);
+  vec3 dpy = dFdy(pos);
+  vec3 nRaw = cross(dpx, dpy);
+  float nLen = length(nRaw);
+  vec3 normal = nLen > 1e-8 ? nRaw / nLen : vec3(0.0, 0.0, 1.0);
 
   float rot = hash(vUv * uResolution) * 6.2831853;
 
@@ -210,6 +223,18 @@ void main() {
     float n = hash(vUv * uResolution + fract(uTime) * 91.7) - 0.5;
     col += n * uGrain * (1.0 - luma * 0.7);
   }
+
+  /* Backstop: never let this pass emit a NaN.
+   *
+   * The normal above was one confirmed way to make one, and fixing it at source
+   * is the real repair — but this pass does a lot of arithmetic on reconstructed
+   * depth, and a single NaN anywhere in it turns the pixel black, which is the
+   * one failure mode we are certain hurts. GLSL ES 1.0 has no isnan(), so this
+   * uses the property that defines NaN: it is the only value that is neither
+   * >= 0 nor < 0. A pixel that trips it falls back to the ungraded scene, which
+   * is a missing bit of occlusion for one frame instead of a black hole. */
+  float probe = col.r + col.g + col.b;
+  if (!(probe >= 0.0) && !(probe < 0.0)) col = base;
 
   gl_FragColor = vec4(col, 1.0);
 }`;
