@@ -18,6 +18,33 @@
  */
 export const RELEASES = [
   {
+    version: 'v37',
+    date: '2026-08-23',
+    tag: 'Diagnostics',
+    title: 'Hunting the black flash properly',
+    lede: 'Three attempts at this have missed. Rather than a fourth guess, this '
+        + 'build can tell us which half of the problem it is in.',
+    entries: [
+      {
+        head: 'The game now watches for the black frame itself',
+        summary: 'Turn on Show FPS and the badge reports any frame that looks wrong, so the '
+               + 'cause can be narrowed down instead of guessed at.',
+        detail: 'The black flash turns out to happen on desktop as well as iPad, which rules '
+              + 'out most of what the last three fixes assumed — they were all built on it '
+              + 'being a tablet graphics problem. A frame that goes black is one of two very '
+              + 'different faults: either the game failed to draw it, or the game drew it and '
+              + 'the browser failed to put it on screen. Those need opposite fixes, and until '
+              + 'now there was no way to tell which was happening. The match now counts the '
+              + 'drawing work it issues each frame and flags any frame that falls far below '
+              + 'normal, with the match clock alongside it. If the count climbs when you see a '
+              + 'flash, the fault is in the game; if you see flashes and the count stays at '
+              + 'zero, the game drew a perfectly good frame that never arrived. It reads a '
+              + 'counter that already existed, so it costs no performance, and across a full '
+              + 'match of normal play it reports nothing at all.',
+      },
+    ],
+  },
+  {
     version: 'v36',
     date: '2026-08-23',
     tag: 'Gameplay',
