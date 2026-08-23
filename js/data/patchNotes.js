@@ -18,6 +18,43 @@
  */
 export const RELEASES = [
   {
+    version: 'v43',
+    date: '2026-08-23',
+    tag: 'Interface',
+    title: 'Screens that move, packs that look like packs',
+    lede: 'Opening something now looks like going somewhere, and the store art '
+        + 'is a foil pack with cards in it rather than a coloured rectangle.',
+    entries: [
+      {
+        head: 'Screens arrive and leave',
+        summary: 'The screen you are leaving is pushed away as the new one rises in, so opening '
+               + 'a tile feels like moving rather than like a page reloading.',
+        detail: 'The old screen used not to go anywhere — it was simply replaced, and the new '
+              + 'one faded up over the gap. Nothing acknowledged the thing you had just '
+              + 'pressed, which is what made it feel instant in the wrong way. Now the screen '
+              + 'you are leaving stays on show for a moment and travels: heading deeper it '
+              + 'recedes, as though you moved past it, and coming back to the menu it drops '
+              + 'towards you instead, so the direction you are going is legible without a '
+              + 'label. The panels on the arriving screen come in one after another rather '
+              + 'than as one slab. None of it delays anything — the screen is fully there and '
+              + 'usable from the first frame, the animation is only what you see on the way. '
+              + 'Reduce Motion turns all of it off.',
+      },
+      {
+        head: 'The store art is an actual pack',
+        summary: 'Each pack is now a foil packet with cards fanned out behind it and the number '
+               + 'of cards printed on the front.',
+        detail: 'The art was a coloured rectangle with the letters UXI on it, which told you '
+              + 'nothing and looked the same on every pack but the colour. It is now a foil '
+              + 'face with a torn tear-strip along the top and two card edges fanning out '
+              + 'behind, so it reads as something containing cards before you have read a '
+              + 'word — and the pack size sits on the front, which is the first number anyone '
+              + 'wants and used to be buried in the small text. On anything with a mouse, a '
+              + 'highlight sweeps across the foil when you hover it.',
+      },
+    ],
+  },
+  {
     version: 'v42',
     date: '2026-08-23',
     tag: 'Progression',

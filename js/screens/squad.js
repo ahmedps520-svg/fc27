@@ -543,7 +543,18 @@ export function storeView() {
           return `
             <article class="store-pack rar-${packTone(p)}">
               ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
-              <div class="sp-art"><span class="sp-mark">UXI</span><i></i></div>
+              <!-- The art is a pack, not a swatch: cards fanned behind a foil
+                   face, with the pack size on the front. The count is the one
+                   number a buyer wants before the odds, and it used to be
+                   buried in the note line as plain text. -->
+              <div class="sp-art">
+                <span class="sp-fan" aria-hidden="true"><i></i><i></i></span>
+                <span class="sp-face">
+                  <span class="sp-mark">UXI</span>
+                  <span class="sp-count">×${p.size}</span>
+                </span>
+                <i class="sp-foil" aria-hidden="true"></i>
+              </div>
               <b class="sp-name">${p.name}</b>
               <span class="sp-note">${p.note}</span>
               ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}

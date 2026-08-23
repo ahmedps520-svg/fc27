@@ -531,6 +531,13 @@ is a store that stops growing, which is the whole reason for the above. There
 are twelve packs now; adding a thirteenth should be one entry in `PACKS` and
 nothing else.
 
+**The store art is a pack, not a swatch.** A foil face with two card edges
+fanned behind it and the pack size on the front — the fan says "this contains
+cards" before a word is read, and the count is the number a buyer wants ahead of
+the odds. The frame is `overflow: visible` because the fan sits outside it; the
+face clips its own foil. The foil sweeps once on hover and is fenced behind
+`hover: hover`, since it is the only motion in the store.
+
 **The reveal sorts worst-to-best** (`runPackAnimation`). It used to run in draw
 order, so a 92 could walk out first and leave three bronzes to sit through —
 the pack peaked and then apologised for four cards. Sorting turns the same pull
@@ -1312,6 +1319,37 @@ The wordmark came back after being removed with the counters; the counters were
 the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word.
+
+### Screen transitions
+`ghostOut()` in `app.js`. Navigation replaced `innerHTML` outright, so the old
+screen did not leave, it ceased — the new one faded up over whatever was behind
+it, which is why opening a tile read as a page load rather than as going
+somewhere. Nothing acknowledged the thing you had just pressed.
+
+The outgoing nodes are **moved**, not cloned, into a fixed-position `.screen-ghost`
+sitting on the old screen's bounding rect. Moving is cheaper than cloning and
+pixel-identical, and it is safe because `activeCleanup()` has already run by
+that point — those listeners are finished with, and the ghost is dropped a few
+hundred ms later either way.
+
+**`navigate` stays synchronous.** The DOM swap does not wait on an animation, so
+no caller has to learn that navigating became async, and a second navigation
+landing mid-transition simply replaces the ghost. The cleanup is belt and
+braces: `animationend` plus a `setTimeout`, because an interrupted animation
+never fires `animationend` and a leaked ghost would sit over the app eating
+nothing but looking wrong.
+
+Direction is read off the destination — the hub is the only place you go *back*
+to, so `menu`/`splash` reverse it. Going in pushes the old screen away from you,
+coming back drops it towards you.
+
+Skipped for `play` (a WebGL canvas that is being disposed; ghosting it means
+carrying a dead canvas for the length of an animation) and for `splash`, and
+disabled entirely under `reduceMotion`.
+
+Panels inside the incoming screen stagger, capped at six — past that the last
+panel is waiting on an animation nobody is still watching, and a stagger that
+outlasts attention reads as lag.
 
 ### What the accent picker owns
 Hard-coding the swoosh green left the accent picker with nothing visible to
