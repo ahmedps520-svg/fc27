@@ -18,6 +18,39 @@
  */
 export const RELEASES = [
   {
+    version: 'v45',
+    date: '2026-08-23',
+    tag: 'Interface',
+    title: 'The Store splits in three',
+    lede: 'Packs, Locker and Icon Exchange are separate tabs now — and the '
+        + 'tutorial no longer stops your mouse wheel working.',
+    entries: [
+      {
+        head: 'Packs · Locker · Icon Exchange',
+        summary: 'The Store is three tabs instead of one very long page, with the number of '
+               + 'unopened packs shown on the Locker tab.',
+        detail: 'All three used to be stacked on a single page around two thousand pixels '
+              + 'long, which meant buying a pack and then scrolling past twelve of them to '
+              + 'find the one you had just bought. They are three different jobs — spending, '
+              + 'opening, and the one place that sells an exact Icon — and each fits on a '
+              + 'screen by itself. The Locker tab carries a count when you have packs waiting, '
+              + 'since that is the reason to go and look. Buying a pack leaves you on Packs, '
+              + 'because the next thing you usually do is buy another.',
+      },
+      {
+        head: 'The tutorial no longer blocks scrolling',
+        summary: 'The mouse wheel and touch scrolling both work while the tour is open.',
+        detail: 'The tour dims the screen with a layer that deliberately absorbs clicks, so a '
+              + 'stray tap cannot half-navigate the game behind it and leave the tour pointing '
+              + 'at a screen that is no longer there. That layer was absorbing scrolling too, '
+              + 'and since the tour starts itself the first time you open this version, the '
+              + 'first thing it did for a lot of people was appear to break the mouse wheel. '
+              + 'Scrolling now passes through, which is safe because the highlight ring is '
+              + 'repositioned every frame and simply follows whatever it is pointing at.',
+      },
+    ],
+  },
+  {
     version: 'v44',
     date: '2026-08-23',
     tag: 'New',

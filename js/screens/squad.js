@@ -15,6 +15,7 @@ import * as api from '../net/api.js';
 export const TITLE = 'Ultimate XI';
 
 let tab = 'club';            // club | division | online | objectives | challenges | store
+let storeTab = 'packs';      // packs | locker | icons — the Store tab's own row
 /* The Club tab's own three. Squad and the identity editor used to be two
    top-level tabs sitting next to each other, which put "pick your eleven" and
    "pick your badge" at the same level as "play a match" — they are both the
@@ -529,10 +530,33 @@ export function storeView() {
   const owned = s.club.packs;
   const counts = owned.reduce((a, id) => { a[id] = (a[id] || 0) + 1; return a; }, {});
 
-  return `
+  /* Three sections behind a row, not three panels stacked.
+   *
+   * Packs, the locker and the Icon Exchange were one page about two thousand
+   * pixels long, so buying a pack meant scrolling past twelve of them to find
+   * the one you had just bought. They are separate jobs — spending, opening,
+   * and the one thing Apex cannot buy — and each is short enough to fit a
+   * screen on its own.
+   *
+   * Same shape as the Club tab's row (`#cSubs`): a rule and an underline
+   * rather than pills, so two navigations stacked on top of each other read as
+   * a hierarchy instead of as nine buttons. The count rides on the Locker tab
+   * because "you have packs waiting" is the reason to go there. */
+  const subs = `
+    <nav class="subtabs" id="sSubs">
+      ${[['packs', 'Packs'], ['locker', `Locker${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
+         ['icons', 'Icon Exchange']]
+        .map(([id, label]) =>
+          `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
+    </nav>`;
+
+  if (storeTab === 'locker') return subs + lockerView(owned, counts);
+  if (storeTab === 'icons') return subs + iconExchangeView();
+
+  return subs + `
     <section class="panel glass">
       <header class="panel-head">
-        <h2>Store</h2>
+        <h2>Packs</h2>
         <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
       </header>
       <p class="hint">Packs go straight to your locker — open them when you want.</p>
@@ -569,8 +593,11 @@ export function storeView() {
             </article>`;
         }).join('')}
       </div>
-    </section>
+    </section>`;
+}
 
+function lockerView(owned, counts) {
+  return `
     <section class="panel glass">
       <header class="panel-head">
         <h2>Your locker <small>${owned.length}</small></h2>
@@ -588,10 +615,8 @@ export function storeView() {
                 <span class="lp-cta">Open</span>
               </button>`;
           }).join('')}
-        </div>` : '<p class="empty">No packs yet — buy one above or win in Apex Division.</p>'}
-    </section>
-
-    ${iconExchangeView()}`;
+        </div>` : '<p class="empty">No packs yet — buy one from Packs, or win in Apex Division.</p>'}
+    </section>`;
 }
 
 /**
@@ -1087,6 +1112,14 @@ export function mount(root) {
     if (!b) return;
     tab = b.dataset.utab;
     pickSlot = null;
+    navigate('squad');
+  });
+
+  // the Store tab's own row
+  root.querySelector('#sSubs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-stab]');
+    if (!b) return;
+    storeTab = b.dataset.stab;
     navigate('squad');
   });
 
