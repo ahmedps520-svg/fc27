@@ -531,6 +531,15 @@ is a store that stops growing, which is the whole reason for the above. There
 are twelve packs now; adding a thirteenth should be one entry in `PACKS` and
 nothing else.
 
+**The Store is three sub-tabs**: Packs, Locker, Icon Exchange (`#sSubs`,
+`storeTab`). They were one page about two thousand pixels long, so buying a pack
+meant scrolling past twelve of them to find the one you had just bought. They
+are separate jobs — spending, opening, and the one thing Apex cannot buy — and
+each fits a screen alone. Same shape as the Club tab's row, and the locker count
+rides on the Locker tab because "you have packs waiting" is the reason to go
+there. Buying leaves you on Packs, since the next thing you do is usually buy
+another.
+
 **The store art is a pack, not a swatch.** A foil face with two card edges
 fanned behind it and the pack size on the front — the fan says "this contains
 cards" before a word is read, and the count is the number a buyer wants ahead of
@@ -1363,6 +1372,18 @@ becomes a wall of things to dismiss. The notes are marked seen on the way past
 so they do not ambush the second launch. `settings.tutorialDone` is set **on
 sight, not on completion**: someone who closes it after two steps has decided,
 and being handed it again every launch is worse than missing it.
+
+**It does not freeze the page.** The scrim has to swallow clicks — a stray tap
+landing on a tile behind it would navigate away and leave the tour pointing at a
+screen that is no longer there — but swallowing clicks swallowed the wheel with
+them, and a tour that stops the mouse wheel working reads as the app having
+hung. Wheel is forwarded to the window by hand and `touch-action: pan-y` hands
+touch drags back to the browser. Scrolling is safe precisely because the
+spotlight is repositioned every frame, so it tracks rather than being left
+behind.
+
+Steps can drive the Store's own sub-tab row with `stab`, looked up separately
+from `tab` because the row does not exist until its parent tab has rendered.
 
 Settings → **Replay tutorial**, first row of the first panel.
 

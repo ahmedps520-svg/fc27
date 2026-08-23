@@ -3095,8 +3095,10 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
  * leave the spotlight permanently trailing its target.                      */
 .tut { position: fixed; inset: 0; z-index: 200; }
 
-/* Catches stray taps so a mis-tap cannot half-navigate the app underneath. */
-.tut-scrim { position: absolute; inset: 0; }
+/* Catches stray taps so a mis-tap cannot half-navigate the app underneath.
+   `pan-y` hands vertical scrolling back to the browser, so a touch drag still
+   moves the page — see the wheel forwarder in tutorial.js for the mouse. */
+.tut-scrim { position: absolute; inset: 0; touch-action: pan-y; }
 
 .tut-hole {
   position: fixed; border-radius: 12px; pointer-events: none;

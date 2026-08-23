@@ -142,21 +142,21 @@ const STEPS = [
 
   /* ---- 5. packs ---- */
   {
-    chapter: 'Packs', icon: 'pack', screen: 'squad', tab: 'store', target: '.store-grid',
-    title: 'The store',
-    body: `Twelve packs, cheapest first. The number on the front of each pack is
-           how many cards are inside, and the line underneath is the odds of
-           each rarity.`,
+    chapter: 'Packs', icon: 'flag', screen: 'squad', tab: 'store', target: '#sSubs',
+    title: 'Three sections',
+    body: `<b>Packs</b> is the shop. <b>Locker</b> holds what you have bought,
+           to open when you like. <b>Icon Exchange</b> is the one place that
+           sells an exact Icon.`,
   },
   {
-    chapter: 'Packs', icon: 'pack', screen: 'squad', tab: 'store', target: '.store-pack:nth-child(3)',
+    chapter: 'Packs', icon: 'pack', screen: 'squad', tab: 'store', stab: 'packs', target: '.store-pack:nth-child(3)',
     title: 'Packs that promise something',
     body: `Most packs are a roll of the dice. Some guarantee a card — a
            goalkeeper, a minimum rating, an Icon. If a pack promises it, you
            will get it, every time.`,
   },
   {
-    chapter: 'Packs', icon: 'wand', screen: 'squad', tab: 'store', target: '.locker',
+    chapter: 'Packs', icon: 'wand', screen: 'squad', tab: 'store', stab: 'locker', target: '.locker',
     title: 'Opening them',
     body: `Packs go to your locker rather than opening on the spot, so you can
            save them. Cards are revealed worst to best, so a pack always builds
@@ -251,6 +251,12 @@ function goTo(step) {
   if (step.screen && step.screen !== currentScreen()) navigate(step.screen);
   if (step.tab) {
     const btn = document.querySelector(`[data-utab="${step.tab}"]`);
+    if (btn && !btn.classList.contains('on')) btn.click();
+  }
+  // the Store tab's own row, which has to be clicked after its parent tab has
+  // rendered — hence the second lookup rather than one combined selector
+  if (step.stab) {
+    const btn = document.querySelector(`[data-stab="${step.stab}"]`);
     if (btn && !btn.classList.contains('on')) btn.click();
   }
 }
@@ -430,6 +436,22 @@ export function startTutorial(at = 0) {
   el.querySelector('#tutExit').addEventListener('click', finish);
   // a tap on the scrim is almost always "get out of my way", not "next"
   el.querySelector('#tutScrim').addEventListener('click', finish);
+
+  /* Let the page scroll underneath.
+   *
+   * The scrim has to swallow *clicks* — a stray tap landing on a tile behind it
+   * would navigate away and leave the tour pointing at a screen that is no
+   * longer there. But swallowing clicks swallowed the wheel with them, and a
+   * tour that freezes the page reads as the app having hung: the mouse wheel
+   * simply stops working and nothing says why.
+   *
+   * Scrolling is safe here because the spotlight is repositioned every frame,
+   * so it tracks the target as the page moves rather than being left behind.
+   * Wheel is forwarded by hand; touch is handed back to the browser with
+   * `touch-action` in the stylesheet. */
+  el.addEventListener('wheel', (e) => {
+    window.scrollBy(0, e.deltaY);
+  }, { passive: true });
 
   const onKey = (e) => {
     if (e.key === 'Escape') { finish(); return; }
