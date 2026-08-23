@@ -646,9 +646,59 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Status: a NaN in the cinematic pass is the current suspect, and unlike the
-five before it, it is a defect that was provably there rather than a story that
-fitted. The render-budget cap below did not fix it either.**
+**Status: the occlusion ceiling. This is the first theory built on measurement
+of the failing machine rather than on reasoning about it.**
+
+A screenshot from the reporter settled three things at once, and every one of
+them contradicted a previous theory:
+
+1. The console line read `ultra: 1920x945 css, ratio 2.00 -> 3840x1890,
+   maxTex 16384`. That is **7.3 MP, inside the 9 MP budget**, so the v38 cap
+   never engaged on that machine. The allocation theory was irrelevant to the
+   person reporting it.
+2. The FPS badge read **98 FPS with no suspect count**. The detector was clean,
+   so the frame was drawn, in full, at rate.
+3. The artefact was **in the frame**: a hard-edged dark wedge across the
+   goalmouth on an otherwise perfect picture.
+
+Drawn, complete, at 98 fps, and dark. That is not allocation, not compositing,
+not a lost context, not a dropped frame — it is **shading**, and it retires the
+whole "the frame never arrived" family that four fixes had been aimed at.
+
+The occlusion term multiplies the pixel, and its ceiling was `0.92`:
+
+```glsl
+ao = 1.0 - clamp((ao / float(TAPS)) * uAoStrength, 0.0, 0.92);
+col *= ao;
+```
+
+0.92 means the pass was permitted to take **any pixel to 8% brightness**, which
+is black. Nothing ambient occlusion describes is a 92% loss of light, so that
+headroom bought no picture and left the pass one bad estimate from painting a
+region out — and bad estimates are cheap here, because the normal comes from the
+depth buffer's slope, which degenerates at grazing angles and near the precision
+floor. Where it degenerates every tap reads occluded, the sum saturates, and a
+whole region hits the ceiling together: a dark patch with hard edges following
+the depth discontinuities.
+
+**Ultra asked for the strongest term** — `ao: 1.05` against High's `0.9` — so
+Ultra saturated first. That is the Ultra-only report, explained, having been the
+one fact no previous theory could account for.
+
+Ceiling is now `0.55` and Ultra's strength `0.95`. The worst a wrong estimate
+can do is halve a pixel: a visible shading error, never a hole. Real contact
+darkening lives well under 0.55 and is unchanged — verified by rendering a match
+at Ultra and checking the shading under players still reads.
+
+**If a dark patch survives this**, it cannot be the occlusion term clipping, so
+go to the DOF blur (`dofPx`, Ultra-only at `dof: 0.85`) and the light shafts.
+And keep reading the badge: the detector staying clean is what says the fault is
+in shading rather than delivery.
+
+---
+
+**Superseded: a NaN in the normal reconstruction.** A real defect and fixed at
+source, but the ceiling above is what turned a bad estimate into black.
 
 `CinematicPass` reconstructs a normal from the depth buffer's slope, and did it
 with `normalize(cross(dFdx(pos), dFdy(pos)))`. That cross product collapses to

@@ -18,6 +18,43 @@
  */
 export const RELEASES = [
   {
+    version: 'v40',
+    date: '2026-08-23',
+    tag: 'Graphics',
+    title: 'The black patches were the shading, not a glitch',
+    lede: 'A screenshot from a machine it happens on settled it: the frame was '
+        + 'being drawn perfectly, at 98 frames a second, and then shaded almost '
+        + 'to black in patches.',
+    entries: [
+      {
+        head: 'Contact shading can no longer darken a pixel to nothing',
+        summary: 'The shading effect was allowed to take part of the picture down to 8% '
+               + 'brightness, which looks black. It is now limited to half, so a mistake shows '
+               + 'as slightly dark rather than as a hole.',
+        detail: 'Every previous attempt at this assumed a frame was going missing — memory, '
+              + 'drivers, the browser failing to show it. A screenshot ended that: the frame '
+              + 'was complete, running at 98 frames a second, the built-in frame checker was '
+              + 'reporting nothing wrong, and the dark wedge was simply part of the picture. So '
+              + 'it was never a lost frame. It was shading.\n\nThe effect responsible is the '
+              + 'soft contact darkening that grounds players on the grass and puts shade in the '
+              + 'folds of the net. It works by comparing each pixel against its neighbours, and '
+              + 'it was allowed to darken one by up to 92% — down to almost nothing. Real '
+              + 'contact shading is nowhere near that strong, so the headroom was doing no good '
+              + 'and left the effect one bad reading away from blacking out an area. Bad '
+              + 'readings are easy to come by: the calculation relies on depth, which loses '
+              + 'accuracy at shallow viewing angles and at distance, and where it does, every '
+              + 'comparison reports "fully shadowed" at once and a whole region goes dark '
+              + 'together with a hard edge.\n\nUltra asked for the strongest version of this '
+              + 'effect of any setting, which is why it happened there and not on High — the '
+              + 'one detail no earlier explanation could account for. The effect is now capped '
+              + 'at half brightness and Ultra no longer asks for extra strength. Genuine '
+              + 'contact shadows sit well inside the new limit and look exactly as before; the '
+              + 'difference is that a bad reading is now a slightly dark patch instead of a '
+              + 'black one.',
+      },
+    ],
+  },
+  {
     version: 'v39',
     date: '2026-08-23',
     tag: 'Graphics',
