@@ -239,6 +239,8 @@ export class Match {
     }
     this.duration = opts.duration ?? 240;      // real seconds for the whole match
     this.skill = opts.skill ?? 1;              // CPU aggression multiplier
+    /* How much the CPU has raised its game, 0-1. See `updateMomentum`. */
+    this.momentum = 0;
     // Authentic unless asked otherwise, so a mode that has not thought about it
     // gets the football one rather than the esports one.
     this.preset = PRESETS[opts.preset] || PRESETS.authentic;
@@ -260,6 +262,73 @@ export class Match {
   /* ------------------------------ state ------------------------------ */
   get humanTeam() { return this.human === null ? null : this.teams[this.human]; }
   /** Player held by seat 0 — kept for anything that only knows about one human. */
+  /**
+   * The one side a person is playing, or null if that is not a thing here.
+   *
+   * Couch versus and online both seat a human on each team, and there is no CPU
+   * to raise the game of; co-op seats two people on the same team, which is
+   * still one human side. Momentum below needs to know the difference.
+   */
+  get soloHumanSide() {
+    if (this.human === null || !this.controllers.length) return null;
+    const t = this.controllers[0].team;
+    return this.controllers.every((c) => c.team === t) ? t : null;
+  }
+
+  /**
+   * How hard the CPU on `team` is trying *right now*.
+   *
+   * `skill` is the match's baseline — `divisionSkill` sets it from the rung you
+   * are on, 0.8 at the bottom to 1.9 at the top, 0.11 a rung. Momentum adds up
+   * to 0.45 on top, so a side under full momentum plays about four rungs above
+   * its own, using the same lever the ladder already uses.
+   *
+   * **Only the side you are not on gets it.** `skill` drives the off-ball AI of
+   * *both* teams — your own ten team-mates included — so adding it globally
+   * would have sharpened your press in exact step with theirs and largely
+   * cancelled itself out. The boost is asked for by team for that reason.
+   *
+   * **And it only ever adds.** Momentum is clamped to 0 at the bottom, so the
+   * floor is the baseline the match was created with: cruising cannot make the
+   * opposition worse than the division it belongs to.
+   */
+  aiSkillFor(team) {
+    const me = this.soloHumanSide;
+    if (me === null || team === me) return this.skill;
+    return this.skill + 0.45 * this.momentum;
+  }
+
+  /**
+   * Momentum: the CPU raises its game when the match has stopped being one.
+   *
+   * A three-goal lead with two minutes left is the most boring state this game
+   * can be in — the result is settled and nothing that happens next matters.
+   * Rather than hand the player a win that plays itself, the opposition starts
+   * pressing harder, closing quicker and shooting sooner the further ahead you
+   * get, so seeing out a big lead is its own thing to do.
+   *
+   * One goal is a match, so nothing happens there. It ramps from two, and tops
+   * out at a four-goal lead.
+   *
+   * Rise is quicker than fall on purpose: going 3-0 up should be answered
+   * within a few seconds, while the CPU pulling one back should not instantly
+   * hand the advantage straight back to you — the lead has to actually be
+   * defended for a while before the game eases off again.
+   *
+   * AI-vs-AI is skipped outright. That is the configuration every balance sweep
+   * runs, and it is the baseline the whole economy is tuned against; quietly
+   * moving it whenever one CPU went two up would invalidate every number in
+   * this file's header.
+   */
+  updateMomentum(dt) {
+    const me = this.soloHumanSide;
+    if (me === null) { this.momentum = 0; return; }
+    const lead = this.teams[me].score - this.teams[1 - me].score;
+    const target = Math.max(0, Math.min(1, (lead - 1) / 3));
+    const rate = target > this.momentum ? 1.1 : 0.3;
+    this.momentum += (target - this.momentum) * Math.min(1, rate * dt);
+  }
+
   get active() { return this.playerOf(this.controllers[0]); }
   /** Every player currently under human control. */
   get actives() { return this.controllers.map((c) => this.playerOf(c)).filter(Boolean); }
@@ -333,6 +402,7 @@ export class Match {
     }
 
     this.t += dt;
+    this.updateMomentum(dt);
 
     if (this.half === 1 && this.t >= this.duration / 2) {
       this.phase = 'half'; this.phaseT = 1.8; this.banner = 'HALF TIME';
@@ -1561,7 +1631,7 @@ export class Match {
     if (!weHave && (isChaser || (!b.owner && dist(p, b) < 14 * press))) {
       this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
       if (b.owner && b.owner.team !== p.team && dist(p, b.owner) < 2.4) {
-        if (Math.random() < 1.1 * this.skill * press * dt) this.tackle(p);
+        if (Math.random() < 1.1 * this.aiSkillFor(p.team) * press * dt) this.tackle(p);
       }
       return;
     }
@@ -1669,7 +1739,7 @@ export class Match {
     const pressure = foe ? dist(p, foe) : 99;
 
     if (toGoal < 24 && (pressure > 2.4 || toGoal < 13)) {
-      if (Math.random() < (1.7 - toGoal / 26) * this.skill * dt) {
+      if (Math.random() < (1.7 - toGoal / 26) * this.aiSkillFor(p.team) * dt) {
         // CPU keeps most efforts down, but bends the odd one from range
         const far = toGoal > 17;
         this.shoot(p, null, 0.55 + Math.random() * 0.45, {
@@ -1681,7 +1751,7 @@ export class Match {
     }
     // wide and deep? whip it into the box instead
     const wide = p.y < 20 || p.y > PITCH.h - 20;
-    if (wide && Math.abs(goalX - p.x) < 32 && Math.random() < 2.2 * this.skill * dt) {
+    if (wide && Math.abs(goalX - p.x) < 32 && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt) {
       const inBox = team.players.some((t) => t !== p && t.role !== 'GK' && Math.abs(t.x - goalX) < 22);
       if (inBox) { this.cross(p, null); return; }
     }

@@ -43,8 +43,37 @@ let submission = [];         // card ids staged for it
 const PACKS = [
   { id: 'bronze',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
   { id: 'silver',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
-  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, note: '5 · gold min' },
-  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, note: '3 · 82+ min' },
+  /* Sold for what it does, not what it rolls. A squad cannot be fielded without
+     a keeper, and the odds of one turning up in a four-card pack are about one
+     in four — which is a long way to go for the single card the game will not
+     let you play without. Two cards, one of them certainly a GK. */
+  {
+    id: 'keeper', name: 'Keeper', cost: 3500, size: 2,
+    odds: { bronze: 0.10, silver: 0.44, gold: 0.44, special: 0.02 },
+    forcePosition: 'GK',
+    note: '2 cards',
+    promise: '1 guaranteed goalkeeper',
+  },
+  /* The cheap gamble. One card, and the odds are deliberately top-heavy for the
+     price — this is the pack you open because the last match paid for it, and
+     the whole point is that it is over in one reveal. */
+  {
+    id: 'dip', name: 'Lucky Dip', cost: 5000, size: 1,
+    odds: { bronze: 0.14, silver: 0.36, gold: 0.38, special: 0.12 },
+    note: '1 card · high variance',
+  },
+  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: 'gold', note: '5 · gold min' },
+  /* The bulk option, and the only pack that pays for the gap between Gold and
+     Prime. Eight cards at Gold-ish odds is worse per card than Prime and far
+     better per Apex — it is the one to buy when a squad-building challenge wants
+     bodies rather than a headline. */
+  {
+    id: 'builder', name: 'Squad Builder', cost: 15000, size: 8,
+    odds: { bronze: 0.04, silver: 0.40, gold: 0.51, special: 0.05 },
+    floor: 'gold', tone: 'gold',
+    note: '8 · gold min',
+  },
+  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
   {
     id: 'stars', name: 'Limited: Stars', cost: 40000, size: 3, limited: true,
     guarantee: 'star',
@@ -73,6 +102,16 @@ const PACKS = [
 
 /** Limited Edition is also the reward for the hardest objective. */
 export const PACK_BY_ID = (id) => PACKS.find((p) => p.id === id) || PACKS[0];
+
+/* Which colour a pack wears in the store and the locker.
+ *
+ * This used to be written inline as `guarantee || (id === 'prime' ? 'special' :
+ * id)`, in two places, which quietly meant "every pack must be named after a
+ * rarity". Any pack that was not — Keeper, Lucky Dip, Squad Builder — fell
+ * through to the default grey and looked broken next to the others. `tone` lets
+ * a pack say what it wants to look like; falling back to `guarantee` then `id`
+ * keeps every existing pack exactly the colour it already was. */
+const packTone = (p) => p.tone || p.guarantee || p.id;
 
 /**
  * What an Icon costs in the premium currency.
@@ -132,6 +171,11 @@ export function chemistryFor(lineup, formation) {
 /* ------------------------------------------------------------------ *
  * Pack logic
  * ------------------------------------------------------------------ */
+/* Cheapest to rarest. `rarityFor` only ever returns the first four — star and
+ * icon are set by hand on the named cards — but they rank above `special` so a
+ * "gold or better" floor is satisfied by an Icon rather than overwritten by one. */
+const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, star: 4, icon: 5 };
+
 function rollRarity(odds) {
   const r = Math.random();
   let acc = 0;
@@ -180,12 +224,26 @@ function openPack(pack, seen = new Set(), needGK = false) {
 
   const pulls = [];
   for (let i = 0; i < pack.size; i++) pulls.push(draw(rollRarity(pack.odds)));
-  if (pack.id === 'gold' && !pulls.some((x) => x.p.rarity === 'gold' || x.p.rarity === 'special')) {
-    pulls[pulls.length - 1] = draw('gold');
+
+  /* `floor` and `minOverall` used to be `pack.id === 'gold'` and
+   * `pack.id === 'prime'` written out longhand here. They are declared on the
+   * pack now because they are not properties of those two packs, they are
+   * properties any pack can want — and a store that grows by adding an id check
+   * in the opener for every new pack is a store that stops growing. */
+  if (pack.floor && !pulls.some((x) => RARITY_RANK[x.p.rarity] >= RARITY_RANK[pack.floor])) {
+    pulls[pulls.length - 1] = draw(pack.floor);
   }
-  if (pack.id === 'prime') {
+  /* The replacement has to clear the bar too. This used to redraw at rarity
+   * `gold`, and gold starts at 79 — so a pack whose store note reads "82+ min"
+   * was handing over 79s and 80s, and measured, only 42% of Prime packs
+   * actually held to the number they were sold on. Constraining the redraw is
+   * what makes the promise on the card true. */
+  if (pack.minOverall) {
     pulls.forEach((x, i) => {
-      if (x.p.overall < 82) pulls[i] = draw(Math.random() < 0.25 ? 'special' : 'gold');
+      if (x.p.overall < pack.minOverall) {
+        pulls[i] = draw(Math.random() < 0.25 ? 'special' : 'gold',
+          (p) => p.overall >= pack.minOverall);
+      }
     });
   }
   // Limited Edition never hands back a bronze or a silver. An Icon is left
@@ -197,14 +255,17 @@ function openPack(pack, seen = new Set(), needGK = false) {
       }
     });
   }
-  if (needGK && !pulls.some((x) => x.p.position === 'GK')) {
+  // Either the squad has no keeper at all (needGK) or the pack is the one that
+  // exists to sell you one. Same mechanism, two reasons to reach for it.
+  const wantGK = needGK || pack.forcePosition === 'GK';
+  if (wantGK && !pulls.some((x) => x.p.position === 'GK')) {
     pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
   }
   // The promised card, last, so nothing above can overwrite it — and in a
   // random slot, so the reveal animation does not always end on the same beat.
   // Slot 0 is skipped when a keeper was forced into it.
   if (pack.guarantee) {
-    const lo = needGK ? 1 : 0;
+    const lo = wantGK ? 1 : 0;
     const at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
     pulls[at] = draw(pack.guarantee);
   }
@@ -457,17 +518,20 @@ export function storeView() {
           const free = p.cost === 0;
           const locked = !free && p.cost > (s.club.apex || 0);
           return `
-            <article class="store-pack rar-${p.guarantee || (p.id === 'prime' ? 'special' : p.id)}">
+            <article class="store-pack rar-${packTone(p)}">
               ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
               <div class="sp-art"><span class="sp-mark">UXI</span><i></i></div>
               <b class="sp-name">${p.name}</b>
               <span class="sp-note">${p.note}</span>
               ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
+              ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
               <span class="sp-odds">${oddsLine(p)}</span>
+              <!-- the button is deliberately the last child: the auto top
+                   margin on it is what lines every price in a row up, and
+                   anything placed after it pushes it off that baseline. -->
               <button class="btn ${locked ? 'ghost' : 'primary'}" data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
                 ${free ? 'Claim free' : `◈ ${p.cost.toLocaleString()}`}
               </button>
-              ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
             </article>`;
         }).join('')}
       </div>
@@ -483,7 +547,7 @@ export function storeView() {
           ${Object.entries(counts).map(([id, n]) => {
             const pack = PACKS.find((p) => p.id === id) || PACKS[0];
             return `
-              <button class="locker-pack rar-${pack.guarantee || (id === 'prime' ? 'special' : id)}" data-open-pack="${id}">
+              <button class="locker-pack rar-${packTone(pack)}" data-open-pack="${id}">
                 <span class="lp-art"><i>UXI</i></span>
                 <b>${pack.name}</b>
                 <span class="lp-count">×${n}</span>
