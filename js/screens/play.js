@@ -578,7 +578,13 @@ export function mount(root, params) {
     const passCharge = root.querySelector('.t-pass .tb-charge');
     let attacking = null;
     updateTouchContext = () => {
-      const seat = match.controllers[0];
+      /* Your seat, not seat zero. Online both machines build the same two-seat
+       * match — controllers[0] is the host's, controllers[1] the guest's — so
+       * hardcoding [0] read the *opponent's* seat on a guest. Every label came
+       * out inverted (PASS/SHOOT while defending, TACKLE while on the ball) and
+       * the charge rings below filled with the host's power, not yours. Same
+       * expression the input loop and the scoreboard already use. */
+      const seat = match.controllers[online ? online.seat : 0];
       const mine = !!match.ball.owner && seat && match.ball.owner.team === seat.team;
       if (mine !== attacking) {
         attacking = mine;

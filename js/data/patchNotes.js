@@ -18,6 +18,85 @@
  */
 export const RELEASES = [
   {
+    version: 'v36',
+    date: '2026-08-23',
+    tag: 'Gameplay',
+    title: 'Three new packs, and an opponent who fights back',
+    lede: 'Go three up and the other lot start playing like it. Plus Keeper, '
+        + 'Lucky Dip and Squad Builder packs, a store that lines up properly, '
+        + 'and a fix for online controls being the wrong way round.',
+    entries: [
+      {
+        head: 'The CPU raises its game when you are cruising',
+        summary: 'The further ahead you get, the harder the opposition presses — so a big '
+               + 'lead is something you have to see out rather than something that plays itself.',
+        detail: 'A three-goal lead with two minutes left was the most boring state this game '
+              + 'could produce: the result was settled and nothing that happened next mattered. '
+              + 'From two goals up the opposition now starts closing quicker, tackling more and '
+              + 'shooting sooner, topping out at a four-goal lead — about four divisions worth '
+              + 'of extra competence, on the same dial the ladder itself uses. Three things it '
+              + 'deliberately does not do: it never goes below the difficulty the match started '
+              + 'at, so being behind never makes the opposition go easy on you; a one-goal lead '
+              + 'does nothing at all, because one goal is still a match; and it never touches '
+              + 'your own team-mates, only the side you are playing against. It stays off '
+              + 'entirely in online and couch matches, where both teams already have a person '
+              + 'on them.',
+      },
+      {
+        head: 'Keeper, Lucky Dip and Squad Builder',
+        summary: 'Three new packs: a guaranteed goalkeeper, a cheap one-card gamble, and an '
+               + 'eight-card bulk pack between Gold and Prime.',
+        detail: 'Keeper (3,500) hands over a goalkeeper, certainly — a squad cannot be fielded '
+              + 'without one and the odds of one turning up in a four-card pack were about one '
+              + 'in four. Lucky Dip (5,000) is a single card with deliberately top-heavy odds '
+              + 'for the price: the whole point is that it is over in one reveal. Squad Builder '
+              + '(15,000) is eight cards with a gold minimum, worse per card than Prime and far '
+              + 'better per Apex — the one to buy when a squad-building challenge wants bodies '
+              + 'rather than a headline. It also fills the gap between Gold and Prime, which '
+              + 'was a jump from 7,500 straight to 30,000.',
+      },
+      {
+        head: 'Prime now actually keeps its promise',
+        summary: 'Prime packs said "82+ min" and delivered it about two times in five. Now it '
+               + 'is every time.',
+        detail: 'When a Prime pack rolled a card below 82 it redrew at gold rarity — and gold '
+              + 'starts at 79, so the replacement could be a 79, 80 or 81 and frequently was. '
+              + 'Measured over four hundred opens, only 42% of Prime packs held to the number '
+              + 'printed on the card that sold them. The redraw is now constrained to clear the '
+              + 'bar, which takes that to 100%.',
+      },
+      {
+        head: 'The store lines up, and online controls are the right way round',
+        summary: 'Pack prices now sit on one line across each row, packs have their own '
+               + 'colours and artwork, and online no longer shows you the wrong buttons.',
+        detail: 'Two unrelated fixes. In the store, cards carry different amounts of text — '
+              + 'only some have a guarantee line — and the buy buttons landed at whatever '
+              + 'height their own content ran out at, so a row of packs read as a row of things '
+              + 'at slightly wrong heights; every price now sits on one baseline. Online, the '
+              + 'touch buttons read the wrong seat: both machines build the same two-seat match '
+              + 'and the labels were always taken from the host\'s side, so if you joined a '
+              + 'match you saw PASS and SHOOT while defending and TACKLE while on the ball, and '
+              + 'the power rings filled with your opponent\'s shot rather than yours.',
+      },
+      {
+        head: 'Another go at the black flash',
+        summary: 'The blurred panels over the pitch have been made flat, which is a much better '
+               + 'suspect for the black rectangles than anything tried so far.',
+        detail: 'The last two attempts at this treated it as a graphics-driver problem. It is '
+              + 'more likely never to have been one. The scoreline, the HUD buttons and the '
+              + 'full-screen goal card all blurred whatever was behind them, and what is behind '
+              + 'them is the pitch being redrawn sixty times a second — which forces the system '
+              + 'to keep sampling a picture that is still being painted. When that sample comes '
+              + 'back too early the panel composites over nothing, and you get a black '
+              + 'rectangle with hard stepped edges exactly like the ones being reported. Those '
+              + 'three are flat now, which costs almost nothing because they were already nearly '
+              + 'opaque. Menus keep their blur — there is no live pitch behind those. This is '
+              + 'still a reasoned fix rather than a confirmed one, so if it persists, that '
+              + 'genuinely narrows things down.',
+      },
+    ],
+  },
+  {
     version: 'v35',
     date: '2026-08-15',
     tag: 'App',

@@ -1227,10 +1227,27 @@ body.in-game #screen {
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 12px 14px; pointer-events: none; gap: 12px;
 }
+/* No `backdrop-filter` on anything sitting over the match canvas — see the
+ * black-flicker note in HANDOFF.
+ *
+ * A backdrop-filter forces the compositor to copy the pixels *behind* the
+ * element into its own layer, blur them, and composite the result. When what is
+ * behind it is a WebGL canvas being rewritten sixty times a second, iOS has to
+ * sample a surface the GPU is still writing, every frame, and when that sample
+ * comes back before the canvas has resolved, the element composites over
+ * nothing — a black rectangle with tile-aligned edges, which is exactly the
+ * artefact being reported.
+ *
+ * It costs nothing to drop: these backgrounds were already 82-86% opaque, so
+ * the blur behind them was barely visible. The few points of extra opacity
+ * below buy back the contrast and the compositing path goes away entirely.
+ *
+ * Menus and cards outside a match keep their blur — there is no live canvas
+ * under those, so none of this applies. */
 .gm-bug {
   display: flex; align-items: stretch; pointer-events: auto;
   border-radius: 8px; overflow: hidden; font-family: var(--font-num);
-  background: rgba(8, 12, 24, .82); backdrop-filter: blur(8px);
+  background: rgba(8, 12, 24, .94);
   border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
 }
 .bug-team {
@@ -1248,9 +1265,10 @@ body.in-game #screen {
   color: #04121a; background: var(--accent);
 }
 .gm-tools { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+/* Lives in the match HUD, over the canvas — no blur, per the note above. */
 .icon-btn.sm {
   width: 32px; height: 32px; flex: 0 0 32px; font-size: 14px; padding: 0;
-  background: rgba(8, 12, 24, .82); backdrop-filter: blur(8px);
+  background: rgba(8, 12, 24, .94);
 }
 .icon-btn.sm:hover { transform: none; }
 .gm-pad {
@@ -1522,38 +1540,82 @@ body.in-game #screen {
   padding: 0 4px; border-radius: 999px; background: var(--warn); color: #1a1200;
   font-style: normal; font-size: 10px; font-weight: 800;
 }
-.store-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.store-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+
+/* Every card is the same skeleton in the same order — art, name, note, promise,
+ * odds, button — but the promise line only exists on some packs and the notes
+ * wrap to different heights. The grid already stretches each card to its row,
+ * so without help the buy buttons landed at whatever height their own content
+ * ran out at, and a row of packs read as a row of things at slightly wrong
+ * heights. `margin-top: auto` on the button spends the leftover space above it
+ * instead, so every price in a row sits on one line. */
 .store-pack {
-  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 14px;
-  border-radius: 15px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px 14px 14px;
+  border-radius: 16px; text-align: center;
   border: 1px solid color-mix(in srgb, var(--pk, #b9c4d0) 45%, transparent);
-  background: linear-gradient(165deg, color-mix(in srgb, var(--pk, #b9c4d0) 16%, transparent), rgba(255, 255, 255, .02));
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--pk, #b9c4d0) 26%, transparent), transparent 70%),
+    linear-gradient(165deg, color-mix(in srgb, var(--pk, #b9c4d0) 13%, transparent), rgba(255, 255, 255, .02));
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
+@media (hover: hover) {
+  .store-pack:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--pk, #b9c4d0) 75%, transparent);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .5), 0 0 26px color-mix(in srgb, var(--pk, #b9c4d0) 26%, transparent);
+  }
+}
+.reduce-motion .store-pack { transition: none; }
+.reduce-motion .store-pack:hover { transform: none; }
+
 .store-pack.rar-bronze { --pk: #c88a4a; }
 .store-pack.rar-silver { --pk: #b9c4d0; }
 .store-pack.rar-gold { --pk: #f4c95d; }
 .store-pack.rar-special { --pk: #ff2e88; }
 .store-pack.rar-star { --pk: #a06bff; }
 .store-pack.rar-icon { --pk: #7af7ff; }
+/* Packs sold for what they do rather than what they roll, so they are not named
+   after a rarity and need a colour of their own. */
+.store-pack.rar-keeper { --pk: #46d6a0; }
+.store-pack.rar-dip { --pk: #ff9f43; }
+
 .sp-art {
-  position: relative; width: 84px; height: 112px; border-radius: 10px; overflow: hidden;
-  display: grid; place-items: center; margin-bottom: 4px;
-  background: linear-gradient(150deg, color-mix(in srgb, var(--pk) 70%, #05070e), #05070e 70%);
-  border: 1px solid color-mix(in srgb, var(--pk) 55%, transparent);
-  box-shadow: inset 0 0 24px color-mix(in srgb, var(--pk) 30%, transparent);
+  position: relative; width: 88px; height: 118px; border-radius: 11px; overflow: hidden;
+  display: grid; place-items: center; margin-bottom: 6px;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--pk) 78%, #05070e), #05070e 72%);
+  border: 1px solid color-mix(in srgb, var(--pk) 60%, transparent);
+  box-shadow:
+    inset 0 0 26px color-mix(in srgb, var(--pk) 32%, transparent),
+    inset 0 -18px 24px -18px color-mix(in srgb, var(--pk) 60%, transparent);
 }
+/* the diagonal rule pattern, plus a foil sheen across the top corner */
 .sp-art i {
   position: absolute; inset: 0;
-  background: repeating-linear-gradient(115deg, transparent 0 7px, rgba(255, 255, 255, .05) 7px 8px);
+  background:
+    linear-gradient(128deg, rgba(255, 255, 255, .22) 0 16%, transparent 42%),
+    repeating-linear-gradient(115deg, transparent 0 7px, rgba(255, 255, 255, .05) 7px 8px);
+}
+/* a chevron band behind the mark, so the art reads as packaging not a swatch */
+.sp-art::after {
+  content: ''; position: absolute; left: -20%; right: -20%; top: 52%; height: 26px;
+  background: color-mix(in srgb, var(--pk) 34%, transparent);
+  transform: rotate(-11deg);
 }
 .sp-mark {
-  position: relative; font-family: var(--font-num); font-style: italic; font-weight: 800;
-  font-size: 26px; color: var(--pk); letter-spacing: -.02em;
+  position: relative; z-index: 1;
+  font-family: var(--font-num); font-style: italic; font-weight: 800;
+  font-size: 27px; color: #fff; letter-spacing: -.02em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .6);
 }
-.sp-name { font-family: var(--font-num); font-size: 16px; }
+.sp-name { font-family: var(--font-num); font-size: 16.5px; line-height: 1.15; }
 .sp-note { font-size: 11px; color: var(--text-mute); }
-.sp-odds { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin-bottom: 6px; }
-.store-pack .btn { width: 100%; padding: 9px 10px; font-size: 13px; }
+.sp-odds { font-size: 10px; color: var(--text-dim); line-height: 1.45; }
+/* `margin-top: auto` is the line that puts every buy button in a row on the
+   same baseline — see the note on .store-pack. `padding-top` keeps it off the
+   odds line on the tallest card, where there is no leftover space to spend. */
+.store-pack .btn { width: 100%; padding: 10px; font-size: 13px; margin-top: auto; }
+.sp-odds { padding-bottom: 8px; }
 
 .locker { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .locker-pack {
@@ -2216,7 +2278,9 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 
 .gm-overlay {
   position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 18px;
-  background: rgba(3, 5, 12, .86); backdrop-filter: blur(10px); animation: fade .2s ease both;
+  /* Full-screen and directly over the canvas — the worst case for the
+     compositor sampling bug described above, so no blur here either. */
+  background: rgba(3, 5, 12, .95); animation: fade .2s ease both;
 }
 .gm-overlay[hidden] { display: none; }
 /* the pause menu dims the live scene rather than hiding it behind a blur */
@@ -2616,7 +2680,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
 }
 .store-pack { position: relative; }
-.sp-alt { margin-top: 6px; font-size: 10px; color: var(--text-mute); text-align: center; }
+.sp-alt { font-size: 10px; color: var(--text-mute); text-align: center; }
 
 .apology { border-color: rgba(255, 183, 3, .4); }
 .apology p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text); }

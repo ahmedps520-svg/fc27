@@ -472,6 +472,75 @@ Because it fires **once**, there has to be a way back to it. Settings links to
 the card put the release history permanently out of reach from inside the app,
 even though the full archive was sitting there being served.
 
+### Momentum — the CPU raises its game when you are cruising
+`updateMomentum` / `aiSkillFor(team)` in `sim.js`. A three-goal lead with two
+minutes left is the most boring state this game can produce: the result is
+settled and nothing that happens next matters. Momentum ramps the opposition's
+`skill` up the further ahead you go, so seeing out a big lead is itself
+something to do.
+
+It rides the lever the ladder already uses. `divisionSkill` is 0.8 at the bottom
+rung to 1.9 at the top, 0.11 a rung; momentum adds up to **0.45**, so a side
+under full momentum plays about four rungs above its own — inside a range that
+is already balanced, rather than a new multiplier nobody has tuned.
+
+Four things about it are deliberate, and all four are load-bearing:
+
+- **It only ever adds.** Momentum is clamped at 0, so the floor is the baseline
+  the match was created with. Being 3-0 down never makes the opposition kinder.
+  A lead of one does nothing at all — one goal is still a match.
+- **Only the side you are not on gets it.** `skill` drives the off-ball AI of
+  *both* teams, your own ten team-mates included, so the first cut of this
+  raised the boost globally and largely cancelled itself out — your press
+  sharpened in exact step with theirs. That is why the boost is asked for by
+  team rather than read off the match.
+- **Rise is quicker than fall** (1.1/s against 0.3/s). Going three up should be
+  answered within a few seconds; the CPU pulling one back should not hand the
+  advantage straight back, so a lead has to actually be defended before the
+  game eases off.
+- **Two-human matches and AI-vs-AI are skipped outright**, via `soloHumanSide`.
+  Couch versus and online seat a person on each team so there is no CPU to
+  raise; co-op seats two on one team and still counts as one human side.
+  AI-vs-AI matters most: that is the configuration every sweep runs and the
+  baseline the economy is tuned against. Because it is gated out, **the sweep is
+  bit-identical to the previous build on both seeds** — verified, not assumed.
+
+Verifying it needs a stub input (`axis/held/pressed/released`) and a forced
+scoreline; `soloHumanSide`, `momentum` and `aiSkillFor` are all readable off the
+match, so a few seconds of stepped updates is enough to see the ramp.
+
+### Packs
+`PACKS` in `screens/squad.js`. Two things used to be written longhand in the
+opener and are now declared on the pack, because neither is a property of the
+pack that happened to want it first:
+
+- **`floor`** — at least one card of that rarity or better. Was
+  `pack.id === 'gold'`.
+- **`minOverall`** — nothing below that rating survives. Was
+  `pack.id === 'prime'`.
+- **`forcePosition`** — one card is certainly that position. Shares the
+  mechanism with the `needGK` argument, which exists because a squad with no
+  keeper cannot be fielded at all.
+- **`tone`** — the colour it wears. Store and locker used to derive this from
+  the id, which silently required every pack to be *named* after a rarity;
+  Keeper, Lucky Dip and Squad Builder are not, and fell through to a default
+  grey that looked broken next to the rest.
+
+A store that grows by adding an `id ===` check to the opener for every new pack
+is a store that stops growing, which is the whole reason for the above.
+
+**`minOverall` was a false promise before it was a field.** The replacement
+draw picked rarity `gold`, and gold starts at 79 — so Prime, whose store card
+reads "82+ min", was handing over 79s and 80s. Measured over 400 opens it held
+to its own number **42%** of the time. Constraining the redraw to clear the bar
+takes that to 100%. If a pack's note states a number, open 400 of them and check
+the number before believing it.
+
+The buy button is deliberately the **last child** of `.store-pack`:
+`margin-top: auto` on it is what puts every price in a row on one baseline, and
+anything placed after it pushes it back off. That is what the "or win 12
+division matches" line under Limited: Icons was doing.
+
 ### The App panel is first in Settings, on purpose
 Everything in it — Support, the changelog, the build stamp, Force update — is
 what someone opens Settings to find when something is *wrong*. It used to be
@@ -577,7 +646,41 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Current best explanation: lazy shader compilation.** three builds a material's
+**Current best explanation: `backdrop-filter` over the live canvas.** Reported
+still happening after the shader fix below shipped, so that was not it either.
+
+A `backdrop-filter` makes the compositor copy the pixels *behind* the element
+into its own layer, blur them, and composite the result back. Behind the match
+HUD those pixels are a WebGL canvas being rewritten every frame, so iOS samples
+a surface the GPU is still writing to, sixty times a second. When the sample
+lands before the canvas has resolved, the element composites over nothing: a
+black rectangle with **tile-aligned edges**, in whatever region the compositor
+was working on — which matches the report far better than either GPU theory
+below. It explains the tile-stepped edges without needing a driver failure at
+all, and it explains why the position moves: it follows the compositor's
+invalidation, not our geometry.
+
+Three elements had it and all three sat over the canvas: `.gm-bug` (the
+scoreline, whose clock changes every second, forcing a repaint), the in-HUD
+`.icon-btn.sm` buttons, and `.gm-overlay` — full-screen, and it appears **on a
+goal**, which is a plausible "sometimes, mid-match" trigger. All three are now
+flat backgrounds. It cost almost nothing: they were already 82-86% opaque, so
+the blur behind them was barely visible, and a few points of extra opacity buys
+back the contrast.
+
+Menus keep their blur. There is no live canvas under those, so none of this
+applies — the rule is only "nothing over the match canvas".
+
+**Not reproduced here** (no iPad, and SwiftShader will not show a compositor
+fault), so this is again a reasoned fix rather than a confirmed one — the third.
+If it *still* happens, that is genuinely useful information, because it rules
+out the whole compositing path: ask whether it survives dropping 3D detail to
+High, and whether it ever fires while the picture is completely static (paused
+with the overlay up). A static-picture flicker would mean the canvas itself, not
+anything layered on it.
+
+### The earlier shader-compilation theory (did not fix it)
+three builds a material's
 GPU program the first time that material is *drawn*, not when it is created.
 This scene has many distinct programs — turf with its normal and roughness maps,
 the kit-tint and skin-tint variants, the instanced crowd, the boards, the light
