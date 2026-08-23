@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v42';
+export const APP_VERSION = 'v43';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -63,6 +63,51 @@ export function refreshCoins() {
 // resume shortcut, a controller focus or an old deep link can't slip past it.
 const LOCKED = { career: 'Career Mode is under construction' };
 
+/**
+ * Send the screen you are leaving on its way.
+ *
+ * Navigation used to replace `innerHTML` outright, so the old screen did not
+ * leave — it ceased. The incoming one faded up over whatever was behind it,
+ * which is why opening a tile felt like a page load rather than like going
+ * somewhere: nothing acknowledged the thing you had just pressed.
+ *
+ * The outgoing nodes are **moved**, not cloned, into a fixed-position ghost
+ * sitting exactly where the screen was. Moving is cheaper than cloning and
+ * pixel-identical, and it is safe because `activeCleanup()` has already run by
+ * this point — the listeners on those nodes are finished with, and the ghost is
+ * dropped a few hundred milliseconds later regardless.
+ *
+ * `navigate` stays **synchronous**. Nothing waits on an animation to swap the
+ * DOM, so no caller has to learn that navigating is now asynchronous, and a
+ * second navigation landing mid-transition just replaces the ghost.
+ *
+ * @param {boolean} back true when heading up to the hub, which reverses the
+ *   direction the old screen travels — going in pushes it away from you, coming
+ *   back drops it towards you.
+ */
+let ghostEl = null;
+function ghostOut(back) {
+  if (!root.firstChild) return;
+  // The match screen owns a WebGL canvas and its own veil; ghosting it would
+  // mean carrying a dead canvas around for the length of an animation.
+  if (current === 'play' || current === 'splash') return;
+  if (getState().settings.reduceMotion) return;
+
+  ghostEl?.remove();
+  const r = root.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = `screen-ghost ${back ? 'is-back' : ''}`;
+  ghost.style.cssText =
+    `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${Math.max(0, r.height)}px`;
+  while (root.firstChild) ghost.appendChild(root.firstChild);
+  document.body.appendChild(ghost);
+  ghostEl = ghost;
+  const drop = () => { ghost.remove(); if (ghostEl === ghost) ghostEl = null; };
+  ghost.addEventListener('animationend', drop, { once: true });
+  // belt and braces: an interrupted animation never fires animationend
+  setTimeout(drop, 600);
+}
+
 export function navigate(name, params = {}) {
   if (LOCKED[name]) {
     toast(LOCKED[name], 'info');
@@ -71,6 +116,10 @@ export function navigate(name, params = {}) {
   }
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
+
+  // The hub is the only place you go *back* to, so it is what names the
+  // direction — everything else is deeper in.
+  if (current !== name) ghostOut(name === 'menu' || name === 'splash');
 
   current = name;
   const mod = SCREENS[name];
