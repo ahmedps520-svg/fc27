@@ -646,8 +646,64 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Status: four theories tried, none confirmed. There is now a detector — use it
-before writing a fifth.**
+**Status: the Ultra render budget is the first cause with actual evidence
+behind it. There is also a detector — read both before writing another theory.**
+
+**It only happens on Ultra**, on desktop and iPad alike, in patches rather than
+whole frames, at no particular moment. That combination is the whole diagnosis,
+and it is what the older notes below were missing.
+
+Ultra asked for `max(2, dpr)` — *at least* twice the CSS size whatever the
+display, so a plain 1x desktop monitor supersampled 2x. Everything downstream
+squares that:
+
+- `EffectComposer` keeps **two** full-size targets, and they are `HalfFloat` —
+  eight bytes a pixel, not four.
+- Both carry a 32-bit `DepthTexture` for the cinematic pass.
+- `UnrealBloomPass` adds a mip chain.
+
+Measured per target, and the pair is only part of the total:
+
+| display | old | new |
+| --- | --- | --- |
+| 1080p | 8.3 MP / 63 MB | unchanged |
+| 1440p | 14.7 MP / 113 MB | 9.0 MP / 69 MB |
+| 4K | 33.2 MP / 253 MB | 9.0 MP / 69 MB |
+| 5K ultrawide | 29.5 MP / 225 MB | 9.0 MP / 69 MB |
+
+At 4K the whole chain came to roughly a gigabyte. An allocation that size either
+fails — and an incomplete framebuffer draws nothing, which is a black region —
+or evicts something else and thrashes, which is a black region that moves and
+returns. Both match the report, and both are Ultra-only, which nothing else
+was.
+
+`safeRatio` in `renderGL.js` caps it against two ceilings: `maxTextureSize`
+(hard — a target wider than the driver allows simply does not allocate, and
+plenty of cards report 8192, which a 5K screen at 2x clears easily), and a 9 MP
+budget. 9 MP is chosen so **1080p and every phone and tablet keep exactly the
+ratio they had** — no visual change for most people — while 1440p falls to
+~1.55x and 4K lands near native, which is the "cap at native" the earlier note
+predicted, reached by a rule instead of a number per resolution.
+
+`resize()` recomputes it, and **must also call `composer.setPixelRatio`**: the
+composer copies the ratio at construction and sizes its own targets by that
+copy, so changing only the renderer resizes the canvas and not the buffers
+drawn into it. Dragging a window onto a 4K screen is how a session that started
+inside the budget ends up outside it.
+
+Kick-off logs the chosen ratio and the resulting buffer size, because "what is
+it actually rendering at" is the first question worth asking about a graphics
+report and there is no way to answer it from outside.
+
+**If it survives this, the resolution is the thing to ask for first.** At 1080p
+and below the cap changes nothing, so a 1080p reporter rules the budget out and
+sends you to the detector; DOF is the other Ultra-only variable (`dof: 0.85`,
+zero on High) and is where to look next.
+
+---
+
+**The detector: four theories were tried before the above, none confirmed. Use
+it before writing a fifth.**
 
 **It happens on desktop too, not only iPad.** That is the single most useful
 fact anyone has produced about this bug and it arrived late, so read the

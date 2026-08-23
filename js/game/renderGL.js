@@ -975,6 +975,58 @@ export function __pitchCanvas() {
   return { colour: pitchTexture(true).image.toDataURL(), rough: pitchRoughness().image.toDataURL() };
 }
 
+/**
+ * How many pixels the scene may actually be rendered at, before the composer's
+ * targets stop fitting in a graphics card.
+ *
+ * **This is the black-flicker fix, and it is the first one grounded in a
+ * reproduction rather than a theory** — the flash was reported on Ultra only,
+ * on desktop and iPad alike, which is the case HANDOFF had already written down
+ * as "memory or bandwidth, cap the Ultra pixel ratio".
+ *
+ * Ultra asked for `max(2, dpr)` — *at least* twice the CSS size, whatever the
+ * display, so an ordinary 1x desktop monitor still supersampled 2x. That number
+ * then gets squared into memory, twice over:
+ *
+ * - `EffectComposer` keeps **two** full-size targets and they are `HalfFloat`,
+ *   so eight bytes a pixel, not four.
+ * - Both carry a 32-bit `DepthTexture` for the cinematic pass.
+ * - `UnrealBloomPass` adds a mip chain on top.
+ *
+ * At 1440p that is 5120x2880 a target: ~236 MB for the pair, ~470 MB with
+ * depth. At 4K it is 7680x4320 and over a gigabyte. Allocations that size
+ * either fail outright — an incomplete framebuffer draws nothing, which is a
+ * black region — or evict something else and thrash, which is a black region
+ * that moves around and comes back. Both match the report.
+ *
+ * Two ceilings, and the hardware one is not negotiable:
+ *
+ * 1. **`maxTextureSize`.** A target wider than the driver allows does not
+ *    allocate at all. Plenty of GPUs report 8192, and a 5K or ultrawide screen
+ *    at 2x sails past it.
+ * 2. **A pixel budget.** 9 MP keeps 1080p at the full 2x it was tuned for,
+ *    pulls 1440p back to ~1.55x, and lands 4K at about native — which is
+ *    exactly the "cap at native" the handoff predicted, arrived at by a rule
+ *    rather than by picking a number per resolution.
+ */
+const MAX_RENDER_PIXELS = 9e6;
+
+const cssSize = (canvas) => ({
+  w: canvas.clientWidth || canvas.width || window.innerWidth || 1280,
+  h: canvas.clientHeight || canvas.height || window.innerHeight || 720,
+});
+
+function safeRatio(renderer, want, { w, h }) {
+  // Some drivers report enormous limits they cannot really back with memory,
+  // so 8192 is the ceiling regardless of what the card claims.
+  const maxDim = Math.max(2048, Math.min(renderer.capabilities?.maxTextureSize || 4096, 8192));
+  let r = Math.min(want, Math.sqrt(MAX_RENDER_PIXELS / Math.max(1, w * h)));
+  // Never render so far below native that the picture turns to mush; the hard
+  // limit below still wins over this floor.
+  r = Math.max(0.75, r);
+  return Math.min(r, maxDim / Math.max(1, w), maxDim / Math.max(1, h));
+}
+
 export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
@@ -994,9 +1046,21 @@ export function createRenderer(canvas, match, quality, models = false) {
     powerPreference: 'high-performance',
   });
   const dpr = window.devicePixelRatio || 1;
-  renderer.setPixelRatio(ultra
+  const wantRatio = ultra
     ? Math.min(3, Math.max(2, dpr))          // render above native, then downsample
-    : Math.min(quality === 'low' ? 1.25 : 2, dpr));
+    : Math.min(quality === 'low' ? 1.25 : 2, dpr);
+  const startRatio = safeRatio(renderer, wantRatio, cssSize(canvas));
+  renderer.setPixelRatio(startRatio);
+  {
+    /* Said out loud once, because "what is it actually rendering at" is the
+     * first question worth asking about a graphics report and there is no way
+     * to answer it from the outside. Costs one line at kick-off. */
+    const { w, h } = cssSize(canvas);
+    console.info('[apexxi] %s: %dx%d css, ratio %s (wanted %s) -> %dx%d, maxTex %d',
+      quality, w, h, startRatio.toFixed(2), wantRatio.toFixed(2),
+      Math.round(w * startRatio), Math.round(h * startRatio),
+      renderer.capabilities?.maxTextureSize || 0);
+  }
   renderer.shadowMap.enabled = quality !== 'low';
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   // filmic tone mapping is what stops floodlit whites blowing out to flat grey
@@ -1762,6 +1826,19 @@ export function createRenderer(canvas, match, quality, models = false) {
     get info() { return renderer.info; },
     get engine() { return `three.js r${THREE.REVISION}`; },
     resize(w, h) {
+      /* Recompute the ratio, because the budget is a function of the size and
+       * this is the only place the size changes. Dragging a window onto a 4K
+       * screen, or turning a tablet, is exactly how a session that started
+       * inside the budget ends up outside it.
+       *
+       * The composer has to be told separately: it captured the ratio at
+       * construction and multiplies its own targets by that copy, so leaving it
+       * behind would resize the canvas and not the buffers it draws into. */
+      const r = safeRatio(renderer, wantRatio, { w, h });
+      if (r !== renderer.getPixelRatio()) {
+        renderer.setPixelRatio(r);
+        composer?.setPixelRatio(r);
+      }
       renderer.setSize(w, h, false);
       composer?.setSize(w, h);
       if (composer) {
