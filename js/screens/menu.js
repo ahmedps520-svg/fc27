@@ -1,5 +1,6 @@
 import { navigate, toast } from '../app.js';
-import { notesPending, showNotes } from './notes.js';
+import { notesPending, showNotes, markNotesSeen } from './notes.js';
+import { maybeStartTutorial, tutorialSeen } from '../tutorial.js';
 
 export const TITLE = 'APEX XI';
 
@@ -101,7 +102,19 @@ export function mount(root) {
    * a START button is how a game gets a reputation for being in the way. By the
    * time this fires the menu is drawn behind it, so dismissing it leaves you
    * where you were already heading. */
+  /* Two overlays on one frame is how a first launch becomes a wall of things to
+     dismiss, so exactly one of these runs.
+     
+     A brand new save has *both* pending — it has never seen this build either —
+     and the tour wins, because a changelog for a version you have never run is
+     noise to someone who has not played the game at all. The notes are marked
+     seen on the way past so they do not ambush the second launch either. */
   let closeNotes = null;
-  if (notesPending()) closeNotes = showNotes(root);
+  if (!tutorialSeen()) {
+    markNotesSeen();
+    maybeStartTutorial();
+  } else if (notesPending()) {
+    closeNotes = showNotes(root);
+  }
   return () => { closeNotes?.(); };
 }

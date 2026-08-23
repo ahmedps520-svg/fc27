@@ -1320,6 +1320,52 @@ the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word.
 
+### The guided tour
+`js/tutorial.js`. A spotlight walk through the **real** interface rather than a
+slideshow of pictures of it: every step points at an element that is genuinely
+on screen, and the tour gets there by calling `navigate` and clicking the same
+tab buttons a player would. It cannot drift out of sync with the app the way a
+hand-drawn walkthrough does — rename a tab and the tour breaks in testing
+instead of quietly teaching the wrong thing.
+
+Twenty steps across ten chapters, Welcome through to Done, with **Skip section**
+jumping to the next chapter. Content is one `STEPS` array: `screen` is navigated
+to, `tab` is clicked, `target` is the selector to spotlight. Omit `target` for a
+centred card, which is how a chapter introduces itself.
+
+Three things carry the whole thing and each has a reason:
+
+- **The hole is the dimmer.** One element with `box-shadow: 0 0 0 9999px` —
+  everything outside it is shadow. No SVG mask, no four-panel edge rig, and it
+  moves and resizes as a single box. A step with no target has nothing to cast
+  that shadow *from*, so the scrim takes a background instead
+  (`.tut.no-target`); the first attempt at this was a clever 0x0 hole and it
+  silently dimmed nothing.
+- **Positioning runs every frame**, not once per step. Steps land mid screen
+  transition, panels stagger in underneath, `scrollIntoView` is still gliding,
+  and the page scrolls. One `getBoundingClientRect` a frame on one element is
+  cheaper than any of the ways of being wrong.
+- **The card is clamped into the viewport.** This is the line that stops the
+  tour dead-ending: positioned purely relative to its target, a target below
+  the fold puts the card *and the Next button on it* off-screen, where there is
+  no way forward and no way out but a reload. Caught by driving all twenty
+  steps in a browser and asserting the card is on screen at each one — worth
+  keeping that test if these are edited.
+
+The spotlight is also clipped to the viewport, because a target taller than the
+screen (the store grid is ~1000px of packs) would otherwise put the ring off
+both edges and dim nothing, which reads as the tour having broken.
+
+**A new save gets the tour, not the changelog.** Both are pending on a first
+launch — a fresh save has never seen this build either — and `menu.js` runs
+exactly one of them, because two overlays on one frame is how a first launch
+becomes a wall of things to dismiss. The notes are marked seen on the way past
+so they do not ambush the second launch. `settings.tutorialDone` is set **on
+sight, not on completion**: someone who closes it after two steps has decided,
+and being handed it again every launch is worse than missing it.
+
+Settings → **Replay tutorial**, first row of the first panel.
+
 ### Screen transitions
 `ghostOut()` in `app.js`. Navigation replaced `innerHTML` outright, so the old
 screen did not leave, it ceased — the new one faded up over whatever was behind

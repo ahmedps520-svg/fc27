@@ -32,6 +32,7 @@ const defaults = () => ({
     models: 'realistic',        // realistic | simple          (scanned mesh vs built-in figures)
     showFps: false,             // live frame counter in the match HUD
     graphicsAsked: false,       // the post-match "keep these graphics?" prompt fires once, ever
+    tutorialDone: false,        // the guided tour runs itself once, then lives in Settings
     sound: true,
     musicVol: 0.5,
     sfxVol: 0.9,

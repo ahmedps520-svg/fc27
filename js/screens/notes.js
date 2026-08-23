@@ -24,6 +24,10 @@ function markSeen() {
   update((s) => { s.flags.notesSeen = LATEST.version; });
 }
 
+/** Exported so a first launch can retire the card without ever showing it —
+ *  a changelog for a build you have never run is noise. See menu.js. */
+export { markSeen as markNotesSeen };
+
 const fmtDate = (iso) => {
   const d = new Date(`${iso}T00:00:00`);
   return Number.isNaN(d.getTime()) ? iso
