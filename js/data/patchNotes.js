@@ -18,6 +18,46 @@
  */
 export const RELEASES = [
   {
+    version: 'v41',
+    date: '2026-08-23',
+    tag: 'Diagnostics',
+    title: 'Undoing a wrong call, and widening the net',
+    lede: 'The last release was diagnosed from a screenshot that turned out not '
+        + 'to contain the glitch at all. That change is reverted, and the '
+        + 'built-in check now watches for three faults instead of one.',
+    entries: [
+      {
+        head: 'Last release\u2019s shading change is reverted',
+        summary: 'v40 softened the contact shading based on a photo that, it turns out, showed '
+               + 'a perfectly normal frame. The original look is back.',
+        detail: 'A frame was sent showing a dark wedge across the goalmouth, and it was read as '
+              + 'the shading effect blacking out an area. It was not — it was ordinary stadium '
+              + 'shadow, and the real flicker simply had not been caught. Since the reason for '
+              + 'the change was wrong, the change is undone and the contact shading looks '
+              + 'exactly as it did before. The separate fix from the release before, which '
+              + 'stopped an invalid number reaching the screen, stays: that one was a genuine '
+              + 'defect regardless of this.',
+      },
+      {
+        head: 'The frame check now names which fault it found',
+        summary: 'With Show FPS on, the badge reports three different problems separately, so a '
+               + 'single photo of it identifies the cause.',
+        detail: 'The flicker lasts a split second and repeats, which is exactly why it never '
+              + 'survives a screenshot — you cannot press a key inside one frame. So the game '
+              + 'watches for it instead, and it now distinguishes three separate faults rather '
+              + 'than one. The badge will read something like "98 FPS - 2 draw" or "- 3 prog" '
+              + 'or "- 1 tex". "draw" means the frame was never properly drawn. "prog" means a '
+              + 'piece of graphics code was built mid-match, which can leave an object black '
+              + 'for a frame while it happens — that work is supposed to be finished during the '
+              + 'loading screen, so any count here points straight at what was missed. "tex" '
+              + 'means an image was sent to the graphics card mid-match, and an object whose '
+              + 'image has not arrived draws black. All three are read from counters the engine '
+              + 'already keeps, so none of it costs any performance, and across a full match of '
+              + 'normal play all three stay at zero.',
+      },
+    ],
+  },
+  {
     version: 'v40',
     date: '2026-08-23',
     tag: 'Graphics',

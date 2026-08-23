@@ -191,26 +191,7 @@ void main() {
         blurWeight += ok;
       }
     }
-    /* Ceiling of 0.55, not 0.92.
-     *
-     * This multiplies the pixel's colour, so 0.92 meant the occlusion term was
-     * allowed to take any pixel down to **8% brightness** — indistinguishable
-     * from black. Ambient occlusion is contact shading; nothing it describes is
-     * a 92% loss of light, so the old ceiling bought no picture and left the
-     * pass one bad estimate away from painting a region black.
-     *
-     * And a bad estimate is easy to get: the normal is reconstructed from the
-     * depth buffer's slope, which degenerates at grazing angles and out near
-     * the precision floor. Where it does, every tap reads as occluded, the sum
-     * saturates, and a whole region lands on the ceiling at once — a dark patch
-     * with hard edges following the depth discontinuities. Ultra reaches it
-     * soonest because it asks for the strongest term (1.05 against High's 0.9),
-     * which is exactly the Ultra-only pattern that was reported.
-     *
-     * At 0.55 the worst a wrong estimate can do is halve the brightness: a
-     * visible shading error, not a hole in the picture. Real contact darkening
-     * lives well under this and is unchanged. */
-    ao = 1.0 - clamp((ao / float(TAPS)) * uAoStrength, 0.0, 0.55);
+    ao = 1.0 - clamp((ao / float(TAPS)) * uAoStrength, 0.0, 0.92);
   } else {
     ao = 1.0;
   }

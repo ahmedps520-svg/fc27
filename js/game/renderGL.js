@@ -1801,10 +1801,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     // bokeh, which is the expensive half.
     cine = new CinematicPass(camera, {
       samples: ultra ? 12 : 8,
-      // Was 1.05 on Ultra. Ultra having the *strongest* occlusion term is what
-      // made it the tier that saturated the ceiling first — more taps already
-      // give it a smoother estimate, so it does not need a heavier hand too.
-      ao: ultra ? 0.95 : 0.9,
+      ao: ultra ? 1.05 : 0.9,
       aoRadius: 0.6,
       dof: ultra ? 0.85 : 0,
       grain: 0.03,

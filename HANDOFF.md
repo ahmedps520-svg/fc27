@@ -646,8 +646,68 @@ returns a string with leading whitespace, so parsing it and taking the first
 *node* hands back the whitespace, not the badge.
 
 ### The black flicker
-**Status: the occlusion ceiling. This is the first theory built on measurement
-of the failing machine rather than on reasoning about it.**
+**Status: unsolved after seven attempts. Do not write an eighth theory — the
+detector now covers three fault classes and a report from it settles which.**
+
+**Read this before touching it.** The refined symptom, which arrived late and
+contradicts how the earlier attempts were framed:
+
+- **A split second, repeated many times a session.** It is not one dramatic
+  event, it is a fast recurring flicker. This is why it never survives a
+  screenshot — nobody can press a key inside one frame.
+- **Ultra only.** Desktop and iPad alike. In patches, not whole frames.
+- On the reporter's machine the render is **1920x945 css at ratio 2.00 ->
+  3840x1890**, i.e. 7.3 MP, comfortably inside the 9 MP budget, so the v38 cap
+  never engaged there and that fix is irrelevant to them.
+
+**A screenshot was misread, and it cost a release.** A frame was sent showing a
+hard-edged dark wedge across the goalmouth; it was diagnosed as the occlusion
+term clipping, and v40 capped that term. The reporter then pointed out the
+photo did **not** contain the artefact at all — the wedge was ordinary stadium
+shadow, and the flicker simply had not been captured. v40's shading change was
+reverted. The lesson is worth more than the fix was: **confirm a frame actually
+contains the artefact before diagnosing from it**, because a normal frame of
+this scene has plenty of legitimately dark geometry to mistake for one.
+
+Still true from that screenshot, and still useful: the badge read **98 FPS**,
+and the resolution line above. Nothing else from it should be trusted.
+
+**The detector** (`checkDrawCall` in `screens/play.js`) counts three fault
+classes separately, each on a counter three already maintains, so watching them
+is free — no `readPixels`, which would stall the pipeline every frame to answer
+what these answer for nothing. The badge shows each, so one photo names the
+fault:
+
+- **`N draw`** — the frame issued almost no draw calls. We failed to draw it.
+- **`N prog`** — a shader was compiled *during* play. three builds a material's
+  program the first time it is drawn and the object can render black while that
+  happens. `warmUp()` exists to do all of it behind the loading screen, so a
+  moving counter means warmUp missed a material — this is the original v33
+  compilation theory finally being *measured* rather than assumed.
+- **`N tex`** — a texture or geometry was uploaded during play. An object whose
+  texture is not resident yet draws black, and a texture is a rectangle, which
+  is the reported shape.
+
+Measured silent across 75 seconds of Ultra play, so any non-zero count is
+signal, not noise.
+
+**A silent detector is itself a result**: it means the frame was drawn in full,
+with nothing newly compiled or uploaded, and the fault is either in what the
+shading produced or in what the browser did with a finished frame. The test run
+that produced that silence had no goal and no replay in it, though, so the
+events most likely to introduce a new material — a celebration, a replay camera
+cut, a substitution — are **not yet covered**. Reproducing across a goal is the
+next thing to try.
+
+Ruled out by evidence, not by argument: allocation (inside budget on the
+failing machine), shadow-frustum edges (three returns *fully lit* outside the
+frustum, never dark), and the occlusion ceiling (v40, reverted — the frame it
+was diagnosed from did not contain the bug).
+
+---
+
+**Superseded: the occlusion ceiling.** Diagnosed from a frame that did not
+contain the artefact. Reverted.
 
 A screenshot from the reporter settled three things at once, and every one of
 them contradicted a previous theory:
