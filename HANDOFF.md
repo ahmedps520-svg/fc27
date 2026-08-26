@@ -15,6 +15,27 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Render builds: the Node version is pinned, do not unpin it
+A deploy failed with:
+
+    Requesting Node.js version >=18
+    Using Node.js version 26.8.0
+    error apexxi@1.0.0: The engine "node" is incompatible with this module.
+    Expected version ">=18". Got "26.8.0-alpha.0.0.0"
+
+`engines.node` was `>=18`, Render resolved that to the newest build it had —
+a **prerelease**, `26.8.0-alpha.0.0.0` — and then yarn's own engine check
+rejected it, because a semver range without a prerelease tag never matches a
+prerelease version. So the range asked for a version that the range itself
+forbids, and every deploy failed the moment Render's newest Node went alpha.
+
+Fixed with `.node-version` (22.11.0, LTS) and `engines.node: ">=18 <27"`. The
+file is what Render actually reads; the range is the belt.
+
+This is worth remembering when a fix "does not work in production": a failed
+build leaves the **previous** build serving, so the site keeps working and keeps
+being wrong. Check the deploy log before re-debugging the code.
+
 ### The wheel, cause four — stop diagnosing (v55)
 Three fixes had shipped (stuck `body.in-game`; `overflow: hidden` latching,
 fixed with `overflow: clip`) and the reporter's wheel was still dead after a
