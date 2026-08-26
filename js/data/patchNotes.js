@@ -18,6 +18,28 @@
  */
 export const RELEASES = [
   {
+    version: 'v56',
+    date: '2026-08-26',
+    tag: 'Interface',
+    title: 'New menu art, shot in the engine',
+    lede: 'The main menu now sits on a night match photographed inside the '
+        + 'game itself, at full screen resolution.',
+    entries: [
+      {
+        head: 'Sharp this time',
+        summary: 'The old backdrop was a small image stretched across a big screen. '
+               + 'This one is drawn at 2560 wide.',
+        detail: 'The art is a frame from the game\'s own renderer, taken from a camera the '
+              + 'game never actually uses: down at pitch level near the halfway line, wide '
+              + 'lens, floodlight in shot, the crowd banked up behind. It is then graded to '
+              + 'night, the floodlights are bloomed, the green brand streaks are laid over it '
+              + 'and the lower half is darkened so the tiles and the small print stay '
+              + 'readable. Everything on screen is the real stadium, the real crowd and the '
+              + 'real turf shader — nothing was borrowed from anywhere else.',
+      },
+    ],
+  },
+  {
     version: 'v55',
     date: '2026-08-26',
     tag: 'Fix',

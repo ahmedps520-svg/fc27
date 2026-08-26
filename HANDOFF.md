@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Menu key art is engine-shot and reproducible (v56)
+`assets/keyart.jpg` is now a 2560x1440 frame from the game's own renderer,
+graded. The pipeline and its rules live in `tools/keyart/README.md` — read that
+before replacing the art. Three things it records that cost time here:
+- shoot at display size (the "low quality" complaint was a 1672px image stretched
+  across a 2560px screen);
+- put the darkening in the image, not the CSS scrim, or the art turns to grey wash;
+- the shoot needs a temporary `globalThis.__keyart` hook in `updateCamera`
+  (`js/game/render3d.js`) which is **not committed** — add it, shoot, remove it.
+
+`.menu-wordmark` is visible again: it was hidden only because the previous art
+had its own lockup baked in. That coupling is now commented at
+`body.on-menu::before`.
+
 ### Render builds: the Node version is pinned, do not unpin it
 A deploy failed with:
 
