@@ -1325,6 +1325,43 @@ guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
 went 446 → 731 players and every position now has gold, special, star and icon
 cards in it.
 
+### The scroll-wheel bug, actually found
+Three reports, two wrong fixes, and the real cause was `body.in-game`, which
+carries `overflow: hidden` for the match. It was added in the play screen's
+mount and removed deep in its cleanup — **after** `gl.dispose()` and the crowd
+audio teardown. Either of those throwing (real GPU drivers do; SwiftShader in
+tests does not) skipped the removal, and the page was left unscrollable
+everywhere until a reload. Never reproduced here because no test scrolled
+*after playing a match*.
+
+Three layers now: the class is removed **first** in the cleanup; every risky
+teardown step is individually guarded so one throw cannot skip the rest; and
+`navigate()` owns the class outright — `toggle('in-game', name === 'play')` —
+so arriving anywhere that is not the match clears it whatever happened to the
+match. Verified by forcing the stuck class and navigating: it clears, and the
+wheel scrolls.
+
+The general lesson: **state a screen sets on `document.body` must be owned by
+navigation, not by the screen's own cleanup.** A cleanup can die; navigation
+always runs. The tutorial-scrim fix (v45) was real but was a second, smaller
+cause of the same symptom.
+
+### The desktop width and the key art
+`.screen` was capped at 1180px — tablet sizing on every monitor, which read as
+"the boxes are really small" on a PC. The cap is 1520px now, and `min-width:
+1400px` media rules scale the hub doors and wordmark up with it.
+
+The menu backdrop (`assets/keyart.jpg`, `body.on-menu::before`) is a frame shot
+with the game's **own renderer** via Playwright — its real stadium, floodlights
+and crowd — graded dark at capture (multiply + green overlay + top/bottom
+scrims baked in). Own-engine art has no trademark problem (the user's reference
+had a real Nike swoosh in it) and no AI-typo'd text baked in. It lives on
+`body`, not inside `.screen`, because a fixed layer inside the screen would
+ride the entry animation's containing block (see below). ~130KB, precached in
+`sw.js`. Regenerate with a bigger crowd/lower camera any time: the capture
+script pattern is in the session notes — boot, kick off, drawImage the canvas,
+grade in a 2D canvas, `toDataURL('image/jpeg')`.
+
 ### The hub layout
 Asked for explicitly, with an FC Mobile screenshot as the reference: *"i want
 the game to look like that but not exactly... same menu options just the same

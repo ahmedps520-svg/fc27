@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v48';
+const CACHE = 'apexxi-v49';
 
 const ASSETS = [
   './',
@@ -72,6 +72,8 @@ const ASSETS = [
   './js/vendor/jsm/shaders/CopyShader.js',
   './js/vendor/jsm/shaders/LuminosityHighPassShader.js',
   './js/vendor/jsm/shaders/OutputShader.js',
+
+  './assets/keyart.jpg',
 
   './icons/icon-192.png',
   './icons/icon-512.png',

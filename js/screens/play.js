@@ -1362,12 +1362,17 @@ export function mount(root, params) {
     // well as cancelling the frame already in flight
     running = false;
     cancelAnimationFrame(raf);
-    stopCrowd();
-    gl?.dispose();
+    /* Give the document back FIRST. `in-game` puts overflow:hidden on the
+     * body, and it used to be removed after gl.dispose() — so a throwing GPU
+     * teardown left the whole app unscrollable until a reload. The disposals
+     * are each guarded for the same reason: none of them is allowed to stop
+     * the ones after it. navigate() also clears the class as a backstop. */
+    document.body.classList.remove('in-game');
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
-    document.body.classList.remove('in-game');
-    for (const inp of inputs) inp.destroy?.();
+    try { stopCrowd(); } catch { /* audio teardown must not block the rest */ }
+    try { gl?.dispose(); } catch { /* GPU teardown least of all */ }
+    for (const inp of inputs) { try { inp.destroy?.(); } catch { /* ditto */ } }
     // tell the hub we are gone, so the other player is not left waiting
     if (online && !ended) net.send({ t: 'leave' });
     netOffs.forEach((off) => off());

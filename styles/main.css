@@ -52,6 +52,17 @@ body {
   background-attachment: fixed;
 }
 
+/* The menu's key art: a frame shot with the game's own renderer — its real
+   stadium, floodlights and crowd — graded dark at capture so UI sits on it.
+   On body so it never rides a screen animation's containing block; the grid
+   and orbs paint over it and read as part of the grade. */
+body.on-menu::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 6, 13, .30), rgba(4, 6, 13, .74) 90%),
+    url('../assets/keyart.jpg') center 40% / cover no-repeat;
+}
+
 .bg-grid {
   position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
   background-image:
@@ -119,8 +130,12 @@ body {
 /* ------------------------------ Layout --------------------------- */
 .screen {
   position: relative; z-index: 1;
-  max-width: 1180px; margin: 0 auto;
-  padding: 20px 16px 72px;
+  /* 1180px was sized for tablets and read as a postage stamp on a desktop
+     monitor — on a 1920px screen the app used 61% of it and every tile came
+     out small. 1520px fills a desktop properly and is still comfortably
+     within a laptop; the auto-fit grids inside simply take the extra room. */
+  max-width: 1520px; margin: 0 auto;
+  padding: 20px 18px 72px;
 }
 /* ---------------------------- Navigation ------------------------- *
  * Going somewhere should look like going somewhere. The incoming screen rises
@@ -336,7 +351,7 @@ select {
 .tile.t-play {
   /* bright end first: the text sits top-left, and dark-on-dark-green is
      unreadable — the deep shade belongs under the swoosh, not the words */
-  background: linear-gradient(140deg, var(--accent) 22%, var(--accent-deep) 96%);
+  background: linear-gradient(140deg, #3ddf75 0%, var(--accent) 55%, var(--accent-deep) 100%);
   border-color: color-mix(in srgb, var(--accent) 70%, transparent);
   color: #04170b;
 }
@@ -351,6 +366,16 @@ select {
   .hub-rail { flex-direction: row; }
   .hub-main { grid-template-columns: 1fr; }
   .tile.t-club, .tile.t-play { min-height: 190px; }
+}
+/* A desktop monitor gets desktop-sized doors, not tablet ones scaled by
+   nothing. Type scales with them — a big card with small text reads as empty. */
+@media (min-width: 1400px) {
+  .hub { grid-template-columns: 150px 1fr; gap: 18px; }
+  .tile.t-club, .tile.t-play { min-height: 300px; padding: 30px 28px; }
+  .tile.t-club .tile-name, .tile.t-play .tile-name { font-size: 30px; }
+  .tile.t-club .tile-blurb, .tile.t-play .tile-blurb { font-size: 14.5px; }
+  .t-mini .tile-name { font-size: 14.5px; }
+  .menu-wordmark { font-size: 84px; }
 }
 .tile {
   position: relative; overflow: hidden; cursor: pointer; text-align: left;

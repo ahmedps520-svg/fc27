@@ -18,6 +18,52 @@
  */
 export const RELEASES = [
   {
+    version: 'v49',
+    date: '2026-08-26',
+    tag: 'Fix',
+    title: 'The scroll wheel, found at last',
+    lede: 'The mouse wheel really was dying — after a match, everywhere, until '
+        + 'a reload. Found, fixed, and the menu got its key art.',
+    entries: [
+      {
+        head: 'Scrolling no longer dies after a match',
+        summary: 'Leaving a match could silently lock the whole page against scrolling until '
+               + 'you reloaded. That was the wheel bug all along.',
+        detail: 'During a match the page deliberately locks scrolling — there is nothing to '
+              + 'scroll and a stray wheel would fight the camera. The unlock ran at the very '
+              + 'end of the match teardown, after the graphics engine had been shut down, and '
+              + 'if that shutdown failed on your graphics driver the unlock never ran. From '
+              + 'then on nothing anywhere would scroll until a full reload, which is exactly '
+              + 'what was reported — three times — and never reproduced in testing, because '
+              + 'the tests never played a match first. The unlock now runs before anything '
+              + 'that can fail, every risky teardown step is isolated so one failure cannot '
+              + 'skip the rest, and navigation itself clears the lock as a backstop whenever '
+              + 'you arrive anywhere that is not the match. Even a crashed match cannot take '
+              + 'scrolling with it now.',
+      },
+      {
+        head: 'Desktop gets desktop sizes',
+        summary: 'The app was capped at tablet width on any monitor. It now fills a desktop '
+               + 'properly and the menu doors scale up with it.',
+        detail: 'Every screen was limited to 1,180 pixels wide — sized for a tablet, and on a '
+              + 'desktop monitor it used barely six tenths of the screen, which is why '
+              + 'everything looked small. The cap is now 1,520 pixels, the grids inside '
+              + 'simply take the extra room, and on large screens the menu doors and their '
+              + 'text grow to match.',
+      },
+      {
+        head: 'The menu has key art',
+        summary: 'The main menu now sits over a stadium backdrop — shot with the game\u2019s '
+               + 'own renderer, graded dark so everything on top stays readable.',
+        detail: 'The backdrop is a real frame from the match engine — this game\u2019s own '
+              + 'stadium, floodlights and crowd, not stock art — captured at night settings '
+              + 'and graded down into the app\u2019s palette so the wordmark and doors sit on '
+              + 'it cleanly. It weighs about as much as one player portrait and is cached for '
+              + 'offline play like everything else.',
+      },
+    ],
+  },
+  {
     version: 'v48',
     date: '2026-08-26',
     tag: 'Interface',
