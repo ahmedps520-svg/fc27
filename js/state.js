@@ -257,6 +257,37 @@ export function saveWeight(s) {
   return (u.played || 0) * 10 + (c.collection?.length || 0) + (c.packsOpened || 0) * 2;
 }
 
+/**
+ * Does the cloud copy replace this device's?
+ *
+ * The rule used to be weight alone, and weight is a **progress** score — it
+ * counts matches, cards and packs opened. It does not count `apex`. So an
+ * operator who edited a balance on the server changed nothing the comparison
+ * could see: the device kept its own copy, and then pushed it straight back up
+ * over the correction. Editing the database by hand looked like it worked and
+ * silently did not, which is exactly how the sell exploit survived a fix and a
+ * redeploy.
+ *
+ * `meta.adminRev` is the way out. It is bumped only by `tools/set-apex.mjs`,
+ * and a higher one on the cloud copy wins **regardless of weight** — a
+ * deliberate correction is not a conflict to be arbitrated, it is an
+ * instruction. Once adopted the device carries the same number, so the
+ * correction applies exactly once and normal weight arbitration resumes.
+ *
+ * @param {boolean} orEqual sign-in treats an equal-weight cloud save as the
+ *   winner; the background resume does not. Kept as a parameter so both callers
+ *   share one rule rather than drifting apart.
+ */
+export function cloudWins(cloud, local, { orEqual = false } = {}) {
+  if (!cloud) return false;
+  const cloudRev = cloud.meta?.adminRev || 0;
+  const localRev = local?.meta?.adminRev || 0;
+  if (cloudRev !== localRev) return cloudRev > localRev;
+  const a = saveWeight(cloud);
+  const b = saveWeight(local);
+  return orEqual ? a >= b : a > b;
+}
+
 export function update(fn) {
   fn(state);
   save();

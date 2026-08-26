@@ -4,7 +4,7 @@
  * Rendered as a tab inside Ultimate XI (see squad.js) and reused by the
  * standalone account screen off the main menu.
  */
-import { getState, adoptCloudSave, saveWeight, save } from '../state.js';
+import { getState, adoptCloudSave, cloudWins, save } from '../state.js';
 import { WORLD, getPlayer } from '../data/generator.js';
 import * as api from '../net/api.js';
 import * as net from '../net/socket.js';
@@ -164,7 +164,7 @@ export function mountSignIn(root, after) {
       // Conflict: local progress vs whatever the account already holds. Keep the
       // fuller one rather than silently wiping a career.
       const local = getState();
-      if (d.save && saveWeight(d.save) >= saveWeight(local)) {
+      if (cloudWins(d.save, local, { orEqual: true })) {
         adoptCloudSave(d.save);
       } else {
         save();                       // push the local copy up as the new truth

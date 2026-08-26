@@ -12,7 +12,7 @@ import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
 import * as api from './net/api.js';
 import * as net from './net/socket.js';
-import { adoptCloudSave, saveWeight } from './state.js';
+import { adoptCloudSave, cloudWins } from './state.js';
 
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v46';
+export const APP_VERSION = 'v47';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -206,10 +206,11 @@ tryStartAudio();
 
 /* ------------------------------ account ------------------------------ */
 // Resume a stored session in the background. If the account holds more progress
-// than this device does, that copy wins — otherwise the local one is pushed up.
+// than this device does — or carries an operator correction — that copy wins;
+// otherwise the local one is pushed up. See `cloudWins`.
 api.resume().then((d) => {
   if (!d) return;
-  if (d.save && saveWeight(d.save) > saveWeight(getState())) {
+  if (cloudWins(d.save, getState())) {
     adoptCloudSave(d.save);
     applyTheme();
     refreshCoins();

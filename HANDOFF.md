@@ -1329,6 +1329,29 @@ the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word.
 
+### Editing the database by hand does not work
+This cost a real incident, so it is worth stating plainly: **the save is
+client-authoritative.** On sign-in the device compares its copy against the
+cloud's with `saveWeight`, and `saveWeight` scores *progress* — matches, cards,
+packs opened. **It does not look at `apex`.**
+
+So correcting a balance in the account database changes nothing the comparison
+can see. The weights come out identical, the device keeps its own copy, and
+`state.js` then pushes that copy straight back up over the correction. It looks
+like it worked, and it silently did not — an exploited balance survived both a
+hand edit and a redeploy that way.
+
+`meta.adminRev` is the way out, and `cloudWins()` in `state.js` is the one place
+the rule lives. A higher `adminRev` on the cloud copy wins **regardless of
+weight**: a deliberate correction is not a conflict to arbitrate, it is an
+instruction. Once adopted the device carries the same number, so it applies
+exactly once and normal weight arbitration resumes.
+
+Both callers go through `cloudWins` — the background resume in `app.js` and
+sign-in in `online.js`, which differ only in whether an equal weight counts as
+a win (`orEqual`). They used to hold two copies of the comparison; a rule that
+lives twice is a rule that will disagree with itself.
+
 ### Correcting a balance
 `tools/set-apex.mjs`. Closing an exploit does not unwind the balances it
 produced, and there was no way to correct one without hand-editing the account
@@ -1351,9 +1374,13 @@ env silently edits a local file and reports success.
 reachable over HTTP: nothing in `server.js` calls it, and an endpoint taking a
 name would be an account enumeration oracle.
 
-It changes the balance and nothing else. **Cards bought with the coins stay in
-the club** — the tool says so on every run, because that is the half most easily
-forgotten when reversing an exploit.
+`--clear-packs` empties the locker as well, and the report itemises it. **Coins
+are only the first place exploited money goes**: spent, it becomes unopened
+packs, which are the same value wearing a different hat and are invisible in a
+balance. The account that prompted this had been reset to 30,000 Apex and was
+sitting on 612 Lucky Dips and 8 Limited: Legends — millions, parked. Cards
+already in the collection are not touched by either flag, and the tool says so
+on every run.
 
 ### Selling a card, and why it paid twice
 `[data-sell]` in `squad.js`. The handler credited the coins **unconditionally**

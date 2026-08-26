@@ -18,6 +18,33 @@
  */
 export const RELEASES = [
   {
+    version: 'v47',
+    date: '2026-08-23',
+    tag: 'Fix',
+    title: 'Corrections to a club now actually stick',
+    lede: 'Putting a balance right on the server did nothing — the game handed '
+        + 'the old number straight back. Fixed.',
+    entries: [
+      {
+        head: 'The server can correct a club again',
+        summary: 'A balance corrected on the server was being overwritten by the copy on the '
+               + 'player\u2019s own device, so the correction never took effect.',
+        detail: 'When you sign in, the game compares the club stored on your device with the '
+              + 'one stored on the server and keeps whichever has more progress in it. That '
+              + 'comparison counts matches played, cards owned and packs opened — it never '
+              + 'looked at your balance. So a balance corrected on the server scored exactly '
+              + 'the same as the old one, the device decided its own copy was just as good, '
+              + 'kept it, and then uploaded it back over the correction. It looked like it had '
+              + 'worked and it had not.\n\nCorrections now carry a marker that the game '
+              + 'honours ahead of the progress comparison, because a correction is not a '
+              + 'conflict to be settled — it is an instruction. It applies once, on the next '
+              + 'sign-in, and after that the usual "keep the fuller save" rule resumes as '
+              + 'before. Nothing about ordinary play changes: if you play on two devices, the '
+              + 'one with more progress still wins.',
+      },
+    ],
+  },
+  {
     version: 'v46',
     date: '2026-08-23',
     tag: 'Fix',

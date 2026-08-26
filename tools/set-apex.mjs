@@ -9,9 +9,21 @@
  *
  * Usage, from the repo root:
  *
- *   node tools/set-apex.mjs <name>                 # show the account, change nothing
- *   node tools/set-apex.mjs <name> 30000           # still a dry run
- *   node tools/set-apex.mjs <name> 30000 --apply   # write it
+ *   node tools/set-apex.mjs <name>                            # report only
+ *   node tools/set-apex.mjs <name> 30000                      # still a dry run
+ *   node tools/set-apex.mjs <name> 30000 --apply               # write it
+ *   node tools/set-apex.mjs <name> 30000 --clear-packs --apply # and empty the locker
+ *
+ * **Editing the database by hand does not work, and this is why the tool
+ * exists.** The save is client-authoritative: on sign-in the device compares
+ * its copy with the cloud's using `saveWeight`, which scores *progress* —
+ * matches, cards, packs opened — and does not look at `apex` at all. Change a
+ * balance in the database and the weights come out identical, the device keeps
+ * its own copy, and then pushes it back up over the correction. It looks like
+ * it worked and it silently did not.
+ *
+ * This bumps `meta.adminRev`, which `cloudWins()` honours ahead of weight, so
+ * the correction is adopted exactly once on the player's next sign-in.
  *
  * **It reads nothing and writes nothing without `--apply`.** The default is a
  * report: who the account is, what it holds now, and what would change. Run it
@@ -35,12 +47,15 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const store = require('../server/store.js');
 
-const [name, amountArg, ...flags] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const flags = args.filter((a) => a.startsWith('--'));
+const [name, amountArg] = args.filter((a) => !a.startsWith('--'));
 const apply = flags.includes('--apply');
+const clearPacks = flags.includes('--clear-packs');
 const amount = amountArg === undefined ? null : Number(amountArg);
 
 if (!name) {
-  console.error('usage: node tools/set-apex.mjs <name> [amount] [--apply]');
+  console.error('usage: node tools/set-apex.mjs <name> [amount] [--clear-packs] [--apply]');
   process.exit(1);
 }
 if (amount !== null && (!Number.isFinite(amount) || amount < 0 || amount % 1 !== 0)) {
@@ -77,18 +92,39 @@ console.log(`last seen : ${new Date(acct.lastSeen).toISOString()}`);
 console.log(`apex      : ${(club.apex || 0).toLocaleString()}`);
 console.log(`ultimate  : ${(club.ultimate || 0).toLocaleString()}`);
 console.log(`cards     : ${(club.collection || []).length}`);
-console.log(`packs     : ${(club.packs || []).length} unopened`);
+console.log(`opened    : ${club.packsOpened || 0} packs, all time`);
+console.log(`adminRev  : ${save.meta?.adminRev || 0}`);
+
+/* The locker, itemised.
+ *
+ * Coins are only the first place exploited money goes. Spent, it becomes
+ * unopened packs — which are the same value wearing a different hat, and are
+ * invisible in a balance. Anyone reversing an exploit needs to see both. */
+const packs = club.packs || [];
+console.log(`locker    : ${packs.length} unopened`);
+if (packs.length) {
+  const byType = packs.reduce((a, id) => { a[id] = (a[id] || 0) + 1; return a; }, {});
+  for (const [id, n] of Object.entries(byType).sort((x, y) => y[1] - x[1])) {
+    console.log(`            ${String(n).padStart(5)} x ${id}`);
+  }
+}
 console.log('');
 
-if (amount === null) {
-  console.log('No amount given — nothing to do.');
+if (amount === null && !clearPacks) {
+  console.log('Nothing asked for — report only.');
   process.exit(0);
 }
 
-console.log(`would set apex: ${(club.apex || 0).toLocaleString()} -> ${amount.toLocaleString()}`);
-/* Said out loud because it is the thing most likely to be forgotten: coins are
-   only half of what an exploit buys. The squad it paid for is still there. */
-console.log('note: this changes the balance only. Cards already bought stay in the club.');
+if (amount !== null) {
+  console.log(`would set apex   : ${(club.apex || 0).toLocaleString()} -> ${amount.toLocaleString()}`);
+}
+if (clearPacks) {
+  console.log(`would empty locker: ${packs.length} unopened packs -> 0`);
+}
+console.log(`would bump adminRev: ${save.meta?.adminRev || 0} -> ${(save.meta?.adminRev || 0) + 1}`);
+/* Said out loud because it is the thing most likely to be forgotten: cards
+   already in the collection are not touched by either flag. */
+console.log('note: cards already in the collection stay in the club.');
 
 if (!apply) {
   console.log('');
@@ -96,8 +132,13 @@ if (!apply) {
   process.exit(0);
 }
 
-club.apex = amount;
+if (amount !== null) club.apex = amount;
+if (clearPacks) club.packs = [];
+// The bump is what makes the device accept any of this — see the header.
+save.meta = { ...(save.meta || {}), adminRev: (save.meta?.adminRev || 0) + 1 };
 store.putSave(acct, save);
 await store.shutdown();
 console.log('');
-console.log(`Done. ${acct.name} now holds ◈${amount.toLocaleString()}.`);
+console.log(`Done. ${acct.name}: ◈${(club.apex || 0).toLocaleString()}, `
+  + `${(club.packs || []).length} unopened, adminRev ${save.meta.adminRev}.`);
+console.log('It applies on their next sign-in, once.');
