@@ -15,6 +15,30 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### The pack reveal shows one card (v52)
+`runPackAnimation` sorts worst-first and then starts at the **last** index, so
+the only card that walks out is the highest-rated pull. The other pulls are
+untouched: `openPack` still banks all of them, duplicates still pay out, and the
+closing toast still reports the counts. Two things went with it — the per-card
+`1 / N` counter (now `Best of N`) and the whole `showSummary` "Skip all" screen,
+which had no reason to exist once the reveal is a single card.
+
+If a future change wants the full list back, put it behind a button on the final
+card rather than reinstating the queue — the queue was the complaint.
+
+### The menu key art is the supplied artwork (v52)
+`assets/keyart.jpg` is the cover image as provided, not an engine reshoot. Two
+consequences live in `styles/main.css`:
+- the `body.on-menu::before` scrim is deliberately light at the top (.10) and
+  only gets heavy at the bottom, where the tiles need contrast;
+- `.menu-wordmark` is hidden while the menu art is showing, because the art has
+  its own APEX XI lockup and two titles stacked looked like a bug. The `<h1>` is
+  still in the markup — if the art is ever swapped for something without a
+  lockup, delete the `display:none` rule and it comes straight back.
+A `max-height: 620px` query pushes the framing down to 78% so a short landscape
+phone crops the lockup off the top cleanly instead of slicing it behind the top
+bar.
+
 ### Online play (new)
 - `server/` — zero-dependency Node server: hand-rolled RFC 6455 WebSocket
   (`ws.js`), scrypt-hashed accounts and cloud saves (`store.js`), matchmaking and

@@ -1755,9 +1755,15 @@ function attachDrag(root, place, clearSlot, refreshSelection) {
  * Pack opening animation
  * ------------------------------------------------------------------ */
 /**
- * Staged pack reveal. Each pull walks out one clue at a time — nationality,
- * then position, then club — before the card itself drops. Tap or press to skip
- * straight to the card.
+ * Staged pack reveal. One card walks out — the best pull in the pack — one clue
+ * at a time: nationality, then position, then club, before the card itself
+ * drops. Tap or press to skip straight to the card.
+ *
+ * Only the best card is shown. A twelve-card pack used to make you sit through
+ * eleven cards you did not care about to reach the one you did, and the ones in
+ * front were, by construction, the worst of them. Everything is still added and
+ * every duplicate is still paid out — the locker has the full list — but the
+ * reveal is now the moment, not the queue.
  */
 function runPackAnimation(root, drawn, coins, onDone) {
   /* Worst first, best last.
@@ -1772,7 +1778,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
    * there to stop the reveal always ending on the same beat, which was the
    * right worry for an unsorted order and is the wrong one now. The order is
    * decided here, at the point the cards are shown, and the pull itself is
-   * untouched — nothing about what you got changes, only when you see it.
+   * untouched — nothing about what you got changes, only what gets a stage.
    *
    * `drawn` is sorted alongside, because `dup` is looked up by index and the
    * two lists have to keep pointing at the same card. */
@@ -1822,9 +1828,8 @@ function runPackAnimation(root, drawn, coins, onDone) {
       </div>
       <div class="walkout" id="walkout"></div>
       <div class="pack-foot">
-        <span id="packCounter">1 / ${pulls.length}</span>
+        <span id="packCounter">${pulls.length > 1 ? `Best of ${pulls.length}` : 'Your pull'}</span>
         <button class="btn" id="packNext">Skip</button>
-        ${pulls.length > 1 ? '<button class="btn ghost" id="packSkipAll">Skip all</button>' : ''}
       </div>
     </div>`;
 
@@ -1834,7 +1839,9 @@ function runPackAnimation(root, drawn, coins, onDone) {
   const counter = overlay.querySelector('#packCounter');
   const nextBtn = overlay.querySelector('#packNext');
 
-  let index = 0;
+  // worst-first sort means the best pull is the last entry, and it is the only
+  // one that gets a reveal
+  let index = pulls.length - 1;
   let timers = [];
   let revealed = false;
   const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
@@ -1877,7 +1884,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
       <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}
         ${isDup(index) ? `<span class="dup-tag">Already yours · ◈${dupValue(p).toLocaleString()}</span>` : ''}
       </div>`;
-    nextBtn.textContent = index === pulls.length - 1 ? 'Add to collection' : 'Next';
+    nextBtn.textContent = 'Add to collection';
     nextBtn.classList.add('primary');
   };
 
@@ -1890,7 +1897,6 @@ function runPackAnimation(root, drawn, coins, onDone) {
     overlay.style.setProperty('--rar', RARITY[p.rarity].color);
     overlay.style.setProperty('--rar-glow', RARITY[p.rarity].glow);
     overlay.dataset.rarity = p.rarity;
-    counter.textContent = `${index + 1} / ${pulls.length}`;
     nextBtn.textContent = 'Skip';
     nextBtn.classList.remove('primary');
 
@@ -1932,55 +1938,12 @@ function runPackAnimation(root, drawn, coins, onDone) {
     onDone();
   };
 
-  /**
-   * Skip the whole run. The cards are already banked before the reveal starts,
-   * so this just needs to stop the show — but dumping a dozen pulls with no
-   * feedback is useless, so lay them all out first.
-   */
-  const showSummary = () => {
-    clearTimers();
-    const order = { special: 0, gold: 1, silver: 2, bronze: 3 };
-    const sorted = drawn.slice().sort((a, b) =>
-      (order[a.p.rarity] - order[b.p.rarity]) || (b.p.overall - a.p.overall));
-    // rarest first, and every tier listed — an Icon missing off the summary of
-    // the pack you spent 75,000 on is not a small omission
-    const tally = ['icon', 'star', 'special', 'gold', 'silver', 'bronze']
-      .map((r) => [r, pulls.filter((p) => p.rarity === r).length])
-      .filter(([, n]) => n > 0)
-      .map(([r, n]) => `<span class="ps-tag rar-${r}">${n} ${RARITY[r].label}</span>`)
-      .join('');
-    const best = sorted[0].p;
-
-    overlay.style.setProperty('--rar', RARITY[best.rarity].color);
-    overlay.style.setProperty('--rar-glow', RARITY[best.rarity].glow);
-    overlay.innerHTML = `
-      <div class="pack-summary">
-        <span class="ps-kicker">Pack results</span>
-        <h3>${pulls.length - dupCount} player${pulls.length - dupCount === 1 ? '' : 's'} added</h3>
-        <div class="ps-tally">${tally}${coins
-          ? `<span class="ps-tag dup">${dupCount} already yours · ◈${coins.toLocaleString()}</span>` : ''}</div>
-        <div class="ps-grid">
-          ${sorted.map(({ p, dup }) => `
-            <div class="ps-card ${dup ? 'is-dup' : ''}">
-              ${playerCard(p, { size: 'mini' })}
-              ${dup ? `<span class="ps-dup">◈${dupValue(p).toLocaleString()}</span>` : ''}
-            </div>`).join('')}
-        </div>
-        <button class="btn primary" id="psDone">Done</button>
-      </div>`;
-    sfx('reveal', best.rarity);
-    overlay.querySelector('#psDone').addEventListener('click', close);
-  };
-
   const advance = () => {
     if (!revealed) { clearTimers(); showCard(pulls[index]); return; }   // skip to the card
-    index++;
-    if (index >= pulls.length) { close(); return; }
-    runReveal();
+    close();
   };
 
   nextBtn.addEventListener('click', advance);
-  overlay.querySelector('#packSkipAll')?.addEventListener('click', showSummary);
   stage.addEventListener('click', (e) => { if (!e.target.closest('button')) advance(); });
 
   /* The rip, then the show. Reduce Motion tears instantly; everyone else gets
