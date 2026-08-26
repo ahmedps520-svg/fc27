@@ -11,6 +11,14 @@ import * as net from './socket.js';
 
 const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'switch', 'curl', 'sprint', 'pause'];
 const r2 = (n) => Math.round(n * 100) / 100;
+// Positions and velocities go out at 10 cm / 0.1 m/s. The guest interpolates
+// between snapshots and nobody can see a tenth of a metre on a 105 m pitch, so
+// the extra digit was ~10% of every packet for nothing.
+const r1 = (n) => Math.round(n * 10) / 10;
+
+/** How often the host ships the world, in ms. The guest's buffer is sized from
+ *  the gaps it actually measures, so this is the only place the rate lives. */
+export const SNAP_MS = 33;
 
 /* ------------------------------------------------------------------ *
  * Guest -> host: control state
@@ -19,7 +27,7 @@ const maskOf = (set) => ACTIONS.reduce((m, a, i) => (set.has(a) ? m | (1 << i) :
 
 /** Wraps a local Input and streams it to the host. */
 export class InputSender {
-  constructor(input, rate = 33) {
+  constructor(input, rate = 20) {
     this.input = input;
     this.rate = rate;
     this.acc = 0;
@@ -134,11 +142,11 @@ export function encodeSnapshot(match) {
   return {
     t: 'snap',
     ts: performance.now(),
-    b: [r2(b.x), r2(b.y), r2(b.z || 0), r2(b.vx), r2(b.vy), r2(b.vz || 0)],
+    b: [r1(b.x), r1(b.y), r2(b.z || 0), r1(b.vx), r1(b.vy), r1(b.vz || 0)],
     o: ownerIdx,
     // Per-player slots are positional and append-only, same rule as PHASES:
     // a guest on an older build reads the first seven and ignores the rest.
-    p: all.map((p) => [r2(p.x), r2(p.y), r2(p.dirX), r2(p.dirY), r2(p.vx), r2(p.vy),
+    p: all.map((p) => [r1(p.x), r1(p.y), r2(p.dirX), r2(p.dirY), r1(p.vx), r1(p.vy),
       r2(p.diveT || 0), r2(p.stamina ?? 1)]),
     s: [match.teams[0].score, match.teams[1].score],
     ph: PHASES.indexOf(match.phase),
@@ -164,19 +172,47 @@ export function encodeSnapshot(match) {
  * Applies snapshots to a non-simulating match, rendering slightly in the past so
  * two snapshots always bracket the render time and can be interpolated.
  */
+const MIN_DELAY = 55;    // two snapshots at 30 Hz, and nothing spare
+const MAX_DELAY = 170;    // past this the match stops feeling live at all
+
 export class SnapshotView {
-  constructor(match, delay = 100) {
+  constructor(match, delay = 90) {
     this.match = match;
     this.delay = delay;
     this.buf = [];
     this.clock = 0;
     this.started = false;
     this.lastPacket = performance.now();
+    this.gap = 0;         // smoothed gap between arrivals
+    this.jitter = 0;      // smoothed deviation from that gap
+    this.lastRx = 0;
   }
 
+  /* The buffer sizes itself.
+   *
+   * It used to be a flat 100 ms, picked for the worst connection anyone might
+   * have — and every guest paid it, because the guest renders that far in the
+   * past by definition. On a steady line two packets plus a small jitter
+   * allowance is enough, which is nearer 70 ms, and every millisecond taken off
+   * here comes straight off how late your own input looks.
+   *
+   * It is measured from packet *arrivals*, not from a ping, because arrivals
+   * are what the buffer has to cover: a link that delivers late but evenly
+   * needs a small buffer, and one that delivers in bursts needs a big one
+   * however good its round-trip looks. The easing is deliberate — the render
+   * clock is derived from `delay`, so moving it in a step is a visible jump. */
   accept(snap) {
-    this.lastPacket = performance.now();
-    snap.rx = performance.now();
+    const now = performance.now();
+    if (this.lastRx) {
+      const gap = now - this.lastRx;
+      this.gap = this.gap ? this.gap + (gap - this.gap) * 0.12 : gap;
+      this.jitter += (Math.abs(gap - this.gap) - this.jitter) * 0.12;
+      const want = Math.max(MIN_DELAY, Math.min(MAX_DELAY, this.gap * 2 + this.jitter * 2.5));
+      this.delay += (want - this.delay) * 0.05;
+    }
+    this.lastRx = now;
+    this.lastPacket = now;
+    snap.rx = now;
     this.buf.push(snap);
     if (this.buf.length > 40) this.buf.shift();
     if (!this.started && this.buf.length >= 2) {
@@ -258,10 +294,16 @@ export class SnapshotView {
   }
 }
 
-/** Convenience: the connection quality pip shown in the match HUD. */
+/* Connection quality pip in the match HUD.
+ *
+ * The bands are set for the *end-to-end* number the HUD now shows — this
+ * client to the opponent and back, through the hub — not for the client-to-
+ * server ping it used to show. Two players either side of the server are
+ * routinely 120 ms apart and are playing a perfectly good match; calling that
+ * red was just wrong. */
 export function qualityLabel(rtt) {
   if (rtt == null) return { text: '—', cls: '' };
-  if (rtt < 60) return { text: `${rtt}ms`, cls: 'good' };
-  if (rtt < 130) return { text: `${rtt}ms`, cls: 'ok' };
+  if (rtt < 90) return { text: `${rtt}ms`, cls: 'good' };
+  if (rtt < 190) return { text: `${rtt}ms`, cls: 'ok' };
   return { text: `${rtt}ms`, cls: 'bad' };
 }

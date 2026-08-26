@@ -18,6 +18,38 @@
  */
 export const RELEASES = [
   {
+    version: 'v57',
+    date: '2026-08-26',
+    tag: 'Online',
+    title: 'About 50ms off the lag',
+    lede: 'Online matches run tighter, and the ping in the HUD is now the number '
+        + 'you actually feel.',
+    entries: [
+      {
+        head: 'The delay you never asked for',
+        summary: 'The guest used to watch the match a flat 100ms in the past. It now works '
+               + 'out how much of a cushion the connection really needs.',
+        detail: 'In an online match one player runs the simulation and the other watches it '
+              + 'arrive, slightly behind, so the gaps between packets can be smoothed over. '
+              + 'That cushion was a fixed 100 milliseconds, sized for the worst connection '
+              + 'anybody might have, and everyone paid it. It is now measured from the packets '
+              + 'themselves: a steady connection gets about 66ms, a jumpy one still gets the '
+              + 'full cushion it needs. The host also sends the world half again as often '
+              + '(30 times a second), and the guest sends its controls more often too. '
+              + 'Together that is roughly 50 milliseconds off how late your own input looks.',
+      },
+      {
+        head: 'An honest ping',
+        summary: 'The HUD now shows the round trip to your opponent, not to the server.',
+        detail: 'It used to show how far you are from the server, which is about half the '
+              + 'story — what you feel is your input reaching your opponent and the match '
+              + 'coming back, which is your distance plus theirs. The number is now measured '
+              + 'by bouncing a ping off the other player, so it is the real thing, and the '
+              + 'colours moved to match: green under 90ms, amber under 190ms.',
+      },
+    ],
+  },
+  {
     version: 'v56',
     date: '2026-08-26',
     tag: 'Interface',

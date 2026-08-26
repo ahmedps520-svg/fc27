@@ -15,6 +15,44 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Online latency: what was cut, and what is left (v57)
+Measured budget for the **guest** before this (the host feels none of it):
+input sent every 33 ms, host snapshots every 50 ms, guest rendering a flat
+100 ms in the past — about 150-190 ms of self-inflicted delay before the network
+is even involved. Changed:
+- `SnapshotView` sizes its own buffer from measured packet **arrivals** (not from
+  a ping — a link that is late but even needs a small buffer, one that bursts
+  needs a big one). Unit-measured: 66 ms on a steady 33 ms stream, 77 ms with
+  mild jitter, 129 ms when bursty, 120 ms on a 60 ms stream. Was a flat 100 ms.
+- snapshots 20 -> 30 Hz (`SNAP_MS` in netplay.js is the only place the rate lives),
+  input 30 -> 50 Hz, positions and velocities quantised to 0.1 (was 0.01), which
+  pays for roughly a fifth of the extra packets.
+- The HUD now shows **end-to-end** RTT — this client to the opponent and back,
+  bounced off the peer through the hub's verbatim `evt` relay, so it needed
+  nothing from the server. It used to show client-to-server, which read as about
+  half the lag people were actually feeling. Quality bands moved to 90/190 to
+  match. An opponent on an older build never answers and it falls back to the
+  server ping.
+
+Net: about 50 ms off the guest's input latency on a good line. What is left is
+geography and the relay: every packet goes to Singapore and back even for two
+players in the same city. The real next step is a WebRTC DataChannel between
+the two browsers with the hub kept for matchmaking and signalling; after that,
+client-side prediction of the guest's own player.
+
+Tested with two real clients against `server/server.js` (sign-up, seeded squads,
+matchmaking, kick-off): no errors, both sides in the match, HUD reading the peer
+number. Note the headless number is dominated by the opponent's frame time -
+that is honest, the readout includes the opponent's main thread.
+
+### Maintenance mode (v57)
+`MAINTENANCE=1` in the server environment -> everything answers `maintenance.html`
+with 503 (`Retry-After: 600`), API included, and `/ws` is refused. Only the
+notice's own art is still served. Usage is in the README; the reasoning is on the
+constant in `server/server.js`. The page polls `/api/version` and lets itself back
+in when the 503 stops, which is why it must never be added to the service
+worker's precache list.
+
 ### Menu key art is engine-shot and reproducible (v56)
 `assets/keyart.jpg` is now a 2560x1440 frame from the game's own renderer,
 graded. The pipeline and its rules live in `tools/keyart/README.md` — read that

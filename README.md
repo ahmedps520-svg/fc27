@@ -69,6 +69,29 @@ ALLOW_ORIGIN=https://you.github.io node server/server.js
 The page must be HTTPS for this: browsers block `ws://` from an `https://` page, and
 `socketURL()` follows the page's protocol automatically.
 
+### Taking the game down for maintenance
+
+Set `MAINTENANCE=1` in the server's environment (on Render: Environment → add the variable → save,
+which restarts the service). Everything — the game, the API, the match hub — then answers with
+`maintenance.html` and HTTP **503**, and the websocket is refused so nobody sits in matchmaking
+waiting for an opponent who cannot arrive. Remove the variable to come back.
+
+503 rather than a redirect on purpose: browsers and service workers remember redirects, and people
+end up stranded on the notice after the game is back. Same URL, different page, for exactly as long
+as the flag is set. The notice polls `/api/version` every 30 seconds — plus once when it opens —
+and reloads itself into the game the moment that stops being a 503, so a player who leaves the tab
+open is playing again without touching anything.
+
+If instead you use a platform-level maintenance switch that redirects to a page hosted elsewhere,
+`maintenance.html` works standalone; point it back at the game so it can tell when the game
+returns:
+
+```
+https://your-static-host/maintenance.html?back=https://fc27.onrender.com
+```
+
+That cross-origin check needs the server started with `ALLOW_ORIGIN` naming the page's origin.
+
 ### Where accounts are stored
 
 By default the whole account database is one JSON file, `server/data/accounts.json`. That is right
