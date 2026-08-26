@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>APEX XI · Back shortly</title>
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#05070e" />
+<link rel="icon" href="./icons/favicon-64.png" />
+<style>
+  /* Deliberately self-contained: this page has to render when the rest of the
+     site is being replaced, so it links no stylesheet and no script. The only
+     external file is the key art, and there is a solid background under it. */
+  :root {
+    --bg: #05070e; --line: rgba(255,255,255,.10);
+    --text: #e9edf5; --dim: #9aa6bd; --mute: #6b7689; --accent: #22c55e;
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text);
+    font-family: var(--font); display: grid; place-items: center; padding: 24px;
+    -webkit-text-size-adjust: 100%;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(4,6,13,.42) 0%, rgba(4,6,13,.30) 40%, rgba(4,6,13,.88) 100%),
+      url('./assets/keyart.jpg') center center / cover no-repeat;
+  }
+  main {
+    position: relative; z-index: 1; width: min(560px, 100%);
+    background: rgba(8,11,20,.72); border: 1px solid var(--line); border-radius: 18px;
+    padding: 30px 28px 26px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+  }
+  .mark { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .mark svg { flex: none; }
+  .mark b { font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
+  .mark b i { color: var(--accent); font-style: normal; }
+  h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.15; letter-spacing: -.01em; }
+  p { margin: 0 0 14px; color: var(--dim); font-size: 15px; line-height: 1.55; }
+  .rule { height: 1px; background: var(--line); margin: 20px 0 18px; }
+  .rows { display: grid; gap: 10px; margin-bottom: 20px; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 13.5px; }
+  .row span { color: var(--mute); }
+  .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border-radius: 999px;
+    background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.34);
+    color: var(--accent); font-size: 12px; font-weight: 600;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .btn {
+    display: inline-block; padding: 11px 18px; border-radius: 11px; cursor: pointer;
+    border: 1px solid var(--line); background: rgba(255,255,255,.05);
+    color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-decoration: none;
+  }
+  .btn:hover { background: rgba(255,255,255,.09); }
+  .btn.primary { background: linear-gradient(180deg, #29d364, #16a34a); border-color: transparent; color: #04210f; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .note { margin: 16px 0 0; font-size: 12px; color: var(--mute); }
+  a { color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark">
+    <svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="21" fill="none" stroke="#22c55e" stroke-width="3"/>
+      <path d="M14 33 L24 14 L34 33 M18.5 27.5 H29.5" fill="none" stroke="#e9edf5"
+            stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <b>APEX <i>XI</i></b>
+  </div>
+
+  <span class="pill"><i class="dot"></i> Maintenance in progress</span>
+  <h1 style="margin-top:16px">We are working on the game</h1>
+  <p>APEX XI is down for a short while so an update can be put in place. Nothing has
+    happened to your club: squads, packs and division rank are stored on your account
+    and will be exactly where you left them.</p>
+
+  <div class="rows">
+    <div class="row"><span>Online matches</span><b>Paused</b></div>
+    <div class="row"><span>Your save</span><b>Safe</b></div>
+    <div class="row"><span>This page checks again</span><b id="next">in 30s</b></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" id="retry" type="button">Check now</button>
+    <a class="btn" href="mailto:support@apexxi.online">Email support</a>
+  </div>
+
+  <div class="rule"></div>
+  <p class="note">This page reloads by itself the moment the game is back, so it can be
+    left open. If it is still here in an hour, the email above reaches a human.</p>
+</main>
+
+<script>
+  /* Poll for the real site coming back. `cache: 'no-store'` so a cached 200 can
+     never fake a recovery, and HEAD so the check costs nothing. The page only
+     leaves when the server stops answering 503.
+     
+     `?back=https://example.com` points the check and the redirect at another
+     origin, for when this page is hosted somewhere else — a platform-level
+     maintenance switch usually redirects to a page *off* the service it is
+     taking down, and a relative URL would then be checking the wrong site.
+     Cross-origin needs that origin to allow this one (ALLOW_ORIGIN on the
+     server); without it the check simply never succeeds and the button and the
+     link still work, which is why neither is hidden. */
+  const nextEl = document.getElementById('next');
+  const back = new URLSearchParams(location.search).get('back');
+  const HOME = back ? back.replace(/\/+$/, '') + '/' : './';
+  const PROBE = HOME + 'api/version';
+  let wait = 30;
+
+  async function check() {
+    try {
+      const res = await fetch(PROBE, { method: 'HEAD', cache: 'no-store' });
+      if (res.status !== 503) { location.replace(HOME); return true; }
+    } catch { /* still down, or offline: either way, keep waiting */ }
+    return false;
+  }
+
+  document.getElementById('retry').addEventListener('click', async () => {
+    nextEl.textContent = 'checking…';
+    if (!await check()) { wait = 30; nextEl.textContent = 'still down · in 30s'; }
+  });
+
+  /* Check once straight away: someone who opens this a minute after the work
+     finished should not sit through a countdown for a site that is already up. */
+  check();
+
+  setInterval(() => {
+    wait -= 1;
+    if (wait > 0) { nextEl.textContent = 'in ' + wait + 's'; return; }
+    wait = 30;
+    nextEl.textContent = 'checking…';
+    check().then((back) => { if (!back) nextEl.textContent = 'in 30s'; });
+  }, 1000);
+</script>
+</body>
+</html>

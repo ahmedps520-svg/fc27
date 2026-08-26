@@ -14,7 +14,7 @@ import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '..
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
 import {
-  InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel,
+  InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel, SNAP_MS,
 } from '../net/netplay.js';
 
 export const TITLE = 'Match';
@@ -329,7 +329,9 @@ export function mount(root, params) {
   const netEl = root.querySelector('#gmNet');
   let snapAcc = 0;
   let oppGone = null;
-  let rtt = null;
+  let rtt = null;          // this client to the server
+  let peerRtt = null;      // this client to the opponent and back — what you feel
+  let lastPeerPing = 0;
   const pendingCues = [];
 
   if (online) {
@@ -354,8 +356,28 @@ export function mount(root, params) {
     netOffs.push(net.on('closed', () => {
       if (!ended) toast('Lost connection to the server', 'warn');
     }));
+    /* Two numbers, and the second one is the honest one.
+     *
+     * `net.ping()` measures this client to the server. What a player feels is
+     * their input going to the opponent and the world coming back, which is
+     * this client to the server to the *opponent* and all the way back — very
+     * nearly the sum of both players' pings. The HUD used to show the first and
+     * call it the connection, which read as half the lag people were feeling.
+     *
+     * The bounce rides on `evt`, which the hub relays verbatim without
+     * inspecting it, so this needs nothing from the server. An opponent on an
+     * older build simply never answers, and the readout falls back to the
+     * server ping it always showed. */
+    netOffs.push(net.on('evt', (m) => {
+      if (m.k === 'pp') { net.send({ t: 'evt', k: 'pr', at: m.at }); return; }
+      if (m.k === 'pr' && m.at === lastPeerPing) peerRtt = Math.round(performance.now() - m.at);
+    }));
     const pingTimer = setInterval(async () => { rtt = await net.ping(); }, 3000);
-    netOffs.push(() => clearInterval(pingTimer));
+    const peerTimer = setInterval(() => {
+      lastPeerPing = performance.now();
+      net.send({ t: 'evt', k: 'pp', at: lastPeerPing });
+    }, 2000);
+    netOffs.push(() => { clearInterval(pingTimer); clearInterval(peerTimer); });
   }
 
   document.body.classList.add('in-game');
@@ -836,11 +858,11 @@ export function mount(root, params) {
         if (online?.host) outgoing.push([c.name, c.arg ?? 0]);
       }
 
-      // host: ship the world at 20 Hz, with any sounds it made since the last one
+      // host: ship the world at 30 Hz, with any sounds it made since the last one
       if (online?.host) {
         pendingCues.push(...outgoing);
         snapAcc += dt;
-        if (snapAcc >= 0.05) {
+        if (snapAcc >= SNAP_MS / 1000) {
           snapAcc = 0;
           const snap = encodeSnapshot(match);
           if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
@@ -909,7 +931,7 @@ export function mount(root, params) {
       padEl.classList.toggle('on', !!input.pad);
     }
     if (online) {
-      const q = qualityLabel(rtt);
+      const q = qualityLabel(peerRtt ?? rtt);
       // the host stops broadcasting while it plays its own replay, so a stale
       // stream during one is expected rather than a connection problem
       const lost = view?.stale && !replay;
