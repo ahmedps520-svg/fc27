@@ -18,6 +18,58 @@
  */
 export const RELEASES = [
   {
+    version: 'v48',
+    date: '2026-08-26',
+    tag: 'Interface',
+    title: 'The hub, the dock, and a store with shelves',
+    lede: 'The whole game moves to the layout your thumbs already know — and '
+        + 'objectives refresh twice as fast.',
+    entries: [
+      {
+        head: 'A hub menu and a bottom dock',
+        summary: 'The menu is now a rail of small tiles beside two big doors, and Ultimate '
+               + 'XI\u2019s tabs live in a dock along the bottom edge, icon over label.',
+        detail: 'The same four destinations and the same six tabs — nothing was added and '
+              + 'nothing renamed — but the space now goes where sessions actually go. Kick '
+              + 'Off and Ultimate XI are the two big doors; Career and Settings hold the '
+              + 'rail. Kick Off is the one solid block of APEX green in the app, which is '
+              + 'what makes it read as "press this first" without a word of copy, and the '
+              + 'dock carries the cover\u2019s diagonal as a gradient line across its top. '
+              + 'It is the layout every mobile football game trains thumbs on, wearing this '
+              + 'game\u2019s colours.',
+      },
+      {
+        head: 'The store has shelves',
+        summary: 'Packs are half again bigger, sorted into named sections — On the house, '
+              + 'Standard, Premium, Limited & Icons — and they sway gently instead of '
+              + 'sitting in a flat grid.',
+        detail: 'Twelve identical rectangles in a wall is a spreadsheet; a shop has '
+              + 'sections. Each shelf has a name and a one-line pitch, the packs inside are '
+              + 'much bigger, and a shelf scrolls sideways on its own when it needs to. The '
+              + 'free bronze gets a shelf to itself because it is the one everybody comes '
+              + 'back for.',
+      },
+      {
+        head: 'Objectives refresh every six hours',
+        summary: 'Finished objectives are replaced twice as fast — every six hours instead '
+               + 'of twelve.',
+        detail: 'A finished slot is dead space: it pays nothing and asks nothing, and '
+              + 'twelve hours of it per rung was too long to stare at a tick. Unfinished '
+              + 'objectives still keep their progress and their place, exactly as before.',
+      },
+      {
+        head: 'The free bronze is on a clock',
+        summary: 'One free bronze every six hours, with the countdown on the button — and '
+               + 'the trick that banked unlimited free packs is gone.',
+        detail: 'The free pack used to unlock by a count of packs you had opened — but '
+              + 'claiming a pack never advanced that count, so at the right moment the '
+              + 'button could be pressed forever and bank a bronze per click. It is a '
+              + 'timer now: one every six hours, the button says how long is left, and a '
+              + 'clock cannot be farmed by hoarding.',
+      },
+    ],
+  },
+  {
     version: 'v47',
     date: '2026-08-23',
     tag: 'Fix',

@@ -318,9 +318,39 @@ select {
 .resume-arrow { margin-left: auto; font-size: 22px; color: var(--accent); }
 
 /* ------------------------------- Tiles --------------------------- */
-.tile-grid {
-  display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+/* The hub: a rail of small utility tiles, then the two big doors. Same four
+   destinations as the old 2x2 grid — only the space moved to where sessions
+   actually go. */
+.hub { display: grid; gap: 14px; grid-template-columns: 128px 1fr; margin-top: 10px; }
+.hub-rail { display: flex; flex-direction: column; gap: 14px; }
+.hub-main { display: grid; gap: 14px; grid-template-columns: 1.1fr .9fr; }
+.tile.t-mini {
+  flex: 1; min-height: 0; padding: 16px 10px; gap: 7px;
+  align-items: center; text-align: center; justify-content: center;
+}
+.t-mini .tile-name { font-size: 13.5px; }
+.t-mini .mini-lock { position: absolute; top: 9px; right: 9px; color: var(--text-mute); }
+.tile.t-club, .tile.t-play { min-height: 236px; }
+/* Kick Off is the PLAY door: the one solid block of APEX green in the app,
+   which is what makes it read as "press this first" without a word of copy. */
+.tile.t-play {
+  /* bright end first: the text sits top-left, and dark-on-dark-green is
+     unreadable — the deep shade belongs under the swoosh, not the words */
+  background: linear-gradient(140deg, var(--accent) 22%, var(--accent-deep) 96%);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  color: #04170b;
+}
+.tile.t-play .tile-blurb, .tile.t-play .tile-cta { color: rgba(4, 23, 11, .78); }
+.tile.t-play .tile-icon {
+  background: rgba(4, 23, 11, .16); border-color: rgba(4, 23, 11, .25); color: #04170b;
+}
+.tile.t-play .tile-swoosh path { stroke: rgba(255, 255, 255, .5); }
+.tile.t-play::before { display: none; }
+@media (max-width: 760px) {
+  .hub { grid-template-columns: 1fr; }
+  .hub-rail { flex-direction: row; }
+  .hub-main { grid-template-columns: 1fr; }
+  .tile.t-club, .tile.t-play { min-height: 190px; }
 }
 .tile {
   position: relative; overflow: hidden; cursor: pointer; text-align: left;
@@ -382,10 +412,10 @@ select {
    already there reads as a page load. Staggered off :nth-child so nothing has
    to be numbered in the markup. */
 .menu-screen .tile { animation: tileIn .42s cubic-bezier(.2, .9, .3, 1) both; }
-.menu-screen .tile:nth-child(1) { animation-delay: .04s; }
-.menu-screen .tile:nth-child(2) { animation-delay: .10s; }
-.menu-screen .tile:nth-child(3) { animation-delay: .16s; }
-.menu-screen .tile:nth-child(4) { animation-delay: .22s; }
+.hub-main .tile:nth-child(1) { animation-delay: .04s; }
+.hub-main .tile:nth-child(2) { animation-delay: .10s; }
+.hub-rail .tile:nth-child(1) { animation-delay: .16s; }
+.hub-rail .tile:nth-child(2) { animation-delay: .22s; }
 @keyframes tileIn {
   from { opacity: 0; transform: translateY(14px) scale(.985); }
   to   { opacity: 1; transform: none; }
@@ -495,9 +525,8 @@ select {
 }
 .menu-screen .disclaimer { margin-top: 26px; }
 
-/* A little air above them, and a scrim under the left column so the swoosh can
-   never take a bite out of the words. */
-.tile-grid { margin-top: 10px; }
+/* A scrim under the left column so the swoosh can never take a bite out of
+   the words. */
 .tile::after {
   content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background: linear-gradient(100deg, rgba(8, 12, 22, .82) 32%, transparent 68%);
@@ -895,14 +924,43 @@ body.is-dragging { user-select: none; cursor: grabbing; }
 .ch-stats b small { font-size: 12px; color: var(--text-mute); }
 .ch-stats span { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-mute); }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 3px; }
-.tab {
-  font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer;
-  padding: 9px 16px; border-radius: 11px; color: var(--text-mute);
-  border: 1px solid var(--line); background: transparent; transition: all .16s;
+/* The dock.
+ *
+ * The mode's navigation is a bar along the bottom edge — icon over label, the
+ * shape every mobile football game trains thumbs on. Same DOM, same handlers;
+ * only this stylesheet knows the pills moved. The accent line across its top
+ * is the cover's diagonal carried down: a two-stop gradient rather than a
+ * flat rule, so even the furniture keeps the APEX signature. */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; justify-content: center; gap: 2px;
+  padding: 7px 10px calc(9px + env(safe-area-inset-bottom, 0px));
+  background: rgba(4, 6, 13, .96);
+  border-top: 1px solid var(--line-strong);
 }
+.tabs::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -2px; height: 2px;
+  background: linear-gradient(100deg, transparent 8%, var(--accent-deep) 38%, var(--accent) 62%, transparent 92%);
+}
+.tab {
+  position: relative; flex: 1; max-width: 150px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 4px 5px; border: 0; border-radius: 10px; background: none;
+  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-mute); transition: color .15s;
+}
+.tab svg { opacity: .85; }
 .tab:hover { color: var(--text); }
-.tab.on { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 42%, transparent); }
+.tab.on { color: var(--accent); }
+.tab.on svg { opacity: 1; }
+.tab.on::after {
+  content: ''; position: absolute; left: 25%; right: 25%; bottom: 0; height: 2px;
+  border-radius: 2px; background: var(--accent);
+}
+/* the locker count rides the Store icon's shoulder */
+.tab .tab-dot { position: absolute; top: 0; right: calc(50% - 22px); margin: 0; }
+/* the dock floats over the page, so the page needs floor space under it */
+.screen:has(#uTabs) { padding-bottom: 132px; }
 
 /* The Club tab's second row.
    Deliberately a different shape from the pills above it — condensed caps on a
@@ -1614,6 +1672,31 @@ body.in-game #screen {
 }
 .store-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
+/* Shelves. Each category is a panel; inside it the packs sit in one row that
+   scrolls sideways when it must, so a shelf never dictates the layout of the
+   one below it — and the packs get to be big. */
+.store-head { display: flex; align-items: center; justify-content: space-between; margin: 2px 2px 12px; }
+.store-head h2 { margin: 0; font-family: var(--font-num); font-size: 19px; }
+.sc-blurb { font-size: 11.5px; color: var(--text-mute); font-weight: 500; }
+.store-row {
+  display: flex; gap: 16px; overflow-x: auto; padding: 6px 2px 10px;
+  scrollbar-width: thin;
+}
+.store-row .store-pack { flex: 0 0 234px; }
+.cat-limited .panel-head h2 { color: #7af7ff; }
+
+/* The packs breathe. A slow, small bob with staggered phases so the shelf
+   reads as a shop window rather than a spreadsheet; the foil sweep on hover
+   is still the only fast motion in the store. */
+.store-row .sp-art { animation: packFloat 4.6s ease-in-out infinite; }
+.store-row .store-pack:nth-child(2n) .sp-art { animation-delay: -1.5s; }
+.store-row .store-pack:nth-child(3n) .sp-art { animation-delay: -2.9s; }
+@keyframes packFloat {
+  0%, 100% { transform: translateY(0) rotate(-.8deg); }
+  50%      { transform: translateY(-6px) rotate(.9deg); }
+}
+.reduce-motion .store-row .sp-art { animation: none; }
+
 /* Every card is the same skeleton in the same order — art, name, note, promise,
  * odds, button — but the promise line only exists on some packs and the notes
  * wrap to different heights. The grid already stretches each card to its row,
@@ -1661,13 +1744,13 @@ body.in-game #screen {
  * `overflow: visible` on the frame, because the fan sits outside it. The face
  * clips its own foil instead. */
 .sp-art {
-  position: relative; width: 96px; height: 122px; margin-bottom: 8px;
+  position: relative; width: 122px; height: 152px; margin-bottom: 10px;
   display: grid; place-items: center;
 }
 /* Two card edges, peeking left and right. Behind the face and slightly short
    of it, the way a stack sits when it is not square. */
 .sp-fan i {
-  position: absolute; top: 7px; width: 66px; height: 104px; border-radius: 9px;
+  position: absolute; top: 9px; width: 84px; height: 130px; border-radius: 10px;
   background: linear-gradient(160deg,
     color-mix(in srgb, var(--pk) 42%, #070b14), #060910 78%);
   border: 1px solid color-mix(in srgb, var(--pk) 38%, transparent);
@@ -1678,7 +1761,7 @@ body.in-game #screen {
 /* The face: the pack itself. */
 .sp-face {
   position: relative; z-index: 2; overflow: hidden;
-  width: 78px; height: 116px; border-radius: 10px;
+  width: 100px; height: 145px; border-radius: 12px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   background: linear-gradient(150deg, color-mix(in srgb, var(--pk) 80%, #05070e), #05070e 74%);
   border: 1px solid color-mix(in srgb, var(--pk) 65%, transparent);
@@ -1704,7 +1787,7 @@ body.in-game #screen {
 .sp-mark {
   position: relative; z-index: 1;
   font-family: var(--font-num); font-style: italic; font-weight: 800;
-  font-size: 25px; color: #fff; letter-spacing: -.02em;
+  font-size: 30px; color: #fff; letter-spacing: -.02em;
   text-shadow: 0 2px 10px rgba(0, 0, 0, .6);
 }
 .sp-count {

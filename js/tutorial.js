@@ -68,7 +68,7 @@ const STEPS = [
            at any point, and restart it later from Settings.</p>`,
   },
   {
-    chapter: 'Welcome', icon: 'flag', screen: 'menu', target: '.tile-grid',
+    chapter: 'Welcome', icon: 'flag', screen: 'menu', target: '.hub',
     title: 'Four doors',
     body: `Everything lives behind one of these. <b>Kick Off</b> is a one-off
            match. <b>Ultimate XI</b> is the long game — squad, packs, ladder.
@@ -149,7 +149,7 @@ const STEPS = [
            sells an exact Icon.`,
   },
   {
-    chapter: 'Packs', icon: 'pack', screen: 'squad', tab: 'store', stab: 'packs', target: '.store-pack:nth-child(3)',
+    chapter: 'Packs', icon: 'pack', screen: 'squad', tab: 'store', stab: 'packs', target: '.store-pack.rar-keeper',
     title: 'Packs that promise something',
     body: `Most packs are a roll of the dice. Some guarantee a card — a
            goalkeeper, a minimum rating, an Icon. If a pack promises it, you

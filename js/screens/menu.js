@@ -42,13 +42,6 @@ const icon = (name, size = 24) => `
        fill="none" stroke="currentColor" stroke-width="1.6"
        stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
-const TILES = [
-  { id: 'squad', name: 'Ultimate XI', blurb: 'Build · rank up · rewards', tone: 'a' },
-  { id: 'career', name: 'Career Mode', blurb: 'Season · table · transfers', tone: 'b', locked: 'Under construction' },
-  { id: 'quick', name: 'Kick Off', blurb: 'Straight into a match', tone: 'c' },
-  { id: 'settings', name: 'Settings', blurb: 'Speed · colour · save', tone: 'd' },
-];
-
 /**
  * The wordmark, the club/player count and the three counters used to sit above
  * the tiles. They are gone: the title screen you have just come through says
@@ -58,6 +51,25 @@ const TILES = [
  *
  * What is left is four doors and the line of small print that has to be there.
  */
+/* The swoosh, shared by every tile size — the one motif that ties the title
+   screen, the app icon and these buttons together. */
+const swoosh = `
+  <svg class="tile-swoosh" viewBox="0 0 300 190" preserveAspectRatio="none" aria-hidden="true">
+    <path class="ts-a" d="M120 200 L182 196 L312 34" />
+    <path class="ts-b" d="M150 202 L206 200 L312 74" />
+  </svg>`;
+
+/**
+ * The hub layout: a rail of small utility tiles on the left, two big doors in
+ * the middle — the shape every mobile football game trains people on, so a
+ * new player's thumbs already know where everything is.
+ *
+ * The **content** rule from the last two reverts still stands: the same four
+ * destinations, no counters, no statistics, nothing new to read. What changed
+ * is only which of the four get the space. Kick Off and Ultimate XI are where
+ * every session actually goes, so they are the two big doors; Career (locked)
+ * and Settings are visited once a week, so they hold the rail.
+ */
 export function render() {
   return `
     <section class="menu-screen">
@@ -65,21 +77,34 @@ export function render() {
            APEX against a green XI. It was briefly removed along with the row of
            counters underneath it; the counters were the problem, not this. -->
       <h1 class="menu-wordmark"><span class="t1">APEX</span><span class="t2">XI</span></h1>
-    <div class="tile-grid">
-      ${TILES.map((t) => `
-        <button class="tile tone-${t.tone} ${t.locked ? 'is-locked' : ''}"
-                ${t.locked ? `data-locked="${t.locked}" aria-disabled="true"` : `data-go="${t.id}"`}>
-          <!-- the cover's swoosh, cut down to fit a card: the one motif that ties
-               the title screen, the app icon and these four buttons together -->
-          <svg class="tile-swoosh" viewBox="0 0 300 190" preserveAspectRatio="none" aria-hidden="true">
-            <path class="ts-a" d="M120 200 L182 196 L312 34" />
-            <path class="ts-b" d="M150 202 L206 200 L312 74" />
-          </svg>
-          <span class="tile-icon">${icon(t.id)}</span>
-          <span class="tile-name">${t.name}</span>
-          <span class="tile-blurb">${t.locked || t.blurb}</span>
-          <span class="tile-cta">${t.locked ? `${icon('lock', 13)} Locked` : 'Open →'}</span>
-        </button>`).join('')}
+    <div class="hub">
+      <div class="hub-rail">
+        <button class="tile t-mini tone-b is-locked" data-locked="Under construction" aria-disabled="true">
+          <span class="tile-icon">${icon('career')}</span>
+          <span class="tile-name">Career</span>
+          <span class="mini-lock">${icon('lock', 12)}</span>
+        </button>
+        <button class="tile t-mini tone-d" data-go="settings">
+          <span class="tile-icon">${icon('settings')}</span>
+          <span class="tile-name">Settings</span>
+        </button>
+      </div>
+      <div class="hub-main">
+        <button class="tile t-club tone-a" data-go="squad">
+          ${swoosh}
+          <span class="tile-icon">${icon('squad')}</span>
+          <span class="tile-name">Ultimate XI</span>
+          <span class="tile-blurb">Build · rank up · rewards</span>
+          <span class="tile-cta">Open →</span>
+        </button>
+        <button class="tile t-play tone-c" data-go="quick">
+          ${swoosh}
+          <span class="tile-icon">${icon('quick')}</span>
+          <span class="tile-name">Kick Off</span>
+          <span class="tile-blurb">Straight into a match</span>
+          <span class="tile-cta">Play →</span>
+        </button>
+      </div>
     </div>
 
     <p class="disclaimer">Clubs, leagues and competitions are fictional.

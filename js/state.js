@@ -55,6 +55,7 @@ const defaults = () => ({
     // saves get these: an existing save brings its own `packs` through the
     // merge in loadState.
     packs: ['gold', 'silver', 'silver', 'bronze'],
+    freeAt: 0,                // when the next free bronze unlocks; 0 = now
     challengesDone: [],       // one-off SBCs already claimed
     /* The club you actually take onto the pitch.
      *
