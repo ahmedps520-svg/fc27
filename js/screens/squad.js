@@ -42,14 +42,14 @@ let submission = [];         // card ids staged for it
  * single card, and the rest of the pack rolls normally. You do not get the set.
  */
 const PACKS = [
-  { id: 'bronze',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
-  { id: 'silver',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
+  { id: 'bronze', cat: 'free',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
+  { id: 'silver', cat: 'standard',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
   /* Sold for what it does, not what it rolls. A squad cannot be fielded without
      a keeper, and the odds of one turning up in a four-card pack are about one
      in four — which is a long way to go for the single card the game will not
      let you play without. Two cards, one of them certainly a GK. */
   {
-    id: 'keeper', name: 'Keeper', cost: 3500, size: 2,
+    id: 'keeper', cat: 'standard', name: 'Keeper', cost: 3500, size: 2,
     odds: { bronze: 0.10, silver: 0.44, gold: 0.44, special: 0.02 },
     forcePosition: 'GK',
     note: '2 cards',
@@ -59,29 +59,29 @@ const PACKS = [
      price — this is the pack you open because the last match paid for it, and
      the whole point is that it is over in one reveal. */
   {
-    id: 'dip', name: 'Lucky Dip', cost: 5000, size: 1,
+    id: 'dip', cat: 'standard', name: 'Lucky Dip', cost: 5000, size: 1,
     odds: { bronze: 0.14, silver: 0.36, gold: 0.38, special: 0.12 },
     note: '1 card · high variance',
   },
-  { id: 'gold',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: 'gold', note: '5 · gold min' },
+  { id: 'gold', cat: 'standard',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: 'gold', note: '5 · gold min' },
   /* The bulk option, and the only pack that pays for the gap between Gold and
      Prime. Eight cards at Gold-ish odds is worse per card than Prime and far
      better per Apex — it is the one to buy when a squad-building challenge wants
      bodies rather than a headline. */
   {
-    id: 'builder', name: 'Squad Builder', cost: 15000, size: 8,
+    id: 'builder', cat: 'premium', name: 'Squad Builder', cost: 15000, size: 8,
     odds: { bronze: 0.04, silver: 0.40, gold: 0.51, special: 0.05 },
     floor: 'gold', tone: 'gold',
     note: '8 · gold min',
   },
-  { id: 'prime',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
+  { id: 'prime', cat: 'premium',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
   /* The other end of Lucky Dip: one card, no floor, no guarantee, and odds
      that are genuinely top-heavy. It is the most volatile thing in the store —
      a quarter of the time it is the best single card you can buy without
      paying Limited money, and the rest of the time you paid Prime prices for
      one gold. Priced so that is a real decision rather than an obvious yes. */
   {
-    id: 'gamble', name: 'High Roller', cost: 26000, size: 1,
+    id: 'gamble', cat: 'premium', name: 'High Roller', cost: 26000, size: 1,
     odds: { bronze: 0.00, silver: 0.00, gold: 0.74, special: 0.26 },
     minOverall: 79, tone: 'special',
     note: '1 card · 79+ min',
@@ -91,20 +91,20 @@ const PACKS = [
      bulk option above Squad Builder — bought to fill a squad or feed a
      challenge in one go rather than to chase a headline. */
   {
-    id: 'eleven', name: 'The Eleven', cost: 45000, size: 11,
+    id: 'eleven', cat: 'premium', name: 'The Eleven', cost: 45000, size: 11,
     odds: { bronze: 0.00, silver: 0.33, gold: 0.60, special: 0.07 },
     floor: 'special', tone: 'gold',
     note: '11 · one special min',
   },
   {
-    id: 'stars', name: 'Limited: Stars', cost: 40000, size: 3, limited: true,
+    id: 'stars', cat: 'limited', name: 'Limited: Stars', cost: 40000, size: 3, limited: true,
     guarantee: 'star',
     odds: { bronze: 0.00, silver: 0.00, gold: 0.55, special: 0.45 },
     note: '3 cards · 79+ min',
     promise: '1 guaranteed 92-rated Star',
   },
   {
-    id: 'limited', name: 'Limited: Icons', cost: 75000, size: 3, limited: true,
+    id: 'limited', cat: 'limited', name: 'Limited: Icons', cost: 75000, size: 3, limited: true,
     guarantee: 'icon',
     odds: { bronze: 0.00, silver: 0.00, gold: 0.30, special: 0.70 },
     note: '3 cards · 79+ min',
@@ -114,13 +114,23 @@ const PACKS = [
      It is in the store so it has a stated price, but 200,000 Apex is roughly
      forty division wins — the intended way to hold one is to earn it. */
   {
-    id: 'legend', name: 'Limited: Legends', cost: 200000, size: 5, limited: true,
+    id: 'legend', cat: 'limited', name: 'Limited: Legends', cost: 200000, size: 5, limited: true,
     guarantee: 'icon',
     odds: { bronze: 0.00, silver: 0.00, gold: 0.14, special: 0.86 },
     note: '5 cards · 84+ min',
     promise: '1 guaranteed Icon · best odds in the game',
   },
 ];
+
+/** The free bronze recharges on a clock — see the note at the claim site. */
+const FREE_MS = 6 * 60 * 60 * 1000;
+const fmtLeft = (ms) => {
+  // minutes first, then split — ceiling the remainder alone yields "5h 60m"
+  const mins = Math.max(1, Math.ceil(ms / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+};
 
 /** Limited Edition is also the reward for the hardest objective. */
 export const PACK_BY_ID = (id) => PACKS.find((p) => p.id === id) || PACKS[0];
@@ -553,47 +563,65 @@ export function storeView() {
   if (storeTab === 'locker') return subs + lockerView(owned, counts);
   if (storeTab === 'icons') return subs + iconExchangeView();
 
+  /* Shelves, not one grid.
+   *
+   * Twelve identical rectangles in a wall is a spreadsheet; a shop has
+   * sections. Each shelf is its own panel with a name and a one-line pitch,
+   * and inside it the packs are bigger and sit in a row that scrolls sideways
+   * when it must — which also means a shelf never dictates the layout of the
+   * one below it. The free pack gets a shelf to itself because it is the one
+   * everybody comes back for. */
+  const packCard = (p) => {
+    const free = p.cost === 0;
+    const locked = !free && p.cost > (s.club.apex || 0);
+    const freeReady = free && Date.now() >= (s.club.freeAt || 0);
+    return `
+      <article class="store-pack rar-${packTone(p)}">
+        ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
+        <div class="sp-art">
+          <span class="sp-fan" aria-hidden="true"><i></i><i></i></span>
+          <span class="sp-face">
+            <span class="sp-mark">UXI</span>
+            <span class="sp-count">×${p.size}</span>
+          </span>
+          <i class="sp-foil" aria-hidden="true"></i>
+        </div>
+        <b class="sp-name">${p.name}</b>
+        <span class="sp-note">${p.note}</span>
+        ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
+        ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
+        <span class="sp-odds">${oddsLine(p)}</span>
+        <!-- last child on purpose: the auto top margin on the button is what
+             lines every price in a shelf up on one baseline -->
+        <button class="btn ${locked || (free && !freeReady) ? 'ghost' : 'primary'}"
+                data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
+          ${free ? (freeReady ? 'Claim free' : `Free in ${fmtLeft((s.club.freeAt || 0) - Date.now())}`)
+                 : `◈ ${p.cost.toLocaleString()}`}
+        </button>
+      </article>`;
+  };
+
+  const SHELVES = [
+    ['free', 'On the house', 'A free bronze pack, every six hours.'],
+    ['standard', 'Standard', 'The everyday packs — squad filler, a keeper, a cheap gamble.'],
+    ['premium', 'Premium', 'Higher floors and better odds, priced like it.'],
+    ['limited', 'Limited & Icons', 'Guaranteed headline cards. The top of the store.'],
+  ];
+
   return subs + `
-    <section class="panel glass">
-      <header class="panel-head">
-        <h2>Packs</h2>
-        <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
-      </header>
-      <p class="hint">Packs go straight to your locker — open them when you want.</p>
-      <div class="store-grid">
-        ${PACKS.map((p) => {
-          const free = p.cost === 0;
-          const locked = !free && p.cost > (s.club.apex || 0);
-          return `
-            <article class="store-pack rar-${packTone(p)}">
-              ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
-              <!-- The art is a pack, not a swatch: cards fanned behind a foil
-                   face, with the pack size on the front. The count is the one
-                   number a buyer wants before the odds, and it used to be
-                   buried in the note line as plain text. -->
-              <div class="sp-art">
-                <span class="sp-fan" aria-hidden="true"><i></i><i></i></span>
-                <span class="sp-face">
-                  <span class="sp-mark">UXI</span>
-                  <span class="sp-count">×${p.size}</span>
-                </span>
-                <i class="sp-foil" aria-hidden="true"></i>
-              </div>
-              <b class="sp-name">${p.name}</b>
-              <span class="sp-note">${p.note}</span>
-              ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
-              ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
-              <span class="sp-odds">${oddsLine(p)}</span>
-              <!-- the button is deliberately the last child: the auto top
-                   margin on it is what lines every price in a row up, and
-                   anything placed after it pushes it off that baseline. -->
-              <button class="btn ${locked ? 'ghost' : 'primary'}" data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
-                ${free ? 'Claim free' : `◈ ${p.cost.toLocaleString()}`}
-              </button>
-            </article>`;
-        }).join('')}
-      </div>
-    </section>`;
+    <div class="store-head">
+      <h2>Packs</h2>
+      <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
+    </div>
+    ${SHELVES.map(([cat, title, blurb]) => {
+      const shelf = PACKS.filter((p) => p.cat === cat);
+      if (!shelf.length) return '';
+      return `
+        <section class="panel glass store-cat cat-${cat}">
+          <header class="panel-head"><h2>${title}</h2><span class="sc-blurb">${blurb}</span></header>
+          <div class="store-row">${shelf.map(packCard).join('')}</div>
+        </section>`;
+    }).join('')}`;
 }
 
 function lockerView(owned, counts) {
@@ -895,12 +923,28 @@ export function render() {
     motif: 'ladder', tone: 'a',
   });
 
+  /* The dock. The mode's navigation is a bar along the bottom edge — icon
+   * over label, the shape every mobile football game trains thumbs on — and
+   * it is the same six buttons it always was: same ids, same handler, same
+   * `data-utab`, so the tutorial and the pad both keep working. Only the CSS
+   * knows it moved. */
+  const TAB_ICON = {
+    club: '<path d="M7.5 3.5h9a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><circle cx="12" cy="10.4" r="1.5"/><path d="M12 12.4c1.9 0 3.4 1.5 3.4 3.4h-6.8c0-1.9 1.5-3.4 3.4-3.4z"/>',
+    division: '<path d="M7 20V5M17 20V5M7 8.5h10M7 12.5h10M7 16.5h10"/>',
+    online: '<circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c2.6 2.2 4 5.1 4 8.4s-1.4 6.2-4 8.4c-2.6-2.2-4-5.1-4-8.4s1.4-6.2 4-8.4z"/>',
+    objectives: '<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3.2"/>',
+    challenges: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M12 13v3.2M9 20h6M9.6 16.2h4.8L15 20H9z"/>',
+    store: '<path d="M6 8.5h12l-1 11a2 2 0 0 1-2 1.8H9a2 2 0 0 1-2-1.8z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>',
+  };
+  const tabIcon = (id) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TAB_ICON[id]}</svg>`;
+
   const tabs = head + `
     <nav class="tabs" id="uTabs">
-      ${[['club', 'Club'], ['division', 'Apex Division'], ['online', 'Online'],
+      ${[['club', 'Club'], ['division', 'Division'], ['online', 'Online'],
          ['objectives', 'Objectives'], ['challenges', 'Challenges'],
          ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
-        .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${label}</button>`).join('')}
+        .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${tabIcon(id)}<span>${label}</span></button>`).join('')}
     </nav>`;
 
   // the apology sits above whichever tab is open, so it cannot be missed by
@@ -1299,10 +1343,19 @@ export function mount(root) {
         const pack = PACKS.find((p) => p.id === btn.dataset.buyPack);
         const s = getState();
         if (pack.cost > (s.club.apex || 0)) return toast('Not enough Apex', 'warn');
-        if (pack.cost === 0 && s.club.packsOpened > 0 && s.club.packsOpened % 3 !== 0) {
-          return toast(`Free pack in ${3 - (s.club.packsOpened % 3)} more opens`, 'warn');
+        /* The free pack is a timer, not a ratio. The old gate was
+         * `packsOpened % 3` — but *claiming* never increments packsOpened,
+         * only opening does, so whenever the count sat on a multiple of three
+         * the button could be pressed forever and bank a bronze per click. A
+         * timestamp cannot be farmed by not opening things. */
+        if (pack.cost === 0 && Date.now() < (s.club.freeAt || 0)) {
+          return toast(`Next free pack in ${fmtLeft((s.club.freeAt || 0) - Date.now())}`, 'warn');
         }
-        update((st) => { st.club.apex -= pack.cost; st.club.packs.push(pack.id); });
+        update((st) => {
+          st.club.apex -= pack.cost;
+          if (pack.cost === 0) st.club.freeAt = Date.now() + FREE_MS;
+          st.club.packs.push(pack.id);
+        });
         refreshCoins();
         sfx('coin');
         toast(`${pack.name} added to your locker`, 'good');

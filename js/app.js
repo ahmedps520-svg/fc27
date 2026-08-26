@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v47';
+export const APP_VERSION = 'v48';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -124,6 +124,7 @@ export function navigate(name, params = {}) {
   current = name;
   const mod = SCREENS[name];
   root.classList.remove('screen-in');
+  root.style.animation = '';        // re-arm: the listener below nulls it
   root.innerHTML = mod.render(params);
   // force reflow so the entry animation replays on every navigation
   void root.offsetWidth;
@@ -150,6 +151,19 @@ export function toast(msg, kind = 'info') {
   document.getElementById('toasts').appendChild(el);
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 350); }, 2400);
 }
+
+/* The entry animation must not outlive itself.
+ *
+ * `screenIn` animates `transform`, and an animation that fills keeps the
+ * element computing an identity matrix even though its last keyframe says
+ * `none`. Any transform — identity included — makes `.screen` the containing
+ * block for `position: fixed`, which pinned the Ultimate XI dock to the page
+ * instead of the viewport. Clearing the element's *own* animation once it has
+ * played hands fixed positioning back; the class stays on, so the staggered
+ * panel animations scoped under it are untouched. `navigate` re-arms it. */
+root.addEventListener('animationend', (e) => {
+  if (e.target === root) root.style.animation = 'none';
+});
 
 backBtn.addEventListener('click', () => { sfx('back'); navigate('menu'); });
 document.getElementById('homeBtn').addEventListener('click', () => { sfx('back'); navigate('menu'); });

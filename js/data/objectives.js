@@ -32,8 +32,10 @@
  */
 export const SLATE_SIZE = 7;
 
-/** How long a slate lasts before the finished slots are refilled. */
-export const REFRESH_MS = 12 * 60 * 60 * 1000;
+/** How long a slate lasts before the finished slots are refilled.
+ *  Was 12 hours; halved because a finished slot is dead space — it pays
+ *  nothing and asks nothing, and six hours of it per rung is enough. */
+export const REFRESH_MS = 6 * 60 * 60 * 1000;
 
 const L = (id, metric, text, need, apex, pack, extra = {}) =>
   ({ id, metric, text, need, apex, pack, ...extra });

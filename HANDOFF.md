@@ -531,6 +531,23 @@ is a store that stops growing, which is the whole reason for the above. There
 are twelve packs now; adding a thirteenth should be one entry in `PACKS` and
 nothing else.
 
+**The Packs tab is shelves, not a grid** (`cat` on each pack: free /
+standard / premium / limited). Twelve identical rectangles in a wall is a
+spreadsheet; a shop has sections. Each shelf is a panel with a name and a
+one-line pitch, packs inside are half again bigger, and the row scrolls
+sideways when it must so no shelf dictates the layout of the one below. The
+art idles on a slow staggered bob (`packFloat`) — the foil sweep on hover is
+still the only fast motion. The free bronze has a shelf to itself because it
+is the one everybody comes back for.
+
+**The free bronze is a six-hour clock, not a ratio.** The old gate was
+`packsOpened % 3` — but *claiming* never increments `packsOpened`, only
+opening does, so whenever the count sat on a multiple of three the button
+could be pressed forever, banking a bronze per click. `club.freeAt` is a
+timestamp; a timestamp cannot be farmed by not opening things. The button
+shows the countdown, and old saves merge in at `freeAt: 0` — claimable at
+once, which is the right greeting anyway.
+
 **The Store is three sub-tabs**: Packs, Locker, Icon Exchange (`#sSubs`,
 `storeTab`). They were one page about two thousand pixels long, so buying a pack
 meant scrolling past twelve of them to find the one you had just bought. They
@@ -623,7 +640,9 @@ completed slots**, dealing the next unclaimed rungs in. An objective you are
 midway through keeps its progress and its place.
 
 Nothing runs on a timer. The refresh happens when `objectivesView()` is drawn,
-which is also why it survives the app being shut for a week.
+which is also why it survives the app being shut for a week. The cadence is
+**six hours** (`REFRESH_MS`, was twelve): a finished slot is dead space — it
+pays nothing and asks nothing — and six hours of it per rung is enough.
 
 **Objectives are matched by `metric`, not by id.** That is what lets 32 rungs
 reuse six ways a match can feed one, so adding a rung is a line of data rather
@@ -1306,7 +1325,33 @@ guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
 went 446 → 731 players and every position now has gold, special, star and icon
 cards in it.
 
-### The menu — four doors, nothing else
+### The hub layout
+Asked for explicitly, with an FC Mobile screenshot as the reference: *"i want
+the game to look like that but not exactly... same menu options just the same
+layout basically"*. So the menu is now a **hub** — a rail of small utility
+tiles (Career, Settings) beside two big doors (Ultimate XI, Kick Off) — and the
+Ultimate XI tabs are a **bottom dock**, icon over label, fixed to the viewport
+edge. The shape every mobile football game trains thumbs on.
+
+The content rule from the two reverts below **still stands**: same four
+destinations, no counters, no statistics. Only the space moved, to where
+sessions actually go. Kick Off is the one solid block of APEX green in the app,
+which is what makes it read as "press this first" without copy; the dock keeps
+the accent gradient line across its top — the cover's diagonal carried down.
+
+**The dock is the same DOM the pills were** — same ids, same `data-utab`, same
+handler; only CSS knows it moved, which is why the tutorial and the pad kept
+working unmodified. `.screen:has(#uTabs)` supplies the floor space.
+
+**The containing-block trap, because it will bite again**: `screenIn` animates
+`transform`, and a filling animation keeps the element computing an *identity
+matrix* even though its last keyframe says `none`. Any transform — identity
+included — makes `.screen` the containing block for `position: fixed`, which
+pinned the dock to the page instead of the viewport, 1,650px down. app.js
+clears the element's own animation on `animationend` (and `navigate` re-arms
+it); the class stays on so the panel stagger scoped under it is untouched.
+
+### The menu — four doors, nothing else (history)
 Twice now the answer has been *less*. A hub of division, record, squad rating,
 chemistry, best card, locker count and next objective was reverted on sight —
 *"janky and cluttered and there is too many things happening at once"* — and
