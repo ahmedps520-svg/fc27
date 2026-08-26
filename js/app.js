@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v54';
+export const APP_VERSION = 'v55';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -177,22 +177,31 @@ root.addEventListener('animationend', (e) => {
   if (e.target === root) root.style.animation = 'none';
 });
 
-/* Backstop for wheel latching.
+/* The page owns the wheel.
  *
- * The real fix is in the stylesheet: boxes that clip decoration use
- * `overflow: clip`, which is not a scroll container, so a wheel gesture cannot
- * latch onto them. This is the belt to that pair of braces, because the failure
- * is invisible in review — one `overflow: hidden` on a box that clips two pixels
- * of a gradient is enough to kill the wheel over a whole screen, and it has now
- * cost three rounds of "the mouse wheel does not work".
+ * History: `body.in-game` was left stuck after a match (fixed); panels clipping
+ * with `overflow: hidden` latched the gesture and never chained (fixed with
+ * `overflow: clip`); and the wheel *still* did not work on the reporter's
+ * machine. Three causes, three fixes, one symptom — so this stops diagnosing.
  *
- * It only acts in the exact broken case: the pointer is over a box that hides
- * its overflow *and* has some to hide, no genuine scroller is between there and
- * the page, and the page itself still has somewhere to go. Then the wheel is
- * taken off the browser and applied to the window directly. In every other
- * case — a real list under the pointer, a match in progress, a pinch-zoom — it
- * does nothing and the browser is left alone. */
-const LINE_HEIGHT = 16;   // deltaMode 1 is in lines, not pixels
+ * Whenever no element under the pointer can actually take the scroll, this
+ * takes the wheel off the browser and applies it to the page itself. It does
+ * not care *why* the browser was not going to scroll the page — a latched
+ * clipping box, a scroller it picked that cannot move, something none of us
+ * has thought of yet. If nothing between the pointer and the page can consume
+ * the delta, the page gets it.
+ *
+ * What still behaves normally, because the walk finds a scroller that can move:
+ * the collection list, the store shelves, any overlay with its own scroll. And
+ * it stays out of the way entirely during a match and under pinch-zoom.
+ *
+ * `deltaY` is applied as-is, which means no smooth-scroll easing on the frames
+ * it handles. That is the trade: a page that scrolls slightly less prettily
+ * beats a page that does not scroll. */
+const LINE_HEIGHT = 16;         // deltaMode 1 counts lines
+const wheelLog = [];            // last few events, for the Settings diagnostic
+
+export function wheelDiagnostics() { return wheelLog.slice(); }
 
 window.addEventListener('wheel', (e) => {
   if (e.ctrlKey || e.defaultPrevented) return;                  // pinch zoom
@@ -200,27 +209,34 @@ window.addEventListener('wheel', (e) => {
   const dy = e.deltaY * (e.deltaMode === 1 ? LINE_HEIGHT : e.deltaMode === 2 ? innerHeight : 1);
   if (!dy) return;
 
-  let trapped = false;
+  let inner = null;
+  const chain = [];
   for (let n = e.target instanceof Element ? e.target : null; n; n = n.parentElement) {
     if (n === document.body || n === document.documentElement) break;
     const room = n.scrollHeight - n.clientHeight;
-    if (room <= 0) continue;
     const oy = getComputedStyle(n).overflowY;
+    if (chain.length < 5) chain.push(`${n.tagName.toLowerCase()}.${String(n.className || '').split(' ')[0]}(${oy},${room})`);
+    if (room <= 0) continue;
     if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') {
-      // a real scroller with somewhere left to go: its scroll, not ours
-      if (dy > 0 ? n.scrollTop < room - 1 : n.scrollTop > 1) return;
-    } else if (oy === 'hidden') {
-      trapped = true;                                           // the latch
+      // a real scroller with somewhere left to go in this direction: its scroll
+      if (dy > 0 ? n.scrollTop < room - 1 : n.scrollTop > 1) { inner = n; break; }
     }
   }
-  if (!trapped) return;
 
   const doc = document.scrollingElement || document.documentElement;
+  const before = doc.scrollTop;
   const room = doc.scrollHeight - doc.clientHeight;
-  if (room <= 0) return;
-  if (dy > 0 ? doc.scrollTop >= room - 1 : doc.scrollTop <= 1) return;
-  e.preventDefault();
-  window.scrollBy(0, dy);
+  let took = false;
+  if (!inner && room > 0 && (dy > 0 ? before < room - 1 : before > 1)) {
+    e.preventDefault();
+    doc.scrollTop = before + dy;
+    took = true;
+  }
+  if (wheelLog.length >= 6) wheelLog.shift();
+  wheelLog.push({
+    dy: Math.round(dy), mode: e.deltaMode, took, inner: inner ? inner.className || inner.tagName : null,
+    from: Math.round(before), to: Math.round(doc.scrollTop), room: Math.round(room), chain,
+  });
 }, { capture: true, passive: false });
 
 backBtn.addEventListener('click', () => { sfx('back'); navigate('menu'); });

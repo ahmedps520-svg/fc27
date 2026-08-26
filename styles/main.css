@@ -3452,3 +3452,29 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .coll-item, .pcard, .card-art, .confetti, .obj-row, .ch-card {
   overflow: clip;
 }
+
+/* The scroll check panel (Settings → App). A diagnostic, not chrome: plain,
+   dense and readable in a screenshot, which is the only way it gets used. */
+.scroll-diag {
+  position: fixed; z-index: 60; right: 14px; bottom: 14px; width: min(440px, calc(100vw - 28px));
+  max-height: 70vh; overflow: auto; padding: 12px 14px 14px;
+  border-radius: 14px; border: 1px solid var(--line);
+  background: rgba(6, 9, 18, .96); box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+  font-size: 12px; color: var(--text);
+}
+.scroll-diag header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.scroll-diag .sd-note { margin: 6px 0 10px; color: var(--text-dim); }
+.scroll-diag .sd-grid {
+  display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-bottom: 10px;
+}
+.scroll-diag .sd-grid span { color: var(--text-mute); }
+.scroll-diag .sd-grid b { font-family: var(--font-num); }
+.scroll-diag .sd-log { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.scroll-diag .sd-log li { line-height: 1.35; }
+.scroll-diag .sd-log em {
+  display: block; color: var(--text-mute); font-style: normal; font-size: 10.5px;
+  word-break: break-all;
+}
+.scroll-diag .sd-ua {
+  margin: 10px 0 0; color: var(--text-mute); font-size: 10px; word-break: break-all;
+}
