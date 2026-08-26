@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v48';
+export const APP_VERSION = 'v49';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -135,6 +135,18 @@ export function navigate(name, params = {}) {
   title.textContent = mod.TITLE || 'APEX XI';
   backBtn.hidden = name === 'menu' || name === 'splash';
   document.body.classList.toggle('on-splash', name === 'splash');
+  /* THE SCROLL-WHEEL FIX. `body.in-game` carries `overflow: hidden`, and it
+   * used to be owned entirely by the play screen — added in its mount, removed
+   * deep in its cleanup, *after* `gl.dispose()` and the crowd audio teardown.
+   * Either of those throwing (real GPU drivers do) skipped the removal, and
+   * the page was left unscrollable everywhere until a reload. Reported three
+   * times as "the wheel doesn't work"; never reproduced here because the test
+   * runs never played a match first. Navigation owns the class now: arriving
+   * anywhere that is not the match clears it, whatever happened to the match. */
+  document.body.classList.toggle('in-game', name === 'play');
+  // the key-art backdrop lives on body, not in the screen — a fixed layer
+  // inside .screen would ride the entry animation's containing block
+  document.body.classList.toggle('on-menu', name === 'menu');
 
   if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
   resetPadFocus();
