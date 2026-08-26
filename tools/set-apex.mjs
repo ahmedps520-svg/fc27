@@ -13,6 +13,7 @@
  *   node tools/set-apex.mjs <name> 30000                      # still a dry run
  *   node tools/set-apex.mjs <name> 30000 --apply               # write it
  *   node tools/set-apex.mjs <name> 30000 --clear-packs --apply # and empty the locker
+ *   node tools/set-apex.mjs <name> --wipe --apply              # back to a new club
  *
  * **Editing the database by hand does not work, and this is why the tool
  * exists.** The save is client-authoritative: on sign-in the device compares
@@ -52,10 +53,11 @@ const flags = args.filter((a) => a.startsWith('--'));
 const [name, amountArg] = args.filter((a) => !a.startsWith('--'));
 const apply = flags.includes('--apply');
 const clearPacks = flags.includes('--clear-packs');
+const wipe = flags.includes('--wipe');
 const amount = amountArg === undefined ? null : Number(amountArg);
 
 if (!name) {
-  console.error('usage: node tools/set-apex.mjs <name> [amount] [--clear-packs] [--apply]');
+  console.error('usage: node tools/set-apex.mjs <name> [amount] [--clear-packs] [--wipe] [--apply]');
   process.exit(1);
 }
 if (amount !== null && (!Number.isFinite(amount) || amount < 0 || amount % 1 !== 0)) {
@@ -110,21 +112,33 @@ if (packs.length) {
 }
 console.log('');
 
-if (amount === null && !clearPacks) {
+if (amount === null && !clearPacks && !wipe) {
   console.log('Nothing asked for — report only.');
   process.exit(0);
 }
 
-if (amount !== null) {
-  console.log(`would set apex   : ${(club.apex || 0).toLocaleString()} -> ${amount.toLocaleString()}`);
-}
-if (clearPacks) {
-  console.log(`would empty locker: ${packs.length} unopened packs -> 0`);
+if (wipe) {
+  console.log('would WIPE the club back to a brand new one:');
+  console.log(`  apex       ${(club.apex || 0).toLocaleString()} -> a new club's starting balance`);
+  console.log(`  cards      ${(club.collection || []).length} -> 0`);
+  console.log(`  locker     ${packs.length} -> a new club's starting packs`);
+  console.log(`  opened     ${club.packsOpened || 0} -> 0`);
+  console.log('  squad, bench, division, objectives and challenges: all reset');
+  console.log('  kept: the account itself, and their sound/graphics settings');
+} else {
+  if (amount !== null) {
+    console.log(`would set apex   : ${(club.apex || 0).toLocaleString()} -> ${amount.toLocaleString()}`);
+  }
+  if (clearPacks) {
+    console.log(`would empty locker: ${packs.length} unopened packs -> 0`);
+  }
 }
 console.log(`would bump adminRev: ${save.meta?.adminRev || 0} -> ${(save.meta?.adminRev || 0) + 1}`);
-/* Said out loud because it is the thing most likely to be forgotten: cards
-   already in the collection are not touched by either flag. */
-console.log('note: cards already in the collection stay in the club.');
+if (!wipe) {
+  /* Said out loud because it is the thing most likely to be forgotten: cards
+     already in the collection are not touched by either flag. */
+  console.log('note: cards already in the collection stay in the club.');
+}
 
 if (!apply) {
   console.log('');
@@ -132,13 +146,44 @@ if (!apply) {
   process.exit(0);
 }
 
-if (amount !== null) club.apex = amount;
-if (clearPacks) club.packs = [];
-// The bump is what makes the device accept any of this — see the header.
-save.meta = { ...(save.meta || {}), adminRev: (save.meta?.adminRev || 0) + 1 };
-store.putSave(acct, save);
+const rev = (save.meta?.adminRev || 0) + 1;
+let written;
+
+if (wipe) {
+  /* A wipe sends **empty** club/ultimate/flags rather than a club this tool
+   * built itself.
+   *
+   * `adoptCloudSave` merges what it receives over the client's own
+   * `defaults()`, so empty objects come out as exactly a new club — starting
+   * balance, starting packs, fresh ladder and objectives — decided by the game,
+   * not by a copy of the game's starting values living in a tool that would
+   * quietly go stale the next time they were tuned.
+   *
+   * `meta.reset` is carried across deliberately. It is the marker for the old
+   * economy-wipe apology, and a save without it makes the client re-run that
+   * wipe and show a note apologising for something that did not happen here. */
+  written = {
+    settings: save.settings || {},   // their audio and graphics prefs are not the punishment
+    club: {},
+    ultimate: {},
+    flags: {},
+    career: null,
+    meta: { ...(save.meta || {}), adminRev: rev },
+  };
+} else {
+  if (amount !== null) club.apex = amount;
+  if (clearPacks) club.packs = [];
+  save.meta = { ...(save.meta || {}), adminRev: rev };
+  written = save;
+}
+
+store.putSave(acct, written);
 await store.shutdown();
 console.log('');
-console.log(`Done. ${acct.name}: ◈${(club.apex || 0).toLocaleString()}, `
-  + `${(club.packs || []).length} unopened, adminRev ${save.meta.adminRev}.`);
+if (wipe) {
+  console.log(`Done. ${acct.name} is back to a new club (adminRev ${rev}).`);
+} else {
+  console.log(`Done. ${acct.name}: ◈${(club.apex || 0).toLocaleString()}, `
+    + `${(club.packs || []).length} unopened, adminRev ${rev}.`);
+}
 console.log('It applies on their next sign-in, once.');

@@ -1374,6 +1374,24 @@ env silently edits a local file and reports success.
 reachable over HTTP: nothing in `server.js` calls it, and an endpoint taking a
 name would be an account enumeration oracle.
 
+`--wipe` puts the club back to a brand new one — the whole-account reset.
+It sends **empty** `club`/`ultimate`/`flags` rather than a club the tool built
+itself: `adoptCloudSave` merges what it receives over the client's own
+`defaults()`, so empty objects come out as exactly a new club, decided by the
+game rather than by a copy of the game's starting values living in a tool that
+would go stale the next time they were tuned. It keeps the account, and keeps
+their audio and graphics settings — those are not the punishment.
+
+`meta.reset` is carried across deliberately. It is the marker for the old
+economy-wipe apology, and a save without it makes the client re-run that wipe
+and show a note apologising for something that did not happen.
+
+Verified against the real client, not by reading it: a device holding
+19,000,000 Apex, 4 cards, 620 unopened packs and 4,359 opened adopts the shell
+and lands on 5,000 Apex, no cards, the standard starting bundle, division 0 and
+seven fresh objectives — with `weightWouldHaveWon: false` in the same run,
+which is the proof that weight alone could never have applied it.
+
 `--clear-packs` empties the locker as well, and the report itemises it. **Coins
 are only the first place exploited money goes**: spent, it becomes unopened
 packs, which are the same value wearing a different hat and are invisible in a
