@@ -248,6 +248,20 @@ function byToken(token) {
   return null;
 }
 
+/**
+ * Look an account up by name, for administration.
+ *
+ * `byToken` is what the server uses, because a request proves who it is with a
+ * token and never with a name. This is the other direction and exists for
+ * operator tools — `tools/set-apex.mjs` — which have a name and no token. It is
+ * deliberately not reachable over HTTP: nothing in `server.js` calls it, and
+ * adding an endpoint that took a name would be handing out an account
+ * enumeration oracle.
+ */
+function accountByName(name) {
+  return db.accounts[key(name || '')] || null;
+}
+
 function putSave(acct, save) {
   acct.save = save;
   acct.lastSeen = Date.now();
@@ -296,4 +310,6 @@ const status = () => ({
 module.exports = {
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
+  // operator tools only — see the note on accountByName
+  accountByName,
 };
