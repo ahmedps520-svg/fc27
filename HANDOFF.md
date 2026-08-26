@@ -1325,6 +1325,27 @@ guaranteed run of 82-90 rated cards in each of LB, RB, LM and RM. The world
 went 446 → 731 players and every position now has gold, special, star and icon
 cards in it.
 
+### Ultra Low ('min')
+The graphics tier below Low, for hardware Low still stutters on. Setting value
+is `'min'`; the UI says "Ultra Low". Two flags in `createRenderer` carry it:
+`lo` (everything Low already skips — Ultra Low skips it too) and `potato` (what
+it goes further on). **New quality gates must test `lo`, not `!== 'low'`** —
+that is the whole reason `lo` exists, so a future gate cannot accidentally put
+min on the fancy path.
+
+What `potato` adds beyond `lo`: render ratio capped at **0.8** (sub-native,
+stretched — the single biggest win on a weak GPU; `safeRatio`'s 0.75 floor
+still applies), goal-net cloth at 9x4 with one solver step, terrace 4 rows,
+crowd 3 rows at step 3.0 — **sparse, not absent**, because an empty bowl reads
+as broken while a quiet Tuesday crowd reads as a choice. Scanned player models
+are forced off in play.js (`useModels`), and the canvas-2D fallback renders at
+1x. `resolveQuality` passes `'min'` through but Auto never chooses it — like
+Ultra, it is only ever an explicit request.
+
+Measured on SwiftShader (CPU rasterising both, so a fair relative proxy): the
+same kickoff scene runs **1 FPS on Low, 3-4 FPS on Ultra Low** — the tier is
+three to four times cheaper, not just fewer checkboxes.
+
 ### The scroll-wheel bug, actually found
 Three reports, two wrong fixes, and the real cause was `body.in-game`, which
 carries `overflow: hidden` for the match. It was added in the play screen's

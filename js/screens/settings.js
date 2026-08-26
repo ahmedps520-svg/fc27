@@ -18,7 +18,9 @@ function applyAudio() {
 
 export const TITLE = 'Settings';
 
-const QUALITY_NOTE = (q) => (q === 'ultra' || !q
+const QUALITY_NOTE = (q) => (q === 'min'
+  ? '<b>Ultra Low:</b> everything turned down at once — sub-native resolution, no shadows, no lighting passes, flat turf, a sparse crowd and the light player figures. It looks like a highlights reel from 2004 and runs on nearly anything.'
+  : q === 'ultra' || !q
   ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
@@ -124,7 +126,7 @@ export function render() {
       <div class="setting-row">
         <div><b>3D detail</b><span>Ships on Ultra. Auto reads the device.</span></div>
         <div class="seg" id="qualitySeg">
-          ${[['auto', 'Auto'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra']].map(([v, l]) =>
+          ${[['auto', 'Auto'], ['min', 'Ultra Low'], ['low', 'Low'], ['high', 'High'], ['ultra', 'Ultra']].map(([v, l]) =>
             `<button class="${(s.quality || 'auto') === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
         </div>
       </div>

@@ -820,7 +820,7 @@ function drawBanner(ctx, match, w, h, kits) {
  */
 export function resolveQuality(setting) {
   // Ultra is never chosen automatically — it is only ever an explicit request.
-  if (setting === 'high' || setting === 'low' || setting === 'ultra') return setting;
+  if (setting === 'high' || setting === 'low' || setting === 'ultra' || setting === 'min') return setting;
   const touch = window.matchMedia('(pointer: coarse)').matches;
   const small = Math.min(window.innerWidth, window.innerHeight) < 760;
   const weak = (navigator.hardwareConcurrency || 8) <= 2;
