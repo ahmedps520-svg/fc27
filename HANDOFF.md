@@ -564,6 +564,19 @@ the odds. The frame is `overflow: visible` because the fan sits outside it; the
 face clips its own foil. The foil sweeps once on hover and is fenced behind
 `hover: hover`, since it is the only motion in the store.
 
+**The rip comes first** (`#packRip` in `runPackAnimation`). The pack arrives
+sealed — breathing, glowing in the colour of the *best* card inside, which is a
+deliberate tell — and nothing happens until it is torn. One rip per opening,
+even Open All. Reduce Motion tears instantly. The celebration (`celebrate`) is
+reserved for special/star/icon: stage shake plus confetti in the pull's own
+colours, and bronze gets nothing on purpose — if every card explodes, none do.
+
+A testing trap that cost a debugging round: **a hand-seeded save without
+`meta.reset` gets the economy wipe applied on load**, silently replacing
+whatever packs the test planted with the starter silver. The celebrate path
+looked broken when the test had simply never fed it a special. Seed
+`meta: { reset: 'econ-2curr-1' }` in any fabricated save.
+
 **The reveal sorts worst-to-best** (`runPackAnimation`). It used to run in draw
 order, so a 92 could walk out first and leave three bronzes to sit through —
 the pack peaked and then apologised for four cards. Sorting turns the same pull

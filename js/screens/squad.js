@@ -1797,7 +1797,22 @@ function runPackAnimation(root, drawn, coins, onDone) {
   overlay.style.setProperty('--rar', RARITY[best.rarity].color);
   overlay.style.setProperty('--rar-glow', RARITY[best.rarity].glow);
   overlay.innerHTML = `
-    <div class="pack-stage">
+    <!-- The rip. A pack you never touch is a slideshow; this one sits in your
+         hand first — breathing, foil catching the light — and does not open
+         until you tear it. One rip per opening, however many cards follow. -->
+    <div class="pack-rip" id="packRip" role="button" aria-label="Rip the pack open">
+      <div class="rip-pack">
+        <span class="rip-fan" aria-hidden="true"><i></i><i></i></span>
+        <div class="rip-face">
+          <i class="rip-strip"></i>
+          <span class="rip-mark">UXI</span>
+          <span class="rip-count">×${pulls.length}</span>
+        </div>
+        <i class="rip-flash" aria-hidden="true"></i>
+      </div>
+      <span class="rip-hint">Tap to rip it open</span>
+    </div>
+    <div class="pack-stage" hidden>
       <div class="pack-burst"></div>
       <div class="pack-rays"></div>
       <div class="plinths" id="plinths">
@@ -1827,6 +1842,29 @@ function runPackAnimation(root, drawn, coins, onDone) {
 
   const slots = () => [...plinths.querySelectorAll('.plinth')];
 
+  /* The moments that deserve fireworks get them: special and above shakes the
+     stage and drops confetti in the pull's colours. Bronze does not — if every
+     card explodes, none of them do. */
+  const celebrate = (p) => {
+    if (document.documentElement.classList.contains('reduce-motion')) return;
+    if (p.rarity !== 'special' && p.rarity !== 'star' && p.rarity !== 'icon') return;
+    stage.classList.remove('shake');
+    void stage.offsetWidth;
+    stage.classList.add('shake');
+    const conf = document.createElement('div');
+    conf.className = 'confetti';
+    conf.innerHTML = Array.from({ length: 44 }, (_, i) => {
+      const w = (6 + Math.random() * 7).toFixed(0);
+      const col = ['var(--rar)', '#ffffff', 'var(--accent)', 'var(--rar-glow)'][i % 4];
+      return `<i style="left:${(Math.random() * 100).toFixed(1)}%;width:${w}px;height:${Math.round(w * 0.45)}px;`
+        + `background:${col};animation-delay:${(Math.random() * 0.35).toFixed(2)}s;`
+        + `animation-duration:${(1.1 + Math.random() * 0.9).toFixed(2)}s;`
+        + `rotate:${Math.floor(Math.random() * 360)}deg"></i>`;
+    }).join('');
+    stage.appendChild(conf);
+    at(2200, () => conf.remove());
+  };
+
   const showCard = (p) => {
     revealed = true;
     sfx('reveal', p.rarity);
@@ -1834,6 +1872,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
     overlay.classList.remove('flash');
     void overlay.offsetWidth;
     overlay.classList.add('flash');
+    celebrate(p);
     walkout.innerHTML = `
       <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}
         ${isDup(index) ? `<span class="dup-tag">Already yours · ◈${dupValue(p).toLocaleString()}</span>` : ''}
@@ -1943,7 +1982,27 @@ function runPackAnimation(root, drawn, coins, onDone) {
   nextBtn.addEventListener('click', advance);
   overlay.querySelector('#packSkipAll')?.addEventListener('click', showSummary);
   stage.addEventListener('click', (e) => { if (!e.target.closest('button')) advance(); });
-  runReveal();
+
+  /* The rip, then the show. Reduce Motion tears instantly; everyone else gets
+     the strip peeling off and the pack bursting before the first plinth. */
+  const rip = overlay.querySelector('#packRip');
+  let ripped = false;
+  const doRip = () => {
+    if (ripped) return;
+    ripped = true;
+    const instant = document.documentElement.classList.contains('reduce-motion');
+    sfx('reveal', 'silver');
+    rip.classList.add('ripping');
+    at(instant ? 0 : 620, () => {
+      rip.remove();
+      overlay.querySelector('.pack-stage').hidden = false;
+      runReveal();
+    });
+  };
+  rip.addEventListener('click', doRip);
+  rip.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') doRip(); });
+  rip.tabIndex = 0;
+  rip.focus?.();
 }
 
 /* ------------------------------------------------------------------ *

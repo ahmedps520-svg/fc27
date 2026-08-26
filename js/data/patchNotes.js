@@ -18,6 +18,47 @@
  */
 export const RELEASES = [
   {
+    version: 'v51',
+    date: '2026-08-26',
+    tag: 'Interface',
+    title: 'Rip the pack open',
+    lede: 'Packs are torn open by hand now, big pulls get confetti and a '
+        + 'screen shake, and the menu art got a proper reshoot.',
+    entries: [
+      {
+        head: 'The rip',
+        summary: 'A pack sits in your hand first — breathing, glowing in its rarity colour — '
+               + 'and does not open until you tear the strip off it.',
+        detail: 'Opening a pack used to start the card show immediately, which made the pack '
+              + 'itself weightless — you never touched the thing you bought. Now it arrives '
+              + 'sealed: the packet floats in front of you with its tear-strip along the top, '
+              + 'lit in the colour of the best card inside (which is itself a tell worth '
+              + 'watching for). Tap it and the strip tears away, the packet bursts, and the '
+              + 'reveal begins. One rip per opening, however many packs you open at once, and '
+              + 'Reduce Motion tears instantly.',
+      },
+      {
+        head: 'Fireworks for the cards that earn them',
+        summary: 'Special, Star and Icon reveals shake the stage and drop confetti in the '
+               + 'card\u2019s own colours. Bronze does not.',
+        detail: 'If every card explodes, none of them do — so the celebration is reserved for '
+              + 'the tiers that deserve one. When a Special or better walks out, the stage '
+              + 'jolts and confetti falls in the pull\u2019s colours. Everything respects '
+              + 'Reduce Motion.',
+      },
+      {
+        head: 'The menu art, reshot',
+        summary: 'The backdrop is a tighter, moodier frame — bigger players, a full crowd, '
+               + 'and the green light streaks from the cover carried into the scene.',
+        detail: 'The first backdrop was an honest frame but a flat one: a wide shot that was '
+              + 'mostly distant turf. The reshoot crops in so the players and the stands '
+              + 'carry the frame, and grades the club\u2019s green light streaks across the '
+              + 'scene — the same diagonals the cover and the tiles wear. Still shot with the '
+              + 'game\u2019s own renderer, still about 100KB.',
+      },
+    ],
+  },
+  {
     version: 'v50',
     date: '2026-08-26',
     tag: 'Performance',
