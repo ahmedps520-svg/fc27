@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v52';
+export const APP_VERSION = 'v53';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -176,6 +176,52 @@ export function toast(msg, kind = 'info') {
 root.addEventListener('animationend', (e) => {
   if (e.target === root) root.style.animation = 'none';
 });
+
+/* Backstop for wheel latching.
+ *
+ * The real fix is in the stylesheet: boxes that clip decoration use
+ * `overflow: clip`, which is not a scroll container, so a wheel gesture cannot
+ * latch onto them. This is the belt to that pair of braces, because the failure
+ * is invisible in review — one `overflow: hidden` on a box that clips two pixels
+ * of a gradient is enough to kill the wheel over a whole screen, and it has now
+ * cost three rounds of "the mouse wheel does not work".
+ *
+ * It only acts in the exact broken case: the pointer is over a box that hides
+ * its overflow *and* has some to hide, no genuine scroller is between there and
+ * the page, and the page itself still has somewhere to go. Then the wheel is
+ * taken off the browser and applied to the window directly. In every other
+ * case — a real list under the pointer, a match in progress, a pinch-zoom — it
+ * does nothing and the browser is left alone. */
+const LINE_HEIGHT = 16;   // deltaMode 1 is in lines, not pixels
+
+window.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.defaultPrevented) return;                  // pinch zoom
+  if (document.body.classList.contains('in-game')) return;      // the match owns its input
+  const dy = e.deltaY * (e.deltaMode === 1 ? LINE_HEIGHT : e.deltaMode === 2 ? innerHeight : 1);
+  if (!dy) return;
+
+  let trapped = false;
+  for (let n = e.target instanceof Element ? e.target : null; n; n = n.parentElement) {
+    if (n === document.body || n === document.documentElement) break;
+    const room = n.scrollHeight - n.clientHeight;
+    if (room <= 0) continue;
+    const oy = getComputedStyle(n).overflowY;
+    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') {
+      // a real scroller with somewhere left to go: its scroll, not ours
+      if (dy > 0 ? n.scrollTop < room - 1 : n.scrollTop > 1) return;
+    } else if (oy === 'hidden') {
+      trapped = true;                                           // the latch
+    }
+  }
+  if (!trapped) return;
+
+  const doc = document.scrollingElement || document.documentElement;
+  const room = doc.scrollHeight - doc.clientHeight;
+  if (room <= 0) return;
+  if (dy > 0 ? doc.scrollTop >= room - 1 : doc.scrollTop <= 1) return;
+  e.preventDefault();
+  window.scrollBy(0, dy);
+}, { capture: true, passive: false });
 
 backBtn.addEventListener('click', () => { sfx('back'); navigate('menu'); });
 document.getElementById('homeBtn').addEventListener('click', () => { sfx('back'); navigate('menu'); });

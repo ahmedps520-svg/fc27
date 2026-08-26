@@ -15,6 +15,34 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### The mouse wheel, cause number three (v53)
+`overflow: hidden` **is** a scroll container. A box that clips a couple of
+pixels of decoration therefore has a couple of pixels of scrollable overflow,
+and Chrome latches a wheel gesture onto the first such box under the pointer:
+it scrolls the box its two pixels and will not chain the rest of the gesture to
+the page. `.screen-head` — on every screen — had 50px of clipped artwork, which
+is exactly why the report was "the wheel does not work anywhere", and `.pitch`,
+`.tile`, `.ts-card` and `.sp-face` each had their own.
+
+Fixed at the end of `styles/main.css`: those boxes are switched to
+`overflow: clip`, which clips identically and is **not** a scroll container. The
+earlier `hidden` declarations stay put as the fallback for Safari < 16, so the
+override has to come last in the file.
+
+**Rule: clipping for looks is `clip`. `hidden` only when something inside is
+meant to be scrolled.**
+
+Backstop in `js/app.js`: a capture-phase `wheel` listener that fires only when
+the pointer is over a hidden-overflow box with overflow to hide, no genuine
+scroller sits between it and the page, and the page still has room — then it
+preventDefaults and scrolls the window itself. Verified by forcing the bug back
+on with `.pitch{overflow:hidden!important}` and watching the page scroll anyway,
+while the collection list still scrolls itself and leaves the page alone.
+
+To check for a regression: walk every screen and look for elements where
+`getComputedStyle(n).overflowY === 'hidden'` and `n.scrollHeight > n.clientHeight`.
+A clean app has none. That scan is what found all five.
+
 ### The pack reveal shows one card (v52)
 `runPackAnimation` sorts worst-first and then starts at the **last** index, so
 the only card that walks out is the highest-rated pull. The other pulls are

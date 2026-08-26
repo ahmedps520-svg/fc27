@@ -3424,3 +3424,31 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 @keyframes confFall {
   to { transform: translateY(105vh) rotate(660deg); opacity: .75; }
 }
+
+/* --------------------- Wheel latching (the scroll bug) --------------------- *
+ *
+ * `overflow: hidden` still makes a **scroll container** — it only hides the
+ * scrollbar. A box clipping a decoration by a pixel or two therefore has real
+ * scrollable overflow, and Chrome latches a wheel gesture onto the first such
+ * box under the pointer: it scrolls that box its one available pixel, refuses
+ * to chain to the page for the rest of the gesture, and the page sits still.
+ *
+ * That is the mouse-wheel bug people kept reporting after the `body.in-game`
+ * fix. `.screen-head` sits at the top of *every* screen with 50px of clipped
+ * artwork behind it — which is why "the wheel doesn't work anywhere" — and the
+ * pitch, the menu tiles and the team cards each clip a few pixels of their own.
+ * It never reproduced in a headless run because a synthetic wheel event is one
+ * event, not a latched gesture.
+ *
+ * `overflow: clip` clips identically and is **not** a scroll container, so
+ * there is nothing to latch onto. Every one of these boxes is clipping
+ * decoration, never content anyone needs to reach. The `hidden` declarations
+ * above stay as the fallback for browsers too old to know `clip` (Safari < 16),
+ * which is why this block sets only `clip` and sets it last.
+ *
+ * Rule for new code: a box that clips for looks wants `clip`. Reach for
+ * `hidden` only when something inside is genuinely meant to be scrolled. */
+.screen-head, .pitch, .tile, .ts-card, .sp-face, .pack-art, .store-pack,
+.coll-item, .pcard, .card-art, .confetti, .obj-row, .ch-card {
+  overflow: clip;
+}
