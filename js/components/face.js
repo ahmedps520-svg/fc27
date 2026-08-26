@@ -1,7 +1,12 @@
 /**
  * Procedural player portraits. Every face is generated from the player's id, so
- * it is stable across sessions and no two squads look alike. Invented people —
- * nothing here is derived from a photograph of anyone.
+ * it is stable across sessions and no two squads look alike.
+ *
+ * The cards name real footballers; these faces are **not** them. Nothing here is
+ * derived from a photograph of anyone, and no attempt is made to resemble the
+ * person on the card — the seed is the card id, not the name. Keep it that way:
+ * a drawn face that chased a likeness would be a portrait of a real person, and
+ * that is a different thing to ship entirely.
  */
 const SKINS = ['#f6d5b8', '#e9bd95', '#d5a072', '#b57a4d', '#8c5733', '#5f3a22'];
 const HAIRS = ['#1b1512', '#2e2019', '#4a3122', '#6d4a26', '#8d6a35', '#c79a54', '#d9d2c8', '#101010'];

@@ -81,8 +81,9 @@
         ${RELEASES.map((r) => `<a href="#${r.version}">${r.version}</a>`).join('')}
       </nav>
       ${RELEASES.map(article).join('')}
-      <p class="disclaimer">Clubs, leagues and competitions are fictional.
-        Icon and Star cards name real footballers and are not affiliated with them.</p>`;
+      <p class="disclaimer">Clubs, leagues and competitions are fictional. Player names
+        and nationalities are those of real footballers, used without endorsement or
+        affiliation. Portraits are drawn and are not likenesses.</p>`;
 
     // arriving on notes.html#v23 should land on that release, not the top
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView();

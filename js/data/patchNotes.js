@@ -18,6 +18,48 @@
  */
 export const RELEASES = [
   {
+    version: 'v54',
+    date: '2026-08-26',
+    tag: 'Content',
+    title: 'Everyone on a card is real',
+    lede: 'All 731 players now carry a real footballer\'s name and nationality. '
+        + 'No rating, stat or squad changed.',
+    entries: [
+      {
+        head: 'Real names, real countries',
+        summary: 'The invented names are gone. Every card names a real player, with '
+               + 'their real country and flag.',
+        detail: 'The world used to be filled with generated names from generated countries. '
+              + 'It now names 696 real footballers, on top of the 35 Icons and Stars that '
+              + 'always did — 731 real people, no name used twice. Countries came with them, '
+              + 'so the flags on the cards are real flags. Keepers are matched to keeper '
+              + 'cards; elsewhere a card takes the closest position still free, because the '
+              + 'game wants far more wide midfielders than the real game has.',
+      },
+      {
+        head: 'Your squad did not change',
+        summary: 'Ratings, stats, positions, clubs, values and your collection are '
+               + 'exactly as they were — only the names on the fronts are new.',
+        detail: 'The cards are built first and named second, which is what makes this safe: '
+              + 'nothing that decides how a card plays was touched, and a card keeps its id, '
+              + 'so a collection points at the same cards it always did. An 85-rated '
+              + 'right-back is the same 85-rated right-back this morning and tonight, with a '
+              + 'different person on the front. Chemistry is worked out from clubs and '
+              + 'nations, and clubs are unchanged, so squads keep their links.',
+      },
+      {
+        head: 'What is not real',
+        summary: 'Clubs, leagues, ratings and the drawn faces are all still invented.',
+        detail: 'The clubs, leagues and competitions stay fictional, and so do the ratings '
+              + 'and stats — those are the game\'s numbers, not a claim about anybody\'s '
+              + 'ability. The portraits are still drawn from the card id and are deliberately '
+              + 'not likenesses: the list these names came from carried image search links '
+              + 'rather than photographs, and player photography belongs to whoever shot it. '
+              + 'None of the players named are affiliated with or endorse the game.',
+      },
+    ],
+  },
+  {
     version: 'v53',
     date: '2026-08-26',
     tag: 'Fix',

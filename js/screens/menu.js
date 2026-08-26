@@ -107,8 +107,9 @@ export function render() {
       </div>
     </div>
 
-    <p class="disclaimer">Clubs, leagues and competitions are fictional.
-      Icon and Star cards name real footballers and are not affiliated with them.</p>
+    <p class="disclaimer">Clubs, leagues and competitions are fictional. Player names
+      and nationalities are those of real footballers, used without endorsement or
+      affiliation. Portraits are drawn and are not likenesses.</p>
     </section>`;
 }
 

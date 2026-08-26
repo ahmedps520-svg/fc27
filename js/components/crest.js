@@ -170,7 +170,7 @@ function shade(hex, f) {
   return `#${v.map((x) => x.toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** Two-band flag for the fictional nations. */
+/** Two-band flag: the two dominant colours of a country's flag, not the flag itself. */
 export function flagSVG(colors, w = 20) {
   const [a, b] = colors;
   return `

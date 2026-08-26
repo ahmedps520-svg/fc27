@@ -2,6 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
+import { REAL_PLAYERS, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -120,6 +121,10 @@ function makePlayer(rand, position, baseLevel, clubId) {
   overall = clamp(overall, 60, 99);
 
   const age = rand.int(17, 35);
+  /* A placeholder identity. `nameTheWorld` overwrites the name, short name,
+     nation and flag colours of every one of these cards with a real
+     footballer's before the world is handed out — these pools only still exist
+     so a card is never half-built if that pass ever fails to reach it. */
   const nation = rand.pick(NATIONS);
   const first = rand.pick(FIRST_NAMES);
   const last = rand.pick(LAST_NAMES);
@@ -372,6 +377,8 @@ function buildWorld() {
     freeAgents.push(p.id);
   }
 
+  nameTheWorld(players);
+
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const fixtures = buildFixtures(clubs.map((c) => c.id), rand);
 
@@ -386,6 +393,90 @@ function buildWorld() {
     stars,
     fixtures,
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Real identities
+ * ------------------------------------------------------------------ */
+/**
+ * Give every generated card a real footballer's name and country.
+ *
+ * The cards are built first and named second, and that order is the whole
+ * point: rating, stats, position, club, age and value are decided by the
+ * generator exactly as they always were, so no squad changed strength when the
+ * names arrived. Only the identity on the front of the card is new. Icons and
+ * Stars are skipped — they already name real players, and the twenty who
+ * appeared in both lists were removed from `REAL_PLAYERS` so nobody is on two
+ * cards at once.
+ *
+ * Matching is by position, best effort. Real keepers are kept strictly to
+ * keeper cards, because an outfielder in goal is the one swap that looks like a
+ * bug; everywhere else a card takes the closest position still unclaimed —
+ * a right-back for a left-back, a winger for a wide midfielder — before falling
+ * back to whoever is left. The world wants 158 wide midfielders and the list
+ * has one, so some approximation is unavoidable; footballers play more than one
+ * position anyway.
+ *
+ * Deterministic: both lists are walked in fixed order, so the same card gets
+ * the same person on every load and a saved collection keeps pointing at the
+ * people it was pointing at. Never re-sort `REAL_PLAYERS` — that would deal
+ * every save a different set of names.
+ */
+const POS_FALLBACK = {
+  GK: ['GK'],
+  CB: ['CB', 'CDM', 'LB', 'RB'],
+  LB: ['LB', 'RB', 'CB', 'LM', 'LW', 'CDM'],
+  RB: ['RB', 'LB', 'CB', 'RM', 'RW', 'CDM'],
+  CDM: ['CDM', 'CM', 'CB'],
+  CM: ['CM', 'CDM', 'CAM'],
+  CAM: ['CAM', 'CM', 'LW', 'RW', 'ST'],
+  LM: ['LM', 'LW', 'CAM', 'CM', 'LB', 'RW'],
+  RM: ['RM', 'RW', 'CAM', 'CM', 'RB', 'LW'],
+  LW: ['LW', 'RW', 'LM', 'CAM', 'ST'],
+  RW: ['RW', 'LW', 'RM', 'CAM', 'ST'],
+  ST: ['ST', 'CAM', 'LW', 'RW', 'CM'],
+};
+
+function nameTheWorld(players) {
+  const pool = new Map();          // position -> queue of unclaimed people
+  for (const row of REAL_PLAYERS) {
+    if (!pool.has(row[3])) pool.set(row[3], []);
+    pool.get(row[3]).push(row);
+  }
+  const take = (pos) => {
+    for (const p of POS_FALLBACK[pos] || [pos]) {
+      const q = pool.get(p);
+      if (q && q.length) return q.shift();
+    }
+    /* Nothing compatible left. Take from the longest queue, preferring
+       outfielders — the list has more keepers than the world has keeper cards,
+       so the last dozen outfield cards are named after real goalkeepers rather
+       than left with an invented name. A keeper's name on a centre-back is a
+       far smaller lie than an outfielder's name in goal, which is why the
+       preference runs this way round and never the other. */
+    let best = null;
+    for (const [p, q] of pool) if (p !== 'GK' && q.length && (!best || q.length > best.length)) best = q;
+    if (!best) best = pool.get('GK');
+    return best && best.length ? best.shift() : null;
+  };
+
+  /* Keepers first, then the scarce positions, so the strict GK rule and the
+     thin queues are served before the common ones drain the list. */
+  const order = ['GK', 'CDM', 'CAM', 'LB', 'RB', 'CM', 'LW', 'RW', 'ST', 'CB', 'LM', 'RM'];
+  const byPos = new Map(order.map((p) => [p, []]));
+  for (const p of players) {
+    if (p.rarity === 'icon' || p.rarity === 'star') continue;   // already real
+    (byPos.get(p.position) || []).push(p);
+  }
+  for (const pos of order) {
+    for (const p of byPos.get(pos)) {
+      const row = take(pos);
+      if (!row) continue;                                        // ran out: keep the generated name
+      [p.name, p.short, p.nation] = row;
+      p.nationColors = NATION_COLORS[row[2]] || p.nationColors;
+    }
+  }
+  return players;
 }
 
 export const WORLD = buildWorld();
