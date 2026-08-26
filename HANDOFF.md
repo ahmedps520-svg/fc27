@@ -1329,6 +1329,32 @@ the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word.
 
+### Correcting a balance
+`tools/set-apex.mjs`. Closing an exploit does not unwind the balances it
+produced, and there was no way to correct one without hand-editing the account
+database.
+
+    node tools/set-apex.mjs <name>                 # report, changes nothing
+    node tools/set-apex.mjs <name> 30000           # still a dry run
+    node tools/set-apex.mjs <name> 30000 --apply   # writes
+
+**Dry run is the default and `--apply` is the only thing that writes.** It
+calls into `server/store.js` rather than reimplementing the backend choice, so
+it cannot drift from where the server actually keeps accounts — and it needs the
+same environment: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` for the
+hosted database, neither for `server/data/accounts.json`. It prints which
+backend it reached before doing anything, because **pointing it at the wrong
+store is the one mistake it cannot catch for you** — a dev machine with no Redis
+env silently edits a local file and reports success.
+
+`accountByName` was added to the store for this. It is deliberately **not**
+reachable over HTTP: nothing in `server.js` calls it, and an endpoint taking a
+name would be an account enumeration oracle.
+
+It changes the balance and nothing else. **Cards bought with the coins stay in
+the club** — the tool says so on every run, because that is the half most easily
+forgotten when reversing an exploit.
+
 ### Selling a card, and why it paid twice
 `[data-sell]` in `squad.js`. The handler credited the coins **unconditionally**
 and removed the id with a `filter`, which is a no-op once the card is already
