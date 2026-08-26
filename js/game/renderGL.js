@@ -1031,6 +1031,12 @@ export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
   const ultra = quality === 'ultra';
+  /* 'min' is Ultra Low: the tier for hardware that Low still stutters on.
+   * `potato` is what it goes further on; `lo` is everything Low already
+   * skips, which Ultra Low skips too — one flag, so a future gate cannot
+   * accidentally include min in the fancy path by testing !== 'low'. */
+  const potato = quality === 'min';
+  const lo = quality === 'low' || potato;
   /* No MSAA above Low, and that is not a downgrade.
    *
    * Every tier above Low renders through the EffectComposer: the scene goes
@@ -1046,9 +1052,11 @@ export function createRenderer(canvas, match, quality, models = false) {
     powerPreference: 'high-performance',
   });
   const dpr = window.devicePixelRatio || 1;
-  const wantRatio = ultra
-    ? Math.min(3, Math.max(2, dpr))          // render above native, then downsample
-    : Math.min(quality === 'low' ? 1.25 : 2, dpr);
+  const wantRatio = potato
+    ? Math.min(0.8, dpr)                     // sub-native and stretched: the potato win
+    : ultra
+      ? Math.min(3, Math.max(2, dpr))        // render above native, then downsample
+      : Math.min(quality === 'low' ? 1.25 : 2, dpr);
   const startRatio = safeRatio(renderer, wantRatio, cssSize(canvas));
   renderer.setPixelRatio(startRatio);
   {
@@ -1061,7 +1069,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       Math.round(w * startRatio), Math.round(h * startRatio),
       renderer.capabilities?.maxTextureSize || 0);
   }
-  renderer.shadowMap.enabled = quality !== 'low';
+  renderer.shadowMap.enabled = !lo;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   // filmic tone mapping is what stops floodlit whites blowing out to flat grey
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1118,7 +1126,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   scene.add(surround);
 
   const turfMat = new THREE.MeshStandardMaterial({
-    map: pitchTexture(quality !== 'low'),
+    map: pitchTexture(!lo),
     /* Cut grass under floodlights is *faintly* specular — that sheen sweeping
        across the stripes is most of what separates a lit pitch from a green
        rectangle. Faintly is the operative word. At 0.74, with a roughness map
@@ -1133,7 +1141,7 @@ export function createRenderer(canvas, match, quality, models = false) {
      the difference between grass and a green rectangle with lines on it. The
      normal map tiles roughly once per 2.6 m so individual blades stay under a
      centimetre, and its own `repeat` is independent of the colour map's. */
-  if (quality !== 'low') {
+  if (!lo) {
     const detail = turfDetail(ultra ? 512 : 256);
     detail.repeat.set(PITCH.w / 2.6, PITCH.h / 2.6);
     turfMat.normalMap = detail;
@@ -1215,8 +1223,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     // Column 0 and the last column sit on the posts; the top row hangs off the
     // crossbar and the bottom row is staked to the ground — everything between
     // is free to billow.
-    const COLS = quality === 'low' ? 13 : ultra ? 30 : 21;
-    const ROWS = quality === 'low' ? 6 : ultra ? 13 : 9;
+    const COLS = potato ? 9 : quality === 'low' ? 13 : ultra ? 30 : 21;
+    const ROWS = potato ? 4 : quality === 'low' ? 6 : ultra ? 13 : 9;
     const span = GOAL_HALF * 2;
     const perim = NET_DEPTH * 2 + span;            // left side + back + right side
     const cloth = new NetCloth(COLS, ROWS,
@@ -1266,7 +1274,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     { rot: Math.PI / 2, cx: -MARGIN, cy: CY, len: PITCH.h + 36 },
     { rot: -Math.PI / 2, cx: PITCH.w + MARGIN, cy: CY, len: PITCH.h + 36 },
   ];
-  const TERRACE_ROWS = quality === 'low' ? 8 : ultra ? 22 : 14;
+  const TERRACE_ROWS = potato ? 4 : quality === 'low' ? 8 : ultra ? 22 : 14;
   for (const bk of banks) {
     const g = new THREE.Group();
     g.position.set(bk.cx, bk.cy, 0);
@@ -1302,7 +1310,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       g.add(roof);
 
       // roof trusses so the underside is not a blank slab
-      if (quality !== 'low') {
+      if (!lo) {
         for (let i = -4; i <= 4; i++) {
           const truss = new THREE.Mesh(
             new THREE.BoxGeometry(0.5, SD * 0.68, 0.45), trussMat);
@@ -1416,7 +1424,7 @@ export function createRenderer(canvas, match, quality, models = false) {
      *
      * It is the single most "expensive-looking" thing on the screen for the
      * least work, because a floodlit pitch at night is defined by its haze. */
-    if (quality !== 'low') {
+    if (!lo) {
       const beamLen = 60;
       const beam = new THREE.Mesh(
         new THREE.ConeGeometry(24, beamLen, 26, 1, true),
@@ -1470,8 +1478,10 @@ export function createRenderer(canvas, match, quality, models = false) {
 
   // crowd — one instanced mesh, so thousands of seats cost a single draw call
   const rand = mulberry(97531);
-  const rows = quality === 'low' ? 8 : ultra ? 22 : 14;
-  const step = quality === 'low' ? 1.5 : ultra ? 0.62 : 0.95;
+  // Ultra Low keeps *a* crowd — an empty bowl reads as broken, not as fast —
+  // but a very sparse one: a few hundred figures instead of thousands.
+  const rows = potato ? 3 : quality === 'low' ? 8 : ultra ? 22 : 14;
+  const step = potato ? 3.0 : quality === 'low' ? 1.5 : ultra ? 0.62 : 0.95;
   const seats = [];
   const bankDefs = [
     { kind: 'far', from: -22, to: PITCH.w + 22 },
@@ -1605,7 +1615,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       box(0.34, 0.22, 0.40, 0, 0, 0.30),            // torso
       box(0.30, 0.30, 0.15, 0, 0.14, 0.06),         // thighs, out over the seat front
     ];
-    if (quality !== 'low') {
+    if (!lo) {
       bodyParts.push(box(0.09, 0.11, 0.30, -0.21, 0.02, 0.28));   // arms
       bodyParts.push(box(0.09, 0.11, 0.30, 0.21, 0.02, 0.28));
       bodyParts.push(box(0.13, 0.13, 0.26, -0.09, 0.24, -0.16));  // shins
@@ -1764,7 +1774,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     return m;
   });
 
-  const fine = quality !== 'low';
+  const fine = !lo;
   let focusDist = 40;
   let disposed = false;
   let lastNetHit = -1;
@@ -1781,7 +1791,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   // Skipped entirely on low detail, where the extra passes are not worth it.
   let composer = null;
   let cine = null;
-  if (quality !== 'low') {
+  if (!lo) {
     composer = new EffectComposer(renderer);
 
     /* The cinematic pass needs the scene's depth, and the only place that
@@ -1909,7 +1919,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       const nd = Math.min(dt || 1 / 60, 1 / 30);
       for (const n of nets) {
-        n.cloth.step(nd, quality === 'low' ? 2 : ultra ? 6 : 3);
+        n.cloth.step(nd, potato ? 1 : quality === 'low' ? 2 : ultra ? 6 : 3);
         n.geo.attributes.position.needsUpdate = true;
       }
 

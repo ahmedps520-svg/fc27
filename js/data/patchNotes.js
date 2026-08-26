@@ -18,6 +18,33 @@
  */
 export const RELEASES = [
   {
+    version: 'v50',
+    date: '2026-08-26',
+    tag: 'Performance',
+    title: 'Ultra Low',
+    lede: 'A graphics tier below Low, for hardware that Low still stutters on. '
+        + 'Measured three to four times cheaper than Low on the same scene.',
+    entries: [
+      {
+        head: 'Everything turned down at once',
+        summary: 'Settings → 3D detail → Ultra Low: sub-native resolution, no shadows, no '
+               + 'lighting passes, flat turf, a sparse crowd and the light player figures.',
+        detail: 'Low still carried real costs: native resolution, its own antialiasing '
+              + 'buffer, a full crowd and detailed turf. Ultra Low goes through every one of '
+              + 'them. The match renders at 80% of your screen\u2019s pixels and stretches '
+              + 'up — the single biggest saving on a weak GPU — with no shadows, no '
+              + 'post-processing, flat pitch colour, minimal netting simulation, a thin '
+              + 'terrace and a deliberately sparse crowd rather than none, because an empty '
+              + 'bowl reads as broken while a quiet Tuesday crowd reads as a choice. Player '
+              + 'models are always the light built-in figures on this tier.\n\nMeasured on '
+              + 'the same scene with the same software renderer, Ultra Low runs three to four '
+              + 'times faster than Low. It looks like a highlights reel from 2004, and that '
+              + 'is the deal: every part of the game — every mode, every rule, every reward — '
+              + 'is identical, only the picture is cheaper.',
+      },
+    ],
+  },
+  {
     version: 'v49',
     date: '2026-08-26',
     tag: 'Fix',

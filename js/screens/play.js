@@ -169,7 +169,7 @@ export function mount(root, params) {
   const quality = resolveQuality(getState().settings.quality);
   // Scanned players are a 14 MB download, so they are never forced on the
   // low-detail path — a machine that asked for Low did so for a reason.
-  const useModels = getState().settings.models !== 'simple' && quality !== 'low';
+  const useModels = getState().settings.models !== 'simple' && quality !== 'low' && quality !== 'min';
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
@@ -388,7 +388,7 @@ export function mount(root, params) {
     canvas.style.width = `${vw}px`;
     canvas.style.height = `${vh}px`;
     if (gl) { gl.resize(vw, vh); return; }
-    const dpr = Math.min(quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1);
+    const dpr = Math.min(quality === 'min' ? 1 : quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1);
     canvas.width = Math.round(vw * dpr);
     canvas.height = Math.round(vh * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
