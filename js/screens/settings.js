@@ -1,6 +1,6 @@
 import { getState, update, resetAll } from '../state.js';
 import { WORLD } from '../data/generator.js';
-import { navigate, applyTheme, toast, APP_VERSION } from '../app.js';
+import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
@@ -74,6 +74,14 @@ export function render() {
       <div class="setting-row">
         <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
+      </div>
+      <!-- Diagnostic, not a feature. The mouse wheel has now had three separate
+           causes and none of them reproduced on a test machine, so this reports
+           what the wheel actually did on the machine that has the problem:
+           scroll over the box it draws and screenshot the readout. -->
+      <div class="setting-row">
+        <div><b>Scroll check</b><span>If the mouse wheel misbehaves, open this and send the readout.</span></div>
+        <button class="btn ghost" id="scrollCheck">Open</button>
       </div>
     </section>
 
@@ -286,6 +294,40 @@ export function mount(root) {
   // cannot be run from on top of the screen that launched it — it leaves
   // Settings almost immediately anyway.
   root.querySelector('#startTut')?.addEventListener('click', () => startTutorial(0));
+
+  /* Scroll check. Draws a panel, samples the wheel log the app keeps, and
+     prints the page's own scroll numbers next to it — enough to tell whether
+     the wheel is reaching the page at all, which is the thing screenshots of a
+     stationary page cannot say. */
+  root.querySelector('#scrollCheck')?.addEventListener('click', () => {
+    document.querySelector('#scrollDiag')?.remove();
+    const box = document.createElement('div');
+    box.id = 'scrollDiag';
+    box.className = 'scroll-diag';
+    document.body.appendChild(box);
+    const doc = document.scrollingElement || document.documentElement;
+    const draw = () => {
+      const log = wheelDiagnostics();
+      box.innerHTML = `
+        <header><b>Scroll check</b><button class="btn ghost" id="sdClose">Close</button></header>
+        <p class="sd-note">Scroll the wheel anywhere on the page, then screenshot this.</p>
+        <div class="sd-grid">
+          <span>page scrollTop</span><b>${Math.round(doc.scrollTop)}</b>
+          <span>page can scroll</span><b>${Math.round(doc.scrollHeight - doc.clientHeight)}px</b>
+          <span>wheel events seen</span><b>${log.length ? 'yes' : 'none yet'}</b>
+          <span>screen</span><b>${innerWidth}×${innerHeight} @${devicePixelRatio}</b>
+        </div>
+        <ol class="sd-log">${log.length
+          ? log.map((w) => `<li>Δ${w.dy} mode ${w.mode} · ${w.took ? 'page took it' : `handled by ${w.inner || 'browser'}`}
+              · ${w.from}→${w.to} of ${w.room}<em>${w.chain.join(' ‹ ')}</em></li>`).reverse().join('')
+          : '<li>no wheel events yet — try scrolling now</li>'}</ol>
+        <p class="sd-ua">${navigator.userAgent}</p>`;
+      box.querySelector('#sdClose').addEventListener('click', () => { stop = true; box.remove(); });
+    };
+    let stop = false;
+    const tick = () => { if (stop || !box.isConnected) return; draw(); setTimeout(tick, 400); };
+    tick();
+  });
 
   root.querySelector('#forceUpdate').addEventListener('click', async (e) => {
     const btn = e.currentTarget;

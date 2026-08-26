@@ -18,6 +18,36 @@
  */
 export const RELEASES = [
   {
+    version: 'v55',
+    date: '2026-08-26',
+    tag: 'Fix',
+    title: 'The page takes the wheel',
+    lede: 'The wheel now scrolls the page whenever nothing under the pointer '
+        + 'can scroll instead — whatever the reason.',
+    entries: [
+      {
+        head: 'No more diagnosing',
+        summary: 'If nothing under the pointer can take the scroll, the page takes it.',
+        detail: 'The mouse wheel has had three separate causes now — a leftover scroll lock '
+              + 'after a match, panels clipping their artwork and latching the gesture, and '
+              + 'whatever was still wrong after both of those were fixed. So the game has '
+              + 'stopped trying to name the cause. Every wheel event is now checked: if there '
+              + 'is a real list under the pointer with somewhere to go, it scrolls, exactly as '
+              + 'before; if there is not, the page is scrolled directly rather than left to '
+              + 'the browser to decide. Matches and pinch-zoom are untouched.',
+      },
+      {
+        head: 'Scroll check',
+        summary: 'Settings → App has a readout that says what the wheel actually did.',
+        detail: 'None of the three causes ever reproduced on a test machine, which is what '
+              + 'made each one take so long. Settings now has a Scroll check panel: open it, '
+              + 'move the wheel, and it shows whether the page received the scroll, how far it '
+              + 'moved, what element handled it and how much room the page has. A screenshot '
+              + 'of that panel is worth more than any description of the symptom.',
+      },
+    ],
+  },
+  {
     version: 'v54',
     date: '2026-08-26',
     tag: 'Content',

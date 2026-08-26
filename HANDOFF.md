@@ -15,6 +15,25 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### The wheel, cause four — stop diagnosing (v55)
+Three fixes had shipped (stuck `body.in-game`; `overflow: hidden` latching,
+fixed with `overflow: clip`) and the reporter's wheel was still dead after a
+redeploy. So `js/app.js` no longer tries to identify the cause: the capture-phase
+`wheel` listener walks from the target for a scroller that is `auto|scroll` and
+has room **in the wheel's direction**, and if it does not find one it
+`preventDefault()`s and sets `document.scrollingElement.scrollTop` itself. The
+page scrolls unless something under the pointer genuinely can.
+
+Cost: no smooth-scroll easing on frames it handles. Worth it.
+
+`wheelDiagnostics()` (exported from app.js) keeps the last six events, and
+Settings → App → **Scroll check** renders them live: page scrollTop, how much
+room the page has, whether the page took the event or an element did, the
+element chain with each one's overflow and scroll room, viewport size, DPR and
+user agent. It exists because none of the four causes ever reproduced here — if
+this comes back a fifth time, ask for a screenshot of that panel first rather
+than guessing again.
+
 ### Every player is a real footballer (v54)
 `js/data/realPlayers.js` holds 696 real players — name, short name, country,
 position — and `NATION_COLORS` holds flag colours for the 60 countries. It is
