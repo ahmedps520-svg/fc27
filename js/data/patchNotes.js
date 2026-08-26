@@ -18,6 +18,40 @@
  */
 export const RELEASES = [
   {
+    version: 'v53',
+    date: '2026-08-26',
+    tag: 'Fix',
+    title: 'The wheel, for real this time',
+    lede: 'The mouse wheel now scrolls from anywhere on the page, not just from '
+        + 'the bar at the bottom.',
+    entries: [
+      {
+        head: 'What was actually wrong',
+        summary: 'Panels that clip their own artwork were swallowing the wheel. '
+               + 'They no longer can.',
+        detail: 'Hiding overflow in CSS does not just hide a scrollbar — it makes the box a '
+              + 'scroll container, and a box clipping two pixels of a gradient has two pixels '
+              + 'of scrolling to do. The browser latches the wheel onto the first such box '
+              + 'under the pointer, scrolls it those two pixels, and then refuses to pass the '
+              + 'rest of the gesture on to the page. The banner at the top of every screen was '
+              + 'one of these, which is why the wheel appeared dead everywhere, and the pitch, '
+              + 'the menu tiles and the team cards were others. Those boxes now clip without '
+              + 'becoming scrollers, so there is nothing left to latch onto. Lists that are '
+              + 'meant to scroll — your collection, the store shelves — are untouched and '
+              + 'still scroll under the pointer as before.',
+      },
+      {
+        head: 'And a guard, so it cannot come back',
+        summary: 'If a panel ever traps the wheel again, the page scrolls anyway.',
+        detail: 'This is the third separate cause of "the mouse wheel does not work", and all '
+              + 'three were invisible in review. There is now a check that notices when the '
+              + 'wheel is over a box that hides its overflow with no real list between there '
+              + 'and the page, and scrolls the page itself in that case. It stays out of the '
+              + 'way of genuine scrollers, of pinch-zoom and of matches.',
+      },
+    ],
+  },
+  {
     version: 'v52',
     date: '2026-08-26',
     tag: 'Interface',
