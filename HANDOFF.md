@@ -15,6 +15,41 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Every player is a real footballer (v54)
+`js/data/realPlayers.js` holds 696 real players — name, short name, country,
+position — and `NATION_COLORS` holds flag colours for the 60 countries. It is
+**generated**: `tools/build-real-players.py` reads `tools/real-players-source.json`
+(the list the owner supplied) and writes the module. Edit the tool, not the
+output.
+
+`nameTheWorld` in `generator.js` runs at the end of `buildWorld` and overwrites
+`name`, `short`, `nation` and `nationColors` on every generated card. Rules that
+matter:
+- **Build first, name second.** Ratings, stats, positions, clubs, ages and
+  values are untouched, which is the entire reason no save changed strength.
+  Never move naming earlier, into `makePlayer`, where it could feed the numbers.
+- **Ids are unchanged**, so saved collections keep pointing at the same cards.
+- **Order is the identity.** Both lists are walked in fixed order. Re-sorting
+  `REAL_PLAYERS`, or inserting a row anywhere but the end, deals every existing
+  save a different set of names.
+- Icons and Stars are skipped (already real). The 20 people who appeared both
+  there and in the source list were dropped from the source at build time, so
+  nobody is on two cards — which is also why the counts land exactly: 696
+  names for 696 generated cards.
+- Keepers are strict: only real GKs get GK cards. The list has ~12 more keepers
+  than the world has keeper cards, and those spill onto outfield cards at the
+  very end rather than leaving invented names behind.
+
+Not changed, deliberately: clubs and leagues stay fictional (licensing), and the
+faces stay procedural and seeded by card id — **never** try to make a portrait
+resemble the person named on the card.
+
+Chemistry: nation links are sparser than they were (60 countries instead of 16),
+but club links carry most of it — an auto-filled XI from an 80-card collection
+still measured 91 chemistry. The `8 different nations` challenge is easier now;
+`5 from one nation` is slightly easier too (Spain and Brazil are bigger blocks
+than any fictional nation was). Left alone rather than silently re-tuned.
+
 ### The mouse wheel, cause number three (v53)
 `overflow: hidden` **is** a scroll container. A box that clips a couple of
 pixels of decoration therefore has a couple of pixels of scrollable overflow,

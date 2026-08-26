@@ -179,9 +179,11 @@ export function render() {
           .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
       </div>
       <p class="disclaimer">${WORLD.clubs.length} clubs · ${WORLD.players.length} players.
-        Clubs, leagues and competitions are fictional, apart from the Icon and Star
-        cards, which name real footballers and are not endorsed by or affiliated
-        with them.</p>
+        Clubs, leagues and competitions are fictional. Every player card names a real
+        footballer, with their real nationality; none of them are endorsed by or
+        affiliated with the game. Ratings, stats and club allegiances are invented and
+        are not a claim about anyone's ability, and the portraits are drawn rather than
+        photographed — they are not likenesses.</p>
     </section>`;
 }
 
