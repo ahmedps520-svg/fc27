@@ -1329,6 +1329,39 @@ the problem, not the name. The
 tiles carry the cover's swoosh in their right third — clear of the left-aligned
 text, with a scrim under it so it can never take a bite out of a word.
 
+### Selling a card, and why it paid twice
+`[data-sell]` in `squad.js`. The handler credited the coins **unconditionally**
+and removed the id with a `filter`, which is a no-op once the card is already
+gone. A second click on the same button therefore removed nothing and paid in
+full — again, and again. Someone reached three million Apex with an auto-clicker.
+
+Measured, before and after, by dispatching fifty clicks at one button:
+
+| | cards removed | Apex paid |
+| --- | --- | --- |
+| before | 1 | 4,700 |
+| after | 1 | 48 |
+
+Two faults, and it needed both to be this bad:
+
+1. **The payout was not conditional on the removal.** The check and the credit
+   are now the same statement inside one `update`: the amount is decided by
+   whether the `splice` happened, so there is no window between "is it still
+   mine" and "pay me". `paid` staying zero means the click sold nothing, and it
+   then does nothing at all — no coins, no toast, no sound, so a held button is
+   silent rather than lucrative.
+2. **`root.querySelector('.coin-chip').textContent` threw on every sell.** The
+   chip only exists in the Store views and the Sell button is on the **Club**
+   tab, so the line threw before `rerenderPitch()` could run — which is why the
+   sold player *stayed on screen with a live Sell button*. That is the half the
+   report described as "the players won't go", and it is what turned a payout
+   bug into a farm. Null-guarded now.
+
+**The lesson worth keeping: anything that pays out must be conditional on the
+state change it is paying for, in the same transaction.** Cards are unique in
+`collection` — the pack opener and the Icon Exchange both check `includes`
+before pushing — so removing one index is removing the card.
+
 ### The guided tour
 `js/tutorial.js`. A spotlight walk through the **real** interface rather than a
 slideshow of pictures of it: every step points at an element that is genuinely

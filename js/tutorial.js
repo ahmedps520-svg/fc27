@@ -418,11 +418,25 @@ export function startTutorial(at = 0) {
     place();
   };
 
+  /* If a step cannot be drawn, get out of the way.
+   *
+   * The scrim deliberately absorbs clicks, so a tour that throws half-way
+   * through rendering would leave an invisible sheet over the whole app —
+   * nothing to see, nothing to dismiss, and every click and scroll swallowed.
+   * Failing closed turns the worst case from "the game is bricked" into "the
+   * tour stopped early". */
+  const safely = (fn) => {
+    try { fn(); } catch (err) {
+      console.error('[apexxi] tutorial step failed, closing', err);
+      stopTutorial();
+    }
+  };
+
   const go = (n) => {
     if (n >= STEPS.length) { finish(); return; }
     i = Math.max(0, n);
     sfx('select');
-    render();
+    safely(render);
   };
 
   const finish = () => {
@@ -460,7 +474,9 @@ export function startTutorial(at = 0) {
   };
   window.addEventListener('keydown', onKey, true);
 
-  const loop = () => { place(); raf = requestAnimationFrame(loop); };
+  // The same applies every frame: a target that vanishes mid-step must not take
+  // the app down with it.
+  const loop = () => { safely(place); raf = requestAnimationFrame(loop); };
   raf = requestAnimationFrame(loop);
 
   live = {
@@ -471,7 +487,7 @@ export function startTutorial(at = 0) {
       el.remove();
     },
   };
-  render();
+  safely(render);
 }
 
 export function stopTutorial() {
