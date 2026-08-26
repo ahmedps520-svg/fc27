@@ -56,18 +56,20 @@ body {
    stadium, floodlights and crowd — graded dark at capture so UI sits on it.
    On body so it never rides a screen animation's containing block; the grid
    and orbs paint over it and read as part of the grade. */
-/* The menu key art. This is the supplied cover image, unretouched — the only
-   thing over it is the scrim below, kept light at the top so the wordmark and
-   the stadium read, and heavier low down where the tiles sit and text has to
-   survive. The art carries its own APEX XI lockup, which is why
-   `.menu-wordmark` is hidden while it is showing: two titles is one too many. */
+/* The menu key art: a frame shot in the game's own engine from a low pitchside
+   camera, then graded — see tools/keyart/. Most of the darkening lives in the
+   image itself (its lower half is scrimmed there, under where the tiles and the
+   small print sit); this gradient only finishes the job, because a scrim heavy
+   enough to make the art safe in CSS alone flattens it to a grey wash. */
 body.on-menu::before {
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(4, 6, 13, .10) 0%, rgba(4, 6, 13, .18) 42%, rgba(4, 6, 13, .70) 100%),
+    linear-gradient(180deg, rgba(4, 6, 13, .22) 0%, rgba(4, 6, 13, .18) 34%, rgba(4, 6, 13, .72) 100%),
     url('../assets/keyart.jpg') center center / cover no-repeat;
 }
-body.on-menu .menu-wordmark { display: none; }
+/* The wordmark is back: the art it was hidden for carried its own lockup, and
+   this one does not. If the art is ever swapped for one that does, hide it
+   again rather than stacking two titles. */
 /* the blue/magenta orbs and the grid are the backdrop for screens that have no
    art; over the key art they only put a colour cast in two corners */
 body.on-menu .bg-orb, body.on-menu .bg-grid { display: none; }
