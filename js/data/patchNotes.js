@@ -18,6 +18,37 @@
  */
 export const RELEASES = [
   {
+    version: 'v52',
+    date: '2026-08-26',
+    tag: 'Interface',
+    title: 'One card, the right one',
+    lede: 'Packs now reveal only your best pull, and the menu is wearing the '
+        + 'real cover art.',
+    entries: [
+      {
+        head: 'The reveal stops at the best card',
+        summary: 'A pack shows you the card you actually care about and then ends. '
+               + 'Everything else still lands in your locker.',
+        detail: 'A twelve-card pack used to be twelve reveals, and because the order runs '
+              + 'worst to best, the eleven you sat through first were by construction the '
+              + 'eleven you wanted least. Now the show is one card long: the highest-rated '
+              + 'pull in the pack, with the full walkout, the fireworks and the rarity glow. '
+              + 'Nothing about what you get has changed — every card is still added and every '
+              + 'duplicate is still paid out at the same rate, and the locker has the complete '
+              + 'list — but the pack is a moment now instead of a queue.',
+      },
+      {
+        head: 'The cover art is the menu',
+        summary: 'The main menu now sits on the real APEX XI key art.',
+        detail: 'The menu backdrop was a frame grabbed out of the match renderer and graded to '
+              + 'look like cover art. It has been replaced with the actual artwork, unretouched, '
+              + 'with a much lighter scrim over it so the stadium, the lasers and the player all '
+              + 'read. The duplicate wordmark that used to sit on top of it is gone — the art '
+              + 'carries its own.',
+      },
+    ],
+  },
+  {
     version: 'v51',
     date: '2026-08-26',
     tag: 'Interface',
