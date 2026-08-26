@@ -1515,18 +1515,42 @@ export function mount(root) {
 
     const sell = e.target.closest('[data-sell]');
     if (sell) {
+      /* Pay for the card **only if it was actually there to remove**.
+       *
+       * This used to credit the coins unconditionally and remove the id with a
+       * `filter`, which is a no-op once the card is gone. So a second click on
+       * the same button — trivial with an auto-clicker, and possible by hand on
+       * a stale button — removed nothing and paid in full, again, and again.
+       * Someone reached three million Apex that way.
+       *
+       * The check and the credit are now the same statement inside one
+       * `update`: the amount is decided by whether the splice happened, so
+       * there is no window between "is it still mine" and "pay me" for a
+       * second click to slip into. `paid` staying zero is the signal that this
+       * click sold nothing, and it then does nothing at all — no coins, no
+       * toast, no sound, so a held-down button is silent rather than lucrative.
+       *
+       * Cards are unique in `collection` (both the pack opener and the Icon
+       * Exchange check `includes` before pushing), so removing one index is
+       * removing the card, not one of several copies. */
       const p = getPlayer(sell.dataset.sell);
-      const coins = Math.round(p.value / 25_000);
+      if (!p) return;
+      let paid = 0;
       update((s) => {
-        s.club.collection = s.club.collection.filter((id) => id !== p.id);
+        const at = s.club.collection.indexOf(p.id);
+        if (at === -1) return;
+        s.club.collection.splice(at, 1);
         s.club.lineup = s.club.lineup.map((id) => (id === p.id ? null : id));
         s.club.bench = (s.club.bench || []).map((id) => (id === p.id ? null : id));
-        s.club.apex += coins;
+        paid = Math.round(p.value / 25_000);
+        s.club.apex += paid;
       });
+      if (!paid) return;
       refreshCoins();
-      root.querySelector('.coin-chip').textContent = `◈ ${getState().club.apex.toLocaleString()}`;
+      const chip = root.querySelector('.coin-chip');
+      if (chip) chip.textContent = `◈ ${getState().club.apex.toLocaleString()}`;
       rerenderPitch();
-      toast(`Sold ${p.name} for ◈${coins.toLocaleString()}`);
+      toast(`Sold ${p.name} for ◈${paid.toLocaleString()}`);
     }
   });
 

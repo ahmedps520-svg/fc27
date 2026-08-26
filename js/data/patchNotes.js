@@ -18,6 +18,44 @@
  */
 export const RELEASES = [
   {
+    version: 'v46',
+    date: '2026-08-23',
+    tag: 'Fix',
+    title: 'Selling a player paid every click',
+    lede: 'A card you sold could be sold again, and again, without ever leaving '
+        + 'your club. That is fixed.',
+    entries: [
+      {
+        head: 'Sold cards now actually leave, and only pay once',
+        summary: 'Selling paid out on every click rather than once per card, and the player '
+               + 'stayed on screen afterwards — so the same card could be sold indefinitely.',
+        detail: 'Two things were wrong and it needed both to be as bad as it was. The coins '
+              + 'were handed over whether or not there was still a card there to remove, so a '
+              + 'second click on the same button paid in full for nothing. And the line that '
+              + 'refreshes your balance was looking for something that only exists on the '
+              + 'Store screens, so it failed on the Club screen before the squad could redraw '
+              + '— which is why the sold player never disappeared and the Sell button stayed '
+              + 'there, live, ready to be clicked again. With an auto-clicker that was a money '
+              + 'printer, and at least one club reached three million Apex.\n\nThe payment is '
+              + 'now decided by whether the card was actually removed, in the same step, so '
+              + 'there is no gap between the two for a second click to slip into. A click on a '
+              + 'card that is already gone now does nothing at all — no coins, no message, no '
+              + 'sound. Measured with fifty rapid clicks on one card: it used to pay 4,700 and '
+              + 'now pays 48, once.',
+      },
+      {
+        head: 'The tutorial can no longer get stuck over the game',
+        summary: 'If a tour step ever fails, the tour closes itself instead of leaving an '
+               + 'invisible layer that swallows clicks and scrolling.',
+        detail: 'The tour dims the screen with a layer that absorbs clicks on purpose. If a '
+              + 'step failed to draw, that layer could be left behind with nothing visible on '
+              + 'it — no way to see it and no way to dismiss it, while every click and scroll '
+              + 'went nowhere. It now fails closed: any step that cannot be drawn shuts the '
+              + 'tour down and hands the game back.',
+      },
+    ],
+  },
+  {
     version: 'v45',
     date: '2026-08-23',
     tag: 'Interface',
