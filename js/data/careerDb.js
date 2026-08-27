@@ -1,0 +1,108 @@
+/**
+ * The real-football world of Manager Career. GENERATED — edit
+ * tools/build-career-db.py, not this file.
+ *
+ * Every named squad player is a real footballer; the named clubs carry the
+ * players actually curated for them, filled to sixteen from the wider pool so
+ * every club fields an XI and a bench (fill players are real people who may
+ * not be at that club in reality). Ratings and stats come from the same
+ * generated card each name already has in the rest of the game — one player,
+ * one set of numbers everywhere — except the twenty who exist only as Icon and
+ * Star trading cards, whose career ratings are stated in CAREER_RATINGS
+ * because a career wants a footballer, not a 99.
+ *
+ * Badges are drawn by the game's own crest generator in each club's colours:
+ * real names, real colours, original artwork.
+ */
+export const CAREER_CLUBS = [
+  { id:'mci', name:'Manchester City', short:'MCI', league:'Premier League', country:'England', colors:['#6cabdd','#1c2c5b'], shape:'circle' },
+  { id:'mun', name:'Manchester United', short:'MUN', league:'Premier League', country:'England', colors:['#da291c','#000000'], shape:'shield' },
+  { id:'ars', name:'Arsenal', short:'ARS', league:'Premier League', country:'England', colors:['#ef0107','#023474'], shape:'shield' },
+  { id:'liv', name:'Liverpool', short:'LIV', league:'Premier League', country:'England', colors:['#c8102e','#00b2a9'], shape:'shield' },
+  { id:'che', name:'Chelsea', short:'CHE', league:'Premier League', country:'England', colors:['#034694','#dba111'], shape:'circle' },
+  { id:'tot', name:'Tottenham Hotspur', short:'TOT', league:'Premier League', country:'England', colors:['#ffffff','#132257'], shape:'shield' },
+  { id:'rma', name:'Real Madrid', short:'RMA', league:'La Liga', country:'Spain', colors:['#febe10','#00529f'], shape:'circle' },
+  { id:'bar', name:'Barcelona', short:'BAR', league:'La Liga', country:'Spain', colors:['#a50044','#004d98'], shape:'shield' },
+  { id:'atm', name:'Atlético Madrid', short:'ATM', league:'La Liga', country:'Spain', colors:['#cb3524','#262f61'], shape:'shield' },
+  { id:'rso', name:'Real Sociedad', short:'RSO', league:'La Liga', country:'Spain', colors:['#0067b1','#ffffff'], shape:'circle' },
+  { id:'int', name:'Inter', short:'INT', league:'Serie A', country:'Italy', colors:['#010e80','#000000'], shape:'circle' },
+  { id:'mil', name:'AC Milan', short:'MIL', league:'Serie A', country:'Italy', colors:['#fb090b','#000000'], shape:'shield' },
+  { id:'juv', name:'Juventus', short:'JUV', league:'Serie A', country:'Italy', colors:['#ffffff','#000000'], shape:'shield' },
+  { id:'nap', name:'Napoli', short:'NAP', league:'Serie A', country:'Italy', colors:['#12a0d7','#003c82'], shape:'circle' },
+  { id:'ata', name:'Atalanta', short:'ATA', league:'Serie A', country:'Italy', colors:['#2266a5','#000000'], shape:'shield' },
+  { id:'bay', name:'Bayern Munich', short:'BAY', league:'Bundesliga', country:'Germany', colors:['#dc052d','#0066b2'], shape:'circle' },
+  { id:'bvb', name:'Borussia Dortmund', short:'BVB', league:'Bundesliga', country:'Germany', colors:['#fde100','#000000'], shape:'circle' },
+  { id:'b04', name:'Bayer Leverkusen', short:'B04', league:'Bundesliga', country:'Germany', colors:['#e32221','#000000'], shape:'shield' },
+  { id:'psg', name:'Paris Saint-Germain', short:'PSG', league:'Ligue 1', country:'France', colors:['#004170','#da291c'], shape:'shield' },
+  { id:'mar', name:'Marseille', short:'MAR', league:'Ligue 1', country:'France', colors:['#2faee0','#ffffff'], shape:'circle' },
+  { id:'lyo', name:'Lyon', short:'LYO', league:'Ligue 1', country:'France', colors:['#da001a','#153d8a'], shape:'shield' },
+  { id:'hil', name:'Al Hilal', short:'HIL', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#2451a4','#ffffff'], shape:'circle' },
+  { id:'nas', name:'Al Nassr', short:'NAS', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#ffd200','#00285e'], shape:'shield' },
+  { id:'itt', name:'Al Ittihad', short:'ITT', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#f9c908','#000000'], shape:'shield' },
+  { id:'ahl', name:'Al Ahli', short:'AHL', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#00723f','#ffffff'], shape:'circle' },
+];
+
+/** Each row: [name, position, country]. Resolved to live stats at runtime. */
+export const CAREER_SQUADS = {
+  mci: [['Gianluigi Donnarumma','GK','Italy'], ['Ederson','GK','Brazil'], ['Stefan Ortega','GK','Germany'], ['Rúben Dias','CB','Portugal'], ['John Stones','CB','England'], ['Nathan Aké','CB','Netherlands'], ['Manuel Akanji','CB','Switzerland'], ['Joško Gvardiol','CB','Croatia'], ['Abdukodir Khusanov','CB','Uzbekistan'], ['Rico Lewis','RB','England'], ['Nico O\'Reilly','CM','England'], ['Rodri','CDM','Spain'], ['Mateo Kovačić','CM','Croatia'], ['Bernardo Silva','CAM','Portugal'], ['Kevin De Bruyne','CAM','Belgium'], ['Phil Foden','RW','England'], ['Jack Grealish','LW','England'], ['Jeremy Doku','LW','Belgium'], ['Savinho','RW','Brazil'], ['Erling Haaland','ST','Norway'], ['Omar Marmoush','ST','Egypt'], ['Antoine Semenyo','RW','Ghana']],
+  mun: [['André Onana','GK','Cameroon'], ['Altay Bayındır','GK','Turkey'], ['Matthijs de Ligt','CB','Netherlands'], ['Lisandro Martínez','CB','Argentina'], ['Harry Maguire','CB','England'], ['Leny Yoro','CB','France'], ['Noussair Mazraoui','RB','Morocco'], ['Diogo Dalot','RB','Portugal'], ['Luke Shaw','LB','England'], ['Patrick Dorgu','LB','Denmark'], ['Casemiro','CDM','Brazil'], ['Bruno Fernandes','CAM','Portugal'], ['Manuel Ugarte','CDM','Uruguay'], ['Kobbie Mainoo','CM','England'], ['Mason Mount','CAM','England'], ['Matheus Cunha','ST','Brazil'], ['Bryan Mbeumo','RW','Cameroon'], ['Amad Diallo','RW','Ivory Coast'], ['Rasmus Højlund','ST','Denmark'], ['Benjamin Šeško','ST','Slovenia']],
+  ars: [['David Raya','GK','Spain'], ['Kepa Arrizabalaga','GK','Spain'], ['William Saliba','CB','France'], ['Gabriel Magalhães','CB','Brazil'], ['Jakub Kiwior','CB','Poland'], ['Ben White','RB','England'], ['Jurrien Timber','RB','Netherlands'], ['Riccardo Calafiori','LB','Italy'], ['Myles Lewis-Skelly','LB','England'], ['Martin Ødegaard','CAM','Norway'], ['Declan Rice','CDM','England'], ['Thomas Partey','CDM','Ghana'], ['Mikel Merino','CM','Spain'], ['Bukayo Saka','RW','England'], ['Gabriel Martinelli','LW','Brazil'], ['Leandro Trossard','LW','Belgium'], ['Kai Havertz','ST','Germany'], ['Gabriel Jesus','ST','Brazil'], ['Viktor Gyökeres','ST','Sweden'], ['Noni Madueke','RW','England']],
+  liv: [['Alisson','GK','Brazil'], ['Giorgi Mamardashvili','GK','Georgia'], ['Caoimhín Kelleher','GK','Ireland'], ['Virgil van Dijk','CB','Netherlands'], ['Ibrahima Konaté','CB','France'], ['Joe Gomez','CB','England'], ['Andrew Robertson','LB','Scotland'], ['Milos Kerkez','LB','Hungary'], ['Conor Bradley','RB','Northern Ireland'], ['Jeremie Frimpong','RB','Netherlands'], ['Ryan Gravenberch','CM','Netherlands'], ['Alexis Mac Allister','CM','Argentina'], ['Dominik Szoboszlai','CAM','Hungary'], ['Wataru Endo','CDM','Japan'], ['Florian Wirtz','CAM','Germany'], ['Cody Gakpo','LW','Netherlands'], ['Luis Díaz','LW','Colombia'], ['Mohamed Salah','RW','Egypt'], ['Darwin Núñez','ST','Uruguay'], ['Federico Chiesa','RW','Italy'], ['Hugo Ekitiké','ST','France']],
+  che: [['Robert Sánchez','GK','Spain'], ['Filip Jørgensen','GK','Denmark'], ['Malo Gusto','RB','France'], ['Reece James','RB','England'], ['Wesley Fofana','CB','France'], ['Trevoh Chalobah','CB','England'], ['Levi Colwill','CB','England'], ['Benoît Badiashile','CB','France'], ['Marc Cucurella','LB','Spain'], ['Moisés Caicedo','CDM','Ecuador'], ['Enzo Fernández','CM','Argentina'], ['Romeo Lavia','CDM','Belgium'], ['Cole Palmer','CAM','England'], ['João Pedro','ST','Brazil'], ['Pedro Neto','RW','Portugal'], ['Jadon Sancho','LW','England'], ['Nicolas Jackson','ST','Senegal'], ['Christopher Nkunku','CAM','France'], ['Estevão','RW','Brazil'], ['Liam Delap','ST','England']],
+  tot: [['Guglielmo Vicario','GK','Italy'], ['Antonín Kinský','GK','Czech Republic'], ['Cristian Romero','CB','Argentina'], ['Micky van de Ven','CB','Netherlands'], ['Radu Drăgușin','CB','Romania'], ['Pedro Porro','RB','Spain'], ['Destiny Udogie','LB','Italy'], ['James Maddison','CAM','England'], ['Rodrigo Bentancur','CM','Uruguay'], ['Pape Matar Sarr','CM','Senegal'], ['Lucas Bergvall','CM','Sweden'], ['Dejan Kulusevski','RW','Sweden'], ['Brennan Johnson','RW','Wales'], ['Son Heung-min','LW','South Korea'], ['Dominic Solanke','ST','England'], ['Mathys Tel','ST','France'], ['Wilson Odobert','LW','France'], ['Mikey Moore','LW','England']],
+  rma: [['Thibaut Courtois','GK','Belgium'], ['Andriy Lunin','GK','Ukraine'], ['Dani Carvajal','RB','Spain'], ['Éder Militão','CB','Brazil'], ['Antonio Rüdiger','CB','Germany'], ['David Alaba','CB','Austria'], ['Ferland Mendy','LB','France'], ['Fran García','LB','Spain'], ['Trent Alexander-Arnold','RB','England'], ['Aurélien Tchouaméni','CDM','France'], ['Eduardo Camavinga','CM','France'], ['Federico Valverde','CM','Uruguay'], ['Jude Bellingham','CAM','England'], ['Luka Modrić','CM','Croatia'], ['Dani Ceballos','CM','Spain'], ['Arda Güler','CAM','Turkey'], ['Vinícius Júnior','LW','Brazil'], ['Kylian Mbappé','ST','France'], ['Rodrygo','RW','Brazil'], ['Brahim Díaz','RW','Morocco'], ['Endrick','ST','Brazil'], ['Gonzalo García','ST','Spain']],
+  bar: [['Joan García','GK','Spain'], ['Wojciech Szczęsny','GK','Poland'], ['Iñaki Peña','GK','Spain'], ['Jules Koundé','RB','France'], ['Ronald Araújo','CB','Uruguay'], ['Pau Cubarsí','CB','Spain'], ['Andreas Christensen','CB','Denmark'], ['Eric García','CB','Spain'], ['Alejandro Balde','LB','Spain'], ['Gerard Martín','LB','Spain'], ['Frenkie de Jong','CM','Netherlands'], ['Pedri','CM','Spain'], ['Fermín López','CAM','Spain'], ['Gavi','CM','Spain'], ['Marc Casadó','CDM','Spain'], ['Dani Olmo','CAM','Spain'], ['Ferran Torres','RW','Spain'], ['Raphinha','RW','Brazil'], ['Lamine Yamal','RW','Spain'], ['Robert Lewandowski','ST','Poland'], ['Marcus Rashford','LW','England']],
+  atm: [['Jan Oblak','GK','Slovenia'], ['Juan Musso','GK','Argentina'], ['José María Giménez','CB','Uruguay'], ['Robin Le Normand','CB','Spain'], ['Clément Lenglet','CB','France'], ['Nahuel Molina','RB','Argentina'], ['Marcos Llorente','RB','Spain'], ['Reinildo Mandava','LB','Mozambique'], ['Rodrigo De Paul','CM','Argentina'], ['Conor Gallagher','CM','England'], ['Koke','CM','Spain'], ['Pablo Barrios','CM','Spain'], ['Julián Álvarez','ST','Argentina'], ['Antoine Griezmann','ST','France'], ['Alexander Sørloth','ST','Norway'], ['Ángel Correa','RW','Argentina'], ['Giuliano Simeone','RW','Argentina'], ['Thiago Almada','CAM','Argentina']],
+  rso: [['Unai Simón','GK','Spain'], ['David Soria','GK','Spain'], ['Dani Vivian','CB','Spain'], ['Pau Torres','CB','Spain'], ['Dani Parejo','CM','Spain'], ['Mikel Oyarzabal','LW','Spain'], ['Nico Williams','LW','Spain'], ['Takefusa Kubo','RW','Japan'], ['Iago Aspas','ST','Spain'], ['Ayoze Pérez','ST','Spain'], ['Isco','CAM','Spain'], ['Sergio Herrera','GK','Spain'], ['Álex Baena','CAM','Spain'], ['Yeremy Pino','RW','Spain'], ['Davinson Sánchez','CB','Colombia'], ['Milan Škriniar','CB','Slovakia']],
+  int: [['Yann Sommer','GK','Switzerland'], ['Yosep Martínez','GK','Spain'], ['Alessandro Bastoni','CB','Italy'], ['Francesco Acerbi','CB','Italy'], ['Stefan de Vrij','CB','Netherlands'], ['Benjamin Pavard','CB','France'], ['Denzel Dumfries','RB','Netherlands'], ['Federico Dimarco','LB','Italy'], ['Nicola Zalewski','LB','Poland'], ['Hakan Çalhanoğlu','CM','Turkey'], ['Nicolò Barella','CM','Italy'], ['Henrikh Mkhitaryan','CM','Armenia'], ['Piotr Zieliński','CM','Poland'], ['Davide Frattesi','CM','Italy'], ['Kristjan Asllani','CDM','Albania'], ['Lautaro Martínez','ST','Argentina'], ['Marcus Thuram','ST','France'], ['Mehdi Taremi','ST','Iran'], ['Luis Henrique','RW','Brazil']],
+  mil: [['Mike Maignan','GK','France'], ['Marco Sportiello','GK','Italy'], ['Fikayo Tomori','CB','England'], ['Matteo Gabbia','CB','Italy'], ['Strahinja Pavlović','CB','Serbia'], ['Malick Thiaw','CB','Germany'], ['Theo Hernández','LB','France'], ['Kyle Walker','RB','England'], ['Davide Bartesaghi','LB','Italy'], ['Youssouf Fofana','CDM','France'], ['Tijjani Reijnders','CM','Netherlands'], ['Ruben Loftus-Cheek','CM','England'], ['Christian Pulisic','RW','USA'], ['Rafael Leão','LW','Portugal'], ['Samuel Chukwueze','RW','Nigeria'], ['Luka Jović','ST','Serbia'], ['Santiago Giménez','ST','Mexico'], ['Álvaro Morata','ST','Spain'], ['João Félix','CAM','Portugal']],
+  juv: [['Michele Di Gregorio','GK','Italy'], ['Mattia Perin','GK','Italy'], ['Gleison Bremer','CB','Brazil'], ['Pierre Kalulu','CB','France'], ['Federico Gatti','CB','Italy'], ['Renato Veiga','CB','Portugal'], ['Andrea Cambiaso','LB','Italy'], ['Nicolò Savona','RB','Italy'], ['Manuel Locatelli','CDM','Italy'], ['Khéphren Thuram','CM','France'], ['Teun Koopmeiners','CM','Netherlands'], ['Douglas Luiz','CM','Brazil'], ['Kenan Yıldız','LW','Turkey'], ['Francisco Conceição','RW','Portugal'], ['Nico González','RW','Argentina'], ['Timothy Weah','RW','USA'], ['Jonathan David','ST','Canada'], ['Dusan Vlahović','ST','Serbia']],
+  nap: [['Alex Meret','GK','Italy'], ['Vanja Milinković-Savić','GK','Serbia'], ['Alessandro Buongiorno','CB','Italy'], ['Amir Rrahmani','CB','Kosovo'], ['Giovanni Di Lorenzo','RB','Italy'], ['Mathías Olivera','LB','Uruguay'], ['Scott McTominay','CM','Scotland'], ['Stanislav Lobotka','CDM','Slovakia'], ['Billy Gilmour','CM','Scotland'], ['Frank Anguissa','CM','Cameroon'], ['Matteo Politano','RW','Italy'], ['David Neres','LW','Brazil'], ['Noa Lang','LW','Netherlands'], ['Romelu Lukaku','ST','Belgium'], ['Maximilian Mittelstädt','LB','Germany'], ['Richard Ríos','CM','Colombia']],
+  ata: [['Marco Carnesecchi','GK','Italy'], ['Rui Patrício','GK','Portugal'], ['Isak Hien','CB','Sweden'], ['Berat Djimsiti','CB','Albania'], ['Odilon Kossounou','CB','Ivory Coast'], ['Sead Kolašinac','CB','Bosnia and Herzegovina'], ['Davide Zappacosta','RB','Italy'], ['Raoul Bellanova','RB','Italy'], ['Marten de Roon','CM','Netherlands'], ['Éderson','CM','Brazil'], ['Mario Pašalić','CAM','Croatia'], ['Charles De Ketelaere','CAM','Belgium'], ['Ademola Lookman','LW','Nigeria'], ['Nicolò Zaniolo','RW','Italy'], ['Lazar Samardžić','CAM','Serbia'], ['Gianluca Scamacca','ST','Italy'], ['Mateo Retegui','ST','Italy']],
+  bay: [['Manuel Neuer','GK','Germany'], ['Jonas Urbig','GK','Germany'], ['Sven Ulreich','GK','Germany'], ['Dayot Upamecano','CB','France'], ['Kim Min-jae','CB','South Korea'], ['Alphonso Davies','LB','Canada'], ['Jonathan Tah','CB','Germany'], ['Raphaël Guerreiro','LB','Portugal'], ['Konrad Laimer','CM','Austria'], ['Joshua Kimmich','CDM','Germany'], ['Leon Goretzka','CM','Germany'], ['Aleksandar Pavlović','CDM','Germany'], ['Jamal Musiala','CAM','Germany'], ['Michael Olise','RW','France'], ['Kingsley Coman','LW','France'], ['Serge Gnabry','RW','Germany'], ['Leroy Sané','RW','Germany'], ['Harry Kane','ST','England'], ['Thomas Müller','CAM','Germany']],
+  bvb: [['Gregor Kobel','GK','Switzerland'], ['Nico Schlotterbeck','CB','Germany'], ['Waldemar Anton','CB','Germany'], ['David Raum','LB','Germany'], ['Xavi Simons','CAM','Netherlands'], ['Serhou Guirassy','ST','Guinea'], ['Karim Adeyemi','LW','Germany'], ['Julian Brandt','CAM','Germany'], ['Emre Can','CDM','Germany'], ['Nadiem Amiri','CM','Germany'], ['Vanderson','RB','Brazil'], ['Maximiliano Araújo','LW','Uruguay'], ['Alban Lafont','GK','France'], ['Budimir Shavari','CB','Georgia'], ['Marco Reus','CAM','Germany'], ['Memphis Depay','ST','Netherlands']],
+  b04: [['Lukáš Hrádecký','GK','Finland'], ['Matej Kovář','GK','Czech Republic'], ['Edmond Tapsoba','CB','Burkina Faso'], ['Piero Hincapié','CB','Ecuador'], ['Alejandro Grimaldo','LB','Spain'], ['Arthur','RB','Brazil'], ['Granite Xhaka','CM','Switzerland'], ['Robert Andrich','CDM','Germany'], ['Exequiel Palacios','CM','Argentina'], ['Aleix García','CM','Spain'], ['Jonas Hofmann','RW','Germany'], ['Nathan Tella','RW','Nigeria'], ['Amine Adli','LW','Morocco'], ['Patrik Schick','ST','Czech Republic'], ['Victor Boniface','ST','Nigeria'], ['Alexander Nübel','GK','Germany'], ['Angelo Stiller','CM','Germany'], ['Loïs Openda','ST','Belgium'], ['Donyell Malen','RW','Netherlands'], ['Benjamin Sesko','ST','Slovenia']],
+  psg: [['Lucas Beraldo','CB','Brazil'], ['Marquinhos','CB','Brazil'], ['Willian Pacho','CB','Ecuador'], ['Lucas Hernández','CB','France'], ['Nuno Mendes','LB','Portugal'], ['Achraf Hakimi','RB','Morocco'], ['Warren Zaïre-Emery','CM','France'], ['Vitinha','CM','Portugal'], ['João Neves','CM','Portugal'], ['Fabián Ruiz','CM','Spain'], ['Khvicha Kvaratskhelia','LW','Georgia'], ['Bradley Barcola','LW','France'], ['Ousmane Dembélé','RW','France'], ['Désiré Doué','CAM','France'], ['Lee Kang-in','RW','South Korea'], ['Gonçalo Ramos','ST','Portugal'], ['Randal Kolo Muani','ST','France'], ['Jérémy Doku','LW','Belgium'], ['Senny Mayulu','CAM','France']],
+  mar: [['Brice Samba','GK','France'], ['Jonathan Clauss','RB','France'], ['Rayan Cherki','CAM','France'], ['Wissam Ben Yedder','ST','France'], ['Antonee Robinson','LB','USA'], ['Morgan Gibbs-White','CAM','England'], ['Lucas Vázquez','RB','Spain'], ['Cesc Fàbregas','CM','Spain'], ['Luis Suárez','ST','Uruguay'], ['Mats Hummels','CB','Germany'], ['Wilfred Ndidi','CDM','Nigeria'], ['Inaki Williams','RW','Ghana'], ['Yehvann Diouf','GK','France'], ['Fabián Balbuena','CB','Paraguay'], ['Stephen Eustáquio','CM','Canada'], ['André Silva','ST','Portugal']],
+  lyo: [['Lucas Chevalier','GK','France'], ['Jean-Clair Todibo','CB','France'], ['Castello Lukeba','CB','France'], ['Adrien Rabiot','CM','France'], ['Alexandre Lacazette','ST','France'], ['Amine Gouiri','ST','Algeria'], ['Adam Wharton','CM','England'], ['Wout Faes','CB','Belgium'], ['Nemanja Gudelj','CDM','Serbia'], ['Dani Alves','RB','Brazil'], ['Ismael Saibari','CAM','Morocco'], ['Ollie Watkins','ST','England'], ['Everson','GK','Brazil'], ['Wendell','LB','Brazil'], ['Mohammed Kudus','CAM','Ghana'], ['Chris Führich','LW','Germany']],
+  hil: [['Yassine Bounou','GK','Morocco'], ['Kalidou Koulibaly','CB','Senegal'], ['João Cancelo','RB','Portugal'], ['Rúben Neves','CM','Portugal'], ['Sergej Milinković-Savić','CM','Serbia'], ['Aleksandar Mitrović','ST','Serbia'], ['David Hancko','CB','Slovakia'], ['Emiliano Buendía','CAM','Argentina'], ['Dušan Vlahović','ST','Serbia'], ['Pervis Estupiñán','LB','Ecuador'], ['Amine Harit','CAM','Morocco'], ['Gonçalo Guedes','LW','Portugal'], ['Kim Seung-gyu','GK','South Korea'], ['Nicușor Bancu','LB','Romania'], ['Dušan Tadić','CAM','Serbia'], ['Neymar','LW','Brazil']],
+  nas: [['Aymeric Laporte','CB','Spain'], ['Marcelo Brozović','CDM','Croatia'], ['Sadio Mané','LW','Senegal'], ['Cristiano Ronaldo','ST','Portugal'], ['Jota','LW','Portugal'], ['Serge Aurier','RB','Ivory Coast'], ['David Silva','CAM','Spain'], ['Marcelo','LB','Brazil'], ['László Bénes','CM','Slovakia'], ['Sergio Rochet','GK','Uruguay'], ['Benjamin Henrichs','RB','Germany'], ['Kendry Páez','CAM','Ecuador'], ['Marc-André ter Stegen','GK','Germany'], ['Murillo','CB','Brazil'], ['Carlos Alcaraz','CM','Argentina'], ['Abdul Fatawu','RW','Ghana']],
+  itt: [['Karim Benzema','ST','France'], ['N\'Golo Kanté','CM','France'], ['Fabinho','CDM','Brazil'], ['Moussa Diaby','RW','France'], ['Jesús Navas','RB','Spain'], ['Josko Gvardiol','CB','Croatia'], ['Sergio Ramos','CB','Spain'], ['Weston McKennie','CM','USA'], ['Martin Dúbravka','GK','Slovakia'], ['Tariq Lamptey','RB','Ghana'], ['José Cifuentes','CM','Ecuador'], ['Raúl Jiménez','ST','Mexico'], ['Jordan Pickford','GK','England'], ['Gonçalo Inácio','CB','Portugal'], ['Amadou Onana','CDM','Belgium'], ['Salomón Rondón','ST','Venezuela']],
+  ahl: [['Edouard Mendy','GK','Senegal'], ['Riyad Mahrez','RW','Algeria'], ['Ivan Toney','ST','England'], ['Franck Kessié','CM','Ivory Coast'], ['Roberto Firmino','ST','Brazil'], ['Andrei Rațiu','RB','Romania'], ['Daley Blind','CB','Netherlands'], ['Pedro Aquino','CDM','Peru'], ['David Doudera','RB','Czech Republic'], ['Tomáš Souček','CM','Czech Republic'], ['Ángelo Preciado','RB','Ecuador'], ['Thiago Alcântara','CM','Spain'], ['Weverton','GK','Brazil'], ['Omar Alderete','CB','Paraguay'], ['Giorgi Kochorashvili','CM','Georgia'], ['Cengiz Ünder','RW','Turkey']],
+};
+
+export const CAREER_RATINGS = {
+  'Lionel Messi': 88,
+  'Cristiano Ronaldo': 86,
+  'Erling Haaland': 91,
+  'Kevin De Bruyne': 87,
+  'Mohamed Salah': 89,
+  'Virgil van Dijk': 89,
+  'Jude Bellingham': 90,
+  'Harry Kane': 90,
+  'Lamine Yamal': 89,
+  'Rodri': 90,
+  'Federico Valverde': 88,
+  'Raphinha': 88,
+  'Gianluigi Donnarumma': 88,
+  'Jeremy Doku': 85,
+  'Alisson': 88,
+  'William Saliba': 87,
+  'Declan Rice': 87,
+  'Bukayo Saka': 88,
+  'Alphonso Davies': 85,
+  'Achraf Hakimi': 87,
+};
+
+export const REAL_MANAGERS = [
+  { name:'Pep Guardiola', nation:'Spain', age:54 },
+  { name:'Carlo Ancelotti', nation:'Italy', age:66 },
+  { name:'Jürgen Klopp', nation:'Germany', age:58 },
+  { name:'Mikel Arteta', nation:'Spain', age:43 },
+  { name:'Xabi Alonso', nation:'Spain', age:43 },
+  { name:'Diego Simeone', nation:'Argentina', age:55 },
+  { name:'Hansi Flick', nation:'Germany', age:60 },
+  { name:'Simone Inzaghi', nation:'Italy', age:49 },
+  { name:'Unai Emery', nation:'Spain', age:53 },
+  { name:'Zinedine Zidane', nation:'France', age:53 },
+];

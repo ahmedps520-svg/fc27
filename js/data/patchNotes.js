@@ -18,6 +18,52 @@
  */
 export const RELEASES = [
   {
+    version: 'v59',
+    date: '2026-08-27',
+    tag: 'Career',
+    title: 'Manager Career',
+    lede: 'Take a real club, stand on the touchline, and answer for the '
+        + 'results. Career Mode V1 is live.',
+    entries: [
+      {
+        head: 'A real football world',
+        summary: '25 real clubs across six leagues, squads of real footballers, '
+               + 'and 500 million Club Coins to spend.',
+        detail: 'Manchester City to Al Hilal, every club carries its real players — the '
+              + 'same people, ratings and values as the rest of the game — in leagues with '
+              + 'a real table to climb. Pick a real manager (Guardiola, Ancelotti, Klopp '
+              + 'and more) or build your own, face and suit included: the model you make is '
+              + 'the one standing in your technical area on matchday. Player Mode is on the '
+              + 'board too, honestly labelled: under construction.',
+      },
+      {
+        head: 'The touchline is the game',
+        summary: 'Matches are AI against AI. You manage: four rotating shouts, '
+              + 'a morale meter and a performance meter the players actually obey.',
+        detail: 'A career match is 90 seconds a half of real football you do not control '
+              + 'directly. The command wheel offers four options that follow the situation '
+              + '— PRESS and DROP BACK while defending, SHOOT and CROSS in their box, '
+              + 'ENCOURAGE and CALM DOWN after conceding — refreshing every ten seconds, or '
+              + 'five after you use it. Shouts change the team\'s real tactics and its '
+              + 'performance level, and they cost: DEMAND MORE lifts performance while it '
+              + 'dents morale, and morale is what performance keeps getting pulled back '
+              + 'toward. At half time the squad huddles for a team talk — four choices, '
+              + 'same trade-offs, personalities included. Two cameras: the TV broadcast, '
+              + 'or a third-person view standing behind your own manager.',
+      },
+      {
+        head: 'A market with stages',
+        summary: 'Search, shortlist, bid, get countered, agree terms — then he joins.',
+        detail: 'Transfers are negotiations, not purchases. The selling club prices on '
+              + 'rating, age, form and how long the contract has left — a player with a '
+              + 'season to run comes cheap, and everyone at the table knows it. Agree a fee '
+              + 'and the player still wants his wage and his years. Contracts then matter: '
+              + 'they run down season by season, expiring players want new terms or leave, '
+              + 'and a squad with low morale is a squad that rejects renewals.',
+      },
+    ],
+  },
+  {
     version: 'v58',
     date: '2026-08-27',
     tag: 'Online',

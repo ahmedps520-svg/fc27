@@ -1675,6 +1675,34 @@ export function createRenderer(canvas, match, quality, models = false) {
     }
   }
 
+  /* --------------------------- the manager --------------------------- *
+   * Manager Career puts a figure in the technical area: the same simple rig
+   * as the players, dressed in a suit (trouser-coloured shorts and socks,
+   * jacket-coloured shirt), posed by the match screen through
+   * `match.managerFig` — position, facing, walk phase and a pose name. The
+   * player pose function already knows how to stand, stride and raise both
+   * arms, which covers idle, prowling the touchline and celebrating; that is
+   * the honest extent of V1's acting range. */
+  let mgrRig = null;
+  if (match.managerFig) {
+    const look = match.managerLook?.look || {};
+    const suit = new THREE.Color(look.suit || '#1c222e');
+    mgrRig = buildPlayer(
+      suit, suit.clone().multiplyScalar(0.92),
+      new THREE.Color(look.skin || '#e9bd95'), new THREE.Color(look.hair || '#3a2a1a'),
+      suit.clone().multiplyScalar(0.85),
+      { height: (match.managerLook?.height || 182) / 183, girth: 1.06, shoulders: 1.05 });
+    // a suit, not a kit: trousers to the ankle, so the bare thighs and the
+    // sock-shins the player rig assumes are all suit fabric here
+    const trouser = new THREE.MeshStandardMaterial({ color: suit.clone().multiplyScalar(0.9), roughness: 0.8 });
+    for (const part of ['thighL', 'thighR', 'shinL', 'shinR', 'kneeL', 'kneeR',
+      'armL', 'armR', 'foreL', 'foreR']) {
+      if (mgrRig.parts[part]) mgrRig.parts[part].material = trouser;
+    }
+    scene.add(mgrRig.grp);
+  }
+  const mgrProxy = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, celebrating: false, stumble: 0, holdT: 0 };
+
   /* ------------------------- scanned players ------------------------- *
    * The built-in figures above are always built, and stay in place until the
    * model has actually arrived: a 14 MB download must never be the reason a
@@ -1882,6 +1910,17 @@ export function createRenderer(canvas, match, quality, models = false) {
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
       }
+      if (mgrRig && m.managerFig) {
+        const f = m.managerFig;
+        mgrProxy.x = f.x; mgrProxy.y = f.y;
+        mgrProxy.dirX = f.dirX; mgrProxy.dirY = f.dirY;
+        const walking = f.walk > 0;
+        mgrProxy.vx = walking ? f.dirX * 1.8 : 0;
+        mgrProxy.vy = 0;
+        mgrProxy.celebrating = f.pose === 'celebrate' || f.pose === 'shout';
+        posePlayer(mgrRig, mgrProxy, f.walk, true, f.poseT || 0);
+      }
+
       /* Focus follows the ball, which is where a broadcast camera operator
        * would be pulling to. Eased rather than snapped: a lens that rack-focuses
        * instantly on every pass looks like a bug, not a camera. */
