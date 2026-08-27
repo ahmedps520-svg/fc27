@@ -29,30 +29,40 @@ CLUBS = [
     ('liv','Liverpool','LIV','Premier League','England','#c8102e','#00b2a9','shield'),
     ('che','Chelsea','CHE','Premier League','England','#034694','#dba111','circle'),
     ('tot','Tottenham Hotspur','TOT','Premier League','England','#ffffff','#132257','shield'),
+    ('new','Newcastle United','NEW','Premier League','England','#241f20','#ffffff','shield'),
+    ('avl','Aston Villa','AVL','Premier League','England','#95bfe5','#670e36','circle'),
     # La Liga
     ('rma','Real Madrid','RMA','La Liga','Spain','#febe10','#00529f','circle'),
     ('bar','Barcelona','BAR','La Liga','Spain','#a50044','#004d98','shield'),
     ('atm','Atlético Madrid','ATM','La Liga','Spain','#cb3524','#262f61','shield'),
     ('rso','Real Sociedad','RSO','La Liga','Spain','#0067b1','#ffffff','circle'),
+    ('vil','Villarreal','VIL','La Liga','Spain','#ffe667','#005187','circle'),
+    ('ath','Athletic Club','ATH','La Liga','Spain','#ee2523','#ffffff','shield'),
     # Serie A
     ('int','Inter','INT','Serie A','Italy','#010e80','#000000','circle'),
     ('mil','AC Milan','MIL','Serie A','Italy','#fb090b','#000000','shield'),
     ('juv','Juventus','JUV','Serie A','Italy','#ffffff','#000000','shield'),
     ('nap','Napoli','NAP','Serie A','Italy','#12a0d7','#003c82','circle'),
     ('ata','Atalanta','ATA','Serie A','Italy','#2266a5','#000000','shield'),
+    ('rom','Roma','ROM','Serie A','Italy','#8e1f2f','#f0bc42','circle'),
     # Bundesliga
     ('bay','Bayern Munich','BAY','Bundesliga','Germany','#dc052d','#0066b2','circle'),
     ('bvb','Borussia Dortmund','BVB','Bundesliga','Germany','#fde100','#000000','circle'),
     ('b04','Bayer Leverkusen','B04','Bundesliga','Germany','#e32221','#000000','shield'),
+    ('rbl','RB Leipzig','RBL','Bundesliga','Germany','#dd013f','#ffffff','circle'),
+    ('vfb','Stuttgart','VFB','Bundesliga','Germany','#ffffff','#e30013','shield'),
     # Ligue 1
     ('psg','Paris Saint-Germain','PSG','Ligue 1','France','#004170','#da291c','shield'),
     ('mar','Marseille','MAR','Ligue 1','France','#2faee0','#ffffff','circle'),
     ('lyo','Lyon','LYO','Ligue 1','France','#da001a','#153d8a','shield'),
+    ('mon','Monaco','MON','Ligue 1','France','#e63312','#ffffff','shield'),
     # Saudi Pro League
     ('hil','Al Hilal','HIL','Saudi Pro League','Saudi Arabia','#2451a4','#ffffff','circle'),
     ('nas','Al Nassr','NAS','Saudi Pro League','Saudi Arabia','#ffd200','#00285e','shield'),
     ('itt','Al Ittihad','ITT','Saudi Pro League','Saudi Arabia','#f9c908','#000000','shield'),
     ('ahl','Al Ahli','AHL','Saudi Pro League','Saudi Arabia','#00723f','#ffffff','circle'),
+    ('shb','Al Shabab','SHB','Saudi Pro League','Saudi Arabia','#e8e8e8','#231f20','shield'),
+    ('ett','Al Ettifaq','ETT','Saudi Pro League','Saudi Arabia','#12704f','#c8a55f','circle'),
 ]
 
 # anchors: source group -> club id (whole group)
@@ -116,11 +126,11 @@ STARS = {
   'Declan Rice':87,'Bukayo Saka':88,'Alphonso Davies':85,'Achraf Hakimi':87,
 }
 
+# One real manager for release: Pep. The rest of the touchlines are custom
+# managers — this is where the licensed-likeness caution actually bites, so it
+# stays one name until someone decides otherwise.
 MANAGERS = [
-  ('Pep Guardiola','Spain',54), ('Carlo Ancelotti','Italy',66), ('Jürgen Klopp','Germany',58),
-  ('Mikel Arteta','Spain',43), ('Xabi Alonso','Spain',43), ('Diego Simeone','Argentina',55),
-  ('Hansi Flick','Germany',60), ('Simone Inzaghi','Italy',49), ('Unai Emery','Spain',53),
-  ('Zinedine Zidane','France',53),
+  ('Pep Guardiola','Spain',54),
 ]
 
 js_clubs = ',\n'.join(

@@ -258,26 +258,63 @@ export function marketPool(car) {
  * counter, players have wage floors, and either can walk away.
  */
 export function openNegotiation(car, playerName, fromClubId) { /* stored on the slice */
-  return { player: playerName, from: fromClubId, state: 'fee', rounds: 0, agreedFee: 0 };
+  return { player: playerName, from: fromClubId, state: 'fee', rounds: 0, agreedFee: 0, tension: 0 };
 }
 
-export function respondToFee(neg, offer, entry, contract) {
+/** Rounds (weeks) a player refuses to talk after walking away. Five rounds at
+ *  two months a round: the ten months the insult earned. */
+export const TALKS_FREEZE_WEEKS = 5;
+
+export function frozenOut(car, name) {
+  const until = car.frozen?.[name];
+  return until != null && car.week < until ? until - car.week : 0;
+}
+
+function freezeOut(car, name) {
+  car.frozen = car.frozen || {};
+  car.frozen[name] = car.week + TALKS_FREEZE_WEEKS;
+}
+
+export function respondToFee(car, neg, offer, entry, contract) {
   const ask = askingPrice(entry, contract);
   neg.rounds += 1;
-  if (offer >= ask * 0.92) { neg.state = 'terms'; neg.agreedFee = offer; return { ok: true, note: 'Fee agreed. Now the player wants terms.' }; }
-  if (neg.rounds >= 3) { neg.state = 'off'; return { ok: false, note: 'The club has ended negotiations.' }; }
+  if (offer >= ask * 0.92) { neg.state = 'terms'; neg.agreedFee = offer; neg.tension = Math.max(0, neg.tension - 0.2); return { ok: true, note: 'Fee agreed. Now the player wants terms.' }; }
+  /* An insulting number is not a move in the negotiation, it is the end of it:
+   * under a third of the valuation and the whole table stands up — and the
+   * player's side remembers, so he is out of reach for ten months. */
+  if (offer < ask * 0.34) {
+    neg.state = 'off';
+    freezeOut(car, neg.player);
+    return { ok: false, note: 'That offer ended the meeting. His people will not take your calls for 10 months.' };
+  }
+  neg.tension = Math.min(1, neg.tension + (offer < ask * 0.6 ? 0.45 : 0.28));
+  if (neg.tension >= 1 || neg.rounds >= 3) {
+    neg.state = 'off';
+    freezeOut(car, neg.player);
+    return { ok: false, note: 'They have run out of patience and ended talks — 10 months before they reopen.' };
+  }
   const counter = round3(Math.max(ask * (0.98 - neg.rounds * 0.03), offer * 1.12));
   neg.counter = counter;
   return { ok: false, note: `Rejected. They would accept around ${fmtCoins(counter)}.`, counter };
 }
 
-export function respondToTerms(neg, wage, years, entry) {
+export function respondToTerms(car, neg, wage, years, entry) {
   const wants = Math.round(entry.wage * (1.1 + (entry.overall >= 86 ? 0.25 : 0)));
   const yearMod = years >= 3 ? 0.94 : years === 2 ? 1 : 1.08;     // security is worth money
   const floor = round3(wants * yearMod);
   if (wage >= floor) { neg.state = 'done'; neg.wage = wage; neg.years = years; return { ok: true }; }
+  if (wage < floor * 0.3) {
+    neg.state = 'off';
+    freezeOut(car, neg.player);
+    return { ok: false, note: 'He took that personally. His agent will not call back for 10 months.' };
+  }
+  neg.tension = Math.min(1, neg.tension + (wage < floor * 0.6 ? 0.4 : 0.22));
   neg.rounds += 1;
-  if (neg.rounds >= 5) { neg.state = 'off'; return { ok: false, note: 'The player has walked away.' }; }
+  if (neg.tension >= 1 || neg.rounds >= 5) {
+    neg.state = 'off';
+    freezeOut(car, neg.player);
+    return { ok: false, note: 'The player has walked away — talks are closed for 10 months.' };
+  }
   return { ok: false, note: `Not enough. His side wants ${fmtCoins(floor)} a week on ${years} year${years === 1 ? '' : 's'}.`, floor };
 }
 
@@ -308,6 +345,19 @@ export function releaseExpired(car) {
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i][3].years <= 0) rows.splice(i, 1);
   car.expiring = [];
 }
+
+/** '500k', '200m', '85.5M', '12,000,000' — how a human types money. */
+export function parseAmount(text) {
+  const t = String(text).trim().toLowerCase().replace(/[,\s◎]/g, '');
+  const m = t.match(/^([\d.]+)([kmb]?)$/);
+  if (!m) return NaN;
+  const n = parseFloat(m[1]);
+  if (!isFinite(n)) return NaN;
+  return Math.round(n * (m[2] === 'b' ? 1e9 : m[2] === 'm' ? 1e6 : m[2] === 'k' ? 1e3 : 1));
+}
+
+/** The career clock in human terms: one round of fixtures is two months. */
+export const MONTHS_PER_WEEK = 2;
 
 export const fmtCoins = (n) => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 ? 1 : 0)}M`;

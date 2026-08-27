@@ -7,6 +7,7 @@ import { PITCH, GOAL_HALF, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
+import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { CinematicPass } from './cinematic.js';
 
 /* ------------------------------------------------------------------ *
@@ -1703,6 +1704,35 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
   const mgrProxy = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, celebrating: false, stumble: 0, holdT: 0 };
 
+  /* A supplied manager model replaces the built figure.
+   *
+   * Drop a glTF binary at assets/manager.glb (checked in, or hosted next to
+   * the game) and it is loaded here, scaled to ~1.85m, tipped from the usual
+   * y-up into the match's z-up, and stood where the built figure stands. Its
+   * first animation clip loops as the idle. Absence is the normal state — the
+   * load failing is silent and the suit rig carries on. */
+  let mgrModel = null;
+  let mgrMixer = null;
+  if (match.managerFig) {
+    new GLTFLoader().load(new URL('../../assets/manager.glb', import.meta.url).href, (gltf) => {
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      const height = Math.max(0.01, box.max.y - box.min.y);
+      const holder = new THREE.Group();
+      gltf.scene.rotation.x = Math.PI / 2;              // y-up asset, z-up world
+      gltf.scene.position.z = -box.min.y * (1.85 / height);
+      gltf.scene.scale.setScalar(1.85 / height);
+      gltf.scene.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; } });
+      holder.add(gltf.scene);
+      scene.add(holder);
+      mgrModel = holder;
+      if (gltf.animations?.length) {
+        mgrMixer = new THREE.AnimationMixer(gltf.scene);
+        mgrMixer.clipAction(gltf.animations[0]).play();
+      }
+      if (mgrRig) { scene.remove(mgrRig.grp); mgrRig = null; }
+    }, undefined, () => { /* no model supplied — the suit rig stands in */ });
+  }
+
   /* ------------------------- scanned players ------------------------- *
    * The built-in figures above are always built, and stay in place until the
    * model has actually arrived: a 14 MB download must never be the reason a
@@ -1919,6 +1949,12 @@ export function createRenderer(canvas, match, quality, models = false) {
         mgrProxy.vy = 0;
         mgrProxy.celebrating = f.pose === 'celebrate' || f.pose === 'shout';
         posePlayer(mgrRig, mgrProxy, f.walk, true, f.poseT || 0);
+      }
+      if (mgrModel && m.managerFig) {
+        const f = m.managerFig;
+        mgrModel.position.set(f.x, f.y, 0);
+        mgrModel.rotation.z = Math.atan2(f.dirY, f.dirX) - Math.PI / 2;
+        mgrMixer?.update(dt);
       }
 
       /* Focus follows the ball, which is where a broadcast camera operator

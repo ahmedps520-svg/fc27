@@ -203,7 +203,33 @@ const STEPS = [
            duplicates and cards you will never field are for.`,
   },
 
-  /* ---- 9. settings ---- */
+  /* ---- 9. career ---- */
+  {
+    chapter: 'Career', icon: 'trophy', screen: 'menu', target: '[data-go="career"]',
+    title: 'Manager Career',
+    body: `Take charge of a real club. You pick a manager — Pep, or one you
+           build yourself — choose a club from six leagues, and get
+           <b>◎500M</b> to spend on real players.`,
+  },
+  {
+    chapter: 'Career', icon: 'target', screen: 'career',
+    title: 'You manage, they play',
+    body: `Career matches are not played with a stick — your team plays, and you
+           influence it from the touchline: four shouts that follow the game
+           (press 1–4), a half-time team talk, and two meters to keep an eye on.
+           <b>Morale</b> is how they feel; <b>performance</b> is how they are
+           playing — and shouting raises one while it costs the other.`,
+  },
+  {
+    chapter: 'Career', icon: 'coin', screen: 'career',
+    title: 'The market has manners',
+    body: `Transfers are negotiations: bid in plain money — <b>60m</b>,
+           <b>500k</b> — and watch the patience bar. Insult them with a joke
+           number and that player's people stop taking your calls for ten
+           months.`,
+  },
+
+  /* ---- 10. settings ---- */
   {
     chapter: 'Settings', icon: 'faders', screen: 'settings', target: '.panel:first-of-type',
     title: 'Where to find help',
@@ -218,7 +244,7 @@ const STEPS = [
            can hold. <b>Show FPS</b> puts a frame counter in the match.`,
   },
 
-  /* ---- 10. done ---- */
+  /* ---- 11. done ---- */
   {
     chapter: 'Done', icon: 'ball', screen: 'menu',
     title: 'That is everything',
@@ -268,6 +294,7 @@ function currentScreen() {
   if (document.querySelector('#uTabs')) return 'squad';
   if (document.querySelector('.menu-screen')) return 'menu';
   if (document.querySelector('#forceUpdate')) return 'settings';
+  if (document.querySelector('.cm-modes, .career-head')) return 'career';
   return '';
 }
 

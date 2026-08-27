@@ -120,11 +120,11 @@ export function render(params) {
            the two numbers the whole mode runs on. -->
       <div class="mgr-hud" id="mgrHud" hidden>
         <div class="mgr-meters">
-          <div class="mm"><span>MOR</span><i><b id="mmMorale"></b></i></div>
-          <div class="mm"><span>PER</span><i><b id="mmPerf"></b></i></div>
+          <div class="mm"><span>MORALE</span><i><b id="mmMorale"></b></i><em id="mmMoraleV">65</em></div>
+          <div class="mm"><span>PERFORM</span><i><b id="mmPerf"></b></i><em id="mmPerfV">50</em></div>
         </div>
         <div class="mgr-wheel" id="mgrWheel"></div>
-        <button class="icon-btn sm mgr-cam" id="mgrCam" title="Camera: broadcast / manager">🎥</button>
+        <button class="icon-btn sm mgr-cam" id="mgrCam" title="Camera: broadcast / manager (C)">🎥</button>
       </div>
       <div class="mgr-shout" id="mgrShout" hidden></div>
       <div class="mgr-talk" id="mgrTalk" hidden></div>
@@ -566,10 +566,22 @@ export function mount(root, params) {
     return ['press', 'drop', 'tight', 'compact'];
   };
 
+  /* The wheel: four fat quadrant buttons around a hub, each numbered — press
+   * 1–4 on a keyboard, tap on touch. Repainted only when the set changes. */
   const paintWheel = () => {
-    wheelEl.innerHTML = mgr.wheel.map((k, i) =>
-      `<button class="mw-opt p${i}" data-shout="${k}">${SHOUTS[k].label}</button>`).join('');
+    wheelEl.innerHTML = `
+      <span class="mw-hub" aria-hidden="true">SHOUT</span>
+      ${mgr.wheel.map((k, i) =>
+        `<button class="mw-opt p${i}" data-shout="${k}"><i>${i + 1}</i>${SHOUTS[k].label}</button>`).join('')}`;
   };
+  // number keys are the pad-free way to shout without touching the mouse
+  const onWheelKey = (e) => {
+    if (paused || ended || loading) return;
+    const i = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
+    if (i >= 0 && mgr.wheel[i]) applyShout(mgr.wheel[i]);
+    if (e.code === 'KeyC') root.querySelector('#mgrCam')?.click();
+  };
+  if (mgr) window.addEventListener('keydown', onWheelKey);
   const rotateWheel = () => { mgr.wheel = wheelFor(); mgr.wheelT = 10; paintWheel(); };
 
   /* Personality-weighted delivery: a volatile squad takes DEMAND MORE badly
@@ -689,9 +701,14 @@ export function mount(root, params) {
     f.dirY = Math.abs(dx) > 0.6 ? 0 : 1;
     if (f.poseT > 0) { f.poseT -= dt; if (f.poseT <= 0) f.pose = 'idle'; }
 
-    // meters into the HUD
-    root.querySelector('#mmMorale').style.width = `${Math.round(mgr.morale * 100)}%`;
-    root.querySelector('#mmPerf').style.width = `${Math.round(mgr.perf * 100)}%`;
+    // meters into the HUD, colour shifting with the number
+    const mB = root.querySelector('#mmMorale'); const pB = root.querySelector('#mmPerf');
+    const mV = Math.round(mgr.morale * 100); const pV = Math.round(mgr.perf * 100);
+    mB.style.width = `${mV}%`; pB.style.width = `${pV}%`;
+    mB.className = mV < 35 ? 'low' : mV > 70 ? 'high' : '';
+    pB.className = pV < 35 ? 'low' : pV > 70 ? 'high' : '';
+    root.querySelector('#mmMoraleV').textContent = mV;
+    root.querySelector('#mmPerfV').textContent = pV;
   };
 
   /** Career reactions to match events, fed from the cue stream. */
@@ -1879,6 +1896,7 @@ export function mount(root, params) {
      * are each guarded for the same reason: none of them is allowed to stop
      * the ones after it. navigate() also clears the class as a backstop. */
     document.body.classList.remove('in-game');
+    if (mgr) window.removeEventListener('keydown', onWheelKey);
     stopP2P();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
