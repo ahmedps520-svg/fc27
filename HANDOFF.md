@@ -15,6 +15,26 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Server region: Frankfurt, and the trap in moving
+Players are in Saudi Arabia; the service was created in Singapore. Render has no
+Middle East region, so Frankfurt is the closest and roughly halves the round
+trip. A region cannot be changed on an existing service — `render.yaml` (new)
+is a blueprint pinned to `frankfurt` so the replacement is one click, and
+`tools/migrate-store.mjs` (new) copies the account key between two Redis REST
+endpoints (dry run by default, refuses a non-empty destination without --force).
+
+**The trap, written large in the README:** saves and session tokens are
+per-origin browser storage. If the new service answers on a different hostname,
+every player without an account looks wiped and everyone else is signed out. The
+move is only safe behind a custom domain that can be repointed;
+`*.onrender.com` names cannot move between services.
+
+Worth knowing before spending on this: for two players *in the same country*,
+a WebRTC DataChannel between the browsers beats any region choice by an order of
+magnitude — Riyadh to Riyadh direct is tens of milliseconds against ~200 ms
+relayed through Frankfurt. The region move is the safe, boring win; P2P is the
+real one.
+
 ### Online latency: what was cut, and what is left (v57)
 Measured budget for the **guest** before this (the host feels none of it):
 input sent every 33 ms, host snapshots every 50 ms, guest rendering a flat
