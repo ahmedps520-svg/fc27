@@ -41,6 +41,24 @@ function emit(msg) {
   }
 }
 
+/**
+ * Dispatch a message into the handler bus as if the hub had sent it. Used by
+ * the peer-to-peer channel so match code has one place to subscribe whichever
+ * route a packet took. Guards against reordering here, centrally: the direct
+ * channel is deliberately unordered, so a stale snapshot or input (older `ts`
+ * than the newest already delivered of its type) is dropped rather than passed
+ * to handlers that assume time moves forwards.
+ */
+const newest = new Map();      // type -> highest ts seen
+export function injectMessage(msg) {
+  if (msg && typeof msg.ts === 'number') {
+    const top = newest.get(msg.t) || 0;
+    if (msg.ts < top) return;
+    newest.set(msg.t, msg.ts);
+  }
+  emit(msg);
+}
+
 export function send(obj) {
   if (!ready || !sock || sock.readyState !== WebSocket.OPEN) return false;
   try { sock.send(JSON.stringify(obj)); return true; } catch { return false; }
@@ -76,7 +94,9 @@ export function connect() {
     try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.t === 'ready') ready = true;
     if (msg.t === 'authFail') { ready = false; wanted = false; }
-    emit(msg);
+    // through the same stale-guard as the direct channel: when both routes are
+    // live the relayed copy arrives later, and must not rewind the newer one
+    injectMessage(msg);
   };
 
   sock.onclose = () => {

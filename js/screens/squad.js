@@ -63,6 +63,24 @@ const PACKS = [
     odds: { bronze: 0.14, silver: 0.36, gold: 0.38, special: 0.12 },
     note: '1 card · high variance',
   },
+  /* The Keeper pack's mirror. A squad with no striker is not blocked the way
+     a squad with no keeper is, so this sells convenience rather than rescue —
+     same shape, same price, the position everyone actually wants. */
+  {
+    id: 'striker', cat: 'standard', name: 'Striker', cost: 3500, size: 2,
+    odds: { bronze: 0.10, silver: 0.44, gold: 0.44, special: 0.02 },
+    forcePosition: 'ST',
+    note: '2 cards',
+    promise: '1 guaranteed striker',
+  },
+  /* Cheap bulk below Gold. Six bodies with no bronze in the bottom slot —
+     bought for challenge fodder and early-save depth, not for headlines. */
+  {
+    id: 'stack', cat: 'standard', name: 'Silver Stack', cost: 4500, size: 6,
+    odds: { bronze: 0.20, silver: 0.58, gold: 0.20, special: 0.02 },
+    floor: 'silver',
+    note: '6 · silver min',
+  },
   { id: 'gold', cat: 'standard',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: 'gold', note: '5 · gold min' },
   /* The bulk option, and the only pack that pays for the gap between Gold and
      Prime. Eight cards at Gold-ish odds is worse per card than Prime and far
@@ -73,6 +91,24 @@ const PACKS = [
     odds: { bronze: 0.04, silver: 0.40, gold: 0.51, special: 0.05 },
     floor: 'gold', tone: 'gold',
     note: '8 · gold min',
+  },
+  /* The step between Gold and Prime that did not exist: three cards that are
+     all at least useful (78+) without Prime's price or its special odds. */
+  {
+    id: 'form', cat: 'premium', name: 'Form Signing', cost: 12000, size: 3,
+    odds: { bronze: 0.00, silver: 0.10, gold: 0.78, special: 0.12 },
+    minOverall: 78, tone: 'gold',
+    note: '3 · 78+ min',
+  },
+  /* A guaranteed special for less than Prime, in exchange for volume: two
+     cards, one of them certainly special-or-better. The cheapest certain
+     special in the store, and deliberately nothing else. */
+  {
+    id: 'double', cat: 'premium', name: 'Double Down', cost: 21000, size: 2,
+    odds: { bronze: 0.00, silver: 0.10, gold: 0.70, special: 0.20 },
+    floor: 'special', tone: 'special',
+    note: '2 cards · special min',
+    promise: '1 guaranteed Special',
   },
   { id: 'prime', cat: 'premium',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
   /* The other end of Lucky Dip: one card, no floor, no guarantee, and odds
@@ -109,6 +145,16 @@ const PACKS = [
     odds: { bronze: 0.00, silver: 0.00, gold: 0.30, special: 0.70 },
     note: '3 cards · 79+ min',
     promise: '1 guaranteed 99-rated Icon',
+  },
+  /* One card, Limited money, no guarantee stamped on it — the odds ARE the
+     promise. Sits between High Roller (26k, one card, 26% special) and the
+     guaranteed Star/Icon packs: nearly always special, never certain. */
+  {
+    id: 'wildcard', cat: 'limited', name: 'Limited: Wildcard', cost: 55000, size: 1, limited: true,
+    odds: { bronze: 0.00, silver: 0.00, gold: 0.10, special: 0.90 },
+    minOverall: 86, tone: 'special',
+    note: '1 card · 86+ min',
+    promise: '90% special or better',
   },
   /* The top of the objective ladder pays this, and almost nothing else does.
      It is in the store so it has a stated price, but 200,000 Apex is roughly
@@ -287,11 +333,14 @@ function openPack(pack, seen = new Set(), needGK = false) {
       }
     });
   }
-  // Either the squad has no keeper at all (needGK) or the pack is the one that
-  // exists to sell you one. Same mechanism, two reasons to reach for it.
-  const wantGK = needGK || pack.forcePosition === 'GK';
-  if (wantGK && !pulls.some((x) => x.p.position === 'GK')) {
-    pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === 'GK');
+  // Either the squad has no keeper at all (needGK) or the pack promises a
+  // position outright. Same mechanism: if the roll did not produce one, the
+  // first slot is redrawn constrained to it. `forcePosition` takes any
+  // position now, not just GK — the Striker pack is the Keeper pack's mirror
+  // and earned the generalisation.
+  const wantPos = pack.forcePosition || (needGK ? 'GK' : null);
+  if (wantPos && !pulls.some((x) => x.p.position === wantPos)) {
+    pulls[0] = draw(rollRarity(pack.odds), (p) => p.position === wantPos);
   }
   // The promised card, last, so nothing above can overwrite it — and in a
   // Random slot, which no longer matters to the reveal — that now sorts by

@@ -3480,3 +3480,27 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .scroll-diag .sd-ua {
   margin: 10px 0 0; color: var(--text-mute); font-size: 10px; word-break: break-all;
 }
+
+/* ------------------- synchronized pause (online) ------------------- */
+/* the queued-pause banner: pinned under the HUD on both screens at once */
+.gm-queue {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+  z-index: 22; padding: 8px 16px; border-radius: 999px;
+  background: rgba(6, 10, 18, .88); border: 1px solid rgba(34, 197, 94, .45);
+  color: var(--text); font-size: 12.5px; white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  animation: fade .2s ease both;
+}
+.gm-queue b { color: var(--accent); }
+.gm-queue[hidden] { display: none; }
+
+/* the shared countdown in the pause menu header */
+.pause-sync {
+  grid-column: 1 / -1; margin: 8px 26px 0; display: flex; align-items: center; gap: 12px;
+  font-size: 12.5px; color: var(--text-dim);
+}
+.pause-sync b {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  font-family: var(--font-num); font-size: 19px; color: var(--accent);
+  border: 2px solid rgba(34, 197, 94, .55); background: rgba(34, 197, 94, .10);
+}

@@ -15,6 +15,69 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### P2P, the pause queue, the reel, five packs (v58)
+
+**P2P (`js/net/p2p.js`).** WebRTC DataChannel between the two browsers, unordered
+and non-retransmitting, carrying `snap` and `in` only. Signaling rides the hub's
+verbatim `evt` relay (`k:'rtc'`) — zero server changes. `sendMatch()` picks the
+channel when open, the websocket when not, **per packet**, so a channel dying
+mid-match degrades silently to today's behaviour. Inbound DC packets go through
+`net.injectMessage`, which now also filters ws-delivered `snap`/`in` by `ts` so
+the two routes cannot reorder each other. Rules that matter:
+- only `snap`/`in` are accepted off the channel — a peer cannot inject hub
+  messages (results, oppLeft) through it;
+- the guest says hello (retrying — the two clients enter the match seconds
+  apart), only the host offers, and only once (`if (dc) return` — a double
+  offer was a real race, seen as `setRemoteDescription ... wrong state`);
+- `?nop2p=1` disables it (tested fallback path, support tool);
+- no TURN on purpose: pairs STUN cannot connect stay on the relay by design.
+
+**Pause queue (host-authoritative, all in play.js).** Online pause input =
+request. Guest asks via `evt k:'pausereq'`; the queue, the stoppage ruling and
+the 20s countdown live on the host and reach the guest as snapshot fields
+(`pq` name while queued, `pz` [name, tenths] while counting) — a state can
+never race the world it describes. The sim's new `stoppages`/`stoppage` ledger
+(`markStoppage` in sim.js: throwin/corner/goalkick/goal) plus phase checks is
+what "dead ball" means; the goal phase is excluded (the replay owns both
+screens) and the kickoff after it converts instead; 40s in queue force-converts.
+While counting the host freezes the sim but keeps streaming **one frozen
+snapshot** (`pauseSnap`) with a live countdown — encoding the live scene would
+ship the reel's mutations to the guest's buffer. Dedupe is one `if` in
+`requestPause`. Disconnect (`oppLeft`) clears everything.
+
+**The traps that cost time here, written down:**
+- the step block's `else if` chain matters: the sim must not advance during a
+  goal replay, and the host must not broadcast during one. Restructuring the
+  loop, keep `!replay` on both.
+- `pressed()` needs the key held across a poll frame — Playwright's
+  `keyboard.press` (≈2ms) vanishes at high fps and lands at low fps. Test
+  keys with down/120ms/up. Not a game bug; humans hold keys 80ms+.
+- headless GL runs ~1.5fps and the dt cap makes game time crawl 10x slower
+  than the wall clock — a "the ball never goes out" mystery was just that.
+  Launch the harness with `--disable-webgl` to get the 2D renderer and real
+  speed, plus the three `--disable-*background*` throttling flags.
+
+**Pause reel.** When the world is genuinely stopped (offline pause, half time,
+online synced pause — NOT the online menu over live play), the last ~7s of the
+goal-replay tape loops behind the menu on a slow dolly; under ~2.5s of tape it
+is camera drift over the frozen scene. Live state captured before the first
+applied frame, restored on resume, same contract as the goal replay.
+
+**Packs:** striker (forcePosition generalised beyond GK), stack, form, double,
+wildcard — ids are save keys, never rename. 17 total.
+
+**Tested** (two real clients vs `.dev-server.js`): p2p up with ~99% packets
+direct on both sides; `?nop2p=1` relay fallback playing normally; guest and
+host requests; both requesting (first name wins, second refused); banner on
+both without the menu opening on the non-requester; conversion at a real
+stoppage and via the 40s valve; 20/20 countdown on both; menu pinned (Esc and
+resume refused) during the hold; auto-resume both; banners cleared; a second
+pause afterwards; disconnect during queued and during active pause both ending
+the match cleanly with nothing stuck; offline pause immediate with no banner;
+reel visibly animating behind the menu while the clock stands still; resume;
+store rendering all 17 packs with the tutorial's keeper target intact; sim
+sweep byte-identical.
+
 ### Server region: Frankfurt, and the trap in moving
 Players are in Saudi Arabia; the service was created in Singapore. Render has no
 Middle East region, so Frankfurt is the closest and roughly halves the round

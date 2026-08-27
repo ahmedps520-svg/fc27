@@ -18,6 +18,62 @@
  */
 export const RELEASES = [
   {
+    version: 'v58',
+    date: '2026-08-27',
+    tag: 'Online',
+    title: 'Direct connections and the shared whistle',
+    lede: 'Online matches now connect player-to-player when they can, pausing '
+        + 'is a shared, refereed act, and the store grew five packs.',
+    entries: [
+      {
+        head: 'Peer to peer, with the old road kept',
+        summary: 'Two players connect directly to each other when the network allows '
+               + 'it, which for nearby players cuts the delay enormously.',
+        detail: 'Until now every kick crossed to the server and back — twice, once per '
+              + 'player — even between two people in the same city. Matches now open a '
+              + 'direct browser-to-browser channel and move the match traffic onto it; the '
+              + 'HUD shows "direct" next to the ping when it is on. The server connection '
+              + 'is not replaced, it is the fallback: if a direct path cannot be made (some '
+              + 'mobile networks refuse), or dies mid-match, packets simply take the old '
+              + 'route again — no interruption, just today\'s latency instead of the better '
+              + 'one. Nothing about matchmaking, accounts or fairness changed.',
+      },
+      {
+        head: 'Pausing is queued, like a real substitution',
+        summary: 'Ask for a pause and both screens say so; the match stops at the next '
+              + 'dead ball, both players get the menu and one shared 20-second clock.',
+        detail: 'Any pause input — the pad\'s Options button, Esc, the HUD button — now '
+              + 'queues a pause instead of pretending to stop a match the other player is '
+              + 'still playing. Both screens show who asked. At the next stoppage — throw-in, '
+              + 'corner, goal kick, goal — the game freezes for both, the pause menu opens '
+              + 'on both, and a single synchronized 20-second countdown runs before play '
+              + 'resumes for both on the same beat. If the ball stubbornly stays in, the '
+              + 'pause forces through after 40 seconds. Duplicate requests are ignored, a '
+              + 'disconnect clears everything, and one player can never be paused while '
+              + 'the other plays on.',
+      },
+      {
+        head: 'The pause menu is alive',
+        summary: 'While a match is paused, recent play runs back behind the menu.',
+        detail: 'Whenever the world is genuinely stopped — an offline pause, half time, the '
+              + 'shared online pause — the menu no longer sits over a freeze-frame. The last '
+              + 'few seconds of play loop behind it on a slow pitchside camera, in every '
+              + 'mode. Too early for any footage and the camera drifts over the stadium '
+              + 'instead.',
+      },
+      {
+        head: 'Five more packs',
+        summary: 'Striker, Silver Stack, Form Signing, Double Down, and Limited: Wildcard.',
+        detail: 'Each one fills a real gap rather than restating an existing pack: Striker '
+              + 'is the Keeper pack\'s mirror (two cards, one guaranteed ST); Silver Stack '
+              + 'is cheap bulk with no bronze floor-outs; Form Signing is three 78+ cards '
+              + 'between Gold and Prime money; Double Down is the cheapest guaranteed '
+              + 'Special in the store; Limited: Wildcard is one 86+ card at 90% special-or-'
+              + 'better — the odds are the promise.',
+      },
+    ],
+  },
+  {
     version: 'v57',
     date: '2026-08-26',
     tag: 'Online',

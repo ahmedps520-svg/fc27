@@ -245,6 +245,13 @@ export class Match {
     // gets the football one rather than the esports one.
     this.preset = PRESETS[opts.preset] || PRESETS.authentic;
     this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null };
+    /* Out-of-bounds ledger. `bounds()` already rules on every ball that leaves
+     * the pitch — throw-in, corner, goal kick, goal — but it ruled silently:
+     * nothing outside the sim could tell a restart had happened. The counter
+     * ticks once per stoppage and `stoppage` names the last kind, which is what
+     * the online pause queue watches for a legal moment to stop the game. */
+    this.stoppages = 0;
+    this.stoppage = null;
     this.t = 0;
     this.half = 1;
     this.phase = 'kickoff';
@@ -997,6 +1004,7 @@ export class Match {
     if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
       b.y = clamp(b.y, 0.8, PITCH.h - 0.8);
       this.giveTo(1 - attackerSide, b.x, b.y);
+      this.markStoppage('throwin');
       return;
     }
     if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
@@ -1011,6 +1019,7 @@ export class Match {
       // sends it behind for a corner rather than a goal kick
       if (b.lastTouch && b.lastTouch.team === defending) {
         this.startCorner(1 - defending, b.y < CY ? 0 : PITCH.h, leftGoal ? 0 : PITCH.w);
+        this.markStoppage('corner');
         return;
       }
 
@@ -1026,7 +1035,14 @@ export class Match {
       b.owner = gk;
       b.lastTouch = gk;
       gk.holdT = 0;
+      this.markStoppage('goalkick');
     }
+  }
+
+  /** Record a dead-ball restart. Called by bounds() and scoreGoal, read by whoever polls. */
+  markStoppage(kind) {
+    this.stoppages += 1;
+    this.stoppage = kind;
   }
 
   /**
@@ -1154,6 +1170,7 @@ export class Match {
   }
 
   scoreGoal(side, inw = 1, goalLineX = PITCH.w) {
+    this.markStoppage('goal');
     const team = this.teams[side];
     team.score++;
     if (this.ball.shotBy && this.ball.shotBy.team === side) team.onTarget++;

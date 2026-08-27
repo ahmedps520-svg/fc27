@@ -27,8 +27,9 @@ const maskOf = (set) => ACTIONS.reduce((m, a, i) => (set.has(a) ? m | (1 << i) :
 
 /** Wraps a local Input and streams it to the host. */
 export class InputSender {
-  constructor(input, rate = 20) {
+  constructor(input, rate = 20, transport = net.send) {
     this.input = input;
+    this.transport = transport;
     this.rate = rate;
     this.acc = 0;
     this.prev = new Set();
@@ -52,8 +53,12 @@ export class InputSender {
     if (this.acc < this.rate) return;
     this.acc = 0;
     const v = this.input.axis();
-    net.send({
+    this.transport({
       t: 'in',
+      // stamps the packet for the receiver's stale-guard — the direct channel
+      // is unordered, and a late input replaying an old stick position is a
+      // visible twitch on the host
+      ts: performance.now(),
       ax: [r2(v.x), r2(v.y)],
       h: maskOf(this.prev),
       d: this.downEdges,
