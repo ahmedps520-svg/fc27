@@ -15,6 +15,23 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### The manager model (v61)
+`assets/manager.glb` (1.6MB, committed) is the owner's Meshy "Executive" model.
+The source was a 457MB release zip — SEVEN 65MB GLBs, one animation each, all
+weight in one 8192x8192 PNG. `tools` has no script for this; the merge lives in
+the session log and in this description: identical rigs verified by node-name
+list, base file kept whole, each other file's animation samplers/accessors/
+bufferViews appended and remapped, clips renamed (idle/walk/stroll/run/shout/
+celebrate/stomp), texture re-encoded 1024 JPEG. renderGL plays them via a tiny
+state machine off `managerFig.pose`/`walk` with 0.28s crossfades.
+
+The hard-won rule: **scale by measurement, not by the file's units.** The first
+cut trusted the bind-pose bounding box and produced a 15-metre manager. The
+loader now applies scale, re-measures the world bbox, corrects, and repeats —
+two passes — then drops feet to z=0. Any replacement model gets this for free.
+
+The original release stays at github.com/ahmedps520-svg/fc27/releases/tag/1.
+
 ### Career release cut (v60)
 - Real managers list is Pep ONLY (tools/build-career-db.py MANAGERS) — the
   licensed-likeness caution, applied on the owner's call. Custom stays full.
