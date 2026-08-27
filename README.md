@@ -69,6 +69,45 @@ ALLOW_ORIGIN=https://you.github.io node server/server.js
 The page must be HTTPS for this: browsers block `ws://` from an `https://` page, and
 `socketURL()` follows the page's protocol automatically.
 
+### Moving the server closer to your players
+
+Every packet in an online match crosses to the server and back **twice** — the hub relays between
+the two players — so the distance from your players to the box is the single biggest number in
+online latency, and no amount of tuning touches it. Render has no Middle East region; for players
+in Saudi Arabia the ranking is Frankfurt, then Singapore, then everything in the US.
+
+`render.yaml` in the repo is a blueprint pinned to **Frankfurt**. A service's region cannot be
+changed after it is created, so moving means creating a new one:
+
+1. **Render → New → Blueprint**, point it at this repo. It reads `render.yaml` and creates the
+   service in Frankfurt on the Starter plan.
+2. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` on the new service. They are marked
+   `sync: false` in the blueprint so secrets never live in the repo.
+3. **Move the database too, or leave it behind on purpose.** The account store is one Redis key, so
+   a copy is one command — put the maintenance page up first so nothing is written mid-copy:
+
+   ```bash
+   node tools/migrate-store.mjs \
+     --from-url https://old.upstash.io --from-token OLD \
+     --to-url   https://new.upstash.io --to-token   NEW        # add --apply to write
+   ```
+
+   A database that stays in Asia while the server sits in Frankfurt adds a round trip to every
+   sign-in and every cloud save. It does **not** affect in-match latency — the hub never touches
+   Redis during a match.
+4. **Point the same hostname at the new service**, then delete the old one.
+
+Step 4 is not optional housekeeping, it is the whole migration:
+
+> **Player progress is stored per origin.** Clubs, packs and settings live in the browser's
+> storage for `fc27.onrender.com`, and so do sign-in tokens. Launch on a different hostname and
+> every player who never made an account looks freshly wiped, and everyone else is signed out.
+> Attach a custom domain (or move the existing one) to the new service so the address people
+> already have keeps working, and only then retire the old one.
+
+If you have no custom domain yet, get one before moving. `something.onrender.com` cannot be moved
+between services, and that is exactly the trap.
+
 ### Taking the game down for maintenance
 
 `maintenance.html` is a standalone notice — its own styles, no build step, and nothing in it polls

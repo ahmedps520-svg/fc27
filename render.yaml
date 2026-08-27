@@ -1,0 +1,36 @@
+# Render blueprint.
+#
+# The one setting here that matters more than the rest is `region`. Every packet
+# in an online match goes to the server and back — twice, because the hub relays
+# between the two players — so the distance from the players to this box is
+# doubled and then doubled again in what they feel. Render has no Middle East
+# region; Frankfurt is the closest one to Saudi Arabia, and roughly halves the
+# round trip against Singapore.
+#
+# **A service's region cannot be changed after it is created.** Moving means
+# creating a new service from this blueprint and pointing the domain at it — see
+# "Moving the server closer to your players" in the README, which also covers the
+# part that bites: player progress is stored per origin, so the new service has
+# to answer on the same hostname or everyone without an account looks wiped.
+services:
+  - type: web
+    name: apexxi
+    runtime: node
+    region: frankfurt          # oregon | ohio | virginia | frankfurt | singapore
+    plan: starter              # free instances sleep, and a sleeping match hub is a dead one
+    branch: main
+    buildCommand: echo "no build step — the game ships as source"
+    startCommand: node server/server.js
+    healthCheckPath: /api/version
+    autoDeploy: true
+    envVars:
+      # pinned because an open-ended range once resolved to a Node prerelease and
+      # broke every deploy — see .node-version
+      - key: NODE_VERSION
+        value: 22.11.0
+      # accounts and cloud saves. Set these in the dashboard; `sync: false` keeps
+      # the secrets out of the repo and stops a redeploy blanking them.
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
