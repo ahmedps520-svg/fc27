@@ -13,6 +13,7 @@ import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '../audio.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
+import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import {
   InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel, SNAP_MS,
 } from '../net/netplay.js';
@@ -109,6 +110,9 @@ export function render(params) {
           <button class="icon-btn sm" id="gmPause" title="Pause">❚❚</button>
         </div>
       </div>
+
+      <!-- "X has queued a pause" — mirrored on both screens by the host -->
+      <div class="gm-queue" id="gmQueue" hidden></div>
 
       <div class="gm-touch" id="gmTouch" hidden>
         <!-- the whole left half is the stick: it appears under your thumb
@@ -285,6 +289,30 @@ export function mount(root, params) {
     };
   };
 
+  /* ------------------------------ pause reel ------------------------------ *
+   * The pause menu sits over the live scene, and a frozen scene makes it a
+   * still image. So while the world is actually stopped, the recent tape plays
+   * back on a slow drifting camera behind the menu — the same footage the goal
+   * replay uses, minus the drama. Too early for any tape (a pause seconds into
+   * kick-off) and the camera drifts over the frozen scene instead: less to
+   * watch, still alive. The live state is captured before the first frame is
+   * applied and restored on resume, exactly like the goal replay.            */
+  let reel = null;
+  const captureLive = () => ({
+    b: [match.ball.x, match.ball.y, match.ball.z],
+    p: allPlayers().map((p2) => [p2.x, p2.y, p2.dirX, p2.dirY, p2.vx, p2.vy, p2.diveT || 0]),
+  });
+  const startReel = () => {
+    if (reel || replay) return;
+    const frames = tape.length >= 150 ? tape.slice(-Math.min(tape.length, 420)) : null;
+    reel = { frames, i: 0, live: frames ? captureLive() : null, drift: 0, cam: makeCamera() };
+  };
+  const endReel = () => {
+    if (!reel) return;
+    if (reel.live) applyFrame(reel.live);
+    reel = null;
+  };
+
   let replay = null;
   const startReplay = () => {
     if (!clip || clip.frames.length < 60) return false;
@@ -325,9 +353,49 @@ export function mount(root, params) {
   // Guest: never simulate — pour snapshots into the match and stream input up.
   const netOffs = [];
   const view = online && !online.host ? new SnapshotView(match) : null;
-  const sender = online && !online.host ? new InputSender(localInput) : null;
+  // input rides the direct channel when one is up — sendMatch falls back to the
+  // websocket per packet, so this is safe before, during and after an upgrade
+  const sender = online && !online.host ? new InputSender(localInput, 20, sendMatch) : null;
   const netEl = root.querySelector('#gmNet');
   let snapAcc = 0;
+
+  /* ------------------------- synchronized pause ------------------------- *
+   * Online, pausing is a request, not an act. The requester's name goes up on
+   * both screens at once ("X has queued a pause"), play carries on, and the
+   * match stops at the next dead ball — throw-in, corner, goal kick, goal,
+   * half time — the way a real referee holds a substitution. Then both clients
+   * sit in the pause menu behind one 20-second clock and resume on the same
+   * frame.
+   *
+   * All of it is host state. The guest only ever *asks* (evt k:'pausereq');
+   * the queue, the stoppage ruling, and the countdown live on the host and
+   * travel to the guest inside ordinary snapshots (`pq` while queued,
+   * `pz` while counting), so the two screens cannot disagree: whatever
+   * the host believes is on the wire, and a duplicate request is refused in
+   * exactly one place. If the ball simply refuses to go out, the queue force-
+   * activates after 40 seconds — a pause that can never arrive is worse than a
+   * slightly impatient one. */
+  const PAUSE_HOLD = 20;      // seconds both players sit in the menu
+  const PAUSE_FORCE = 40;     // queued this long -> stop at the next frame regardless
+  let pq = null;              // {name, waitT} — host only
+  let syncLeft = 0;           // seconds of synced pause remaining — host only
+  let lastStoppages = 0;      // host: sim stoppage counter at the last frame
+  let pauseSnap = null;       // host: the world as it stood at the whistle
+  let lastTickSec = -1;       // last countdown second painted, so the menu is not rebuilt 30x/s
+  let guestSynced = false;    // guest: currently held in the synced pause
+  let guestPz = null;         // guest: [name, tenths] from the latest snapshot
+  const queueEl = root.querySelector('#gmQueue');
+  const showQueueBanner = (name) => {
+    queueEl.hidden = !name;
+    if (name) queueEl.innerHTML = `<b>${name}</b> has queued a pause · match stops at the next dead ball`;
+  };
+  const requestPause = (name) => {
+    // one queue, one timer: a second request while one is pending or active
+    // changes nothing (and re-showing the banner would reset nothing anyway)
+    if (pq || syncLeft > 0 || ended) return;
+    pq = { name: name || 'Player', waitT: 0 };
+    showQueueBanner(pq.name);
+  };
   let oppGone = null;
   let rtt = null;          // this client to the server
   let peerRtt = null;      // this client to the opponent and back — what you feel
@@ -340,19 +408,40 @@ export function mount(root, params) {
     // Only the host's clock is authoritative, so the guest must not tick its own.
     if (online.host) {
       netOffs.push(net.on('in', (m) => remote.accept(m)));
+      netOffs.push(net.on('evt', (m) => { if (m.k === 'pausereq') requestPause(m.name || online.oppName); }));
     } else {
       netOffs.push(net.on('snap', (m) => {
         view.accept(m);
         // sounds are made by the host's simulation and ride along with the world
         for (const [name, arg] of m.cu || []) sfx(name, arg);
+        /* The pause protocol, guest side: obey the snapshot. `pq` = banner up,
+         * `pz` = held in the menu with the host's countdown. Reading the very
+         * latest packet (not the interpolated pair) is deliberate — a pause is
+         * a state, not a position, and 100ms of extra menu is invisible where
+         * 100ms of extra gameplay on one screen only is a desync. */
+        showQueueBanner(m.pq || (m.pz && m.pz[0]) || null);
+        guestPz = m.pz || null;
+        if (guestPz && !guestSynced) { guestSynced = true; setPaused(true); }
+        if (!guestPz && guestSynced) { guestSynced = false; setPaused(false); }
+        if (guestSynced && paused) {
+          const secs = Math.ceil((guestPz[1] || 0) / 10);
+          if (secs !== lastTickSec) { lastTickSec = secs; paintPause(); }
+        }
       }));
     }
     netOffs.push(net.on('oppLeft', () => {
       if (ended) return;
+      // whatever the pause machinery was doing dies with the opponent — a
+      // disconnect during a queued or active pause must not strand the menu
+      pq = null; syncLeft = 0; guestSynced = false; guestPz = null;
+      showQueueBanner(null);
+      if (paused) setPaused(false);
       oppGone = true;
       ended = true;
       finish();
     }));
+    // try to go direct; the relay carries the match until (and unless) it works
+    startP2P(online);
     netOffs.push(net.on('closed', () => {
       if (!ended) toast('Lost connection to the server', 'warn');
     }));
@@ -792,11 +881,28 @@ export function mount(root, params) {
     for (const inp of inputs) inp.poll(dt);
     updateTouchContext();
     if (loading) tickLoading(now);
-    // an online match cannot be frozen — the other player is still out there
-    const frozen = (paused || loading) && !online;
+    /* When is the world actually stopped?
+     * Offline: whenever the menu is up — the sim belongs to this machine.
+     * Online: only during the synchronized pause, which the host declares and
+     * the guest reads back out of snapshots. The local menu on its own never
+     * stops an online match (the other player is still out there). */
+    const syncActive = online ? (online.host ? syncLeft > 0 : guestSynced) : false;
+    const frozen = ((paused || loading) && !online) || syncActive;
     sender?.tick(dt);
 
-    if (input.pressed('pause') && !ended && !loading) setPaused(!paused);
+    if (input.pressed('pause') && !ended && !loading) {
+      if (!online) setPaused(!paused);
+      else if (!syncActive) {
+        /* Every pause input — Options on either pad, Esc, the HUD button (it
+         * synthesizes this press) — queues the shared pause AND opens the local
+         * non-blocking menu, which keeps subs and tactics reachable mid-play
+         * exactly as before. During the synced pause the menu is pinned open:
+         * the input neither closes it nor queues anything new. */
+        if (online.host) requestPause(online.myName);
+        else net.send({ t: 'evt', k: 'pausereq', name: online.myName });
+        setPaused(!paused);
+      }
+    }
 
     // pad / keyboard navigation of the pause menu
     if (paused && !ended && !loading) {
@@ -805,9 +911,33 @@ export function mount(root, params) {
       if (ay > 0.5 && !navHeld) { navIdx = (navIdx + 1) % PAUSE_ITEMS.length; paintPause(); }
       navHeld = Math.abs(ay) > 0.5;
       if (input.pressed('pass')) activate(PAUSE_ITEMS[navIdx].id);
-      if (input.pressed('shoot')) setPaused(false);
+      if (input.pressed('shoot') && !syncActive) setPaused(false);
     } else {
       navHeld = false;
+    }
+
+    /* The reel runs only while the world is genuinely stopped for this client:
+     * any offline pause, or the synchronized online pause. The online menu
+     * open over *live* play needs no reel — the match itself is the moving
+     * background there. */
+    const wantReel = paused && !replay && !ended && !loading && (!online || syncActive);
+    if (wantReel && !reel) startReel();
+    if (!wantReel && reel) endReel();
+    if (reel) {
+      reel.drift += dt;
+      if (reel.frames) {
+        applyFrame(reel.frames[Math.floor(reel.i)]);
+        reel.i += dt * 54;                                  // just under real speed
+        if (reel.i >= reel.frames.length) reel.i = 0;       // and around again
+      }
+      // slow pitchside dolly around wherever the ball is
+      const b = match.ball;
+      const w = Math.sin(reel.drift * 0.24);
+      reel.cam.x = Math.max(14, Math.min(PITCH.w - 14, b.x + w * 9));
+      reel.cam.y = -24 + Math.cos(reel.drift * 0.19) * 3;
+      reel.cam.z = 11 + Math.sin(reel.drift * 0.16) * 3;
+      reel.cam.tx = b.x; reel.cam.ty = Math.min(34, b.y * 0.8 + 6); reel.cam.tz = 1;
+      reel.cam.hfov = 40;
     }
 
     if (replay) {
@@ -833,7 +963,51 @@ export function mount(root, params) {
           if (replay.hold >= HOLD_SECONDS) endReplay();
         }
       }
-    } else if (!frozen && !ended) {
+    }
+
+    /* Host: rule on the queued pause. A dead ball is the sim's stoppage
+     * ledger ticking (throw-in, corner, goal kick, goal) or the phase already
+     * being a set piece; the one moment excluded is the goal celebration,
+     * because the replay owns both screens there — the kickoff that follows it
+     * converts the queue instead. `waitT` is the anti-stuck valve. */
+    if (online?.host && !ended && !loading) {
+      if (pq && syncLeft <= 0) {
+        pq.waitT += dt;
+        const deadBall = match.stoppages !== lastStoppages
+          || match.phase === 'corner' || match.phase === 'half' || match.phase === 'penalty';
+        if ((deadBall || pq.waitT > PAUSE_FORCE) && match.phase !== 'goal') {
+          syncLeft = PAUSE_HOLD;
+          /* One snapshot, taken at the whistle, is what the guest sees for the
+           * whole pause (with a live countdown riding on it). The sim is
+           * frozen but the *scene* is not — the reel plays old footage through
+           * the same objects — and encoding that would ship the reel to the
+           * guest's buffer and glitch the first second after resume. */
+          pauseSnap = encodeSnapshot(match);
+          showQueueBanner(null);
+          sfx('whistle');
+          if (!paused) setPaused(true);
+          paintPause();
+        }
+      }
+      if (syncLeft > 0) {
+        syncLeft -= dt;
+        const secs = Math.ceil(syncLeft);
+        if (paused && secs !== lastTickSec) { lastTickSec = secs; paintPause(); }
+        if (syncLeft <= 0) {
+          syncLeft = 0;
+          pq = null;
+          pauseSnap = null;
+          endReel();               // restore live state before the sim steps again
+          setPaused(false);
+          sfx('whistle');
+        }
+      }
+      lastStoppages = match.stoppages;
+    }
+
+    /* `!replay` restores what the old `else if` chain provided: the host's sim
+     * does not advance while its own goal replay plays. */
+    if (!replay && !frozen && !ended) {
       if (view) {
         // guest: the world arrives over the wire rather than being computed
         view.update(dt);
@@ -858,24 +1032,33 @@ export function mount(root, params) {
         if (online?.host) outgoing.push([c.name, c.arg ?? 0]);
       }
 
-      // host: ship the world at 30 Hz, with any sounds it made since the last one
-      if (online?.host) {
-        pendingCues.push(...outgoing);
-        snapAcc += dt;
-        if (snapAcc >= SNAP_MS / 1000) {
-          snapAcc = 0;
-          const snap = encodeSnapshot(match);
-          if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
-          net.send(snap);
-        }
-      }
+      if (online?.host) pendingCues.push(...outgoing);
       // crowd lifts as play nears either goal, and roars through a celebration
       const near = Math.min(match.ball.x, PITCH.w - match.ball.x) / (PITCH.w / 2);
       setCrowd(match.phase === 'goal' ? 1 : 0.3 + (1 - near) * 0.5);
     }
 
-    const rdt = frozen ? 0 : dt;
-    const shot = replay ? replay.cam : cam;
+    /* Host: ship the world at 30 Hz. Outside the step block on purpose — the
+     * synced pause freezes the sim but the stream must keep flowing, because
+     * the snapshots are what carry the countdown (and its ending) to the
+     * guest. The pause fields ride on the snapshot rather than being their own
+     * message so they can never race the world state they describe. */
+    if (online?.host && !ended && !replay) {
+      snapAcc += dt;
+      if (snapAcc >= SNAP_MS / 1000) {
+        snapAcc = 0;
+        const snap = (syncLeft > 0 && pauseSnap)
+          ? { ...pauseSnap, ts: performance.now() }
+          : encodeSnapshot(match);
+        if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
+        if (pq && syncLeft <= 0) snap.pq = pq.name;
+        if (syncLeft > 0) snap.pz = [pq ? pq.name : '', Math.ceil(syncLeft * 10)];
+        sendMatch(snap);
+      }
+    }
+
+    const rdt = frozen && !reel ? 0 : dt;
+    const shot = replay ? replay.cam : reel ? reel.cam : cam;
     if (gl) gl.render(match, shot, rdt);
     else draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
 
@@ -935,7 +1118,8 @@ export function mount(root, params) {
       // the host stops broadcasting while it plays its own replay, so a stale
       // stream during one is expected rather than a connection problem
       const lost = view?.stale && !replay;
-      netEl.textContent = lost ? 'reconnecting…' : `${online.oppName} · ${q.text}`;
+      // '· direct' = this match is running browser-to-browser, not through the relay
+      netEl.textContent = lost ? 'reconnecting…' : `${online.oppName} · ${q.text}${p2pActive() ? ' · direct' : ''}`;
       netEl.className = `gm-net ${lost ? 'bad' : q.cls}`;
     }
     lastScores = [match.teams[0].score, match.teams[1].score];
@@ -1101,11 +1285,20 @@ export function mount(root, params) {
             ${crestSVG(home.crest, home.short, 26)}
             <span>${online ? `Online · vs ${online.oppName}` : 'Quick Match'}</span>
           </div>`}
-        ${online ? '<p class="pause-live">The match is still running — this menu does not pause it.</p>' : ''}
+        ${(() => {
+          if (!online) return '';
+          const syncNow = online.host ? syncLeft > 0 : guestSynced;
+          if (!syncNow) return '<p class="pause-live">The match is still running — this menu does not pause it.</p>';
+          const secs = Math.max(0, Math.ceil(online.host ? syncLeft : ((guestPz?.[1] || 0) / 10)));
+          return `<p class="pause-sync"><b>${secs}</b> Match paused for both players — kicks off again automatically</p>`;
+        })()}
         <nav class="pause-nav">
           ${PAUSE_ITEMS.map((it, i) => `
             <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
-                    data-nav="${i}">${it.id === 'resume' && halfTime ? 'Start Second Half' : it.label}</button>`).join('')}
+                    data-nav="${i}">${it.id === 'resume'
+                      ? (halfTime ? 'Start Second Half'
+                        : (online && (online.host ? syncLeft > 0 : guestSynced)) ? 'Resuming soon…' : it.label)
+                      : it.label}</button>`).join('')}
         </nav>
         <div class="pause-panel">${panelFor(section)}</div>
         <div class="pause-hints"><b>✕</b> Select <b>◯</b> Resume</div>
@@ -1113,7 +1306,8 @@ export function mount(root, params) {
   }
 
   function activate(id) {
-    if (id === 'resume') { setPaused(false); return; }
+    const syncNow = online ? (online.host ? syncLeft > 0 : guestSynced) : false;
+    if (id === 'resume') { if (!syncNow) setPaused(false); return; }
     if (id === 'leave') {
       exitFullscreen();
       if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
@@ -1377,7 +1571,15 @@ export function mount(root, params) {
     }));
   }
 
-  root.querySelector('#gmPause').addEventListener('click', () => { if (!ended) setPaused(!paused); });
+  root.querySelector('#gmPause').addEventListener('click', () => {
+    if (ended) return;
+    if (!online) { setPaused(!paused); return; }
+    const syncNow = online.host ? syncLeft > 0 : guestSynced;
+    if (syncNow) return;                       // pinned open behind the countdown
+    if (online.host) requestPause(online.myName);
+    else net.send({ t: 'evt', k: 'pausereq', name: online.myName });
+    setPaused(!paused);
+  });
 
   return () => {
     // the loop re-arms itself from a `finally`, so leaving has to say stop as
@@ -1390,6 +1592,7 @@ export function mount(root, params) {
      * are each guarded for the same reason: none of them is allowed to stop
      * the ones after it. navigate() also clears the class as a backstop. */
     document.body.classList.remove('in-game');
+    stopP2P();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
     try { stopCrowd(); } catch { /* audio teardown must not block the rest */ }
