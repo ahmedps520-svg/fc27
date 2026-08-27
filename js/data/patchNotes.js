@@ -18,6 +18,29 @@
  */
 export const RELEASES = [
   {
+    version: 'v61',
+    date: '2026-08-27',
+    tag: 'Career',
+    title: 'The manager has a face',
+    lede: 'A real 3D manager model walks the technical area — idling, '
+        + 'prowling, shouting, celebrating and stamping.',
+    entries: [
+      {
+        head: 'One model, seven moods',
+        summary: 'The supplied manager model now acts the match: walking with play, '
+               + 'shouting with your shouts, celebrating goals, stamping at conceding.',
+        detail: 'The model arrived as seven 65MB files, one animation each. They were '
+              + 'merged into a single 1.6MB file — the 8192-pixel texture carried almost '
+              + 'all of that weight and reads identically at 1024 — with the clips renamed '
+              + 'and wired to the match: idle instruction-waving on the spot, a walk that '
+              + 'tracks play up and down the technical area, the shout when you use the '
+              + 'wheel, the celebration when it goes in, and the ground stomp when it goes '
+              + 'in at the wrong end. Loaded on demand, only in Career, never part of the '
+              + 'offline bundle.',
+      },
+    ],
+  },
+  {
     version: 'v60',
     date: '2026-08-27',
     tag: 'Career',

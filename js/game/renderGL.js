@@ -1713,25 +1713,53 @@ export function createRenderer(canvas, match, quality, models = false) {
    * load failing is silent and the suit rig carries on. */
   let mgrModel = null;
   let mgrMixer = null;
+  let mgrActions = null;      // clip name -> AnimationAction
+  let mgrClip = '';           // the clip currently playing
   if (match.managerFig) {
     new GLTFLoader().load(new URL('../../assets/manager.glb', import.meta.url).href, (gltf) => {
-      const box = new THREE.Box3().setFromObject(gltf.scene);
-      const height = Math.max(0.01, box.max.y - box.min.y);
+      /* Scale by measurement, not by faith: exporters disagree about units and
+       * about node scales baked into the armature, so the model is added, its
+       * real world height measured, and the correction applied — twice, since
+       * the first fix changes what the second measures. Ends at 1.85m of
+       * manager whatever the file thought a metre was. */
       const holder = new THREE.Group();
       gltf.scene.rotation.x = Math.PI / 2;              // y-up asset, z-up world
-      gltf.scene.position.z = -box.min.y * (1.85 / height);
-      gltf.scene.scale.setScalar(1.85 / height);
       gltf.scene.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; } });
       holder.add(gltf.scene);
+      const bounds = new THREE.Box3();
+      for (let pass = 0; pass < 2; pass++) {
+        holder.updateMatrixWorld(true);
+        bounds.setFromObject(holder);
+        const h = Math.max(0.01, bounds.max.z - bounds.min.z);
+        gltf.scene.scale.multiplyScalar(1.85 / h);
+      }
+      holder.updateMatrixWorld(true);
+      bounds.setFromObject(holder);
+      gltf.scene.position.z = -bounds.min.z;            // feet on the turf
       scene.add(holder);
       mgrModel = holder;
       if (gltf.animations?.length) {
         mgrMixer = new THREE.AnimationMixer(gltf.scene);
-        mgrMixer.clipAction(gltf.animations[0]).play();
+        mgrActions = new Map();
+        for (const clip of gltf.animations) mgrActions.set(clip.name, mgrMixer.clipAction(clip));
+        // the acting range shipped with the model: idle/walk/run/shout/celebrate/stomp
+        (mgrActions.get('idle') || gltf.animations[0] && mgrMixer.clipAction(gltf.animations[0])).play();
+        mgrClip = mgrActions.has('idle') ? 'idle' : (gltf.animations[0]?.name || '');
       }
       if (mgrRig) { scene.remove(mgrRig.grp); mgrRig = null; }
     }, undefined, () => { /* no model supplied — the suit rig stands in */ });
   }
+  /** Crossfade the manager model to a clip, with graceful fallbacks. */
+  const mgrPlay = (want) => {
+    if (!mgrActions) return;
+    const name = mgrActions.has(want) ? want : mgrActions.has('idle') ? 'idle' : mgrClip;
+    if (name === mgrClip || !name) return;
+    const from = mgrActions.get(mgrClip);
+    const to = mgrActions.get(name);
+    to.reset().play();
+    if (from) from.crossFadeTo(to, 0.28, false);
+    mgrClip = name;
+  };
 
   /* ------------------------- scanned players ------------------------- *
    * The built-in figures above are always built, and stay in place until the
@@ -1954,6 +1982,13 @@ export function createRenderer(canvas, match, quality, models = false) {
         const f = m.managerFig;
         mgrModel.position.set(f.x, f.y, 0);
         mgrModel.rotation.z = Math.atan2(f.dirY, f.dirX) - Math.PI / 2;
+        // the pose the match screen asked for, translated into the model's clips
+        mgrPlay(
+          f.pose === 'celebrate' ? 'celebrate'
+          : f.pose === 'slump' ? 'stomp'
+          : f.pose === 'head' ? 'stomp'
+          : f.pose === 'shout' ? 'shout'
+          : f.walk > 0 ? 'walk' : 'idle');
         mgrMixer?.update(dt);
       }
 
