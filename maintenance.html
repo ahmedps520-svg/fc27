@@ -80,66 +80,31 @@
   <h1 style="margin-top:16px">We are working on the game</h1>
   <p>APEX XI is down for a short while so an update can be put in place. Nothing has
     happened to your club: squads, packs and division rank are stored on your account
-    and will be exactly where you left them.</p>
+    and will be exactly where you left them when the game comes back.</p>
 
   <div class="rows">
     <div class="row"><span>Online matches</span><b>Paused</b></div>
     <div class="row"><span>Your save</span><b>Safe</b></div>
-    <div class="row"><span>This page checks again</span><b id="next">in 30s</b></div>
   </div>
 
   <div class="actions">
-    <button class="btn primary" id="retry" type="button">Check now</button>
+    <a class="btn primary" id="retry" href="https://fc27.onrender.com">Try again</a>
     <a class="btn" href="mailto:support@apexxi.online">Email support</a>
   </div>
 
   <div class="rule"></div>
-  <p class="note">This page reloads by itself the moment the game is back, so it can be
-    left open. If it is still here in an hour, the email above reaches a human.</p>
+  <p class="note">Try again in a few minutes. If this page is still here in an hour,
+    the email above reaches a human.</p>
 </main>
 
 <script>
-  /* Poll for the real site coming back. `cache: 'no-store'` so a cached 200 can
-     never fake a recovery, and HEAD so the check costs nothing. The page only
-     leaves when the server stops answering 503.
-     
-     `?back=https://example.com` points the check and the redirect at another
-     origin, for when this page is hosted somewhere else — a platform-level
-     maintenance switch usually redirects to a page *off* the service it is
-     taking down, and a relative URL would then be checking the wrong site.
-     Cross-origin needs that origin to allow this one (ALLOW_ORIGIN on the
-     server); without it the check simply never succeeds and the button and the
-     link still work, which is why neither is hidden. */
-  const nextEl = document.getElementById('next');
-  const back = new URLSearchParams(location.search).get('back');
-  const HOME = back ? back.replace(/\/+$/, '') + '/' : './';
-  const PROBE = HOME + 'api/version';
-  let wait = 30;
-
-  async function check() {
-    try {
-      const res = await fetch(PROBE, { method: 'HEAD', cache: 'no-store' });
-      if (res.status !== 503) { location.replace(HOME); return true; }
-    } catch { /* still down, or offline: either way, keep waiting */ }
-    return false;
-  }
-
-  document.getElementById('retry').addEventListener('click', async () => {
-    nextEl.textContent = 'checking…';
-    if (!await check()) { wait = 30; nextEl.textContent = 'still down · in 30s'; }
-  });
-
-  /* Check once straight away: someone who opens this a minute after the work
-     finished should not sit through a countdown for a site that is already up. */
-  check();
-
-  setInterval(() => {
-    wait -= 1;
-    if (wait > 0) { nextEl.textContent = 'in ' + wait + 's'; return; }
-    wait = 30;
-    nextEl.textContent = 'checking…';
-    check().then((back) => { if (!back) nextEl.textContent = 'in 30s'; });
-  }, 1000);
+  /* The only script here: point "Try again" at the game, and remember where the
+     game is. `?back=` lets one copy of this page serve any deployment; the
+     default is the live site. Nothing polls, nothing redirects on its own —
+     the platform's maintenance switch decides when the game is reachable, and
+     a page that redirected itself would fight it. */
+  const back = new URLSearchParams(location.search).get('back') || 'https://fc27.onrender.com';
+  document.getElementById('retry').href = back;
 </script>
 </body>
 </html>
