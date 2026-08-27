@@ -300,9 +300,17 @@ export class Match {
    * opposition worse than the division it belongs to.
    */
   aiSkillFor(team) {
+    /* Manager Career: nobody holds a stick, but one side has a manager on the
+     * touchline whose team performance meter is allowed to move the needle —
+     * up to ±0.22 skill around the baseline. That is what makes a shout, a
+     * team talk and a morale collapse *visible in the football* rather than
+     * being a number on a HUD. `mgrSide`/`mgrPerf` are written by the match
+     * screen; absent (every other mode), this line is a no-op. */
+    const mgr = (this.mgrSide === team && typeof this.mgrPerf === 'number')
+      ? (this.mgrPerf - 0.5) * 0.44 : 0;
     const me = this.soloHumanSide;
-    if (me === null || team === me) return this.skill;
-    return this.skill + 0.45 * this.momentum;
+    if (me === null || team === me) return this.skill + mgr;
+    return this.skill + 0.45 * this.momentum + mgr;
   }
 
   /**

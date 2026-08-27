@@ -15,6 +15,48 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Manager Career V1 (v59)
+The pieces and where they live:
+- `tools/build-career-db.py` -> `js/data/careerDb.js` (GENERATED): 25 real clubs
+  in 6 leagues; squads are the real players curated for each club, filled to 16
+  from the source pools (fill players are real people, maybe not at that club).
+  CAREER_RATINGS states career ratings for the 20 names that only exist as
+  99/92 Icon/Star cards. Edit the tool, never the output.
+- `js/career.js` (engine): resolveEntry matches career rows to WORLD cards **by
+  name** — one footballer, one set of numbers everywhere. startCareer,
+  advanceWeek (sims the rest of the round, moves the table/week/season),
+  contracts (season-decremented; expiries renew or leave), staged transfers
+  (askingPrice: short contract = cheap; respondToFee counters; respondToTerms
+  has wage floors), 500M start (`START_COINS`).
+- `js/screens/career.js`: mode select (Player Mode = honest UNDER CONSTRUCTION
+  card), real managers + custom builder, club select, 6-tab hub, market UI,
+  renewals, season end. Old v1 career slice is ignored (render checks
+  `career.v === 2`); the old state.js career fns still exist, unused.
+- play.js `mode:'career'`: `human:null` (AI vs AI — the sweep path), 90s
+  duration, `mgr` block owns morale/perf/wheel/talk/figure/cameras.
+- sim: `mgrSide`/`mgrPerf` move aiSkillFor by ±0.22 for the managed team only.
+  Sweeps stay byte-identical (fields absent outside careers). Shouts also set
+  REAL tactics temporarily (press/mentality), reverted after 14s.
+- renderGL: `match.managerFig` -> a suit-dressed buildPlayer rig (thighs/shins/
+  arms rematerialed as trousers/jacket — the player rig assumes bare thighs).
+  Posed via posePlayer; celebrate/shout reuse the cheer pose. GL path only.
+
+Traps hit and fixed here:
+- **`match.human` is null in careers matches.** paintPause's panelFor indexed
+  `teams[match.human]` -> throw inside setPaused -> the half-time branch died
+  half-done every frame, silently (the loop's finally re-arms). Every seat read
+  is now `match.human ?? mgr?.side ?? 0`. If a new UI reads the human seat, use
+  that expression.
+- The manager camera must aim THROUGH the figure (over the shoulder), not sit
+  where he stands, or he is out of frustum and "the manager cam has no manager".
+
+Testing: full flow verified headless (webgl off = 2D renderer, real speed):
+mode select -> Pep -> Al Nassr (Ronaldo/Mané in squad) -> market search ->
+staged deal (lowball countered, counter accepted, wage floor rejected then met,
+Rodrygo signs, 500M->492M) -> matchday (wheel contextual + rotates, shout
+lands, meters move) -> half-time talk at 45' (4 options) -> FT -> hub at week 2
+with table/morale updated. GL run for the touchline figure + both cameras.
+
 ### P2P, the pause queue, the reel, five packs (v58)
 
 **P2P (`js/net/p2p.js`).** WebRTC DataChannel between the two browsers, unordered

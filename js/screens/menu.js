@@ -79,10 +79,9 @@ export function render() {
       <h1 class="menu-wordmark"><span class="t1">APEX</span><span class="t2">XI</span></h1>
     <div class="hub">
       <div class="hub-rail">
-        <button class="tile t-mini tone-b is-locked" data-locked="Under construction" aria-disabled="true">
+        <button class="tile t-mini tone-b" data-go="career">
           <span class="tile-icon">${icon('career')}</span>
           <span class="tile-name">Career</span>
-          <span class="mini-lock">${icon('lock', 12)}</span>
         </button>
         <button class="tile t-mini tone-d" data-go="settings">
           <span class="tile-icon">${icon('settings')}</span>
@@ -107,9 +106,9 @@ export function render() {
       </div>
     </div>
 
-    <p class="disclaimer">Clubs, leagues and competitions are fictional. Player names
-      and nationalities are those of real footballers, used without endorsement or
-      affiliation. Portraits are drawn and are not likenesses.</p>
+    <p class="disclaimer">Player, manager and Career Mode club names are those of real
+      people and clubs, used without endorsement or affiliation; Ultimate XI clubs and all
+      competitions are fictional. Badges and portraits are drawn and are not likenesses.</p>
     </section>`;
 }
 

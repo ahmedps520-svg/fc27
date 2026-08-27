@@ -34,7 +34,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v58';
+export const APP_VERSION = 'v59';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -61,7 +61,10 @@ export function refreshCoins() {
 
 // Career is shut for now. Guarding the route rather than only the tile means a
 // resume shortcut, a controller focus or an old deep link can't slip past it.
-const LOCKED = { career: 'Career Mode is under construction' };
+/* Career unlocked in v59 — Manager Mode shipped. The lock mechanism stays for
+ * whatever needs it next; Player Mode is gated inside the career screen, where
+ * it can look like a plan instead of a dead tile. */
+const LOCKED = {};
 
 /**
  * Send the screen you are leaving on its way.

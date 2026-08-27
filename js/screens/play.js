@@ -14,6 +14,7 @@ import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '..
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
+import { advanceWeek } from '../career.js';
 import {
   InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel, SNAP_MS,
 } from '../net/netplay.js';
@@ -114,6 +115,20 @@ export function render(params) {
       <!-- "X has queued a pause" — mirrored on both screens by the host -->
       <div class="gm-queue" id="gmQueue" hidden></div>
 
+      <!-- Manager Career: the touchline HUD. The wheel is the manager's voice —
+           four contextual shouts that rotate with the situation; the meters are
+           the two numbers the whole mode runs on. -->
+      <div class="mgr-hud" id="mgrHud" hidden>
+        <div class="mgr-meters">
+          <div class="mm"><span>MOR</span><i><b id="mmMorale"></b></i></div>
+          <div class="mm"><span>PER</span><i><b id="mmPerf"></b></i></div>
+        </div>
+        <div class="mgr-wheel" id="mgrWheel"></div>
+        <button class="icon-btn sm mgr-cam" id="mgrCam" title="Camera: broadcast / manager">🎥</button>
+      </div>
+      <div class="mgr-shout" id="mgrShout" hidden></div>
+      <div class="mgr-talk" id="mgrTalk" hidden></div>
+
       <div class="gm-touch" id="gmTouch" hidden>
         <!-- the whole left half is the stick: it appears under your thumb
              wherever that lands, rather than asking you to find a fixed pad -->
@@ -178,6 +193,8 @@ export function mount(root, params) {
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
     skill: params.skill || 1,
+    // the manager holds no stick: career matches are AI against AI, influenced
+    human: mode === 'career' ? null : undefined,
     mode,
     // Kick Off is a game of football; Ultimate XI is a competition. Both sides
     // of an online match derive this from the same `ultimate` flag, so host and
@@ -468,6 +485,248 @@ export function mount(root, params) {
     }, 2000);
     netOffs.push(() => { clearInterval(pingTimer); clearInterval(peerTimer); });
   }
+
+  /* ========================== Manager Career ========================== *
+   * The manager is a system, not a screen: a figure on the touchline the
+   * renderer draws, two meters the sim actually reads, a four-shout wheel
+   * whose options follow the match, and a half-time talk. Everything here is
+   * a no-op in every other mode (`mgr` stays null).
+   *
+   * The one rule, from the spec and worth keeping: no cosmetic buttons. Every
+   * shout lands somewhere real — the tactics the AI already obeys, or the
+   * performance meter the sim reads through aiSkillFor — and the costs are
+   * real too, which is what makes CALM DOWN after PRESS a decision.          */
+  const careerCtx = mode === 'career' ? (params.career || {}) : null;
+  const mgr = careerCtx ? {
+    side: careerCtx.isHome ? 0 : 1,
+    morale: careerCtx.morale ?? 0.65,
+    perf: 0.5,
+    momentum: 0,
+    wheel: [],            // the four options on offer
+    wheelT: 0,            // seconds until the wheel rotates on its own
+    lockT: 0,             // cooldown after a pick before the next rotation
+    shoutT: 0,            // temporary-tactic revert timer
+    baseTactics: null,
+    talkDone: false,
+    fig: { x: PITCH.w / 2 - 8, y: -1.7, dirX: 1, dirY: 0, pose: 'idle', poseT: 0, walk: 0 },
+  } : null;
+  if (mgr) {
+    match.mgrSide = mgr.side;
+    match.mgrPerf = mgr.perf;
+    match.managerFig = mgr.fig;
+    match.managerLook = careerCtx.manager || {};
+    root.querySelector('#mgrHud').hidden = false;
+  }
+  let camMode = 'broadcast';                    // career can switch to 'manager'
+  let camBlend = 0;                             // 0 broadcast .. 1 manager
+  const mgrCamera = { ...cam };
+
+  const shoutEl = root.querySelector('#mgrShout');
+  const wheelEl = root.querySelector('#mgrWheel');
+  let shoutHide = null;
+  const sayShout = (text) => {
+    shoutEl.textContent = text;
+    shoutEl.hidden = false;
+    clearTimeout(shoutHide);
+    shoutHide = setTimeout(() => { shoutEl.hidden = true; }, 2600);
+  };
+
+  /* The shout book. `mood` is how it lands on morale, `perf` on the meter the
+   * sim reads, `tactics` is a temporary override of the real team instructions
+   * (reverted after ~14s), and `line` is what the manager bellows. */
+  const SHOUTS = {
+    pass:    { label: 'PASS THE BALL', line: 'PASS THE BALL!', perf: +0.07, mood: -0.02, tactics: { mentality: 'balanced' } },
+    attack:  { label: 'ATTACK',        line: 'GO AT THEM!', perf: +0.05, mood: +0.01, tactics: { mentality: 'attacking' } },
+    switchp: { label: 'SWITCH PLAY',   line: 'SWITCH IT WIDE!', perf: +0.04, mood: 0 },
+    slow:    { label: 'SLOW DOWN',     line: 'CALM! KEEP THE BALL!', perf: +0.02, mood: +0.02, tactics: { mentality: 'defensive' } },
+    press:   { label: 'PRESS',         line: 'PRESS! PRESS!', perf: +0.06, mood: -0.01, tactics: { pressing: 'high' }, stamina: 0.05 },
+    drop:    { label: 'DROP BACK',     line: 'DROP OFF! HOLD THE LINE!', perf: +0.03, mood: 0, tactics: { pressing: 'low', mentality: 'defensive' } },
+    tight:   { label: 'MARK TIGHT',    line: 'TIGHTER! NOBODY FREE!', perf: +0.05, mood: -0.01, tactics: { pressing: 'high' } },
+    compact: { label: 'STAY COMPACT',  line: 'COMPACT! STAY TOGETHER!', perf: +0.03, mood: +0.01, tactics: { pressing: 'normal', mentality: 'defensive' } },
+    enc:     { label: 'ENCOURAGE',     line: 'COME ON! KEEP GOING!', perf: +0.03, mood: +0.06 },
+    calm:    { label: 'CALM DOWN',     line: 'HEADS UP! PLAY OUR GAME!', perf: +0.02, mood: +0.04, tactics: { mentality: 'balanced', pressing: 'normal' } },
+    demand:  { label: 'DEMAND MORE',   line: 'NOT GOOD ENOUGH! MORE!', perf: +0.09, mood: -0.06 },
+    shoot:   { label: 'SHOOT',         line: 'HIT IT! SHOOT!', perf: +0.05, mood: 0, tactics: { mentality: 'attacking' } },
+    cross:   { label: 'CROSS',         line: 'GET IT IN THE BOX!', perf: +0.04, mood: 0 },
+    space:   { label: 'ATTACK SPACE',  line: 'RUN IN BEHIND!', perf: +0.05, mood: 0, tactics: { mentality: 'attacking' } },
+    change:  { label: 'CHANGE TACTICS', line: 'NEW SHAPE! LISTEN!', perf: +0.04, mood: -0.02, tactics: { pressing: 'high', mentality: 'attacking' } },
+  };
+
+  /* Which four shouts fit this moment. Conceding recently outranks everything;
+   * then whether the ball is ours and where it is. */
+  let concededAt = -99;
+  const wheelFor = () => {
+    const t = match.t;
+    if (t - concededAt < 14) return ['enc', 'calm', 'change', 'demand'];
+    const b = match.ball;
+    const ours = b.owner && b.owner.team === mgr.side;
+    const attackingThird = mgr.side === 0 ? b.x > PITCH.w * 0.68 : b.x < PITCH.w * 0.32;
+    if (ours && attackingThird) return ['shoot', 'cross', 'pass', 'space'];
+    if (ours) return ['pass', 'attack', 'switchp', 'slow'];
+    return ['press', 'drop', 'tight', 'compact'];
+  };
+
+  const paintWheel = () => {
+    wheelEl.innerHTML = mgr.wheel.map((k, i) =>
+      `<button class="mw-opt p${i}" data-shout="${k}">${SHOUTS[k].label}</button>`).join('');
+  };
+  const rotateWheel = () => { mgr.wheel = wheelFor(); mgr.wheelT = 10; paintWheel(); };
+
+  /* Personality-weighted delivery: a volatile squad takes DEMAND MORE badly
+   * and a spark-heavy one lifts further under it — computed from the XI. */
+  const squadTemper = () => {
+    const ps = match.teams[mgr.side].players;
+    let temper = 0; let spark = 0;
+    for (const p of ps) {
+      let h = 0; for (const ch of (p.ref?.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      temper += (h % 100) / 100; spark += ((h >> 7) % 100) / 100;
+    }
+    return { temper: temper / ps.length, spark: spark / ps.length };
+  };
+
+  const applyShout = (key) => {
+    const sh = SHOUTS[key];
+    const pers = squadTemper();
+    const moodHit = sh.mood < 0 ? sh.mood * (0.6 + pers.temper) : sh.mood;
+    const perfHit = sh.perf * (sh.mood < 0 ? 0.7 + pers.spark * 0.6 : 1);
+    mgr.morale = Math.max(0.05, Math.min(1, mgr.morale + moodHit));
+    mgr.perf = Math.max(0.1, Math.min(1, mgr.perf + perfHit));
+    if (sh.tactics) {
+      if (!mgr.baseTactics) mgr.baseTactics = { ...match.teams[mgr.side].tactics };
+      for (const [k, v] of Object.entries(sh.tactics)) match.setTactic(mgr.side, k, v);
+      mgr.shoutT = 14;
+    }
+    if (sh.stamina) for (const p of match.teams[mgr.side].players) p.stamina = Math.max(0.05, p.stamina - sh.stamina);
+    sayShout(sh.line);
+    mgr.fig.pose = 'shout'; mgr.fig.poseT = 1.6;
+    mgr.lockT = 5;
+    mgr.wheelT = 5;                                  // fresh options soon after a pick
+    sfx('whistle', 0);
+  };
+  wheelEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-shout]');
+    if (b && mgr && !paused && !ended) applyShout(b.dataset.shout);
+  });
+
+  /* Half-time talk: four options, once, and the players hear it in the second
+   * half through the same two meters everything else moves. */
+  const talkEl = root.querySelector('#mgrTalk');
+  const TALKS = [
+    ['enc',    'ENCOURAGE',   '“We are doing well. Keep going.”',      { mood: +0.10, perf: +0.03 }],
+    ['demand', 'DEMAND MORE', '“We need to do better than this.”',     { mood: -0.05, perf: +0.10 }],
+    ['calm',   'CALM DOWN',   '“Stay focused. Play our game.”',        { mood: +0.05, perf: +0.05 }],
+    ['rage',   'HAIRDRYER',   '“This is not good enough. Nowhere near.”', { mood: -0.12, perf: +0.15 }],
+  ];
+  const showTalk = () => {
+    const [h, a] = match.teams;
+    talkEl.innerHTML = `
+      <div class="mt-card glass">
+        <span class="mt-kicker">Half time · ${h.score}–${a.score}</span>
+        <h3>The dressing-room huddle is yours</h3>
+        <div class="mt-opts">
+          ${TALKS.map(([id, label, line]) => `
+            <button class="mt-opt" data-talk="${id}"><b>${label}</b><span>${line}</span></button>`).join('')}
+        </div>
+      </div>`;
+    talkEl.hidden = false;
+    // the huddle: my XI gathers around the manager while the talk is open
+    const f = mgr.fig;
+    match.teams[mgr.side].players.forEach((p, i) => {
+      const ang = (i / 11) * Math.PI * 2;
+      p.x = f.x + Math.cos(ang) * 3.2; p.y = Math.max(1.4, f.y + 4 + Math.sin(ang) * 2.4);
+      p.vx = p.vy = 0; p.dirX = f.x - p.x; p.dirY = (f.y + 4) - p.y;
+    });
+  };
+  talkEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-talk]');
+    if (!b) return;
+    const t = TALKS.find(([id]) => id === b.dataset.talk);
+    const pers = squadTemper();
+    const mood = t[3].mood < 0 ? t[3].mood * (0.6 + pers.temper) : t[3].mood;
+    mgr.morale = Math.max(0.05, Math.min(1, mgr.morale + mood));
+    mgr.perf = Math.max(0.1, Math.min(1, mgr.perf + t[3].perf * (t[3].mood < 0 ? 0.7 + pers.spark * 0.6 : 1)));
+    mgr.talkDone = true;
+    talkEl.hidden = true;
+    setPaused(false);
+  });
+
+  root.querySelector('#mgrCam')?.addEventListener('click', () => {
+    camMode = camMode === 'broadcast' ? 'manager' : 'broadcast';
+    toast(camMode === 'manager' ? 'Manager cam — the touchline view' : 'Broadcast cam', 'info');
+  });
+
+  /** Per-frame manager update: meters drift, wheel rotates, figure moves. */
+  const tickManager = (dt) => {
+    if (!mgr || ended) return;
+    // performance is pulled between morale and the run of play, never pinned
+    const pull = 0.35 + mgr.morale * 0.3 + mgr.momentum * 0.2;
+    mgr.perf += (pull - mgr.perf) * dt * 0.05;
+    mgr.momentum *= 1 - dt * 0.04;
+    match.mgrPerf = mgr.perf;
+
+    if (mgr.lockT > 0) mgr.lockT -= dt;
+    mgr.wheelT -= dt;
+    if (mgr.wheelT <= 0 && mgr.lockT <= 0) rotateWheel();
+
+    if (mgr.shoutT > 0) {
+      mgr.shoutT -= dt;
+      if (mgr.shoutT <= 0 && mgr.baseTactics) {
+        for (const [k, v] of Object.entries(mgr.baseTactics)) match.setTactic(mgr.side, k, v);
+        mgr.baseTactics = null;
+      }
+    }
+
+    // the figure: walks the technical area, tracking play without teleporting
+    const f = mgr.fig;
+    const half = PITCH.w / 2;
+    const lo = mgr.side === 0 ? half - 16 : half + 2;
+    const want = Math.max(lo, Math.min(lo + 14, match.ball.x - 2 + (mgr.side === 0 ? 0 : 4)));
+    const dx = want - f.x;
+    const step = Math.max(-2.2, Math.min(2.2, dx)) * dt;
+    f.x += step;
+    f.walk = Math.abs(dx) > 0.6 ? f.walk + dt * 6 : 0;
+    f.dirX = Math.abs(dx) > 0.6 ? Math.sign(dx) : 0.12;
+    f.dirY = Math.abs(dx) > 0.6 ? 0 : 1;
+    if (f.poseT > 0) { f.poseT -= dt; if (f.poseT <= 0) f.pose = 'idle'; }
+
+    // meters into the HUD
+    root.querySelector('#mmMorale').style.width = `${Math.round(mgr.morale * 100)}%`;
+    root.querySelector('#mmPerf').style.width = `${Math.round(mgr.perf * 100)}%`;
+  };
+
+  /** Career reactions to match events, fed from the cue stream. */
+  const mgrCue = (name) => {
+    if (!mgr) return;
+    if (name === 'goal') {
+      const mine = match.goalTeam === mgr.side;
+      if (mine) { mgr.fig.pose = 'celebrate'; mgr.fig.poseT = 4; mgr.morale = Math.min(1, mgr.morale + 0.08); mgr.momentum = Math.min(1, mgr.momentum + 0.5); }
+      else { mgr.fig.pose = 'slump'; mgr.fig.poseT = 4; mgr.morale = Math.max(0.05, mgr.morale - 0.08); concededAt = match.t; rotateWheel(); }
+    }
+    if (name === 'save' || name === 'post') { mgr.fig.pose = 'head'; mgr.fig.poseT = 2.2; }
+    if (name === 'whistle') { mgr.fig.pose = 'idle'; }
+  };
+
+  /** The manager camera: over the shoulder on the touchline, pitch readable. */
+  const tickCamera = (dt) => {
+    const wantBlend = careerCtx && camMode === 'manager' ? 1 : 0;
+    camBlend += (wantBlend - camBlend) * Math.min(1, dt * 2.2);
+    if (!careerCtx || camBlend < 0.003) { camBlend = wantBlend ? camBlend : 0; return; }
+    /* Third person means the manager is IN the shot: camera over his right
+     * shoulder, low, him in the lower third and the pitch opening up beyond —
+     * not a first-person view from where he stands. */
+    const f = mgr.fig;
+    mgrCamera.x = f.x - 1.6;
+    mgrCamera.y = f.y - 5.4;
+    mgrCamera.z = 2.8;
+    mgrCamera.tx = f.x + 0.6;
+    mgrCamera.ty = f.y + 16;
+    mgrCamera.tz = 0.8;
+    mgrCamera.hfov = 55;
+    const k = camBlend;
+    for (const key of ['x', 'y', 'z', 'tx', 'ty', 'tz', 'hfov']) {
+      cam[key] = cam[key] * (1 - k) + mgrCamera[key] * k;
+    }
+  };
 
   document.body.classList.add('in-game');
   resumeAudio();
@@ -891,7 +1150,8 @@ export function mount(root, params) {
     sender?.tick(dt);
 
     if (input.pressed('pause') && !ended && !loading) {
-      if (!online) setPaused(!paused);
+      if (careerCtx && halfTime && !talkEl.hidden) { /* the talk is modal */ }
+      else if (!online) setPaused(!paused);
       else if (!syncActive) {
         /* Every pause input — Options on either pad, Esc, the HUD button (it
          * synthesizes this press) — queues the shared pause AND opens the local
@@ -1015,6 +1275,8 @@ export function mount(root, params) {
         match.update(dt, inputs);
       }
       updateCamera(cam, match, dt);
+      tickManager(dt);
+      tickCamera(dt);
       match.basis = groundBasis(cam);
       // keep taping through the goal phase, otherwise the clip stops at the line
       if (match.phase === 'play' || match.phase === 'goal') {
@@ -1029,6 +1291,7 @@ export function mount(root, params) {
       while (match.cues.length) {
         const c = match.cues.shift();
         sfx(c.name, c.arg);
+        mgrCue(c.name);
         if (online?.host) outgoing.push([c.name, c.arg ?? 0]);
       }
 
@@ -1090,10 +1353,20 @@ export function mount(root, params) {
      * Online is excluded for the same reason pausing is: the other player's
      * clock keeps running whatever this one does. */
     if (match.phase === 'half' && lastPhase !== 'half' && !online && !ended) {
-      halfTime = true;
-      section = 'subs';
-      navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'subs');
-      setPaused(true);
+      if (careerCtx) {
+        /* The interval belongs to the team talk. The sim freezes exactly as an
+         * ordinary pause; the huddle is drawn by moving the XI, which the
+         * second-half position reset undoes the moment play resumes. */
+        halfTime = true;
+        setPaused(true);
+        overlay.hidden = true; overlay.innerHTML = '';   // the talk replaces the menu
+        showTalk();
+      } else {
+        halfTime = true;
+        section = 'subs';
+        navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'subs');
+        setPaused(true);
+      }
     }
 
     if (match.phase !== 'goal' && lastPhase === 'goal') {
@@ -1166,7 +1439,7 @@ export function mount(root, params) {
   };
 
   const panelFor = (id) => {
-    const team = match.teams[online ? online.seat : match.human];
+    const team = match.teams[online ? online.seat : (match.human ?? mgr?.side ?? 0)];
     if (id === 'team') {
       const seg = (key, opts) => `
         <div class="p-row">
@@ -1425,6 +1698,12 @@ export function mount(root, params) {
         // possession is reported home-first, and "mine" depends on the seat
         possession: online && online.seat === 1 ? pa : ph,
       });
+    } else if (mode === 'career') {
+      /* The result flows into the career: my score home-first, the rest of the
+       * round simulated, the table and the calendar moved on. Morale carries
+       * out of the match — advanceWeek folds the result on top of it. */
+      update((s) => { if (s.career) s.career.morale = mgr ? mgr.morale : s.career.morale; });
+      advanceWeek([h.score, a.score]);
     } else {
       // a friendly is pocket money next to a division match
       update((s) => { s.club.apex += 200 + (online ? mine : h.score) * 60; });
@@ -1468,11 +1747,18 @@ export function mount(root, params) {
               ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
               : ''}
           </div>` : ''}
+        ${mgr ? `
+          <div class="gm-stats mgr-ft">
+            <div><b>${Math.round(mgr.morale * 100)}</b><span>Team morale</span><b>${Math.round(mgr.perf * 100)}</b></div>
+            <div><span class="mgr-ft-note">Performance — where the touchline left them</span></div>
+          </div>` : ''}
         ${graphicsPrompt()}
-        ${drawnKickOff ? `
+        ${drawnKickOff && mode !== 'career' ? `
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
         <div class="gm-btns">
-          ${online
+          ${mode === 'career'
+            ? '<button class="btn primary" data-o="career">Continue the season</button>'
+            : online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
@@ -1501,6 +1787,7 @@ export function mount(root, params) {
       if (o === 'resume') setPaused(false);
       if (o === 'quit') { exitFullscreen(); navigate(online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
+      if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);
       return;
     }
@@ -1557,7 +1844,7 @@ export function mount(root, params) {
    * the host, since the host owns the simulation.
    */
   function setShape(key, val) {
-    const team = online ? online.seat : match.human;
+    const team = online ? online.seat : (match.human ?? mgr?.side ?? 0);
     if (key === 'formation') match.applyFormation(team, val);
     else match.setTactic(team, key, val);
     if (online && !online.host) net.send({ t: 'evt', k: 'shape', team, key, val });
