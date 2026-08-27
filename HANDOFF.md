@@ -15,6 +15,28 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Career release cut (v60)
+- Real managers list is Pep ONLY (tools/build-career-db.py MANAGERS) — the
+  licensed-likeness caution, applied on the owner's call. Custom stays full.
+- 35 clubs (added new/avl/vil/ath/rom/rbl/vfb/mon/shb/ett). Pool has ~99 spare.
+- Money inputs everywhere in negotiation take shorthand via `parseAmount`
+  ('60m', '500k', '1.2b') and echo the parsed value live (#negEcho).
+- Negotiation tension: `neg.tension` rises per rejection (more for lowballs);
+  at 1.0 talks end. An offer under 34% of ask (or 30% of wage floor) ends talks
+  instantly. Any walk-away freezes the player via `car.frozen[name] = week+5`
+  (TALKS_FREEZE_WEEKS) — 5 rounds at MONTHS_PER_WEEK=2 = the "10 months". The
+  market row shows the countdown badge instead of the Offer button
+  (`frozenOut()`).
+- Touchline HUD rebuilt: diamond wheel with a hub, numbered slots, keys 1-4
+  (and C for camera) via a window keydown listener that is removed in the match
+  teardown. Meters carry names + live values.
+- `assets/manager.glb`, if present, replaces the suit rig (GLTFLoader, scaled
+  to 1.85m, y-up -> z-up, clip 0 loops; silent fallback). NOT in the SW
+  precache on purpose — see assets/README-manager-model.md. The web uploader
+  caps at 25MB; a git push takes up to 100MB, which is how a 30MB model gets in.
+- Tutorial: three Career steps; currentScreen() learned to recognise the
+  career screen (.cm-modes/.career-head).
+
 ### Manager Career V1 (v59)
 The pieces and where they live:
 - `tools/build-career-db.py` -> `js/data/careerDb.js` (GENERATED): 25 real clubs

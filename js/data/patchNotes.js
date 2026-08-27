@@ -18,6 +18,45 @@
  */
 export const RELEASES = [
   {
+    version: 'v60',
+    date: '2026-08-27',
+    tag: 'Career',
+    title: 'Career, release cut',
+    lede: 'Ten more clubs, negotiations with manners and a patience bar, plain-'
+        + 'money bids, and a touchline HUD rebuilt for release.',
+    entries: [
+      {
+        head: 'Thirty-five clubs',
+        summary: 'Every league filled out — the Saudi Pro League alone grew to six.',
+        detail: 'Newcastle, Aston Villa, Villarreal, Athletic Club, Roma, RB Leipzig, '
+              + 'Stuttgart, Monaco, Al Shabab and Al Ettifaq join, taking the career world '
+              + 'to 35 clubs across six leagues. One real manager remains on the board — '
+              + 'Pep — alongside the full custom builder; the calendar reads in months now, '
+              + 'two to a matchday.',
+      },
+      {
+        head: 'Negotiations you can read',
+        summary: 'Type money like a human — 60m, 500k — see both numbers side by '
+               + 'side, and watch their patience run out.',
+        detail: 'The offer box takes plain shorthand and echoes exactly what it means '
+              + 'while you type. Their number and yours sit side by side, and above them a '
+              + 'patience bar drains with every rejected round. Insult them with a joke '
+              + 'number and the meeting ends on the spot — and that player\'s people stop '
+              + 'taking your calls for ten months, shown right on his market row.',
+      },
+      {
+        head: 'A touchline HUD worth shipping',
+        summary: 'The shout wheel is a proper diamond of four big buttons, numbered '
+               + '1–4 on the keyboard, with labelled morale and performance meters.',
+        detail: 'The four shouts sit clear of each other with their hotkeys stitched on, '
+              + 'C flips between broadcast and manager cam, and the two meters carry their '
+              + 'names and live numbers, shifting colour as they move. Career also joined '
+              + 'the game tutorial — three new steps cover the touchline, the meters and '
+              + 'the market\'s manners.',
+      },
+    ],
+  },
+  {
     version: 'v59',
     date: '2026-08-27',
     tag: 'Career',

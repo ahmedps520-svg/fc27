@@ -12,7 +12,8 @@ import {
   CAREER_CLUBS, REAL_MANAGERS, careerClub, leagueClubs, squadOf, clubOverall,
   startCareer, myFixture, advanceWeek, sortedCareerTable, marketPool, askingPrice,
   openNegotiation, respondToFee, respondToTerms, completeTransfer, renewContract,
-  releaseExpired, resolveEntry, fmtCoins, simScore, START_COINS,
+  releaseExpired, resolveEntry, fmtCoins, simScore, START_COINS, parseAmount,
+  frozenOut, MONTHS_PER_WEEK,
 } from '../career.js';
 import { NATION_COLORS } from '../data/realPlayers.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
@@ -167,7 +168,7 @@ function hubHTML(car) {
         <span>${club.league} · Season ${car.season} · ${car.manager.name}</span>
       </div>
       <div class="ch-stats">
-        <div><b>${car.week <= car.fixtures.length ? car.week : '—'}<small>/${car.fixtures.length}</small></b><span>Week</span></div>
+        <div><b>${car.week <= car.fixtures.length ? `M${car.week * MONTHS_PER_WEEK}` : '—'}<small>/${car.fixtures.length * MONTHS_PER_WEEK}</small></b><span>Month</span></div>
         <div><b>${pos}${ordinal(pos)}</b><span>Position</span></div>
         <div><b class="ch-coins">◎ ${fmtCoins(car.coins)}</b><span>Club Coins</span></div>
         <div><b>${Math.round(car.morale * 100)}</b><span>Morale</span></div>
@@ -313,7 +314,9 @@ function transfersHTML(car) {
             <span class="cq-name">${p.name}<small>${p.club.name} · ${p.contract?.years ?? '?'}y left</small></span>
             <span class="cq-val">◎ ${fmtCoins(askingPrice(p, p.contract))}</span>
             <button class="mini-btn ${short.has(p.name) ? 'on' : ''}" data-short="${p.name}">★</button>
-            <button class="btn sm" data-offer="${p.name}" data-from="${p.clubId}">Offer</button>
+            ${frozenOut(car, p.name)
+              ? `<span class="tm-frozen" title="You insulted them recently">${frozenOut(car, p.name) * MONTHS_PER_WEEK}mo</span>`
+              : `<button class="btn sm" data-offer="${p.name}" data-from="${p.clubId}">Offer</button>`}
           </div>`).join('')}
         ${rows.length ? '' : '<p class="ov-empty">Nobody matches those filters.</p>'}
       </div>
@@ -341,6 +344,11 @@ function negotiationHTML(car) {
       <button class="btn primary" id="negClose">Back to the market</button></section>`;
   }
   const ask = askingPrice(p, p.contract);
+  const tension = `
+    <div class="neg-tension ${neg.tension > 0.66 ? 'hot' : neg.tension > 0.33 ? 'warm' : ''}">
+      <span>Patience</span><i><b style="width:${Math.round((1 - neg.tension) * 100)}%"></b></i>
+      <em>${neg.tension > 0.66 ? 'One more bad number ends this' : neg.tension > 0.33 ? 'They are losing interest' : 'Talks are cordial'}</em>
+    </div>`;
   if (neg.state === 'fee') return `
     <section class="panel glass neg">
       <header class="panel-head"><h2>Transfer offer · ${p.name}</h2><span class="tag">${p.club.name}</span></header>
@@ -349,9 +357,15 @@ function negotiationHTML(car) {
         <span><b>${p.contract?.years ?? '?'}y</b> Contract left</span>
         <span><b>◎ ${fmtCoins(p.value)}</b> Value</span>
       </div>
-      <p class="neg-note">${neg.counter ? `Their counter: <b>◎ ${fmtCoins(neg.counter)}</b>` : `They value him around <b>◎ ${fmtCoins(ask)}</b>. A short contract is your leverage.`}</p>
+      ${tension}
+      <div class="neg-vs">
+        <div><span>They want</span><b>◎ ${fmtCoins(neg.counter || ask)}</b></div>
+        <div class="nv-you"><span>You offer</span><b id="negEcho">—</b></div>
+      </div>
+      <p class="neg-note">Insult them with a joke number and talks end for 10 months.</p>
       <div class="neg-offer">
-        <input id="negFee" type="number" step="1000000" min="0" value="${neg.counter || Math.round(ask * 0.85)}">
+        <input id="negFee" inputmode="text" placeholder="e.g. 60m or 500k"
+               value="${fmtCoins(neg.counter || Math.round(ask * 0.85))}">
         <button class="btn primary" id="negSubmit">Submit offer</button>
         <button class="btn ghost" id="negClose">Walk away</button>
       </div>
@@ -360,9 +374,14 @@ function negotiationHTML(car) {
   if (neg.state === 'terms') return `
     <section class="panel glass neg">
       <header class="panel-head"><h2>Contract talks · ${p.name}</h2><span class="tag">Fee agreed ◎ ${fmtCoins(neg.agreedFee)}</span></header>
-      <p class="neg-note">${neg.floorNote || `He earns ${fmtCoins(p.wage)}/wk now. Longer deals buy a lower wage.`}</p>
+      ${tension}
+      <div class="neg-vs">
+        <div><span>He earns now</span><b>◎ ${fmtCoins(p.wage)}/wk</b></div>
+        <div class="nv-you"><span>Your offer</span><b id="negEcho">—</b></div>
+      </div>
+      <p class="neg-note">${neg.floorNote || 'Longer deals buy a lower wage. A joke offer ends it for 10 months.'}</p>
       <div class="neg-offer">
-        <label>Wage/week <input id="negWage" type="number" step="1000" value="${Math.round(p.wage * 1.15)}"></label>
+        <label>Wage / week <input id="negWage" inputmode="text" placeholder="e.g. 300k" value="${fmtCoins(Math.round(p.wage * 1.15))}"></label>
         <label>Years <select id="negYears">${[1, 2, 3, 4].map((y) => `<option ${y === 3 ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
         <button class="btn primary" id="negTerms">Offer terms</button>
         <button class="btn ghost" id="negClose">Walk away</button>
@@ -549,25 +568,43 @@ function wire(root) {
     rerender();
   }));
   root.querySelector('#negClose')?.addEventListener('click', () => { update((s) => { s.career.negotiation = null; }); rerender(); });
+  // money inputs take human shorthand and echo what it means as you type
+  const echoAmount = (inputId, suffix = '') => {
+    const inp = root.querySelector(inputId);
+    const echo = root.querySelector('#negEcho');
+    if (!inp || !echo) return;
+    const paint = () => {
+      const n = parseAmount(inp.value);
+      echo.textContent = isNaN(n) ? '—' : `◎ ${fmtCoins(n)}${suffix}`;
+      echo.classList.toggle('bad', isNaN(n));
+    };
+    inp.addEventListener('input', paint);
+    paint();
+  };
+  echoAmount('#negFee');
+  echoAmount('#negWage', '/wk');
   root.querySelector('#negSubmit')?.addEventListener('click', () => {
-    const fee = +root.querySelector('#negFee').value || 0;
+    const fee = parseAmount(root.querySelector('#negFee').value);
+    if (isNaN(fee)) { toast('Type an amount like 60m or 500k', 'warn'); return; }
     if (fee > car().coins) { toast('You do not have that much', 'warn'); return; }
     update((s) => {
       const neg = s.career.negotiation;
       const p = marketPool(s.career).find((x) => x.name === neg.player);
-      const res = respondToFee(neg, fee, p, p.contract);
+      const res = respondToFee(s.career, neg, fee, p, p.contract);
       toast(res.note, res.ok ? 'good' : 'info');
     });
     rerender();
   });
   root.querySelector('#negTerms')?.addEventListener('click', () => {
-    const wage = +root.querySelector('#negWage').value || 0;
+    const wage = parseAmount(root.querySelector('#negWage').value);
+    if (isNaN(wage)) { toast('Type a wage like 300k', 'warn'); return; }
     const years = +root.querySelector('#negYears').value || 3;
     update((s) => {
       const neg = s.career.negotiation;
       const p = marketPool(s.career).find((x) => x.name === neg.player);
-      const res = respondToTerms(neg, wage, years, p);
+      const res = respondToTerms(s.career, neg, wage, years, p);
       if (!res.ok && res.note) { neg.floorNote = res.note; }
+      if (neg.state === 'off') toast(res.note, 'warn');
     });
     rerender();
   });
