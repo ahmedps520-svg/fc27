@@ -45,13 +45,16 @@ matchmaking, kick-off): no errors, both sides in the match, HUD reading the peer
 number. Note the headless number is dominated by the opponent's frame time -
 that is honest, the readout includes the opponent's main thread.
 
-### Maintenance mode (v57)
-`MAINTENANCE=1` in the server environment -> everything answers `maintenance.html`
-with 503 (`Retry-After: 600`), API included, and `/ws` is refused. Only the
-notice's own art is still served. Usage is in the README; the reasoning is on the
-constant in `server/server.js`. The page polls `/api/version` and lets itself back
-in when the 503 stops, which is why it must never be added to the service
-worker's precache list.
+### Maintenance page (v57)
+`maintenance.html` is a standalone notice and **nothing else** — no server mode, no polling, no
+self-redirect. An earlier cut of this had a `MAINTENANCE=1` server flag that answered every route
+with 503 and a page that polled its way back in; it was removed on the owner's call because Render
+has its own maintenance switch and two mechanisms fighting over the same job is worse than one.
+
+The thing to remember if it comes up again: a platform maintenance switch redirects **off** the
+service it is disabling, so the page cannot be hosted on that service. GitHub Pages off this repo
+is the intended home, which is also why the page keeps relative asset paths (they resolve inside a
+copy of the repo) and an absolute "Try again" target with a `?back=` override.
 
 ### Menu key art is engine-shot and reproducible (v56)
 `assets/keyart.jpg` is now a 2560x1440 frame from the game's own renderer,

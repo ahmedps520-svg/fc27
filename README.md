@@ -71,26 +71,29 @@ The page must be HTTPS for this: browsers block `ws://` from an `https://` page,
 
 ### Taking the game down for maintenance
 
-Set `MAINTENANCE=1` in the server's environment (on Render: Environment → add the variable → save,
-which restarts the service). Everything — the game, the API, the match hub — then answers with
-`maintenance.html` and HTTP **503**, and the websocket is refused so nobody sits in matchmaking
-waiting for an opponent who cannot arrive. Remove the variable to come back.
+`maintenance.html` is a standalone notice — its own styles, no build step, and nothing in it polls
+or redirects. It is meant to be the page a platform-level maintenance switch (Render's, for
+example) redirects to while the service is off.
 
-503 rather than a redirect on purpose: browsers and service workers remember redirects, and people
-end up stranded on the notice after the game is back. Same URL, different page, for exactly as long
-as the flag is set. The notice polls `/api/version` every 30 seconds — plus once when it opens —
-and reloads itself into the game the moment that stops being a 503, so a player who leaves the tab
-open is playing again without touching anything.
-
-If instead you use a platform-level maintenance switch that redirects to a page hosted elsewhere,
-`maintenance.html` works standalone; point it back at the game so it can tell when the game
-returns:
+**It has to be hosted somewhere other than the service being taken down.** A maintenance switch
+stops the service answering, so a copy of this page living on that same service is unreachable
+exactly when it is needed. Publish the repo with GitHub Pages (Settings → Pages → deploy from
+`main`, root) and the notice is served at:
 
 ```
-https://your-static-host/maintenance.html?back=https://fc27.onrender.com
+https://<user>.github.io/<repo>/maintenance.html
 ```
 
-That cross-origin check needs the server started with `ALLOW_ORIGIN` naming the page's origin.
+That is the URL to paste into the maintenance switch. The "Try again" button sends people back to
+`https://fc27.onrender.com`; point it somewhere else with `?back=`:
+
+```
+https://<user>.github.io/<repo>/maintenance.html?back=https://your-app.onrender.com
+```
+
+The page also needs `assets/keyart.jpg` and `icons/favicon-64.png` next to it for its backdrop,
+which is automatic when it is served from a copy of this repo. Without them it falls back to a
+plain dark background and still reads.
 
 ### Where accounts are stored
 

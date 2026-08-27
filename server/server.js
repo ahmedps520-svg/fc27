@@ -24,26 +24,6 @@ const PORT = Number(process.env.PORT) || Number(process.argv[2]) || 8412;
 // Set when the game is served from somewhere else (e.g. GitHub Pages) and only
 // the API and match hub live here. Comma-separated, or '*' to allow any origin.
 const ALLOWED = (process.env.ALLOW_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
-/* Maintenance mode.
- *
- * Set MAINTENANCE=1 in the host's environment and everything — the game, the
- * API, the match hub — answers with `maintenance.html` and **503**, which is
- * the status that says "temporarily down, come back", not "gone".
- *
- * 503 rather than a redirect on purpose: a redirect to a different URL gets
- * remembered by browsers and by the service worker, and people end up stuck on
- * the notice after the game is back. This way the same URL simply serves a
- * different page for as long as the flag is set, and the notice polls
- * /api/version until it stops being a 503 and then reloads itself.
- *
- * The one thing still answered normally is the asset the notice needs to look
- * like the game (its key art and its icon). Everything else, including saves,
- * is refused — a cloud save written half way through a deploy is exactly what
- * this mode exists to prevent. */
-const MAINTENANCE = /^(1|true|on|yes)$/i.test(process.env.MAINTENANCE || '');
-const MAINT_ALLOW = new Set(['/maintenance.html', '/assets/keyart.jpg',
-  '/icons/favicon-64.png', '/icons/icon-192.png']);
-
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -207,24 +187,6 @@ function cors(req, res) {
 const server = http.createServer((req, res) => {
   const route = decodeURIComponent(req.url.split('?')[0]);
 
-  if (MAINTENANCE && !MAINT_ALLOW.has(route)) {
-    const headers = {
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-      'Retry-After': '600',
-    };
-    if (route.startsWith('/api/')) {
-      cors(req, res);
-      res.writeHead(503, { ...headers, 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: 'maintenance' }));
-      return;
-    }
-    fs.readFile(path.join(ROOT, 'maintenance.html'), (err, buf) => {
-      res.writeHead(503, { ...headers, 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(err ? 'APEX XI is down for maintenance. Please try again shortly.' : buf);
-    });
-    return;
-  }
-
   if (route.startsWith('/api/')) {
     cors(req, res);
     if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
@@ -372,14 +334,6 @@ function tryMatchmake() {
 setInterval(() => { if (queue.length >= 2) tryMatchmake(); }, 3000).unref();
 
 ws.attach(server, '/ws', (sock) => {
-  /* No online play during maintenance. Refusing the socket here rather than
-     letting it connect and go quiet is what stops a client sitting in
-     matchmaking for the whole deploy waiting for an opponent who cannot come. */
-  if (MAINTENANCE) {
-    try { sock.send({ t: 'maintenance' }); } catch { /* closing anyway */ }
-    sock.close();
-    return;
-  }
   const peer = {
     sock, name: null, acct: null, club: null, squad: null, divIdx: 0,
     opponent: null, matchId: null, isHost: false, room: null, queuedAt: 0,
