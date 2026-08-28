@@ -1987,7 +1987,9 @@ export function createRenderer(canvas, match, quality, models = false) {
          * the -y (lens-facing) half. Turning through the shortest arc, and
          * only ever between pitch-facing and the two walk profiles, keeps his
          * eyes on the football. */
-        const wantYaw = Math.atan2(f.dirY, f.dirX) - Math.PI / 2;
+        /* +π/2, not -π/2: this asset's rest forward is -y (it faced the lens
+         * at yaw 0), so the offset flips it — idle now faces the pitch. */
+        const wantYaw = Math.atan2(f.dirY, f.dirX) + Math.PI / 2;
         let cur = mgrModel.rotation.z;
         let diff = wantYaw - cur;
         while (diff > Math.PI) diff -= Math.PI * 2;

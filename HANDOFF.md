@@ -15,6 +15,13 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Manager cam is the career default (v63)
+`camMode` starts as 'manager' when `careerCtx` is set, 'broadcast' everywhere
+else. And the model's rest forward is **-y** — at yaw 0 it faces the lens — so
+the yaw offset is `atan2(dirY,dirX) + PI/2`, not minus. If the model is ever
+replaced, re-check which way it faces at zero rotation before trusting any
+offset; the tell is the very first frame of a career match.
+
 ### Career mobile + control pass (v62)
 - Career matches skip the whole player touch layer (`pointer: coarse` init is
   gated on `mode !== 'career'`) — the wheel, meters, cam toggle and two
