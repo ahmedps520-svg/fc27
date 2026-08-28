@@ -156,28 +156,39 @@ function clubsHTML() {
 /* ------------------------------------------------------------------ *
  * The hub
  * ------------------------------------------------------------------ */
+/* The hub. One banner that IS the club — crest large, colours bleeding through
+ * the whole header, the season's vital numbers as chips — over a segmented
+ * in-flow nav (`.cnav`, deliberately NOT `.tabs`: that class is the Ultimate
+ * XI bottom dock, position:fixed, and borrowing it pinned the career nav over
+ * the page's own content — the "menu looks broken" bug). */
 function hubHTML(car) {
   const club = careerClub(car.clubId);
   const table = sortedCareerTable(car);
+  const row = car.table[car.clubId];
   const pos = table.findIndex((r) => r.id === car.clubId) + 1;
+  const NAV = [['overview', 'Overview', '◉'], ['squad', 'Squad', '⬢'], ['transfers', 'Transfers', '⇄'],
+    ['fixtures', 'Fixtures', '▤'], ['club', 'Club', '⛨'], ['career', 'Career', '★']];
   return `
-    <header class="career-head glass" style="--team:${club.colors[0]};--team2:${club.colors[1]}">
-      <div class="ch-crest">${crestSVG(crestOf(club), club.short, 62)}</div>
-      <div class="ch-id">
-        <b>${club.name}</b>
-        <span>${club.league} · Season ${car.season} · ${car.manager.name}</span>
+    <header class="chub" style="--team:${club.colors[0]};--team2:${club.colors[1]}">
+      <div class="chub-top">
+        <span class="chub-crest">${crestSVG(crestOf(club), club.short, 74)}</span>
+        <div class="chub-id">
+          <b>${club.name}</b>
+          <span>${club.league} · Season ${car.season}</span>
+          <span class="chub-mgr">${car.manager.name}</span>
+        </div>
+        <div class="chub-coins"><span>Club Coins</span><b>◎ ${fmtCoins(car.coins)}</b></div>
       </div>
-      <div class="ch-stats">
-        <div><b>${car.week <= car.fixtures.length ? `M${car.week * MONTHS_PER_WEEK}` : '—'}<small>/${car.fixtures.length * MONTHS_PER_WEEK}</small></b><span>Month</span></div>
-        <div><b>${pos}${ordinal(pos)}</b><span>Position</span></div>
-        <div><b class="ch-coins">◎ ${fmtCoins(car.coins)}</b><span>Club Coins</span></div>
-        <div><b>${Math.round(car.morale * 100)}</b><span>Morale</span></div>
+      <div class="chub-chips">
+        <span class="chip"><b>${pos}${ordinal(pos)}</b> of ${table.length}</span>
+        <span class="chip"><b>${row.pts}</b> pts</span>
+        <span class="chip"><b>${row.w}-${row.d}-${row.l}</b> W-D-L</span>
+        <span class="chip"><b>M${Math.min(car.week, car.fixtures.length) * MONTHS_PER_WEEK}</b> of ${car.fixtures.length * MONTHS_PER_WEEK}</span>
+        <span class="chip ${car.morale < 0.35 ? 'bad' : car.morale > 0.7 ? 'good' : ''}"><b>${Math.round(car.morale * 100)}</b> morale</span>
       </div>
     </header>
-    <nav class="tabs" id="cTabs">
-      ${[['overview', 'Overview'], ['squad', 'Squad'], ['transfers', 'Transfers'],
-        ['fixtures', 'Fixtures'], ['club', 'Club'], ['career', 'Career']]
-        .map(([id, l]) => `<button class="tab ${tab === id ? 'on' : ''}" data-tab="${id}">${l}</button>`).join('')}
+    <nav class="cnav" id="cTabs">
+      ${NAV.map(([id, l, ic]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}"><i>${ic}</i>${l}</button>`).join('')}
     </nav>
     <div id="cBody">${hubBody(car)}</div>
     <div class="career-foot"><button class="btn ghost danger" id="quitCareer">Resign</button></div>`;
@@ -204,21 +215,21 @@ function overviewHTML(car) {
   };
   return `
     ${next ? `
-    <section class="panel glass ov-next">
-      <header class="panel-head"><h2>Week ${car.week} · ${club.league}</h2><span class="tag">${fx.isHome ? 'Home' : 'Away'}</span></header>
-      <div class="nm-fixture">
-        <div class="nm-team">${crestSVG(crestOf(next.home), next.home.short, 52)}<b>${next.home.name}</b><span>OVR ${clubOverall(next.home.id, car.squads)}</span></div>
-        <span class="nm-vs">VS</span>
-        <div class="nm-team">${crestSVG(crestOf(next.away), next.away.short, 52)}<b>${next.away.name}</b><span>OVR ${clubOverall(next.away.id, car.squads)}</span></div>
+    <section class="cfix" style="--th:${next.home.colors[0]};--ta:${next.away.colors[0]}">
+      <span class="cfix-kicker">Matchday · Month ${car.week * MONTHS_PER_WEEK} · ${club.league} · ${fx.isHome ? 'Home' : 'Away'}</span>
+      <div class="cfix-teams">
+        <div class="cfix-t">${crestSVG(crestOf(next.home), next.home.short, 64)}<b>${next.home.short}</b><span>${clubOverall(next.home.id, car.squads)} OVR</span></div>
+        <span class="cfix-vs">VS</span>
+        <div class="cfix-t">${crestSVG(crestOf(next.away), next.away.short, 64)}<b>${next.away.short}</b><span>${clubOverall(next.away.id, car.squads)} OVR</span></div>
       </div>
-      <div class="nm-actions">
-        <button class="btn primary big" id="playWeek">▶ Matchday — take the touchline</button>
+      <div class="cfix-actions">
+        <button class="btn primary big" id="playWeek">▶ Take the touchline</button>
         <button class="btn ghost" id="simWeek">Sim result</button>
       </div>
     </section>` : `
-    <section class="panel glass"><header class="panel-head"><h2>Week ${car.week} — no fixture</h2></header>
-      <p class="lede">A free week. The league plays on without you.</p>
-      <button class="btn primary" id="simWeek">Advance the week</button></section>`}
+    <section class="panel glass"><header class="panel-head"><h2>Month ${car.week * MONTHS_PER_WEEK} — no fixture</h2></header>
+      <p class="lede">A free month. The league plays on without you.</p>
+      <button class="btn primary" id="simWeek">Advance</button></section>`}
     <div class="ov-cols">
       <section class="panel glass">
         <header class="panel-head"><h2>Table</h2></header>

@@ -1981,7 +1981,18 @@ export function createRenderer(canvas, match, quality, models = false) {
       if (mgrModel && m.managerFig) {
         const f = m.managerFig;
         mgrModel.position.set(f.x, f.y, 0);
-        mgrModel.rotation.z = Math.atan2(f.dirY, f.dirX) - Math.PI / 2;
+        /* Yaw is smoothed toward the requested facing rather than snapped —
+         * the snap was the "he just looked at the camera" bug: for one frame
+         * between facings the interpolation of raw atan2 values swept through
+         * the -y (lens-facing) half. Turning through the shortest arc, and
+         * only ever between pitch-facing and the two walk profiles, keeps his
+         * eyes on the football. */
+        const wantYaw = Math.atan2(f.dirY, f.dirX) - Math.PI / 2;
+        let cur = mgrModel.rotation.z;
+        let diff = wantYaw - cur;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        mgrModel.rotation.z = cur + diff * Math.min(1, dt * 7);
         // the pose the match screen asked for, translated into the model's clips
         mgrPlay(
           f.pose === 'celebrate' ? 'celebrate'
