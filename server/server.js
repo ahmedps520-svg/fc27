@@ -17,6 +17,7 @@ const path = require('path');
 const crypto = require('crypto');
 const ws = require('./ws');
 const store = require('./store');
+const guard = require('./guard');
 
 const ROOT = path.resolve(__dirname, '..');
 // Hosting platforms inject the port they want you on; locally an argument wins.
@@ -110,12 +111,31 @@ const readBody = (req) => new Promise((resolve, reject) => {
 const authOf = (req) => store.byToken((req.headers.authorization || '').replace(/^Bearer /, ''));
 
 async function api(req, res, route) {
+  // a blanket ceiling on every endpoint, so no single address can occupy the
+  // box that is also running live matches
+  if (!guard.apiAllowed(req)) return json(res, 429, { error: 'Too many requests. Wait a moment.' });
+
   if (route === '/api/register' || route === '/api/login') {
     const body = await readBody(req);
+    /* Sign-in is the expensive endpoint (scrypt by design) and the one worth
+     * guessing at, so it is limited per address and per account name both.
+     * The message is deliberately the same either way: telling an attacker
+     * *which* limit they hit is telling them whether the account exists. */
+    const gate = route === '/api/register'
+      ? guard.registerAllowed(req)
+      : guard.loginAllowed(req, body.name);
+    if (!gate) {
+      console.warn(`[guard] ${route} throttled for ${guard.clientIP(req)}`);
+      return json(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+    }
     const r = route === '/api/register'
       ? store.register(body.name, body.pass)
       : store.login(body.name, body.pass);
-    if (r.error) return json(res, 400, { error: r.error });
+    if (r.error) {
+      // a wrong password is what costs; a correct one never counts against you
+      if (route === '/api/login') guard.loginFailed(req, body.name);
+      return json(res, 400, { error: r.error });
+    }
     return json(res, 200, {
       token: r.account.token,
       profile: store.publicProfile(r.account),
@@ -133,8 +153,19 @@ async function api(req, res, route) {
     const acct = authOf(req);
     if (!acct) return json(res, 401, { error: 'Signed out.' });
     if (req.method === 'GET') return json(res, 200, { save: acct.save });
+    if (!guard.saveAllowed(acct.name)) return json(res, 429, { error: 'Saving too often.' });
     const body = await readBody(req);
-    store.putSave(acct, body.save ?? null);
+    /* The client is authoritative about its own progress and always will be —
+     * but "authoritative" is not "unbounded". The save is checked against what
+     * playing the game can actually produce, and anything outside that is
+     * clamped and logged rather than trusted or rejected outright. */
+    const since = Date.now() - (acct.lastSeen || acct.created || Date.now());
+    // the rolling gain budget lives on the account, server-side: a client that
+    // can edit its own save must not be able to edit the thing measuring it
+    acct.guard = acct.guard || { since: 0, spent: 0 };
+    const { save, notes } = guard.sanitiseSave(body.save ?? null, acct.save, since, acct.guard);
+    if (notes.length) console.warn(`[guard] save from ${acct.name}: ${notes.join('; ')}`);
+    store.putSave(acct, save);
     return json(res, 200, { ok: true });
   }
 
@@ -184,6 +215,60 @@ function cors(req, res) {
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
+/* Headers on every page.
+ *
+ * `frame-ancestors 'none'` is the one that matters most here: without it any
+ * site can put the game in an invisible iframe over its own buttons and
+ * harvest clicks from a signed-in player. The CSP is written around what the
+ * game actually does — its own scripts, its own styles, inline `style=`
+ * attributes on generated markup, data: images for generated art, and no
+ * outbound connections beyond its own origin (wss included, for the hub).
+ * `object-src 'none'` and `base-uri 'self'` close the two classic injection
+ * escapes. Nothing here changes what the game can do; it changes what a page
+ * that manages to inject something could do with it. */
+/* The pages carry inline scripts that the game cannot do without — the import
+ * map in index.html above all, which is inline because import maps have to be
+ * (an external one is not supported widely enough to ship). Rather than open
+ * the policy with 'unsafe-inline', every inline block is hashed at boot and
+ * the hashes are named in the policy: exactly these scripts, nothing else.
+ *
+ * This is computed from the files on disk, so editing an inline block updates
+ * its hash on the next restart and no one has to remember. The first cut of
+ * this shipped without it and the game did not boot at all past the splash —
+ * which is the honest argument for testing a CSP against the real app rather
+ * than reading it and nodding. */
+function inlineScriptHashes() {
+  const out = new Set();
+  for (const f of ['index.html', 'notes.html']) {
+    let html = '';
+    try { html = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
+    for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+      out.add(`'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+    }
+  }
+  return [...out].join(' ');
+}
+
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=()',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    `script-src 'self' ${inlineScriptHashes()}`,
+    "worker-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "connect-src 'self' ws: wss:",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '),
+};
+
 const server = http.createServer((req, res) => {
   const route = decodeURIComponent(req.url.split('?')[0]);
 
@@ -211,6 +296,7 @@ const server = http.createServer((req, res) => {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
         Pragma: 'no-cache',
         Expires: '0',
+        ...SECURITY_HEADERS,
       });
       res.end(buf);
     });
@@ -249,6 +335,7 @@ function pair(a, b, kind) {
   const id = matchSeq++;
   a.opponent = b; b.opponent = a;
   a.matchId = id; b.matchId = id;
+  a.reported = false; b.reported = false;      // one result per match, per pairing
   // whoever waited longer hosts — they are likelier to have a stable connection,
   // and it makes the choice deterministic rather than a race
   a.isHost = true; b.isHost = false;
@@ -336,12 +423,25 @@ setInterval(() => { if (queue.length >= 2) tryMatchmake(); }, 3000).unref();
 ws.attach(server, '/ws', (sock) => {
   const peer = {
     sock, name: null, acct: null, club: null, squad: null, divIdx: 0,
-    opponent: null, matchId: null, isHost: false, room: null, queuedAt: 0,
+    opponent: null, matchId: null, isHost: false, room: null, queuedAt: 0, reported: false,
   };
 
   sock.on('message', (m) => {
+    /* Flood ceiling. A match sends ~30 snapshots and ~50 inputs a second, so
+     * 200/s is double what the game can legitimately produce and still far
+     * below what a script can. Over it, the socket goes — a peer flooding the
+     * hub is also flooding whoever they are playing. */
+    if (!guard.allow(`sock:${sock.id}`, 400, 200)) {
+      console.warn(`[guard] flood from ${peer.name || 'unauthed'} — closing`);
+      sock.close();
+      return;
+    }
+    if (typeof m !== 'object' || m === null || typeof m.t !== 'string') return;
+
     // everything except auth requires a signed-in peer
     if (m.t === 'auth') {
+      // a token is a password; guessing at one over a socket is limited too
+      if (!guard.allow(`wsauth:${sock.id}`, 5, 1 / 60)) { sock.close(); return; }
       const acct = store.byToken(m.token);
       if (!acct) { sock.send({ t: 'authFail' }); sock.close(); return; }
       // a second sign-in from elsewhere kicks the first
@@ -361,9 +461,11 @@ ws.attach(server, '/ws', (sock) => {
     switch (m.t) {
       case 'queue': {
         leaveQueue(peer);
-        peer.club = m.club;
-        peer.squad = Array.isArray(m.squad) ? m.squad : null;
-        peer.divIdx = m.divIdx | 0;
+        // whatever is stored here is relayed to an opponent's machine, so it
+        // is rebuilt from known fields rather than forwarded as it arrived
+        peer.club = guard.cleanClub(m.club);
+        peer.squad = guard.cleanSquad(m.squad);
+        peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         peer.queuedAt = Date.now();
         queue.push(peer);
         sock.send({ t: 'queued', size: queue.length });
@@ -378,9 +480,9 @@ ws.attach(server, '/ws', (sock) => {
 
       case 'host': {
         leaveQueue(peer);
-        peer.club = m.club;
-        peer.squad = Array.isArray(m.squad) ? m.squad : null;
-        peer.divIdx = m.divIdx | 0;
+        peer.club = guard.cleanClub(m.club);
+        peer.squad = guard.cleanSquad(m.squad);
+        peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         let code = makeCode();
         while (rooms.has(code)) code = makeCode();
         rooms.set(code, peer);
@@ -397,34 +499,64 @@ ws.attach(server, '/ws', (sock) => {
           return;
         }
         leaveQueue(peer);
-        peer.club = m.club;
-        peer.squad = Array.isArray(m.squad) ? m.squad : null;
-        peer.divIdx = m.divIdx | 0;
+        peer.club = guard.cleanClub(m.club);
+        peer.squad = guard.cleanSquad(m.squad);
+        peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         rooms.delete(code);
         host.room = null;
         pair(host, peer, 'friendly');
         break;
       }
 
-      // --- in-match relay: forwarded verbatim, never inspected ---
+      /* --- in-match relay: forwarded verbatim, never inspected ---
+       * Verbatim is the point (it keeps the hub cheap and out of the game's
+       * business) but it also means this is the one place a player can put
+       * bytes straight onto an opponent's machine, so the size is checked even
+       * though the contents are not. */
       case 'snap':
       case 'in':
-      case 'evt':
-        if (peer.opponent && peer.opponent.matchId === peer.matchId) {
-          peer.opponent.sock.send(m);
+      case 'evt': {
+        if (!peer.opponent || peer.opponent.matchId !== peer.matchId) break;
+        const bytes = Buffer.byteLength(JSON.stringify(m));
+        if (bytes > guard.MAX_RELAY_BYTES) {
+          console.warn(`[guard] oversized ${m.t} (${bytes}B) from ${peer.name}`);
+          break;
         }
+        peer.opponent.sock.send(m);
         break;
+      }
 
       case 'result': {
-        // each side reports its own scoreline; the server trusts the host's copy
-        if (peer.isHost || !peer.opponent) {
-          store.recordResult(peer.acct, {
-            scored: m.scored | 0, conceded: m.conceded | 0, divIdx: m.divIdx | 0,
-          });
+        /* A result is only a result if there was a match.
+         *
+         * This used to record for `peer.isHost || !peer.opponent` — and that
+         * second clause meant a client could sign in, send a result with no
+         * opponent and no match, and have it counted. On a loop. The
+         * leaderboard was one `for` loop away from being fiction. Now the
+         * scoreline has to come from a peer that is actually in a match, is
+         * reported once, and is clamped to numbers football can produce. */
+        const check = guard.checkResult(peer, m);
+        if (!check.ok) {
+          console.warn(`[guard] result rejected from ${peer.name}: ${check.why}`);
+          sock.send({ t: 'recorded', online: store.publicProfile(peer.acct).online });
+          break;
         }
-        if (peer.opponent && !peer.opponent.isHost) {
-          store.recordResult(peer.opponent.acct, {
-            scored: m.conceded | 0, conceded: m.scored | 0, divIdx: peer.opponent.divIdx,
+        peer.reported = true;
+        if (peer.opponent) peer.opponent.reported = true;
+        // the host's copy is the authoritative one — it ran the simulation
+        if (peer.isHost) {
+          store.recordResult(peer.acct, {
+            scored: check.scored, conceded: check.conceded, divIdx: check.divIdx,
+          });
+          if (peer.opponent) {
+            store.recordResult(peer.opponent.acct, {
+              scored: check.conceded, conceded: check.scored, divIdx: peer.opponent.divIdx,
+            });
+          }
+        } else if (!peer.opponent.sock.open) {
+          // the host vanished mid-match: the guest's own copy is all there is
+          store.recordResult(peer.acct, {
+            scored: check.scored, conceded: check.conceded, divIdx: check.divIdx,
           });
         }
         sock.send({ t: 'recorded', online: store.publicProfile(peer.acct).online });

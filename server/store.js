@@ -194,6 +194,7 @@ async function load() {
     console.error('[store] could not read accounts, starting empty:', err.message);
   }
   db = (stored && stored.accounts) ? stored : EMPTY();
+  indexTokens();
   const count = Object.keys(db.accounts).length;
   console.log(`[store] ${backend.name} — ${count} account${count === 1 ? '' : 's'}`);
   if (!backend.durable && (process.env.RENDER || process.env.DYNO || process.env.FLY_APP_NAME)) {
@@ -208,7 +209,13 @@ function register(name, pass) {
   if (!NAME_RE.test(name || '')) {
     return { error: 'Names are 3–16 characters: letters, numbers, . _ -' };
   }
-  if (!pass || pass.length < 6) return { error: 'Password must be at least 6 characters.' };
+  /* Eight for new accounts. Existing six-character passwords keep working —
+   * locking players out of accounts they already have would be a worse
+   * outcome than the marginal weakness of the ones already issued. */
+  if (!pass || pass.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (/^(password|12345678|11111111|qwertyui|football)/i.test(pass)) {
+    return { error: 'That password is too easy to guess.' };
+  }
   if (db.accounts[key(name)]) return { error: 'That name is taken.' };
 
   const salt = crypto.randomBytes(16).toString('hex');
@@ -217,12 +224,14 @@ function register(name, pass) {
     salt,
     hash: hash(pass, salt),
     token: newToken(),
+    tokenAt: Date.now(),
     created: Date.now(),
     lastSeen: Date.now(),
     save: null,
     online: { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, divIdx: 0 },
   };
   db.accounts[key(name)] = acct;
+  if (tokenIndex) tokenIndex.set(acct.token, acct);
   flush();
   return { account: acct };
 }
@@ -236,16 +245,45 @@ function login(name, pass) {
     && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(acct.hash));
   if (!ok) return { error: 'Wrong password.' };
 
+  if (tokenIndex && acct.token) tokenIndex.delete(acct.token);
   acct.token = newToken();               // fresh token each sign-in
+  acct.tokenAt = Date.now();
+  if (tokenIndex) tokenIndex.set(acct.token, acct);
   acct.lastSeen = Date.now();
   flush();
   return { account: acct };
 }
 
+/* Tokens expire, and are found by index rather than by scanning.
+ *
+ * TOKEN_TTL is long enough that an active player never notices — every
+ * sign-in mints a fresh one — but it means a token that leaks (pasted into a
+ * chat, lifted off a shared machine) stops working by itself rather than
+ * being good forever. Setting TOKEN_EPOCH in the environment to any new value
+ * invalidates every token issued before it: the "sign everybody out now"
+ * button, for the day it is needed. */
+const TOKEN_TTL = 60 * 24 * 60 * 60 * 1000;        // 60 days
+const TOKEN_EPOCH = Number(process.env.TOKEN_EPOCH || 0);
+
+let tokenIndex = null;
+const indexTokens = () => {
+  tokenIndex = new Map();
+  for (const a of Object.values(db.accounts)) if (a.token) tokenIndex.set(a.token, a);
+};
+
 function byToken(token) {
-  if (!token) return null;
-  for (const a of Object.values(db.accounts)) if (a.token === token) return a;
-  return null;
+  if (!token || typeof token !== 'string') return null;
+  if (!tokenIndex) indexTokens();
+  const acct = tokenIndex.get(token);
+  if (!acct || acct.token !== token) return null;
+  const issued = acct.tokenAt || acct.created || 0;
+  if (Date.now() - issued > TOKEN_TTL || issued < TOKEN_EPOCH) {
+    // expired or revoked wholesale: drop it so the next call is a clean miss
+    tokenIndex.delete(token);
+    acct.token = null;
+    return null;
+  }
+  return acct;
 }
 
 /**
