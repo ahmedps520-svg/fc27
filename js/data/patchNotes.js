@@ -18,6 +18,51 @@
  */
 export const RELEASES = [
   {
+    version: 'v62',
+    date: '2026-08-28',
+    tag: 'Career',
+    title: 'The touchline is yours to walk',
+    lede: 'You control the manager now, shouts have a cooldown, careers work '
+        + 'properly on phones, and the career hub got a full redesign.',
+    entries: [
+      {
+        head: 'Walk him yourself',
+        summary: 'The manager moves when you move him — stick, arrow keys, or the '
+               + 'on-screen arrows on touch. No more autopilot, no more glancing at the camera.',
+        detail: 'The figure walks the technical area under your control and stops when you '
+              + 'stop, facing the pitch. The over-the-shoulder glance at the lens was a '
+              + 'turning bug — for a frame between facings he swept through the camera-'
+              + 'facing angle — and turns now ease through the pitch side only.',
+      },
+      {
+        head: 'A voice, not a firehose',
+        summary: 'Shouts have an eight-second cooldown, counted down on the wheel itself.',
+        detail: 'Spamming all four buttons made every shout meaningless. After a shout the '
+              + 'wheel dims and its hub counts back down to SHOUT; picks and hotkeys are '
+              + 'refused until it does, and fresh options arrive with the reopening.',
+      },
+      {
+        head: 'Career on a phone, fixed',
+        summary: 'The player touch controls no longer appear in career matches, and the '
+               + 'whole touchline HUD is sized for a phone.',
+        detail: 'A career match was showing the stick and the PASS/SHOOT buttons of a '
+              + 'played match — controls wired to nothing, covering the pitch. Career '
+              + 'matches now show only what a manager has: the wheel, the meters, the '
+              + 'camera toggle and two walk arrows, all sized down for phone screens.',
+      },
+      {
+        head: 'The hub, redesigned',
+        summary: 'A proper club banner in your colours, chips for the season\'s vitals, '
+               + 'and a segmented nav that stops covering the page.',
+        detail: 'The career menu borrowed the Ultimate XI dock\'s styling, which pins '
+              + 'itself over the bottom of the screen — that was most of what looked '
+              + 'broken. The hub now has its own header (crest, colours, coins, position, '
+              + 'record, morale) over an in-flow segmented nav, and the next fixture is a '
+              + 'proper matchday hero card in both clubs\' colours.',
+      },
+    ],
+  },
+  {
     version: 'v61',
     date: '2026-08-27',
     tag: 'Career',

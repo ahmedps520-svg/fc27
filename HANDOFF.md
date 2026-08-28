@@ -15,6 +15,24 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Career mobile + control pass (v62)
+- Career matches skip the whole player touch layer (`pointer: coarse` init is
+  gated on `mode !== 'career'`) — the wheel, meters, cam toggle and two
+  `.mgr-walk` arrows are the entire touch surface.
+- The manager is player-driven: `input.axis().x` + the touch arrows, clamped to
+  the technical area. No autopilot. Facing rule: travel direction while
+  walking, the pitch while standing.
+- The look-at-camera bug was yaw SNAPPING: raw `rotation.z` assignment jumped
+  between facings and single frames landed lens-side. renderGL now eases yaw
+  through the shortest arc (±π ties resolve pitch-side by construction of the
+  three facings used).
+- Shouts: `SHOUT_COOLDOWN = 8`; wheel gets `.cooling` (dimmed, inert), the hub
+  counts down, keys and taps refused in `applyShout`.
+- The career hub's nav was the bug: it used class `tabs`, which is the Ultimate
+  dock (position: fixed, bottom) — pinned over content with no padding rule.
+  The redesign is `.chub` (club-colour banner + chips) + `.cnav` (in-flow
+  segmented nav). NEVER put class="tabs" on an in-flow nav.
+
 ### The manager model (v61)
 `assets/manager.glb` (1.6MB, committed) is the owner's Meshy "Executive" model.
 The source was a 457MB release zip — SEVEN 65MB GLBs, one animation each, all

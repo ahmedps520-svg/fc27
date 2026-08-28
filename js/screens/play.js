@@ -126,6 +126,11 @@ export function render(params) {
         <div class="mgr-wheel" id="mgrWheel"></div>
         <button class="icon-btn sm mgr-cam" id="mgrCam" title="Camera: broadcast / manager (C)">🎥</button>
       </div>
+      <!-- walking the technical area: stick/arrow keys on desktop, these on touch -->
+      <div class="mgr-walk" id="mgrWalk" hidden>
+        <button class="mw-arrow" id="mgrLeft" aria-label="Walk left">◀</button>
+        <button class="mw-arrow" id="mgrRight" aria-label="Walk right">▶</button>
+      </div>
       <div class="mgr-shout" id="mgrShout" hidden></div>
       <div class="mgr-talk" id="mgrTalk" hidden></div>
 
@@ -504,6 +509,7 @@ export function mount(root, params) {
     momentum: 0,
     wheel: [],            // the four options on offer
     wheelT: 0,            // seconds until the wheel rotates on its own
+    coolT: 0,             // shout cooldown — the wheel is disabled while it runs
     lockT: 0,             // cooldown after a pick before the next rotation
     shoutT: 0,            // temporary-tactic revert timer
     baseTactics: null,
@@ -516,6 +522,16 @@ export function mount(root, params) {
     match.managerFig = mgr.fig;
     match.managerLook = careerCtx.manager || {};
     root.querySelector('#mgrHud').hidden = false;
+    if (window.matchMedia('(pointer: coarse)').matches) root.querySelector('#mgrWalk').hidden = false;
+  }
+  // held-down state of the on-screen walk arrows
+  let walkTouch = 0;
+  for (const [id, dir] of [['#mgrLeft', -1], ['#mgrRight', 1]]) {
+    const el = root.querySelector(id);
+    el?.addEventListener('pointerdown', (e) => { e.preventDefault(); walkTouch = dir; });
+    el?.addEventListener('pointerup', () => { walkTouch = 0; });
+    el?.addEventListener('pointercancel', () => { walkTouch = 0; });
+    el?.addEventListener('pointerleave', () => { walkTouch = 0; });
   }
   let camMode = 'broadcast';                    // career can switch to 'manager'
   let camBlend = 0;                             // 0 broadcast .. 1 manager
@@ -596,7 +612,9 @@ export function mount(root, params) {
     return { temper: temper / ps.length, spark: spark / ps.length };
   };
 
+  const SHOUT_COOLDOWN = 8;      // seconds between shouts — a voice, not a firehose
   const applyShout = (key) => {
+    if (mgr.coolT > 0) return;
     const sh = SHOUTS[key];
     const pers = squadTemper();
     const moodHit = sh.mood < 0 ? sh.mood * (0.6 + pers.temper) : sh.mood;
@@ -611,8 +629,10 @@ export function mount(root, params) {
     if (sh.stamina) for (const p of match.teams[mgr.side].players) p.stamina = Math.max(0.05, p.stamina - sh.stamina);
     sayShout(sh.line);
     mgr.fig.pose = 'shout'; mgr.fig.poseT = 1.6;
+    mgr.coolT = SHOUT_COOLDOWN;
     mgr.lockT = 5;
     mgr.wheelT = 5;                                  // fresh options soon after a pick
+    wheelEl.classList.add('cooling');
     sfx('whistle', 0);
   };
   wheelEl.addEventListener('click', (e) => {
@@ -677,8 +697,14 @@ export function mount(root, params) {
     match.mgrPerf = mgr.perf;
 
     if (mgr.lockT > 0) mgr.lockT -= dt;
+    if (mgr.coolT > 0) {
+      mgr.coolT -= dt;
+      const hub = wheelEl.querySelector('.mw-hub');
+      if (hub) hub.textContent = mgr.coolT > 0 ? Math.ceil(mgr.coolT) : 'SHOUT';
+      if (mgr.coolT <= 0) { wheelEl.classList.remove('cooling'); rotateWheel(); }
+    }
     mgr.wheelT -= dt;
-    if (mgr.wheelT <= 0 && mgr.lockT <= 0) rotateWheel();
+    if (mgr.wheelT <= 0 && mgr.lockT <= 0 && mgr.coolT <= 0) rotateWheel();
 
     if (mgr.shoutT > 0) {
       mgr.shoutT -= dt;
@@ -688,17 +714,24 @@ export function mount(root, params) {
       }
     }
 
-    // the figure: walks the technical area, tracking play without teleporting
+    /* The figure is YOURS to walk. Left stick / arrow keys / the on-screen
+     * arrows move him along the technical area; nobody autopilots him. Facing
+     * is strict: travel direction while walking, the pitch while standing —
+     * the manager never has a reason to look into the lens. */
     const f = mgr.fig;
     const half = PITCH.w / 2;
-    const lo = mgr.side === 0 ? half - 16 : half + 2;
-    const want = Math.max(lo, Math.min(lo + 14, match.ball.x - 2 + (mgr.side === 0 ? 0 : 4)));
-    const dx = want - f.x;
-    const step = Math.max(-2.2, Math.min(2.2, dx)) * dt;
-    f.x += step;
-    f.walk = Math.abs(dx) > 0.6 ? f.walk + dt * 6 : 0;
-    f.dirX = Math.abs(dx) > 0.6 ? Math.sign(dx) : 0.12;
-    f.dirY = Math.abs(dx) > 0.6 ? 0 : 1;
+    const lo = mgr.side === 0 ? half - 17 : half + 1;
+    const ax = Math.max(-1, Math.min(1, (paused ? 0 : (input?.axis().x || 0)) + walkTouch));
+    if (Math.abs(ax) > 0.2) {
+      f.x = Math.max(lo, Math.min(lo + 16, f.x + ax * dt * 3.4));
+      f.walk += dt * 6;
+      f.dirX = Math.sign(ax);
+      f.dirY = 0;
+    } else {
+      f.walk = 0;
+      f.dirX = 0;
+      f.dirY = 1;                          // face the football, always
+    }
     if (f.poseT > 0) { f.poseT -= dt; if (f.poseT <= 0) f.pose = 'idle'; }
 
     // meters into the HUD, colour shifting with the number
@@ -857,7 +890,10 @@ export function mount(root, params) {
    */
   const touchWrap = root.querySelector('#gmTouch');
   let updateTouchContext = () => {};
-  if (window.matchMedia('(pointer: coarse)').matches) {
+  /* Career: the manager holds no stick, so the entire player touch layer —
+   * stick zone, action buttons, contextual labels — must not exist. The wheel
+   * and the walk arrows are the whole touch surface of a career match. */
+  if (window.matchMedia('(pointer: coarse)').matches && mode !== 'career') {
     touchWrap.hidden = false;
     const zone = root.querySelector('#stickZone');
     const stick = root.querySelector('#stick');
