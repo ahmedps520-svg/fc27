@@ -533,7 +533,11 @@ export function mount(root, params) {
     el?.addEventListener('pointercancel', () => { walkTouch = 0; });
     el?.addEventListener('pointerleave', () => { walkTouch = 0; });
   }
-  let camMode = 'broadcast';                    // career can switch to 'manager'
+  /* A career match opens on YOUR manager — the mode's whole identity is
+   * standing on the touchline, so that is the first thing you see. C (or the
+   * camera button) flips to the TV broadcast and back. Every other mode keeps
+   * the broadcast camera it has always had. */
+  let camMode = careerCtx ? 'manager' : 'broadcast';
   let camBlend = 0;                             // 0 broadcast .. 1 manager
   const mgrCamera = { ...cam };
 

@@ -18,6 +18,26 @@
  */
 export const RELEASES = [
   {
+    version: 'v63',
+    date: '2026-08-28',
+    tag: 'Career',
+    title: 'Kick off on the touchline',
+    lede: 'Career matches now open on the manager camera — you, from behind, '
+        + 'watching your team — with C flipping to the TV broadcast.',
+    entries: [
+      {
+        head: 'The touchline first',
+        summary: 'The mode is about standing there, so that is the first thing you see.',
+        detail: 'Every career match starts over your manager\'s shoulder, his back to the '
+              + 'camera and his eyes on the pitch — a facing bug that could start him '
+              + 'looking into the lens went with it, the model\'s rest orientation was '
+              + 'simply the opposite of what the loader assumed. The camera button (or C) '
+              + 'still flips to the broadcast view and back whenever you want the TV '
+              + 'picture.',
+      },
+    ],
+  },
+  {
     version: 'v62',
     date: '2026-08-28',
     tag: 'Career',
