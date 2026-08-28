@@ -15,6 +15,51 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Security pass (v64) — `server/guard.js`
+The threat model: the client is authoritative over its own save and always will
+be. The server's job is to bound the damage and kill the cheap attacks.
+
+**Fixed, each one a thing that worked before:**
+- **Cloud saves were stored verbatim** (`putSave(acct, body.save)`) — the
+  19-million-coin incident. Now sanitised: absolute ceilings, a **rolling
+  hourly gain budget** (1M/hour, tracked in `acct.guard`, server-side so a
+  tampered client cannot edit the thing measuring it), collection de-duped and
+  capped, 256KB size cap. Clamps are logged with the account name.
+- **Result forgery.** `case 'result'` recorded when `peer.isHost || !peer.opponent`
+  — that second clause meant *a peer with no match at all* could post results on
+  a loop. Now: must be in a match, once per pairing (`peer.reported`), scores
+  clamped, host's copy authoritative.
+- **No auth rate limiting.** Now per-account (8 wrong guesses, slow refill) and
+  per-address (40 failures / 15 min), **charged on failure only**.
+- **Relay payloads unbounded** — 24KB ceiling on snap/in/evt (a snapshot is ~1KB);
+  club/squad rebuilt field by field before being relayed to an opponent.
+- **No flood limit** on the socket: 200 msg/s sustained (a match produces ~80).
+- **Tokens: O(n) scan, never expired.** Indexed Map, 60-day TTL, and
+  `TOKEN_EPOCH` in the environment revokes every token issued before it — the
+  "sign everyone out" switch, for the day a token leaks.
+- **Security headers + CSP** on every page, with `frame-ancestors 'none'`.
+
+**The two traps, both found by testing rather than reading:**
+1. The first limiter charged *every* login attempt per IP — one wrong password
+   locked out everyone behind a shared address (carrier NAT: most of the
+   player base). Only failures are charged now, and a correct password is free.
+2. The first CSP had `script-src 'self'` and **the game did not boot**: the
+   import map in index.html is inline, and import maps have to be. The policy
+   now names SHA-256 hashes of each inline block, computed from disk at boot
+   (`inlineScriptHashes()`), so it stays correct when the HTML changes.
+
+**Verified after:** honest save byte-identical round trip; a 250k sell-off and a
+200k objective payout kept in full; 19M clamped and unable to ratchet; forged
+results ignored; 200KB relay dropped; flood closed; the bystander on the
+attacker's IP still signs in; the game boots clean under CSP (no violations,
+service worker registers); and a full real online match still records for both
+players.
+
+**Not addressed on purpose:** the client can still lie about a match it played
+alone (offline economy), because verifying it means simulating every match
+server-side, which this hosting cannot afford. The hourly budget is what bounds
+that.
+
 ### Manager cam is the career default (v63)
 `camMode` starts as 'manager' when `careerCtx` is set, 'broadcast' everywhere
 else. And the model's rest forward is **-y** — at yaw 0 it faces the lens — so

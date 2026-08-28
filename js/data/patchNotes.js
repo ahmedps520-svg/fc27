@@ -18,6 +18,45 @@
  */
 export const RELEASES = [
   {
+    version: 'v64',
+    date: '2026-08-28',
+    tag: 'Security',
+    title: 'Locking the doors',
+    lede: 'Coin editing, forged results, password guessing and a few other '
+        + 'open doors are shut.',
+    entries: [
+      {
+        head: 'Balances that have to be earned',
+        summary: 'The server now checks what a save claims against what playing can '
+               + 'actually produce.',
+        detail: 'Saves were stored exactly as the game sent them, which is how one account '
+              + 'arrived with nineteen million coins. Balances are now checked on the way '
+              + 'in: absolute ceilings, a generous hourly limit on how fast a balance can '
+              + 'grow, and collections de-duplicated. Nothing an honest player does comes '
+              + 'near the limits — a full sell-off or the 200,000-coin objective lands '
+              + 'untouched — and anything above them is trimmed and logged.',
+      },
+      {
+        head: 'Results that need a match',
+        summary: 'The leaderboard now only accepts a scoreline from a game that was '
+               + 'actually played.',
+        detail: 'It was possible to sign in, report a 9–0 win without ever being in a '
+              + 'match, and repeat. Results must now come from a live match, are accepted '
+              + 'once per fixture, and are taken from the machine that ran the simulation.',
+      },
+      {
+        head: 'Accounts that are harder to break into',
+        summary: 'Password guessing is throttled, tokens expire, new passwords are '
+               + 'eight characters.',
+        detail: 'Wrong passwords are limited per account and per connection — and only '
+              + 'wrong ones count, so signing in normally is never affected, including '
+              + 'from a shared or mobile connection where someone else is guessing. '
+              + 'Sign-in tokens now expire, so one that leaks does not work forever. '
+              + 'Existing passwords keep working; new ones need eight characters.',
+      },
+    ],
+  },
+  {
     version: 'v63',
     date: '2026-08-28',
     tag: 'Career',

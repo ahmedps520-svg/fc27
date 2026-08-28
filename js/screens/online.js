@@ -40,7 +40,7 @@ export function signInPanel(kicker = 'Play online') {
         <label class="field">
           <span>Password</span>
           <input id="acctPass" name="password" type="password"
-                 autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required>
+                 autocomplete="current-password" minlength="6" placeholder="At least 8 characters" required>
         </label>
         <p class="acct-error" id="acctError" hidden></p>
         <button class="btn primary wide" id="acctGo" type="submit">Sign in</button>
