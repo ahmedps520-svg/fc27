@@ -83,6 +83,15 @@ function computeBuild() {
 
 const BUILD = computeBuild();
 
+/* Watch pairing codes, in memory: a code that does not survive a restart is a
+ * code an attacker cannot grind across one. */
+const PAIR_TTL = 3 * 60 * 1000;
+const pairings = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, e] of pairings) if (now - e.at > PAIR_TTL) pairings.delete(code);
+}, 60 * 1000).unref();
+
 /* ------------------------------------------------------------------ *
  * HTTP: JSON API + static files
  * ------------------------------------------------------------------ */
@@ -167,6 +176,43 @@ async function api(req, res, route) {
     if (notes.length) console.warn(`[guard] save from ${acct.name}: ${notes.join('; ')}`);
     store.putSave(acct, save);
     return json(res, 200, { ok: true });
+  }
+
+  /* ------------------------- watch pairing -------------------------- *
+   * Typing a password on a watch is miserable, so the phone vouches for the
+   * watch instead: a signed-in phone asks for a code, the code is read out on
+   * the watch, and the watch is handed its own token.
+   *
+   * The code is the weak point by construction — six digits, entered by a
+   * human — so it is defended by being short-lived (three minutes), single
+   * use, thrown away on the first wrong guess against it, and rate limited on
+   * both sides. A token minted this way is an ordinary token for that account;
+   * it does not carry the phone's, so signing out on one does not disturb the
+   * other. */
+  if (route === '/api/pair/new') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (!guard.allow(`pair:new:${acct.name}`, 5, 1 / 30)) return json(res, 429, { error: 'Slow down.' });
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+    pairings.set(code, { name: acct.name, at: Date.now() });
+    return json(res, 200, { code, expires: PAIR_TTL / 1000 });
+  }
+
+  if (route === '/api/pair/claim') {
+    const body = await readBody(req);
+    if (!guard.allow(`pair:claim:${guard.clientIP(req)}`, 10, 1 / 60)) {
+      return json(res, 429, { error: 'Too many attempts.' });
+    }
+    const code = String(body.code || '').replace(/\D/g, '');
+    const entry = pairings.get(code);
+    pairings.delete(code);                       // one use, right or wrong
+    if (!entry || Date.now() - entry.at > PAIR_TTL) {
+      return json(res, 400, { error: 'That code has expired. Get a new one on your phone.' });
+    }
+    const acct = store.accountByName(entry.name);
+    if (!acct) return json(res, 400, { error: 'That account is gone.' });
+    const token = store.mintToken(acct);
+    return json(res, 200, { token, profile: store.publicProfile(acct), save: acct.save });
   }
 
   if (route === '/api/leaderboard') {

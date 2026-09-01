@@ -18,6 +18,42 @@
  */
 export const RELEASES = [
   {
+    version: 'v65',
+    date: '2026-08-28',
+    tag: 'Watch',
+    title: 'APEX XI on your wrist',
+    lede: 'A watch build with real 2D Kick Off matches and pack openings, '
+        + 'paired to your account with a six-digit code.',
+    entries: [
+      {
+        head: 'Football on a watch face',
+        summary: 'A 60-second Kick Off, played with a drag and one button.',
+        detail: 'It is the same simulation the phone runs — same physics, same AI, same '
+              + 'balance — drawn in 2D and framed close so the football fills a 40mm '
+              + 'screen. Drag anywhere to run, and one button kicks: it shoots near their '
+              + 'goal and passes everywhere else, so there is nothing to learn and nothing '
+              + 'to miss with a thumb. Goals buzz.',
+      },
+      {
+        head: 'Packs, the good part only',
+        summary: 'Four packs, the sealed packet, the rip, and the card.',
+        detail: 'The wrist store is Bronze, Silver, Gold and Prime — no odds tables to '
+              + 'scroll. The packet breathes in the colour of the best card inside, one tap '
+              + 'tears it open, and each card lands with a flash and a tap of the Taptic '
+              + 'engine that gets longer the rarer it is. Worst first, best last. Anything '
+              + 'you pull is in your collection on the phone.',
+      },
+      {
+        head: 'Six digits to pair',
+        summary: 'No password typing on a watch.',
+        detail: 'On the phone: Ultimate XI → Online → Pair a watch, which shows a code. '
+              + 'Type it once on the watch and it holds its own sign-in, so your coins and '
+              + 'cards are the same on both. The code lasts three minutes and works once. '
+              + 'There is also a play-without-an-account option if you just want a game.',
+      },
+    ],
+  },
+  {
     version: 'v64',
     date: '2026-08-28',
     tag: 'Security',
