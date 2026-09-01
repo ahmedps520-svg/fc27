@@ -66,7 +66,10 @@ const profileCard = () => {
         <div><b>${o.draws}</b><span>D</span></div>
         <div><b>${o.losses}</b><span>L</span></div>
       </div>
-      <button class="btn ghost sm" id="signOut">Sign out</button>
+      <div class="ol-acct-btns">
+        <button class="btn ghost sm" id="pairWatch">Pair a watch</button>
+        <button class="btn ghost sm" id="signOut">Sign out</button>
+      </div>
     </div>`;
 };
 
@@ -275,6 +278,32 @@ export function mountOnline(root, { rerender }) {
   root.querySelector('#olCancel')?.addEventListener('click', () => {
     net.send({ t: 'cancel' });
     hideSearch();
+  });
+
+  /* Pairing a watch. The phone is already signed in, so it can vouch: it asks
+   * the server for a six-digit code and shows it big enough to read at arm's
+   * length. The code dies in three minutes or on first use, whichever comes
+   * first — see the pairing endpoints in server.js. */
+  root.querySelector('#pairWatch')?.addEventListener('click', async () => {
+    const btn = root.querySelector('#pairWatch');
+    btn.disabled = true; btn.textContent = 'Getting a code…';
+    const r = await api.pairCode();
+    btn.disabled = false; btn.textContent = 'Pair a watch';
+    if (r.error) { toast(r.error, 'warn'); return; }
+    const box = document.createElement('div');
+    box.className = 'pair-overlay';
+    box.innerHTML = `
+      <div class="pair-card glass">
+        <span class="pair-kicker">On your watch, open apexxi.online/watch.html</span>
+        <b class="pair-code">${r.code.replace(/(\d{3})(\d{3})/, '$1 $2')}</b>
+        <span class="pair-note">Enter this code within three minutes. It works once.</span>
+        <button class="btn primary" id="pairDone">Done</button>
+      </div>`;
+    document.body.appendChild(box);
+    const close = () => box.remove();
+    box.querySelector('#pairDone').addEventListener('click', close);
+    box.addEventListener('click', (e) => { if (e.target === box) close(); });
+    setTimeout(close, 3 * 60 * 1000);
   });
 
   root.querySelector('#signOut')?.addEventListener('click', () => {

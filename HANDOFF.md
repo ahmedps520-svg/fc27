@@ -15,6 +15,35 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Watch mode (v65) — `/watch.html`
+Served by the same deploy; opens in Apple Watch mirroring or any small screen.
+NOT a watchOS app (watchOS has no third-party browser) — that was the owner's
+explicit choice from the options.
+
+- `js/watch/` is its own small app: `app.js` (three screens + tab dots),
+  `store.js` (its OWN localStorage key `apexxi.watch.v1` and its own sync —
+  deliberately not state.js, so the watch can never corrupt the phone's local
+  save), `match.js`, `pack.js`. `styles/watch.css` is laid out for the smallest
+  face (40mm = 162x197 CSS px) and simply breathes on bigger ones.
+- **`js/data/packs.js` is new and shared**: PACKS, openPack, drawPlayer,
+  rollRarity, dupValue, packTone, RARITY_RANK moved out of screens/squad.js so
+  the phone store and the watch store cannot drift on odds. squad.js re-exports
+  PACK_BY_ID and __openPackForTest so existing importers and tooling are
+  unchanged.
+- Match: the real `Match` + the 2D fallback renderer, with a **tightened
+  camera** (`tighten()` — hfov 33, 21m behind the ball). The broadcast camera
+  at 162px is twenty-two specks; that was the first thing that had to change.
+  Controls: drag anywhere = stick (origin under the thumb), one button that
+  shoots inside 30m of goal and passes otherwise, and holds sprint while down.
+- Pairing: `/api/pair/new` (phone, authed) mints a 6-digit code, three-minute
+  TTL, single use, deleted on first claim right or wrong; `/api/pair/claim`
+  trades it for a token. `store.mintToken` issues a SECOND token
+  (`acct.extra[]`, max 5, same TTL) rather than rotating — pairing a watch must
+  not sign the phone out.
+
+Test note: Playwright refuses to click the packet because it is animated
+(`element is not stable`) — use `{force:true}`, it is not a bug.
+
 ### Security pass (v64) — `server/guard.js`
 The threat model: the client is authoritative over its own save and always will
 be. The server's job is to bound the damage and kill the cheap attacks.

@@ -109,6 +109,20 @@ export function pushSave(state) {
   }, 1200);
 }
 
+/** Ask the server for a one-shot code that pairs a watch to this account. */
+export async function pairCode() {
+  try {
+    const res = await fetch(apiURL('/api/pair/new'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken()}` },
+    });
+    const body = await res.json();
+    return res.ok ? body : { error: body.error || 'Could not get a code.' };
+  } catch {
+    return { error: 'No connection to the server.' };
+  }
+}
+
 export async function leaderboard() {
   const d = await call('/api/leaderboard');
   return d.rows || [];

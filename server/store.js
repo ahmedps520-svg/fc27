@@ -268,19 +268,25 @@ const TOKEN_EPOCH = Number(process.env.TOKEN_EPOCH || 0);
 let tokenIndex = null;
 const indexTokens = () => {
   tokenIndex = new Map();
-  for (const a of Object.values(db.accounts)) if (a.token) tokenIndex.set(a.token, a);
+  for (const a of Object.values(db.accounts)) {
+    if (a.token) tokenIndex.set(a.token, a);
+    for (const e of a.extra || []) tokenIndex.set(e.token, a);
+  }
 };
 
 function byToken(token) {
   if (!token || typeof token !== 'string') return null;
   if (!tokenIndex) indexTokens();
   const acct = tokenIndex.get(token);
-  if (!acct || acct.token !== token) return null;
-  const issued = acct.tokenAt || acct.created || 0;
+  if (!acct) return null;
+  const paired = (acct.extra || []).find((e) => e.token === token);
+  if (acct.token !== token && !paired) return null;
+  const issued = paired ? paired.at : (acct.tokenAt || acct.created || 0);
   if (Date.now() - issued > TOKEN_TTL || issued < TOKEN_EPOCH) {
     // expired or revoked wholesale: drop it so the next call is a clean miss
     tokenIndex.delete(token);
-    acct.token = null;
+    if (paired) acct.extra = acct.extra.filter((e) => e.token !== token);
+    else acct.token = null;
     return null;
   }
   return acct;
@@ -298,6 +304,24 @@ function byToken(token) {
  */
 function accountByName(name) {
   return db.accounts[key(name || '')] || null;
+}
+
+/**
+ * Issue a fresh token for an account without touching the one it already has.
+ *
+ * `login` rotates the token, which is right for a password sign-in: it ends
+ * every other session. Pairing a watch must not do that — the phone that
+ * authorised it has to stay signed in — so this mints a second credential and
+ * indexes it alongside. The account carries `token` (the newest) plus `extra`
+ * (the others), and every one of them expires on the same TTL.
+ */
+function mintToken(acct) {
+  const token = newToken();
+  acct.extra = (acct.extra || []).filter((e) => Date.now() - e.at < TOKEN_TTL).slice(-4);
+  acct.extra.push({ token, at: Date.now() });
+  if (tokenIndex) tokenIndex.set(token, acct);
+  flush();
+  return token;
 }
 
 function putSave(acct, save) {
@@ -346,6 +370,7 @@ const status = () => ({
 });
 
 module.exports = {
+  mintToken,
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
   // operator tools only — see the note on accountByName
