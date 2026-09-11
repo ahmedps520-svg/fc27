@@ -15,6 +15,34 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Watch boot fix + content (v66) — `js/watch/bundle.js`
+- **The watch is served as ONE classic script.** `watch.html` loads
+  `js/watch/bundle.js` (committed, built by `node tools/build-watch.mjs` =
+  esbuild, target safari12, IIFE) — NOT the ES modules. Rebuild the bundle after
+  any change under `js/watch/` or to anything it imports (sim, generator,
+  packs, render3d, input). The watchOS web viewer has no console; a failed
+  module import or refused syntax was the black screen the owner reported.
+- `watch.html` has an inline (CSP-hashed — `inlineScriptHashes()` now reads
+  it) bootstrap: loading splash, `window.onerror`/`unhandledrejection` printed
+  on screen with a Retry button, 12s watchdog, `Object.fromEntries` polyfill.
+  `app.js` sets `window.__apexWatchBooted` after first render; boot races
+  `store.boot()` against 6s so a hung fetch never blocks the menu.
+  `<meta name="disabled-adaptations" content="watch">` opts out of the reader
+  layout. `/watch` is aliased to `watch.html` in server.js.
+- watch.css: no `position: fixed`, no `inset` shorthand (old WebKit), and
+  `[hidden]{display:none!important}` because `.w-dive` is display:flex.
+- New on the wrist: `daily.js` (streak + 3 seeded objectives/day, its OWN key
+  `apexxi.watch.daily.v1`, never in the cloud save; pays through `store.earn`),
+  `pens.js` (shootout), difficulty `LEVELS` in match.js (skill 0.72/1/1.3, pay
+  ×0.7/1/2, passed as `Match` `skill`), all clubs as opponents, Lucky Dip in
+  WATCH_PACKS, squad grid of best 12 on Club.
+- **World second wave**: generator.js appends 369 players AFTER fixtures on a
+  separate seeded stream (`WORLD_SEED ^ 0x2a3b4c5d`), named from
+  `REAL_PLAYERS_EXTRA` (tools/real-players-extra.json, curated, seeded shuffle
+  in build-real-players.py; includes 20 Saudi internationals). First 731 cards
+  and both sweeps (12345, 777) verified byte-identical. World is now 1100
+  players; new saves start with a 57-man roster (`newCareer` copies it).
+
 ### Watch mode (v65) — `/watch.html`
 Served by the same deploy; opens in Apple Watch mirroring or any small screen.
 NOT a watchOS app (watchOS has no third-party browser) — that was the owner's

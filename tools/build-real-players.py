@@ -1,6 +1,7 @@
 import json, re, sys
 
 SRC='tools/real-players-source.json'
+EXTRA='tools/real-players-extra.json'   # curated second wave, see REAL_PLAYERS_EXTRA
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -34,6 +35,8 @@ COLORS = {
  'Turkey':['#e30a17','#ffffff'], 'USA':['#3c3b6e','#b22234'], 'Ukraine':['#0057b7','#ffd700'],
  'Uruguay':['#7bafd4','#ffffff'], 'Uzbekistan':['#0099b5','#1eb53a'], 'Venezuela':['#ffcc00','#00247d'],
  'Wales':['#00ab39','#c8102e'],
+ 'Saudi Arabia':['#006c35','#ffffff'], 'Tunisia':['#e70013','#ffffff'], 'Chile':['#d52b1e','#0039a6'],
+ 'Jamaica':['#009b3a','#fed100'], 'Australia':['#00843d','#ffcd00'], 'New Zealand':['#000000','#ffffff'],
 }
 
 PARTICLES = {'de','del','della','di','da','dos','das','van','von','le','la','el','al','ben','mac','mc',"o'",'ter','ten'}
@@ -49,14 +52,24 @@ def short(name):
     return f"{parts[0][0]}. {' '.join(rest)}"
 
 pack = [p for p in json.load(open(SRC)) if p['name'] not in TAKEN]
-missing = sorted({p['country'] for p in pack} - set(COLORS))
+extra = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(EXTRA))]
+seen = {p['name'] for p in pack} | TAKEN
+extra = [p for p in extra if p['name'] not in seen]
+# dealt in list order, so a list grouped by country would hand one club a whole
+# nation's squad; a fixed-seed shuffle spreads them and stays reproducible
+import random
+random.Random(66).shuffle(extra)
+missing = sorted({p['country'] for p in pack + extra} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
-rows = ',\n'.join(
-    "  ['%s', '%s', '%s', '%s']" % (p['name'].replace("'", "\\'"), short(p['name']).replace("'", "\\'"),
-                                    p['country'], p['position'])
-    for p in pack)
+def emit(lst):
+    return ',\n'.join(
+        "  ['%s', '%s', '%s', '%s']" % (p['name'].replace("'", "\\'"), short(p['name']).replace("'", "\\'"),
+                                        p['country'], p['position'])
+        for p in lst)
+rows = emit(pack)
+extra_rows = emit(extra)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -87,9 +100,20 @@ export const REAL_PLAYERS = [
 {rows},
 ];
 
+/**
+ * The second wave: {len(extra)} more, curated by hand (tools/real-players-extra.json)
+ * for the cards the world grew after v65. Kept as its own list on purpose —
+ * `nameTheWorld` deals the first list to the original cards and this one to
+ * the new ones, so adding a name here can never re-deal a name that is
+ * already on someone's card. Same rule as above: append, never re-sort.
+ */
+export const REAL_PLAYERS_EXTRA = [
+{extra_rows},
+];
+
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */
 export const NATION_COLORS = {{
 {cols},
 }};
 ''')
-print('wrote', OUT, len(pack), 'players,', len(COLORS), 'countries')
+print('wrote', OUT, len(pack), '+', len(extra), 'players,', len(COLORS), 'countries')
