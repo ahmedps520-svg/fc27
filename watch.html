@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<!-- watchOS otherwise renders pages in a reader-like "adapted" layout; this
+     opts out so the page is laid out at the face's real width. -->
+<meta name="disabled-adaptations" content="watch" />
+<meta name="format-detection" content="telephone=no" />
 <title>APEX XI · Watch</title>
 <meta name="theme-color" content="#000000" />
 <link rel="icon" href="./icons/favicon-64.png" />
@@ -11,7 +15,30 @@
 <body>
   <!-- One screen at a time. A watch has no room for chrome, so the nav is a
        single row of three dots and everything else is the content. -->
-  <main id="wApp" class="w-app"></main>
-  <script type="module" src="./js/watch/app.js"></script>
+  <main id="wApp" class="w-app"><div class="w-boot" id="wBoot"><div class="w-boot-mark">◈</div><div class="w-boot-txt">APEX XI</div><div class="w-boot-sub">loading…</div></div></main>
+  <!-- A watch's web viewer has no console and no error dialog: a script that
+       fails leaves a black face and nothing else. This runs before the app,
+       as a plain script, and puts whatever goes wrong on the screen where a
+       person can read it — plus the one polyfill the bundle needs. -->
+  <script>
+(function () {
+  var boot = document.getElementById('wBoot');
+  function fail(msg) {
+    if (window.__apexWatchBooted) return;
+    var el = document.getElementById('wBoot') || document.getElementById('wApp');
+    if (!el) return;
+    el.innerHTML = '<div class="w-boot-mark">◈</div><div class="w-boot-txt">APEX XI</div>'
+      + '<div class="w-boot-err">' + String(msg).replace(/[<>&]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]; }) + '</div>'
+      + '<button class="w-btn" onclick="location.reload()">Retry</button>';
+  }
+  window.addEventListener('error', function (e) { fail((e && e.message) || 'Script error'); });
+  window.addEventListener('unhandledrejection', function (e) { fail((e && e.reason && (e.reason.message || e.reason)) || 'Promise error'); });
+  window.__apexWatchFail = fail;
+  setTimeout(function () { if (!window.__apexWatchBooted) fail('Still loading after 12s — check the connection and retry.'); }, 12000);
+  if (!Object.fromEntries) Object.fromEntries = function (it) { var o = {}; for (var i = 0, a = Array.from(it); i < a.length; i++) o[a[i][0]] = a[i][1]; return o; };
+  if (boot) boot.querySelector('.w-boot-sub').textContent = 'loading…';
+})();
+  </script>
+  <script src="./js/watch/bundle.js" defer></script>
 </body>
 </html>

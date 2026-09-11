@@ -24,7 +24,16 @@ const HOME_ID = WORLD.clubs[0].id;
 
 const DURATION = 60;          // seconds of real time — a glance, not a sitting
 
-export function playMatch(app, awayId, onDone) {
+/* Three difficulties, one number each: the CPU's skill multiplier, and how
+ * much the result pays. Hard pays double because it is. */
+export const LEVELS = {
+  easy:   { label: 'Easy',   skill: 0.72, pay: 0.7 },
+  normal: { label: 'Normal', skill: 1,    pay: 1 },
+  hard:   { label: 'Hard',   skill: 1.3,  pay: 2 },
+};
+
+export function playMatch(app, awayId, onDone, level = 'normal') {
+  const lv = LEVELS[level] || LEVELS.normal;
   app.innerHTML = `
     <div class="w-match">
       <canvas id="wPitch"></canvas>
@@ -37,7 +46,7 @@ export function playMatch(app, awayId, onDone) {
   const clockEl = app.querySelector('#wClock');
   const scoreEl = app.querySelector('#wScore');
 
-  const match = new Match(HOME_ID, awayId, { duration: DURATION, mode: 'single', human: 0, preset: 'authentic' });
+  const match = new Match(HOME_ID, awayId, { duration: DURATION, mode: 'single', human: 0, preset: 'authentic', skill: lv.skill });
   const input = new Input({ keys: 'primary' });
   const cam = makeCamera();
   /* A watch is not a television. The broadcast camera shows the shape of a
@@ -154,7 +163,7 @@ export function playMatch(app, awayId, onDone) {
   function finish() {
     const [h, a] = match.teams;
     const won = h.score > a.score;
-    const reward = 200 + h.score * 60 + (won ? 150 : 0);
+    const reward = Math.round((200 + h.score * 60 + (won ? 150 : 0)) * lv.pay);
     navigator.vibrate?.(won ? [20, 60, 30] : 14);
     const panel = document.createElement('div');
     panel.className = 'w-end';
@@ -170,7 +179,7 @@ export function playMatch(app, awayId, onDone) {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       input.destroy?.();
-      onDone(reward);
+      onDone(reward, { goals: h.score, won, level });
     });
   }
 }

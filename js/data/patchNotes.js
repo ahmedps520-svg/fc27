@@ -18,6 +18,50 @@
  */
 export const RELEASES = [
   {
+    version: 'v66',
+    date: '2026-09-11',
+    tag: 'Watch + World',
+    title: 'The watch boots, the world grows',
+    lede: 'The Apple Watch build actually opens now, penalties and daily objectives on '
+        + 'the wrist, and 369 more real players in every pack.',
+    entries: [
+      {
+        head: 'Watch: no more black screen',
+        summary: 'The watch app is one plain script now, and it tells you if anything goes wrong.',
+        detail: 'The wrist browser is a stripped WebKit with no console: when one of fifteen '
+              + 'module files failed to load or a line of modern syntax was refused, all it '
+              + 'showed was black. The watch now gets a single bundled script in old, boring '
+              + 'syntax, a loading screen the moment the page opens, and an on-screen error '
+              + 'with a Retry button if the app cannot start. /watch works without the .html.',
+      },
+      {
+        head: '369 more real players',
+        summary: 'Every club has a deeper squad and the free pool is half again as big — all real names.',
+        detail: 'A second wave of real footballers, including the Saudi national side, '
+              + 'joins the world: fifteen squad players per club and a wide free pool with a '
+              + 'run of headline cards for the packs. Nothing you already own changed — the '
+              + 'new cards are appended after the old ones and named from their own list, '
+              + 'and the balance sweep is byte-identical to v65.',
+      },
+      {
+        head: 'Penalties',
+        summary: 'A shootout on the watch: tap the sweep to shoot, pick a side to save.',
+        detail: 'Five each, sudden death after. Corners score more and get saved more; the '
+              + 'middle beats a keeper who has already gone. The marker speeds up every '
+              + 'round. 120 Apex a goal, 300 for the win.',
+      },
+      {
+        head: 'Daily objectives and a streak',
+        summary: 'Three small things to do today, and a bonus for showing up.',
+        detail: 'The Club glance now shows a day streak (100 Apex a day, up to 700) and '
+              + 'three objectives drawn fresh each day — play, score, win on Hard, open a '
+              + 'pack, save a penalty. They pay out on the spot with a buzz. Plus a difficulty '
+              + 'picker (Hard pays double), every club as an opponent, a Lucky Dip in the '
+              + 'wrist store, and your best twelve cards on the Club screen.',
+      },
+    ],
+  },
+  {
     version: 'v65',
     date: '2026-08-28',
     tag: 'Watch',

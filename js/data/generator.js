@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -379,8 +379,48 @@ function buildWorld() {
 
   nameTheWorld(players);
 
-  const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const fixtures = buildFixtures(clubs.map((c) => c.id), rand);
+
+  /* --------------------------- the second wave --------------------------- *
+   * v66 grew the world by half again: every club gets a full extra shape of
+   * squad players, and the free pool a wide new run so packs keep finding
+   * names you do not own. Two things keep this from touching anything that
+   * already exists. It runs after the fixtures, on its *own* seeded stream,
+   * so every draw the original world made — and the fixture list — is
+   * byte-identical to v65 (`node tools/sweep.mjs` proves it). And it is named
+   * from its own list, REAL_PLAYERS_EXTRA, so the first list is still dealt to
+   * the first cards exactly as before. Ids simply continue.                  */
+  const wave = makeRand(WORLD_SEED ^ 0x2a3b4c5d);
+  const wavePlayers = [];
+  const WAVE_SHAPE = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'ST'];
+  CLUB_BLUEPRINTS.forEach((bp, index) => {
+    const club = clubs[index];
+    const clubLevel = 83 - (bp.tier - 1) * 1.7;
+    WAVE_SHAPE.forEach((pos, slot) => {
+      // squad depth: a shade behind the XI, never ahead of it
+      const p = makePlayer(wave, pos, clubLevel - 3 - (slot % 3) * 1.5, club.id);
+      players.push(p); wavePlayers.push(p);
+      club.roster.push(p.id);
+    });
+  });
+  const WAVE_POOL = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'CAM', 'LM', 'RM', 'LW', 'LW', 'RW', 'RW', 'ST', 'ST', 'ST'];
+  for (let i = 0; i < 200; i++) {
+    const p = makePlayer(wave, wave.pick(WAVE_POOL), wave.around(75, 10), null);
+    players.push(p); wavePlayers.push(p);
+    freeAgents.push(p.id);
+  }
+  // and a guaranteed run of headline cards, one per position and then some,
+  // so the new names are not all squad players
+  for (const pos of [...Object.keys(POSITIONS), 'ST', 'CAM', 'LW', 'RW', 'CB', 'CM', 'GK']) {
+    const p = makePlayer(wave, pos, wave.int(84, 91), null);
+    p.rarity = rarityFor(p.overall);
+    p.value = marketValue(p.overall, p.age);
+    players.push(p); wavePlayers.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(wavePlayers, REAL_PLAYERS_EXTRA);
+
+  const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 
   return {
     leagueName: LEAGUE_NAME,
@@ -437,9 +477,9 @@ const POS_FALLBACK = {
   ST: ['ST', 'CAM', 'LW', 'RW', 'CM'],
 };
 
-function nameTheWorld(players) {
+function nameTheWorld(players, list = REAL_PLAYERS) {
   const pool = new Map();          // position -> queue of unclaimed people
-  for (const row of REAL_PLAYERS) {
+  for (const row of list) {
     if (!pool.has(row[3])) pool.set(row[3], []);
     pool.get(row[3]).push(row);
   }

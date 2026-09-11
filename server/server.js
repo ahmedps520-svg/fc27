@@ -285,7 +285,7 @@ function cors(req, res) {
  * than reading it and nodding. */
 function inlineScriptHashes() {
   const out = new Set();
-  for (const f of ['index.html', 'notes.html']) {
+  for (const f of ['index.html', 'notes.html', 'watch.html']) {
     let html = '';
     try { html = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
     for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -325,7 +325,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let file = path.join(ROOT, route === '/' ? 'index.html' : route);
+  const alias = { '/': 'index.html', '/watch': 'watch.html', '/watch/': 'watch.html' };
+  let file = path.join(ROOT, alias[route] || route);
   if (!path.resolve(file).startsWith(ROOT)) { res.writeHead(403).end('Forbidden'); return; }
   // the account database is not part of the served site
   if (path.resolve(file).startsWith(path.join(__dirname, 'data'))) {
