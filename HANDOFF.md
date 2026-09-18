@@ -15,6 +15,72 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Foundation round (v67) — tests, CI, release script, flicker, perf, resilience
+**Run `npm test` before anything else now.** It is: `test:unit` (node:test,
+`tests/unit/*.test.mjs`), `test:sweep` (both seeds diffed against
+`tests/golden/`), `test:smoke` (Playwright: phone boot → pack buy/open → GL
+match → cloud round-trip → watch pack; real server on a scratch
+`APEX_DATA_DIR`). CI (`.github/workflows/ci.yml`) runs those plus
+`tools/release.mjs --check` (version/cache/notes/precache parity, watch bundle
+freshness) and `tests/perf/gl-scan.mjs` (black-pixel scan at Ultra).
+`devDependencies` exist now (esbuild, playwright) — runtime is still zero-dep;
+`node_modules/` is ignored.
+
+- **Release**: `node tools/release.mjs [vNN]` bumps APP_VERSION + CACHE,
+  rebuilds the watch bundle, verifies the top patch-notes entry is that
+  version, checks the sw.js precache list against `js/` + `styles/`, and runs
+  unit + sweep. It refuses on any failure. It does not commit. HANDOFF still by
+  hand. `--check` is the CI mode; `--no-tests` skips the test run.
+- **Three real bugs found by the smoke test** (all from the v65 packs.js
+  extraction, all `X is not defined`): `FREE_MS` (free pack claim), `wantGK`
+  (Star/Icon guarantee packs), `fmtLeft`/`hasKeeper` (store timer). packs.js now
+  exports FREE_MS/fmtLeft/hasKeeper; `ownedIds` lives in squad.js (needs
+  getState, and the watch bundle must not pull state.js).
+- **Black flicker — diagnosed from the shader, not a screenshot.** The beam
+  cone material (`renderGL.js`, the additive ShaderMaterial) computed
+  `rim = 1 - abs(dot(normalize(vNormalV), z))`; abs(dot) can exceed 1 by
+  rounding → `pow(negative, 1.5)` = NaN → additive NaN = black pixel. The failing
+  set is the cone triangles facing the lens *that frame*: hard-edged wedge,
+  crosses the goalmouth, gone next frame; strongest on Ultra (uStrength 0.2,
+  most supersampled pixels). Fix: `clamp(rim, 0, 1)` + `max(vUv.y, 0)`.
+  Defence in depth: `cinematic.js` now launders a NaN *input* (base) to fog
+  colour before the bloom can smear it — the old backstop fell back to `base`,
+  which was no help when base itself was NaN. It does NOT reproduce under
+  SwiftShader (pow(-tiny) comes out 0 there), so the scan is a regression
+  guard, not a proof. If it is reported again on real hardware: the mechanism
+  class is "NaN from a custom shader"; the remaining custom shaders are the
+  beam, cinematic, and any `onBeforeCompile` — audit `pow`, `normalize`,
+  `sqrt`, division.
+- **Perf** (tests/perf/boot.mjs, throttled Slow-4G + 4x CPU, phone viewport):
+  cold boot **14.96 s / 2584 KB / 63 requests → 3.3–3.5 s / 357 KB / 47
+  requests** (553 KB once the key art is preloaded during the splash — that is
+  spent while the START screen is up, so the menu opens with its backdrop
+  already there; the modulepreload hints made no measurable difference on
+  this profile and are kept for high-latency lines). How: (1) `renderGL.js` (and three.js, 1.3 MB) is a dynamic import
+  in play.js `mount`, loaded behind the existing veil; app.js warms it 6 s after
+  boot unless `navigator.connection.saveData`. `running` is hoisted so a
+  renderer is never created into a torn-down screen. (2) Server: gzip (in-memory
+  cache keyed on mtime/size, 64 MB cap) + weak ETag + `Cache-Control: no-cache`
+  (revalidate → 304). Was `no-store` with no compression. (3) modulepreload
+  hints for the heavy leaves + low-priority preload of the key art. (4) keyart
+  2560→1600 q82 (554 KB → 199 KB; master in tools/keyart/keyart-2560.jpg).
+  `tests/perf/fps.mjs`: sim costs 4.3 ms CPU per match-second (0.07 ms/step);
+  2D path at 4x CPU throttle 40 fps. GL fps is not measurable headlessly.
+- **Resilience**: `js/storage.js` (probe once; memory fallback; `persistent()`)
+  — state.js uses it; app.js toasts once if storage is blocked. `js/crash.js`:
+  window `error` + `unhandledrejection` → card (Carry on / Reload / Back to
+  menu) + `sendBeacon('api/crash')`, max 3 reports per load, dedupes repeats,
+  ignores noise (Script error, ResizeObserver, AbortError…). `navigate()` wraps
+  `mount` in try/catch → card + fall back to menu. Server: `POST /api/crash`,
+  `guard.crashAllowed` 6/min per IP, clipped fields, appended to
+  `$APEX_DATA_DIR/crashes.log` (4 MB cap, oldest half dropped).
+- `adoptCloudSave` now keeps the device's `quality`/`models` (hardware
+  settings) and takes the rest from the cloud — a phone on Low was being put
+  back to Ultra by signing in.
+- store.js honours `APEX_DATA_DIR` (tests point it at a temp dir).
+- SW precache list gained net.js/storage.js/crash.js/watch bundle (the watch
+  module files are no longer listed — the bundle is what the watch loads).
+
 ### Watch boot fix + content (v66) — `js/watch/bundle.js`
 - **The watch is served as ONE classic script.** `watch.html` loads
   `js/watch/bundle.js` (committed, built by `node tools/build-watch.mjs` =

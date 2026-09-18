@@ -3,7 +3,11 @@ import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
 import {
   PACKS, PACK_BY_ID, packTone, RARITY_RANK, rollRarity, drawPlayer, openPack, dupValue,
+  FREE_MS, fmtLeft, hasKeeper,
 } from '../data/packs.js';
+
+/** The player ids a pull would be a repeat of: the collection as it stands. */
+const ownedIds = () => new Set(getState().club.collection);
 import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
 import { PRESETS } from '../game/sim.js';
 import { divisionOpponent, divisionSkill } from '../ultimate.js';

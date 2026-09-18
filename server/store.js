@@ -21,7 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DIR = path.join(__dirname, 'data');
+// APEX_DATA_DIR: where accounts live. Tests point this at a scratch folder so
+// a run can never touch the real server/data.
+const DIR = process.env.APEX_DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DIR, 'accounts.json');
 
 const NAME_RE = /^[a-zA-Z0-9_.-]{3,16}$/;

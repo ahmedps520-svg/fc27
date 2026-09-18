@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Balance sweep is byte-identical
+        run: npm run test:sweep
+      - name: Watch bundle is up to date
+        run: |
+          npm run build:watch
+          git diff --exit-code --stat js/watch/bundle.js || (echo "::error::js/watch/bundle.js is stale — run npm run build:watch and commit it"; exit 1)
+      - name: Release consistency (version, cache, notes, precache list)
+        run: node tools/release.mjs --check
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Smoke test (phone + watch, real server)
+        run: npm run test:smoke
+      - name: Black-patch scan (Ultra renderer, software WebGL)
+        run: node tests/perf/gl-scan.mjs --frames 8

@@ -15,6 +15,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const ws = require('./ws');
 const store = require('./store');
 const guard = require('./guard');
@@ -82,6 +83,25 @@ function computeBuild() {
 }
 
 const BUILD = computeBuild();
+
+/* Crash log: one JSON line per report, in the data directory next to the
+ * accounts (so it is on the same disk and under the same gitignore), capped so
+ * it can never grow past a few megabytes — the oldest half is dropped when it
+ * does. Read it with `tail -f server/data/crashes.log`. */
+const CRASH_FILE = path.join(process.env.APEX_DATA_DIR || path.join(__dirname, 'data'), 'crashes.log');
+const CRASH_MAX = 4 * 1024 * 1024;
+function crashLog(line) {
+  try {
+    fs.mkdirSync(path.dirname(CRASH_FILE), { recursive: true });
+    fs.appendFileSync(CRASH_FILE, line + '\n');
+    const st = fs.statSync(CRASH_FILE);
+    if (st.size > CRASH_MAX) {
+      const all = fs.readFileSync(CRASH_FILE, 'utf8');
+      fs.writeFileSync(CRASH_FILE, all.slice(all.length / 2).replace(/^[^\n]*\n/, ''));
+    }
+  } catch (e) { console.warn('[crash] could not write report:', e.message); }
+  console.warn('[crash]', line.slice(0, 200));
+}
 
 /* Watch pairing codes, in memory: a code that does not survive a restart is a
  * code an attacker cannot grind across one. */
@@ -215,6 +235,28 @@ async function api(req, res, route) {
     return json(res, 200, { token, profile: store.publicProfile(acct), save: acct.save });
   }
 
+  /* Crash reports from the client's error boundary. Kept deliberately dumb:
+   * a bounded line in a log file, no storage of who, nothing echoed back.
+   * Rate-limited per address so a broken build cannot fill the disk, and the
+   * body is truncated rather than rejected — a report that arrives clipped is
+   * still a report. */
+  if (route === '/api/crash') {
+    if (req.method !== 'POST') return json(res, 405, { error: 'POST' });
+    if (!guard.crashAllowed(req)) return json(res, 429, { ok: false });
+    const body = await readBody(req).catch(() => ({}));
+    const line = JSON.stringify({
+      at: new Date().toISOString(),
+      build: BUILD,
+      v: String(body.version || '').slice(0, 12),
+      msg: String(body.message || '').slice(0, 300),
+      stack: String(body.stack || '').slice(0, 1200),
+      where: String(body.where || '').slice(0, 80),
+      ua: String(req.headers['user-agent'] || '').slice(0, 160),
+    });
+    crashLog(line);
+    return json(res, 202, { ok: true });
+  }
+
   if (route === '/api/leaderboard') {
     return json(res, 200, { rows: store.leaderboard(25) });
   }
@@ -336,19 +378,62 @@ const server = http.createServer((req, res) => {
 
   fs.stat(file, (err, st) => {
     if (!err && st.isDirectory()) file = path.join(file, 'index.html');
-    fs.readFile(file, (err2, buf) => {
-      if (err2) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
-      res.writeHead(200, {
-        'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-        Pragma: 'no-cache',
-        Expires: '0',
-        ...SECURITY_HEADERS,
-      });
-      res.end(buf);
-    });
+    serveStatic(req, res, file);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Static files: compressed, and revalidated rather than refetched
+ *
+ * Two things this used to get wrong, and both were paid for on every load.
+ * Every response was `no-store`, so a returning player downloaded the whole
+ * module graph again — three.js alone is 1.3 MB — and nothing was compressed,
+ * so it went over the wire at that size. Now text assets are gzipped once
+ * (kept in memory, keyed on the file's mtime so an edit invalidates it) and
+ * every file carries an ETag with `no-cache`: the browser still asks every
+ * time, which is what keeps updates immediate, but the answer to an unchanged
+ * file is a 304 and no bytes. The service worker's network-first rule sees
+ * exactly the same freshness it did before.
+ * ------------------------------------------------------------------ */
+const COMPRESSIBLE = /\.(js|mjs|css|html|json|svg|txt|md|webmanifest|glb|gltf|bin)$/i;
+const gzCache = new Map();          // file -> { mtime, size, etag, raw, gz }
+const GZ_CACHE_MAX = 64 * 1024 * 1024;
+let gzCacheBytes = 0;
+
+function serveStatic(req, res, file) {
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
+    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
+    const headers = {
+      'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      'Cache-Control': 'no-cache',
+      ETag: etag,
+      Vary: 'Accept-Encoding',
+      ...SECURITY_HEADERS,
+    };
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers).end(); return; }
+    const wantGz = /\bgzip\b/.test(req.headers['accept-encoding'] || '') && COMPRESSIBLE.test(file) && st.size > 1024;
+    const cached = gzCache.get(file);
+    if (wantGz && cached && cached.mtime === st.mtimeMs && cached.size === st.size) {
+      res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': cached.gz.length });
+      res.end(cached.gz);
+      return;
+    }
+    fs.readFile(file, (err2, buf) => {
+      if (err2) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
+      if (!wantGz) { res.writeHead(200, { ...headers, 'Content-Length': buf.length }); res.end(buf); return; }
+      zlib.gzip(buf, { level: 6 }, (err3, gz) => {
+        if (err3) { res.writeHead(200, { ...headers, 'Content-Length': buf.length }); res.end(buf); return; }
+        if (cached) gzCacheBytes -= cached.gz.length;
+        if (gzCacheBytes + gz.length > GZ_CACHE_MAX) { gzCache.clear(); gzCacheBytes = 0; }
+        gzCache.set(file, { mtime: st.mtimeMs, size: st.size, etag, gz });
+        gzCacheBytes += gz.length;
+        res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': gz.length });
+        res.end(gz);
+      });
+    });
+  });
+}
 
 /* ------------------------------------------------------------------ *
  * WebSocket hub: presence, matchmaking, relay

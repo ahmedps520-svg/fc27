@@ -18,6 +18,57 @@
  */
 export const RELEASES = [
   {
+    version: 'v67',
+    date: '2026-09-18',
+    tag: 'Foundation',
+    title: 'Faster to load, harder to break',
+    lede: 'The game boots in a quarter of the time on a slow connection, the black '
+        + 'flicker has a cause and a fix, and errors get a proper screen instead of a blank one.',
+    entries: [
+      {
+        head: 'A quarter of the wait',
+        summary: 'Cold start on a slow phone line: 15 seconds to about 3.5, and 2.6 MB down to about half a megabyte.',
+        detail: 'The 3D engine is no longer part of booting the game — it loads the first '
+              + 'time you kick off, behind the loading screen you already see, and is '
+              + 'warmed quietly a few seconds after the menu appears. Everything the '
+              + 'server sends is compressed now, and files that have not changed are '
+              + 'not sent again at all. The menu backdrop is a third of its old size '
+              + 'at the same look.',
+      },
+      {
+        head: 'The black flicker',
+        summary: 'The floodlight beams could paint a NaN — a black wedge — for one frame. Fixed at the source.',
+        detail: 'The beam shader computed the cone\'s rim from a normal that could, by '
+              + 'one rounding error, come out a hair past one; the maths turned that '
+              + 'into a negative base for a power function, which is not-a-number, '
+              + 'and an additive not-a-number renders black. It only happened on the '
+              + 'triangles facing the lens that exact frame — a hard-edged dark wedge '
+              + 'where the beams cross the goalmouth, gone the next frame. The value '
+              + 'is clamped now, and the post pass also refuses to pass a NaN on to '
+              + 'the bloom, so no other material can do the same trick.',
+      },
+      {
+        head: 'A screen when things go wrong',
+        summary: 'Errors show a card with Carry on / Reload / Back to menu, and send a report.',
+        detail: 'Uncaught errors used to leave a stuck screen. Now a card explains, '
+              + 'offers the three things that help, and posts a clipped report so the '
+              + 'next build can fix it. Blocked storage (private browsing) no longer '
+              + 'stops the game: it plays from memory and tells you once that progress '
+              + 'will not be kept. Signing in still saves to the cloud regardless.',
+      },
+      {
+        head: 'Three bugs the new tests found',
+        summary: 'Claiming the free pack, opening a Star or Icon pack, and the store timer all threw.',
+        detail: 'The pack engine moved into its own file in v65 and left three names '
+              + 'behind: the free-pack timer, the guarantee slot and the countdown '
+              + 'formatter. Any of them threw the moment they were reached. A real '
+              + 'test suite runs on every push now — unit tests, a browser smoke test '
+              + 'of phone and watch, a balance-sweep gate and a black-pixel scan of the '
+              + 'renderer — which is how these were caught, and how the next ones will be.',
+      },
+    ],
+  },
+  {
     version: 'v66',
     date: '2026-09-11',
     tag: 'Watch + World',

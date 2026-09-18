@@ -1,6 +1,7 @@
 import { WORLD } from './data/generator.js';
 import { dealSlate, LADDER, REFRESH_MS, ULTIMATE_RUNGS } from './data/objectives.js';
 import { pushSave } from './net/api.js';
+import * as storage from './storage.js';
 
 const KEY = 'apexxi.save.v1';
 
@@ -150,7 +151,7 @@ let state = defaults();
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = storage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       state = { ...defaults(), ...parsed };
@@ -180,7 +181,7 @@ export function loadState() {
       // re-running it on the next load — and by then the player may have earned
       // something, which the second wipe would take back off them.
       if (applyReset(state)) {
-        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
+        try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
       }
     }
   } catch {
@@ -221,7 +222,7 @@ export const getState = () => state;
 
 export function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    storage.setItem(KEY, JSON.stringify(state));
   } catch { /* storage full or blocked — keep playing in memory */ }
   // Local first, cloud second: the game never waits on the network to save.
   pushSave(state);
@@ -233,8 +234,15 @@ export function save() {
  */
 export function adoptCloudSave(cloud) {
   if (!cloud || typeof cloud !== 'object') return false;
+  /* Settings are mostly preferences and travel with the account — except the
+   * two that describe *this machine*. A phone that turned quality down did so
+   * because it had to; adopting a desktop's Ultra on sign-in put it straight
+   * back into the stutter the setting existed to escape. */
+  const device = { quality: state?.settings?.quality, models: state?.settings?.models };
   state = { ...defaults(), ...cloud };
   state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
+  if (device.quality) state.settings.quality = device.quality;
+  if (device.models) state.settings.models = device.models;
   state.club = { ...defaults().club, ...(cloud.club || {}) };
   state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
   state.flags = { ...defaults().flags, ...(cloud.flags || {}) };
@@ -246,7 +254,7 @@ export function adoptCloudSave(cloud) {
   if (!Array.isArray(state.club.packs)) state.club.packs = [];
   state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
   state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
+  try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
   return true;
 }
 

@@ -103,6 +103,15 @@ void main() {
   }
 
   vec3 base = texture2D(tDiffuse, vUv).rgb;
+  /* Launder the input, not just the output. The backstop at the bottom falls
+   * back to the base colour when the grade goes NaN — which is no help at all when
+   * base itself arrived NaN from an earlier pass (an additive material once
+   * did exactly that, see the beam shader in renderGL). A NaN here would also
+   * be smeared across its neighbours by the bloom that runs after this pass,
+   * turning one bad pixel into a soft black blot. Replace it with the fog
+   * colour: wrong by one dark pixel, never a hole. */
+  float baseProbe = base.r + base.g + base.b;
+  if (!(baseProbe >= 0.0) && !(baseProbe < 0.0)) base = vec3(0.027, 0.051, 0.094);
 
   // No depth this frame: hand back the scene ungraded rather than inventing an
   // occlusion term out of a buffer full of zeroes. See the note in render().

@@ -13,6 +13,8 @@ import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './aud
 import * as api from './net/api.js';
 import * as net from './net/socket.js';
 import { adoptCloudSave, cloudWins } from './state.js';
+import * as crashGuard from './crash.js';
+import { persistent } from './storage.js';
 
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
@@ -34,7 +36,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v66';
+export const APP_VERSION = 'v67';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -151,7 +153,15 @@ export function navigate(name, params = {}) {
   // inside .screen would ride the entry animation's containing block
   document.body.classList.toggle('on-menu', name === 'menu');
 
-  if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
+  try {
+    if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
+  } catch (err) {
+    /* A screen that throws while mounting used to leave whatever half of it
+     * had rendered, with no way out but the browser's back button. Show the
+     * card, and if this was not already the menu, fall back to it. */
+    crashGuard.crash(err, `mount:${name}`);
+    if (name !== 'menu') { navigate('menu'); return; }
+  }
   resetPadFocus();
   // music belongs to the front end only; the match runs its own crowd bed
   if (name === 'play') stopMusic(); else startMusic();
@@ -277,8 +287,14 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('button, [data-go], [data-utab], [data-nav], .tile, .coll-item')) sfx('select');
 }, true);
 
+crashGuard.setVersion(APP_VERSION);
+crashGuard.install();
 loadState();
 applyTheme();
+if (!persistent()) {
+  // once, quietly: the game works, the save just will not outlive the tab
+  setTimeout(() => toast('Storage is blocked in this browser — progress will not be kept after you close the tab. Sign in to save to the cloud.', 'warn'), 2500);
+}
 {
   const a = getState().settings;
   setAudioSettings({
@@ -288,6 +304,14 @@ applyTheme();
   });
 }
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
+/* Warm the 3D renderer once the front end is idle. It is no longer part of
+ * boot (see play.js), which is what makes the menu fast on a slow line; this
+ * fetches it a few seconds later so the first Kick Off does not pay for it
+ * either. Skipped when the browser says the player is saving data. */
+setTimeout(() => {
+  if (navigator.connection?.saveData) return;
+  import('./game/renderGL.js').catch(() => { /* the match screen retries and has its own fallback */ });
+}, 6000);
 startPadMenu();       // whole front-end is drivable from a controller
 // One speculative attempt now that the saved volumes are in: an installed PWA,
 // or a browser that already trusts this site, starts playing with no

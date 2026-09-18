@@ -6,7 +6,6 @@ import { Input } from '../game/input.js';
 import {
   draw, makeCamera, updateCamera, groundBasis, replayCamera, resolveQuality,
 } from '../game/render3d.js';
-import { createRenderer } from '../game/renderGL.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
@@ -797,14 +796,29 @@ export function mount(root, params) {
 
   // WebGL is the real renderer; the canvas-2D path stays as a fallback so the
   // match still runs if a machine or driver refuses a GL context.
+  let running = true;   // false once the screen is torn down; every async tail checks it
   let gl = null;
   let ctx = null;
-  try {
-    gl = createRenderer(canvas, match, quality, useModels);
-  } catch (err) {
+  /* The renderer — and three.js under it, 1.3 MB of it — is loaded here and
+   * not at boot. Nothing before this screen draws a triangle, so the menu,
+   * the squad and the store no longer pay for the pitch. The loading veil
+   * below is already on screen for five to seven seconds; the download rides
+   * inside that. `running` guards the callback because a player can leave the
+   * screen before the module lands, and a renderer created into a dead canvas
+   * is a leaked GL context. */
+  const glLoad = import('../game/renderGL.js').then((m) => {
+    if (!running) return;
+    gl = m.createRenderer(canvas, match, quality, useModels);
+    resize();
+    gl.ready.then(() => { assetsReady = true; });
+  }).catch((err) => {
+    if (!running) return;
     console.warn('WebGL unavailable, falling back to canvas 2D:', err);
     ctx = canvas.getContext('2d', { alpha: false });
-  }
+    resize();
+    assetsReady = true;
+  });
+  void glLoad;
 
   const resize = () => {
     vw = shell.clientWidth;
@@ -812,6 +826,7 @@ export function mount(root, params) {
     canvas.style.width = `${vw}px`;
     canvas.style.height = `${vh}px`;
     if (gl) { gl.resize(vw, vh); return; }
+    if (!ctx) return;                 // nothing to size yet: the renderer is still on its way
     const dpr = Math.min(quality === 'min' ? 1 : quality === 'low' ? 1.25 : 2, window.devicePixelRatio || 1);
     canvas.width = Math.round(vw * dpr);
     canvas.height = Math.round(vh * dpr);
@@ -849,8 +864,7 @@ export function mount(root, params) {
   const loadText = root.querySelector('#gmLoadText');
   let loading = true;
   const loadStart = performance.now();
-  let assetsReady = !gl;                    // the canvas-2D path has nothing to wait for
-  gl?.ready.then(() => { assetsReady = true; });
+  let assetsReady = false;                  // set by the renderer load above, either path
 
   const lines = LOADING_LINES.slice().sort(() => Math.random() - 0.5);
   let lineIdx = 0;
@@ -1170,7 +1184,6 @@ export function mount(root, params) {
   };
 
   let frameErrors = 0;
-  let running = true;
   const frame = (now) => {
     if (!running) return;
     try {
@@ -1380,7 +1393,7 @@ export function mount(root, params) {
     const rdt = frozen && !reel ? 0 : dt;
     const shot = replay ? replay.cam : reel ? reel.cam : cam;
     if (gl) gl.render(match, shot, rdt);
-    else draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
+    else if (ctx) draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
 
     // goal card rides the celebration phase
     if (match.phase === 'goal' && lastPhase !== 'goal') {

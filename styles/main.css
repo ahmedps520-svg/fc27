@@ -3805,3 +3805,21 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .pair-code { font-family: var(--font-num); font-size: 42px; letter-spacing: .12em; }
 .pair-note { font-size: 12px; color: var(--text-mute); }
 .ol-acct-btns { display: flex; gap: 8px; }
+
+/* ------------------------------ crash card ------------------------------ */
+.crash {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px;
+  background: rgba(3, 6, 12, .82); backdrop-filter: blur(6px);
+}
+.crash-card {
+  width: min(460px, 100%); border-radius: 18px; padding: 22px 22px 16px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03));
+  border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 30px 80px -30px #000;
+}
+.crash-eyebrow { margin: 0 0 4px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #f87171; }
+.crash-card h2 { margin: 0 0 8px; font-size: 20px; }
+.crash-msg { margin: 0 0 10px; opacity: .85; }
+.crash-card details { margin-bottom: 12px; font-size: 12px; opacity: .8; }
+.crash-detail { white-space: pre-wrap; word-break: break-word; max-height: 140px; overflow: auto; font-size: 11px; margin: 6px 0 0; }
+.crash-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.crash-foot { margin: 12px 0 0; font-size: 11px; opacity: .55; }

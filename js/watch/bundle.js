@@ -1702,8 +1702,8 @@
       }
     return players;
   }
-  var WORLD = buildWorld(), getPlayer2 = (id) => WORLD.playersById[id], getClub = (id) => id ? WORLD.clubsById[id] : null;
-  var rosterOf = (clubId) => WORLD.clubsById[clubId].roster.map(getPlayer2);
+  var WORLD = buildWorld(), getPlayer = (id) => WORLD.playersById[id], getClub = (id) => id ? WORLD.clubsById[id] : null;
+  var rosterOf = (clubId) => WORLD.clubsById[clubId].roster.map(getPlayer);
 
   // js/data/packs.js
   var PACKS = [
@@ -1923,7 +1923,7 @@
     });
     let wantPos = pack.forcePosition || (needGK ? "GK" : null);
     if (wantPos && !pulls.some((x) => x.p.position === wantPos) && (pulls[0] = draw2(rollRarity(pack.odds), (p) => p.position === wantPos)), pack.guarantee) {
-      let lo = wantGK ? 1 : 0, at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
+      let lo = wantPos ? 1 : 0, at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
       pulls[at] = draw2(pack.guarantee);
     }
     return pulls;
@@ -3999,9 +3999,8 @@
   }
 
   // js/watch/store.js
-  var KEY2 = "apexxi.watch.v1";
-  var state = null, token = null, profile = null, solo = !1, lastSync = 0, blank = () => ({
-    club: { apex: 5e3, collection: [], packs: ["bronze"], freeAt: 0, packsOpened: 0 }
+  var KEY2 = "apexxi.watch.v1", START_APEX = 5e3, state = null, token = null, profile = null, solo = !1, lastSync = 0, blank = () => ({
+    club: { apex: START_APEX, collection: [], packs: ["bronze"], freeAt: 0, packsOpened: 0 }
   }), readLocal = () => {
     try {
       return JSON.parse(localStorage.getItem(KEY2)) || null;
@@ -4064,7 +4063,7 @@
     state.club.apex = Math.max(0, (state.club.apex || 0) + apex), push();
   }
   function buy(pack) {
-    state.club.apex = Math.max(0, (state.club.apex || 0) - pack.cost), pack.cost === 0 && (state.club.freeAt = Date.now() + 216e5), push();
+    state.club.apex = Math.max(0, (state.club.apex || 0) - pack.cost), pack.cost === 0 && (state.club.freeAt = Date.now() + FREE_MS), push();
   }
   function consume(packId) {
     let i = (state.club.packs || []).indexOf(packId);
