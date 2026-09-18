@@ -20,6 +20,24 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png" />
 
   <link rel="stylesheet" href="styles/main.css" />
+  <!-- The module graph is ~40 files deep; without hints the browser discovers
+       each level only after parsing the one above. These name the heavy
+       leaves so they download alongside app.js instead of after it. -->
+  <link rel="modulepreload" href="js/app.js" />
+  <link rel="modulepreload" href="js/state.js" />
+  <link rel="modulepreload" href="js/data/generator.js" />
+  <link rel="modulepreload" href="js/data/realPlayers.js" />
+  <link rel="modulepreload" href="js/data/pools.js" />
+  <link rel="modulepreload" href="js/data/careerDb.js" />
+  <link rel="modulepreload" href="js/screens/splash.js" />
+  <link rel="modulepreload" href="js/screens/menu.js" />
+  <link rel="modulepreload" href="js/screens/squad.js" />
+  <link rel="modulepreload" href="js/screens/play.js" />
+  <link rel="modulepreload" href="js/screens/career.js" />
+  <link rel="modulepreload" href="js/tutorial.js" />
+  <link rel="modulepreload" href="js/audio.js" />
+  <!-- the menu backdrop, fetched at low priority while the splash is up -->
+  <link rel="preload" as="image" href="assets/keyart.jpg" fetchpriority="low" />
 </head>
 <body>
   <div class="bg-grid" aria-hidden="true"></div>

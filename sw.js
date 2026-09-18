@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v66';
+const CACHE = 'apexxi-v67';
 
 const ASSETS = [
   './',
@@ -43,13 +43,13 @@ const ASSETS = [
   './js/game/render3d.js',
   './js/game/renderGL.js',
   './js/game/cinematic.js',
+  './js/game/net.js',
+  './js/storage.js',
+  './js/crash.js',
   './notes.html',
   './watch.html',
   './styles/watch.css',
-  './js/watch/app.js',
-  './js/watch/store.js',
-  './js/watch/match.js',
-  './js/watch/pack.js',
+  './js/watch/bundle.js',
   './js/data/patchNotes.js',
   './js/screens/notes.js',
   './js/screens/splash.js',

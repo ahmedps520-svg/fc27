@@ -7,10 +7,20 @@
   "type": "commonjs",
   "main": "server/server.js",
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "test": "npm run test:unit && npm run test:sweep && npm run test:smoke",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:sweep": "node tests/sweep-check.mjs",
+    "test:smoke": "node tests/smoke/run.mjs",
+    "build:watch": "node tools/build-watch.mjs",
+    "release": "node tools/release.mjs"
   },
   "engines": {
     "node": ">=18 <27"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.56.1"
+  }
 }

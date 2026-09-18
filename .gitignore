@@ -3,3 +3,4 @@ server/data/
 
 # local editor/session state
 .claude/
+node_modules/

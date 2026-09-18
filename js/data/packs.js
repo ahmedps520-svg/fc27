@@ -9,7 +9,7 @@
  * Nothing here touches the DOM or the save — it is the rules, and the screens
  * are what spend coins and store the result.
  */
-import { WORLD } from './generator.js';
+import { WORLD, getPlayer } from './generator.js';
 import { RARITY } from './pools.js';
 
 export const PACKS = [
@@ -140,8 +140,9 @@ export const PACKS = [
 ];
 
 /** The free bronze recharges on a clock — see the note at the claim site. */
-const FREE_MS = 6 * 60 * 60 * 1000;
-const fmtLeft = (ms) => {
+/** How long the free pack takes to come back. Shared with the phone store and the watch. */
+export const FREE_MS = 6 * 60 * 60 * 1000;
+export const fmtLeft = (ms) => {
   // minutes first, then split — ceiling the remainder alone yields "5h 60m"
   const mins = Math.max(1, Math.ceil(ms / 60000));
   const h = Math.floor(mins / 60);
@@ -194,10 +195,8 @@ export function drawPlayer(rarity, seen, only = null) {
   return from[Math.floor(Math.random() * from.length)];
 }
 
-/** The player ids a pull would be a repeat of: the collection plus this batch. */
-const ownedIds = () => new Set(getState().club.collection);
 
-const hasKeeper = (ids) => ids.some((id) => getPlayer(id)?.position === 'GK');
+export const hasKeeper = (ids) => ids.some((id) => getPlayer(id)?.position === 'GK');
 
 /**
  * @param {boolean} needGK force one goalkeeper into this pack. A squad without
@@ -261,7 +260,10 @@ export function openPack(pack, seen = new Set(), needGK = false) {
   // anyway because nothing should depend on the guarantee sitting at a fixed
   // index. Slot 0 is skipped when a keeper was forced into it.
   if (pack.guarantee) {
-    const lo = wantGK ? 1 : 0;
+    /* `wantGK` here was a leftover from before the move out of squad.js —
+     * an undefined name, so every pack with a guarantee (Star, Icon) threw
+     * on open. Caught by tests/unit/packs.test.mjs; keep it covered. */
+    const lo = wantPos ? 1 : 0;
     const at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
     pulls[at] = draw(pack.guarantee);
   }

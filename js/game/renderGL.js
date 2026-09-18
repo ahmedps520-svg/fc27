@@ -1460,9 +1460,21 @@ export function createRenderer(canvas, match, quality, models = false) {
                * punches through the pitch. That is what put four white fans on
                * the grass under the pylons. It was invisible until the
                * floodlights stopped blowing the turf out on their own. */
-              float along = pow(vUv.y, 1.9);
-              // and brightest edge-on, which is what gives a cone its soft rim
-              float rim = 1.0 - abs(dot(normalize(vNormalV), vec3(0.0, 0.0, 1.0)));
+              float along = pow(max(vUv.y, 0.0), 1.9);
+              /* Brightest edge-on, which is what gives a cone its soft rim.
+               *
+               * Clamped, and the clamp is the black-flicker fix. The
+               * interpolated normal is re-normalised per pixel, and where the
+               * cone faces the camera abs(dot) lands a rounding error *above*
+               * one — so rim was -1e-7, and pow of a negative base is NaN in
+               * GLSL. This material is additive: NaN + scene = NaN, and a NaN
+               * pixel rasterises black. The failing pixels are the triangles
+               * of the cone that happen to face the lens that frame — a
+               * hard-edged dark wedge, on the goalmouth the beams cross,
+               * gone the next frame when the rounding lands the other way.
+               * Ultra saw it most because it runs the beams strongest and
+               * supersamples the most pixels through the condition. */
+              float rim = clamp(1.0 - abs(dot(normalize(vNormalV), vec3(0.0, 0.0, 1.0))), 0.0, 1.0);
               gl_FragColor = vec4(uColor, along * pow(rim, 1.5) * uStrength);
             }`,
         }));

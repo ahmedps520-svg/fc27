@@ -289,7 +289,11 @@ function cleanSquad(squad) {
   return squad.slice(0, SQUAD_MAX).filter((id) => typeof id === 'string' && id.length <= 24);
 }
 
+/** Crash reports: a handful a minute per address is a broken build, more is a hose. */
+function crashAllowed(req) { return allow(`crash:${clientIP(req)}`, 6, 6 / 60); }
+
 module.exports = {
+  crashAllowed,
   clientIP, allow, peek, spend,
   loginAllowed, loginFailed, registerAllowed, saveAllowed, apiAllowed,
   sanitiseSave, checkResult, cleanClub, cleanSquad,

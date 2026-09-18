@@ -14,7 +14,7 @@
  */
 const KEY = 'apexxi.watch.v1';
 const START_APEX = 5_000;
-const FREE_MS = 6 * 60 * 60 * 1000;
+import { FREE_MS } from '../data/packs.js';
 
 let state = null;
 let token = null;
