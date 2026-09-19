@@ -11,6 +11,7 @@ import * as Online from './screens/online.js';
 import * as Today from './screens/today.js';
 import * as Trophies from './screens/trophies.js';
 import * as Weekend from './screens/weekend.js';
+import * as World from './screens/world.js';
 import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
@@ -21,6 +22,7 @@ import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
 
 const SCREENS = {
+  world: World,
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
   settings: Settings, match: MatchScreen, play: Play, online: Online,
   today: Today, trophies: Trophies, weekend: Weekend,

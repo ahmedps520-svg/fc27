@@ -107,3 +107,34 @@ export function playerCard(p, opts = {}) {
 export const fmtMoney = (n) =>
   n >= 1_000_000 ? `£${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`
   : n >= 1000 ? `£${Math.round(n / 1000)}K` : `£${n}`;
+
+/* ---- foil tilt ----
+ * One listener on the document, so every card everywhere gets it and nothing
+ * has to be wired per screen. The pointer's place over the card becomes the
+ * tilt and the foil's angle; leaving the card snaps it back. Touch drags work
+ * the same way, which is what makes a foil worth having on a phone. */
+if (typeof document !== 'undefined' && !document.__apexFoil) {
+  document.__apexFoil = true;
+  const FOIL = '.pcard.rar-special, .pcard.rar-star, .pcard.rar-icon';
+  let live = null;
+  const move = (e) => {
+    const card = e.target.closest?.(FOIL);
+    if (live && card !== live) { live.classList.remove('is-tilting'); live.style.removeProperty('--tx'); live.style.removeProperty('--ty'); live = null; }
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    const tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    const ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    card.style.setProperty('--tx', tx.toFixed(3));
+    card.style.setProperty('--ty', ty.toFixed(3));
+    card.classList.add('is-tilting');
+    live = card;
+  };
+  const leave = () => {
+    if (!live) return;
+    live.classList.remove('is-tilting'); live.style.removeProperty('--tx'); live.style.removeProperty('--ty'); live = null;
+  };
+  document.addEventListener('pointermove', move, { passive: true });
+  document.addEventListener('pointerleave', leave);
+  document.addEventListener('pointerup', leave);
+  document.addEventListener('pointercancel', leave);
+}

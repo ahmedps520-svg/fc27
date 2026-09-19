@@ -5,6 +5,7 @@ import { PRESETS } from '../game/sim.js';
 import { screenHead } from '../components/screenHead.js';
 import { navigate } from '../app.js';
 import { enterFullscreen } from '../fullscreen.js';
+import { stadiumFor } from '../data/stadiums.js';
 
 export const TITLE = 'Kick Off';
 
@@ -13,6 +14,8 @@ let awayIdx = 1;
 let duration = 240;
 let skill = 1;
 let mode = 'single';       // single | versus | coop
+let timeOf = 'auto';       // auto | day | dusk | night
+let weather = 'auto';      // auto | clear | overcast | rain
 
 const MODES = [
   { id: 'single', label: '1 Player', sub: 'You vs CPU' },
@@ -50,7 +53,7 @@ function teamCard(idx, side) {
     <div class="ts-card" style="--team:${c.crest.colors[0]};--team2:${c.crest.colors[1]}">
       <div class="ts-head">
         <div class="ts-name">${c.name}</div>
-        <div class="ts-meta">Est. ${c.founded} · ${c.ground}</div>
+        <div class="ts-meta">Est. ${c.founded} · ${c.ground} · ${(stadiumFor(c).capacity / 1000).toFixed(0)}k</div>
       </div>
       <div class="ts-crest-row">
         <button class="ts-arrow" data-cycle="${side}" data-dir="-1" aria-label="Previous club">◀</button>
@@ -74,7 +77,7 @@ function teamCard(idx, side) {
       <div class="ts-kit" title="Club colours">
         <i style="background:${c.crest.colors[0]}"></i>
         <i style="background:${c.crest.colors[1]}"></i>
-        <span>${WORLD.leagueName}</span>
+        <span>${c.league}</span>
       </div>
     </div>`;
 }
@@ -85,16 +88,18 @@ function teamCard(idx, side) {
  * that only survives because nobody sat down and used it.
  */
 function clubRail(side, idx, otherIdx) {
-  return `
-    <div class="ts-rail" role="listbox" aria-label="Choose a club">
-      ${WORLD.clubs.map((c, i) => `
+  // forty clubs, one row per division, so the rail still reads at a glance
+  return WORLD.leagues.map((league, d) => `
+    <div class="ts-rail" role="listbox" aria-label="${league}">
+      <span class="ts-rail-tag" title="${league}">${d + 1}</span>
+      ${WORLD.clubs.map((c, i) => (c.league !== league ? '' : `
         <button class="ts-chip ${i === idx ? 'on' : ''}" data-pick="${side}" data-idx="${i}"
                 ${i === otherIdx ? 'disabled aria-disabled="true"' : ''}
                 title="${c.name}" aria-label="${c.name}"
                 style="--team:${c.crest.colors[0]}">
           ${crestSVG(c.crest, c.short, 34)}
-        </button>`).join('')}
-    </div>`;
+        </button>`)).join('')}
+    </div>`).join('');
 }
 
 /**
@@ -166,8 +171,23 @@ export function render() {
               `<button class="${skill === v ? 'on' : ''}" data-skill="${v}">${l}</button>`).join('')}
           </div>
         </div>
+        <div class="ts-opt">
+          <span>Kick-off</span>
+          <div class="seg" id="timeSeg">
+            ${[['auto', 'Auto'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']].map(([v, l]) =>
+              `<button class="${timeOf === v ? 'on' : ''}" data-time="${v}">${l}</button>`).join('')}
+          </div>
+        </div>
+        <div class="ts-opt">
+          <span>Weather</span>
+          <div class="seg" id="weatherSeg">
+            ${[['auto', 'Auto'], ['clear', 'Clear'], ['overcast', 'Cloud'], ['rain', 'Rain']].map(([v, l]) =>
+              `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${l}</button>`).join('')}
+          </div>
+        </div>
         <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
         <button class="btn primary big" id="kickOff">Kick Off</button>
+        <button class="btn ghost" id="worldBtn">League tables · The World →</button>
       </div>
 
       <div class="ts-side ts-away">
@@ -258,6 +278,18 @@ export function mount(root) {
     if (sk) {
       skill = +sk.dataset.skill;
       root.querySelectorAll('[data-skill]').forEach((x) => x.classList.toggle('on', x === sk));
+      return;
+    }
+    const tm = e.target.closest('[data-time]');
+    if (tm) {
+      timeOf = tm.dataset.time;
+      root.querySelectorAll('[data-time]').forEach((x) => x.classList.toggle('on', x === tm));
+      return;
+    }
+    const wt = e.target.closest('[data-weather]');
+    if (wt) {
+      weather = wt.dataset.weather;
+      root.querySelectorAll('[data-weather]').forEach((x) => x.classList.toggle('on', x === wt));
     }
   });
 
@@ -277,9 +309,11 @@ export function mount(root) {
       homeId: WORLD.clubs[homeIdx].id,
       awayId: WORLD.clubs[awayIdx].id,
       duration, skill, mode,
+      atmo: { time: timeOf === 'auto' ? undefined : timeOf, weather: weather === 'auto' ? undefined : weather },
     });
   });
 
+  q('#worldBtn').addEventListener('click', () => navigate('world'));
   seatText();
   const padTimer = setInterval(seatText, 900);
   return () => { clearInterval(padTimer); window.removeEventListener('keydown', onKey); };

@@ -1704,7 +1704,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
     overlay.classList.add('flash');
     celebrate(p);
     walkout.innerHTML = `
-      <div class="walkout-card reveal-${p.rarity}">${playerCard(p, { size: 'full' })}
+      <div class="walkout-card reveal-${p.rarity} flipping"><div class="card-back" aria-hidden="true">XI</div>${playerCard(p, { size: 'full' })}
         ${isDup(index) ? `<span class="dup-tag">Already yours · ◈${dupValue(p).toLocaleString()}</span>` : ''}
       </div>`;
     nextBtn.textContent = 'Add to collection';

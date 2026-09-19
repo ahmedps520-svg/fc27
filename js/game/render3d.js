@@ -118,8 +118,9 @@ export function celebrationCamera(cam, match, t) {
   return cam;
 }
 
-export function replayCamera(cam, ball, goalX, t) {
+export function replayCamera(cam, ball, goalX, t, angle = 0) {
   const dir = goalX > PITCH.w / 2 ? 1 : -1;        // direction of the attack
+  if (angle) return replayAngle(cam, ball, goalX, t, dir, angle);
   // The strike lands about 78% through the clip (3.5s of build-up, 1s of tail),
   // so the swing has to be finished by then — arriving late means the camera is
   // still moving while the ball is already in the net.
@@ -163,6 +164,57 @@ export function replayCamera(cam, ball, goalX, t) {
   cam.x = clamp(cam.x, SAFE.x0, SAFE.x1);
   cam.y = clamp(cam.y, -34, SAFE.y1);
   cam._replayed = true;
+}
+
+
+/**
+ * The other replay angles. A goal is shown from a different camera each time
+ * — the pitchside sweep above, then behind the goal, then the high wide
+ * broadcast, then the low reverse from the far touchline — and the highlights
+ * reel cycles them too, so four goals are four different pictures.
+ */
+function replayAngle(cam, ball, goalX, t, dir, angle) {
+  const s = clamp((t - 0.4) / 0.35, 0, 1);
+  const ease = s * s * (3 - 2 * s);
+  let wantX; let wantY; let wantZ; let lookX; let lookY; let lookZ = 0.9; let fov;
+  if (angle === 1) {
+    // behind the goal, high in the stand, watching the move come towards you
+    wantX = goalX + dir * 13;
+    wantY = CY + (ball.y > CY ? -8 : 8);
+    wantZ = 7 + ease * 1.5;
+    lookX = ball.x + (goalX - ball.x) * ease * 0.5;
+    lookY = ball.y + (CY - ball.y) * ease * 0.7;
+    lookZ = 0.8;
+    fov = 46 - ease * 10;
+  } else if (angle === 2) {
+    // the high wide broadcast, the whole shape of the move in one frame
+    wantX = clamp(ball.x + dir * 6, 20, PITCH.w - 20);
+    wantY = -42;
+    wantZ = 20;
+    lookX = ball.x + (goalX - ball.x) * ease * 0.6;
+    lookY = ball.y * 0.6 + CY * 0.4;
+    fov = 44 - ease * 8;
+  } else {
+    // the low reverse from the far touchline, the crowd at your back
+    wantX = clamp(ball.x - dir * 8, 12, PITCH.w - 12);
+    wantY = PITCH.h + 4.5;
+    wantZ = 3.4 + ease * 1.2;
+    lookX = ball.x + (goalX - ball.x) * ease * 0.8;
+    lookY = ball.y + (CY - ball.y) * ease * 0.5;
+    lookZ = 0.9;
+    fov = 50 - ease * 12;
+  }
+  const k = cam._replayed ? 0.16 : 1;
+  cam.x += (wantX - cam.x) * k;
+  cam.y += (wantY - cam.y) * k;
+  cam.z += (wantZ - cam.z) * k;
+  const kt = cam._replayed ? 0.22 : 1;
+  cam.tx += (lookX - cam.tx) * kt;
+  cam.ty += (lookY - cam.ty) * kt;
+  cam.tz = lookZ;
+  cam.hfov = fov;
+  cam._replayed = true;
+  return cam;
 }
 
 export function groundBasis(cam) {
@@ -837,14 +889,71 @@ function drawBanner(ctx, match, w, h, kits) {
 
 /* ---------------------------- quality ------------------------------ */
 /**
- * Phones and tablets get the light models and textures. Core count alone is a
- * poor signal (plenty of desktops report 4), so it only trips at the very low end.
+ * Which tier a device is dealt when the setting is Auto.
+ *
+ * Five tiers now: min (Ultra Low), low, medium, high, ultra. Ultra is never
+ * chosen automatically — it is only ever an explicit request. The GPU name,
+ * where the browser will say it, is the best single signal: a phone with a
+ * recent Adreno or Apple GPU runs Medium at 30 fps and Low is a waste of it;
+ * an older Mali or a PowerVR does not. Core count alone is a poor signal
+ * (plenty of desktops report 4), so it only trips at the very low end.
+ *
+ * @param {string} setting  the saved setting: auto | min | low | medium | high | ultra
+ * @param {{gpu?:string, touch?:boolean, small?:boolean, cores?:number, memory?:number}} [env]
+ *        overrides for tests; read from the browser when absent
  */
-export function resolveQuality(setting) {
-  // Ultra is never chosen automatically — it is only ever an explicit request.
-  if (setting === 'high' || setting === 'low' || setting === 'ultra' || setting === 'min') return setting;
-  const touch = window.matchMedia('(pointer: coarse)').matches;
-  const small = Math.min(window.innerWidth, window.innerHeight) < 760;
-  const weak = (navigator.hardwareConcurrency || 8) <= 2;
-  return touch || small || weak ? 'low' : 'high';
+export function resolveQuality(setting, env = null) {
+  if (['high', 'low', 'ultra', 'min', 'medium'].includes(setting)) return setting;
+  const e = env || readEnv();
+  const gpu = classifyGPU(e.gpu || '');
+  const weak = (e.cores || 8) <= 2 || (e.memory || 8) <= 2;
+  if (weak) return gpu === 'strong' ? 'low' : 'min';
+  if (gpu === 'strong') return e.touch || e.small ? 'medium' : 'high';
+  if (gpu === 'weak') return 'low';
+  // unknown GPU: fall back to the form factor, as before
+  return e.touch || e.small ? (gpu === 'mid' ? 'medium' : 'low') : 'high';
+}
+
+/** What the browser will tell us; wrapped so the classifier can be tested. */
+function readEnv() {
+  let gpu = '';
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    if (gl && ext) gpu = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+    else if (gl) gpu = String(gl.getParameter(gl.RENDERER) || '');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch { /* no GL, no name */ }
+  return {
+    gpu,
+    touch: window.matchMedia('(pointer: coarse)').matches,
+    small: Math.min(window.innerWidth, window.innerHeight) < 760,
+    cores: navigator.hardwareConcurrency || 8,
+    memory: navigator.deviceMemory || 8,
+  };
+}
+
+/**
+ * strong: a desktop GPU or a recent flagship phone; mid: a capable phone;
+ * weak: an old or budget mobile GPU; unknown: nothing recognisable said.
+ */
+export function classifyGPU(name) {
+  const n = String(name).toLowerCase();
+  if (!n) return 'unknown';
+  if (/swiftshader|llvmpipe|software|basic render/.test(n)) return 'weak';
+  if (/nvidia|geforce|rtx|gtx|quadro/.test(n)) return 'strong';
+  if (/radeon|amd/.test(n) && !/vega 3|vega 6|610|620/.test(n)) return 'strong';
+  if (/apple m\d|apple gpu|apple a1[5-9]|apple a2\d/.test(n)) return 'strong';
+  if (/apple a1[2-4]/.test(n)) return 'mid';
+  if (/apple a\d\b|apple a1[01]/.test(n)) return 'weak';
+  if (/apple/.test(n)) return 'mid';                // an Apple GPU it will not name: modern enough
+  if (/intel/.test(n)) return /arc|iris xe|iris plus/.test(n) ? 'strong' : /uhd|iris/.test(n) ? 'mid' : 'weak';
+  const adreno = n.match(/adreno[^\d]*(\d{3})/);
+  if (adreno) { const v = +adreno[1]; return v >= 730 ? 'strong' : v >= 640 ? 'mid' : 'weak'; }
+  const mali = n.match(/mali-?g(\d{2,3})/);
+  if (mali) { const v = +mali[1]; return v >= 710 || (v >= 76 && v < 100) ? 'mid' : 'weak'; }
+  if (/immortalis|xclipse|samsung/.test(n)) return 'mid';
+  if (/mali|powervr|videocore|vivante|tegra/.test(n)) return 'weak';
+  return 'unknown';
 }

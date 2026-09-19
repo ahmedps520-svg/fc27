@@ -1,0 +1,138 @@
+/**
+ * The stadiums.
+ *
+ * Every ground in the world is a compact definition here, and the renderer
+ * builds the whole thing — terracing, tiers, roof, pylons, seats, boards,
+ * pitch pattern — from these few fields. Nothing is modelled by hand; a new
+ * stadium is one line. Forty club grounds, one per club, and four showpiece
+ * arenas used for finals, the Weekend League and cup ties.
+ *
+ * Fields:
+ *   size     0..1 — how big the bowl is (depth of terracing, height, capacity)
+ *   tiers    1 or 2 — a second tier puts a balcony gap and a steeper upper deck
+ *   roof     none | cantilever | ring | arch | dome
+ *            cantilever: separate roofs over each stand, open corners
+ *            ring: one continuous roof all the way round
+ *            arch: cantilever roofs plus a great arch over the far stand
+ *            dome: ring roof with a translucent inner rim
+ *   bowl     true closes the far corners into a curve
+ *   seats    two seat colours (the terraces are two-tone)
+ *   facade   the colour of the back walls and roof structure
+ *   pattern  stripes | checks | diagonal | rings | plain — how the pitch is mown
+ *   pylons   lattice | mast | rim — tall corner pylons, short masts, or a lit roof rim
+ *   fill     typical attendance, 0..1 (a match nudges it either way)
+ *
+ * Time and weather are not part of a stadium; `atmosphereFor` decides those per
+ * match, so the same ground is seen at noon, at dusk and in the rain.
+ */
+
+export const STADIUMS = [
+  // ---- Apex Premier Division ----
+  { id: 'forge',      name: 'The Forge',        capacity: 62000, size: 0.92, tiers: 2, roof: 'ring',       bowl: true,  seats: ['#c81e3c', '#1a1c22'], facade: '#1b1f2b', pattern: 'stripes',  pylons: 'rim',     fill: 0.93 },
+  { id: 'helios',     name: 'Helios Park',      capacity: 48000, size: 0.78, tiers: 2, roof: 'cantilever', bowl: true,  seats: ['#f2b705', '#12263f'], facade: '#1d2a44', pattern: 'checks',   pylons: 'mast',    fill: 0.86 },
+  { id: 'blackmoor',  name: 'Blackmoor',        capacity: 41000, size: 0.70, tiers: 2, roof: 'cantilever', bowl: false, seats: ['#8a3ad6', '#0f0f1a'], facade: '#151428', pattern: 'diagonal', pylons: 'lattice', fill: 0.82 },
+  { id: 'verano',     name: 'Estadio Verano',   capacity: 44000, size: 0.74, tiers: 2, roof: 'ring',       bowl: true,  seats: ['#2ec4b6', '#0b132b'], facade: '#10203a', pattern: 'rings',    pylons: 'rim',     fill: 0.84 },
+  { id: 'kestrel',    name: 'Kestrel Park',     capacity: 33000, size: 0.58, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#ff7f11', '#2f3640'], facade: '#262b36', pattern: 'stripes',  pylons: 'lattice', fill: 0.80 },
+  { id: 'bramble',    name: 'Bramble Lane',     capacity: 29000, size: 0.52, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#4f9d3a', '#d4af37'], facade: '#22301c', pattern: 'checks',   pylons: 'lattice', fill: 0.78 },
+  { id: 'marisol',    name: 'Puerto Marisol',   capacity: 36000, size: 0.62, tiers: 2, roof: 'cantilever', bowl: true,  seats: ['#ff5c8a', '#13315c'], facade: '#152742', pattern: 'diagonal', pylons: 'mast',    fill: 0.79 },
+  { id: 'nordlys',    name: 'Nordlys Arena',    capacity: 30000, size: 0.55, tiers: 1, roof: 'dome',       bowl: true,  seats: ['#41d3ff', '#2b2d6e'], facade: '#1b1c48', pattern: 'plain',    pylons: 'rim',     fill: 0.88 },
+  { id: 'rampart',    name: 'The Rampart',      capacity: 24000, size: 0.44, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#6c8ea4', '#c9d6df'], facade: '#2b3a48', pattern: 'stripes',  pylons: 'lattice', fill: 0.74 },
+  { id: 'cumbre',     name: 'Cumbre Stadium',   capacity: 27000, size: 0.49, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#ff2e88', '#150d1f'], facade: '#1c1226', pattern: 'rings',    pylons: 'lattice', fill: 0.72 },
+  // ---- Meridian League ----
+  { id: 'lantern',    name: 'The Lantern',      capacity: 38000, size: 0.66, tiers: 2, roof: 'ring',       bowl: true,  seats: ['#00b4d8', '#03203c'], facade: '#0a2540', pattern: 'stripes',  pylons: 'rim',     fill: 0.81 },
+  { id: 'cliffside',  name: 'Cliffside Park',   capacity: 31000, size: 0.56, tiers: 2, roof: 'cantilever', bowl: false, seats: ['#d62828', '#f1f1f1'], facade: '#3a1c1c', pattern: 'checks',   pylons: 'lattice', fill: 0.83 },
+  { id: 'grove',      name: 'Grove Road',       capacity: 22000, size: 0.40, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#2a9d8f', '#1b1b1e'], facade: '#1c2a28', pattern: 'stripes',  pylons: 'lattice', fill: 0.76 },
+  { id: 'marsh',      name: 'Marsh Lane',       capacity: 18000, size: 0.33, tiers: 1, roof: 'none',       bowl: false, seats: ['#e9c46a', '#264653'], facade: '#2a3a40', pattern: 'plain',    pylons: 'lattice', fill: 0.70 },
+  { id: 'vireo',      name: 'Estadio Vireo',    capacity: 26000, size: 0.47, tiers: 1, roof: 'cantilever', bowl: true,  seats: ['#8ac926', '#101820'], facade: '#18231a', pattern: 'diagonal', pylons: 'mast',    fill: 0.73 },
+  { id: 'weir',       name: 'The Weir',         capacity: 20000, size: 0.37, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#a2d2ff', '#1d3557'], facade: '#1d2f4a', pattern: 'stripes',  pylons: 'lattice', fill: 0.71 },
+  { id: 'kiln',       name: 'Kiln Field',       capacity: 16000, size: 0.30, tiers: 1, roof: 'none',       bowl: false, seats: ['#f77f00', '#3d0c02'], facade: '#3a1a10', pattern: 'checks',   pylons: 'lattice', fill: 0.77 },
+  { id: 'wick',       name: 'Wick Green',       capacity: 15000, size: 0.28, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#adb5bd', '#212529'], facade: '#2b2f36', pattern: 'stripes',  pylons: 'lattice', fill: 0.66 },
+  { id: 'lumen',      name: 'Lumen Dome',       capacity: 34000, size: 0.60, tiers: 2, roof: 'dome',       bowl: true,  seats: ['#ffd166', '#5a189a'], facade: '#2a0d4a', pattern: 'rings',    pylons: 'rim',     fill: 0.85 },
+  { id: 'nova',       name: 'Campo Nova',       capacity: 19000, size: 0.35, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#ef476f', '#073b4c'], facade: '#0e2a38', pattern: 'diagonal', pylons: 'mast',    fill: 0.69 },
+  // ---- Vanguard League ----
+  { id: 'steelworks', name: 'Steelworks Park',  capacity: 21000, size: 0.38, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#8d99ae', '#2b2d42'], facade: '#2b2d42', pattern: 'stripes',  pylons: 'lattice', fill: 0.74 },
+  { id: 'corvina',    name: 'Corvina Field',    capacity: 14000, size: 0.26, tiers: 1, roof: 'none',       bowl: false, seats: ['#1b263b', '#e0e1dd'], facade: '#1b263b', pattern: 'plain',    pylons: 'lattice', fill: 0.68 },
+  { id: 'riverside',  name: 'Riverside',        capacity: 17000, size: 0.31, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#48cae4', '#023e8a'], facade: '#0b2a55', pattern: 'checks',   pylons: 'lattice', fill: 0.72 },
+  { id: 'acorn',      name: 'The Acorn',        capacity: 12000, size: 0.22, tiers: 1, roof: 'none',       bowl: false, seats: ['#6a994e', '#386641'], facade: '#2a3f22', pattern: 'stripes',  pylons: 'lattice', fill: 0.70 },
+  { id: 'harbour',    name: 'Harbour Ground',   capacity: 15500, size: 0.28, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#0077b6', '#caf0f8'], facade: '#0f3a5a', pattern: 'diagonal', pylons: 'mast',    fill: 0.66 },
+  { id: 'summit',     name: 'Summit Road',      capacity: 11000, size: 0.20, tiers: 1, roof: 'none',       bowl: false, seats: ['#2d6a4f', '#d8f3dc'], facade: '#24402f', pattern: 'plain',    pylons: 'lattice', fill: 0.64 },
+  { id: 'shaw',       name: 'Shaw Lane',        capacity: 13000, size: 0.24, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#212529', '#ffd60a'], facade: '#26282c', pattern: 'stripes',  pylons: 'lattice', fill: 0.71 },
+  { id: 'cross',      name: 'Cross Park',       capacity: 10500, size: 0.19, tiers: 1, roof: 'none',       bowl: false, seats: ['#ff9f1c', '#011627'], facade: '#152030', pattern: 'checks',   pylons: 'lattice', fill: 0.60 },
+  { id: 'windmere',   name: 'Estadio Windmere', capacity: 16500, size: 0.30, tiers: 1, roof: 'cantilever', bowl: true,  seats: ['#c77dff', '#10002b'], facade: '#1e0a3a', pattern: 'rings',    pylons: 'mast',    fill: 0.62 },
+  { id: 'quarry',     name: 'The Quarry',       capacity: 9000,  size: 0.16, tiers: 1, roof: 'none',       bowl: false, seats: ['#bc6c25', '#283618'], facade: '#33301e', pattern: 'plain',    pylons: 'lattice', fill: 0.65 },
+  // ---- Foundation League ----
+  { id: 'meadow',     name: 'Meadow Lane',      capacity: 12500, size: 0.23, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#7b2cbf', '#e0aaff'], facade: '#2a1046', pattern: 'stripes',  pylons: 'lattice', fill: 0.66 },
+  { id: 'bridge',     name: 'Bridge Street',    capacity: 9500,  size: 0.17, tiers: 1, roof: 'none',       bowl: false, seats: ['#9a031e', '#fb8b24'], facade: '#3a1010', pattern: 'checks',   pylons: 'lattice', fill: 0.69 },
+  { id: 'stonefield', name: 'Stonefield',       capacity: 11500, size: 0.21, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#adb5bd', '#343a40'], facade: '#343a40', pattern: 'plain',    pylons: 'lattice', fill: 0.58 },
+  { id: 'vale',       name: 'Vale Park',        capacity: 8500,  size: 0.15, tiers: 1, roof: 'none',       bowl: false, seats: ['#00afb9', '#f07167'], facade: '#1d3d44', pattern: 'diagonal', pylons: 'lattice', fill: 0.63 },
+  { id: 'heath',      name: 'Heath Road',       capacity: 10000, size: 0.18, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#e63946', '#f1faee'], facade: '#3a1a20', pattern: 'stripes',  pylons: 'lattice', fill: 0.67 },
+  { id: 'fen',        name: 'Fen Lane',         capacity: 7500,  size: 0.13, tiers: 1, roof: 'none',       bowl: false, seats: ['#f4a261', '#264653'], facade: '#263a40', pattern: 'plain',    pylons: 'lattice', fill: 0.60 },
+  { id: 'dunmore',    name: 'Dunmore Park',     capacity: 9800,  size: 0.18, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#40916c', '#ffffff'], facade: '#1e3a2a', pattern: 'checks',   pylons: 'lattice', fill: 0.72 },
+  { id: 'lakeside',   name: 'Lakeside Arena',   capacity: 13500, size: 0.25, tiers: 1, roof: 'cantilever', bowl: true,  seats: ['#dee2e6', '#4361ee'], facade: '#1a2a6a', pattern: 'rings',    pylons: 'mast',    fill: 0.59 },
+  { id: 'gate',       name: 'Gate Ground',      capacity: 8000,  size: 0.14, tiers: 1, roof: 'none',       bowl: false, seats: ['#ffb703', '#023047'], facade: '#0c2a40', pattern: 'stripes',  pylons: 'lattice', fill: 0.61 },
+  { id: 'colliery',   name: 'Colliery Row',     capacity: 7000,  size: 0.12, tiers: 1, roof: 'none',       bowl: false, seats: ['#3d405b', '#f2cc8f'], facade: '#33344a', pattern: 'plain',    pylons: 'lattice', fill: 0.70 },
+  // ---- showpiece arenas: finals, the Weekend League, cup ties ----
+  { id: 'apex-arena',  name: 'Apex Arena',           capacity: 90000, size: 1.00, tiers: 2, roof: 'arch',  bowl: true, seats: ['#f0f4ff', '#0a0d16'], facade: '#0e1220', pattern: 'checks',   pylons: 'rim', fill: 0.97, showpiece: true },
+  { id: 'meridian',    name: 'Meridian Dome',        capacity: 72000, size: 0.96, tiers: 2, roof: 'dome',  bowl: true, seats: ['#7af7ff', '#08111c'], facade: '#0b1a2c', pattern: 'rings',    pylons: 'rim', fill: 0.95, showpiece: true },
+  { id: 'continental', name: 'Continental Bowl',     capacity: 80000, size: 0.98, tiers: 2, roof: 'ring',  bowl: true, seats: ['#ffd166', '#2b2d42'], facade: '#1a1c30', pattern: 'diagonal', pylons: 'rim', fill: 0.96, showpiece: true },
+  { id: 'national',    name: 'The National Stadium', capacity: 84000, size: 0.99, tiers: 2, roof: 'arch',  bowl: true, seats: ['#c8102e', '#f5f5f5'], facade: '#221a1e', pattern: 'stripes',  pylons: 'rim', fill: 0.97, showpiece: true },
+];
+
+export const STADIUM_BY_ID = Object.fromEntries(STADIUMS.map((s) => [s.id, s]));
+const BY_NAME = Object.fromEntries(STADIUMS.map((s) => [s.name, s]));
+
+/** FNV-1a, so the choice of ground and weather never depends on Math.random. */
+export function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < String(s).length; i++) { h ^= String(s).charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/**
+ * The ground a club plays at.
+ *
+ * World clubs name theirs (`ground` on the blueprint); that name is the key.
+ * Any other club — a Career club, an opponent invented for the Apex ladder —
+ * is dealt one by hash so it always gets the same ground, sized by how big a
+ * club it is (`level`, 0..1), and it takes the club's own colours in the seats
+ * so the stand reads as *theirs* and not as somebody else's ground borrowed.
+ */
+export function stadiumFor(club, { showpiece = false } = {}) {
+  if (showpiece) {
+    const pick = STADIUMS.filter((s) => s.showpiece);
+    return pick[hashStr(club?.id || club?.name || 'final') % pick.length];
+  }
+  if (!club) return STADIUM_BY_ID.forge;
+  const named = club.ground && BY_NAME[club.ground];
+  if (named) return named;
+  const level = Number.isFinite(club.level) ? club.level : 0.7;
+  const pool = STADIUMS.filter((s) => !s.showpiece && Math.abs(s.size - level) < 0.22);
+  const base = (pool.length ? pool : STADIUMS.filter((s) => !s.showpiece))[hashStr(club.id || club.name) % (pool.length || STADIUMS.length)];
+  return { ...base, id: `${base.id}:${club.id || club.name}`, name: club.ground || base.name,
+    seats: Array.isArray(club.colors) && club.colors.length === 2 ? [club.colors[0], club.colors[1]] : base.seats };
+}
+
+/**
+ * Time of day and weather for one match, from a seed. Night is the most
+ * common because floodlit football is what the game was tuned on, but a
+ * third of matches are played in daylight and about one in five in rain.
+ * A caller can force any part of it (Kick Off lets you choose).
+ */
+export function atmosphereFor(seed, force = {}) {
+  const h = hashStr(`atmo|${seed}`);
+  const a = (h & 0xff) / 255;
+  const b = ((h >>> 8) & 0xff) / 255;
+  const c = ((h >>> 16) & 0xff) / 255;
+  const time = force.time || (a < 0.22 ? 'day' : a < 0.38 ? 'dusk' : 'night');
+  const weather = force.weather || (b < 0.18 ? 'rain' : b < 0.36 ? 'overcast' : 'clear');
+  return {
+    time,
+    weather,
+    /** 0..1: how hard the rain falls / how heavy the overcast is */
+    intensity: 0.4 + c * 0.6,
+    wet: weather === 'rain',
+  };
+}
+
+export const TIME_LABEL = { day: 'Afternoon', dusk: 'Dusk', night: 'Night' };
+export const WEATHER_LABEL = { clear: 'Clear', overcast: 'Overcast', rain: 'Rain' };

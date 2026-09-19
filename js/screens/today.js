@@ -16,6 +16,7 @@ import { TIER_XP, TIERS, rewardText, tierOf } from '../data/season.js';
 import { weekendWindow, currentWeekend, matchesLeft, rankFor, untilText } from '../weekend.js';
 import * as progress from '../progress.js';
 import { DAILY } from '../progress.js';
+import { worldState } from '../world.js';
 
 export const TITLE = 'Today';
 
@@ -130,10 +131,25 @@ function objectivesPanel(s) {
     </section>`;
 }
 
+/** The world's round today: who leads the top division, and a door to the tables. */
+function worldPanel() {
+  const w = worldState();
+  const top = w.divisions[0];
+  const leader = top.table[0] && WORLD.clubsById[top.table[0].id];
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>The World</h2><span class="ph-sub">Season ${w.season} · Round ${w.round}/${w.rounds}</span></header>
+      <div class="claim-row">
+        <div><b>${leader ? `${leader.name} lead the ${top.name}` : top.name}</b><span>${top.today.length} fixtures today across four divisions</span></div>
+        <button class="btn" data-go="world">Tables →</button>
+      </div>
+    </section>`;
+}
+
 export function render() {
   const s = getState();
   const head = screenHead({ kicker: 'Every day', title: 'Today', sub: new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
-  return head + `<div class="today">${claimsPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${objectivesPanel(s)}</div>`;
+  return head + `<div class="today">${claimsPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${worldPanel()}${objectivesPanel(s)}</div>`;
 }
 
 export function mount(root) {
