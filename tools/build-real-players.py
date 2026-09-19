@@ -2,6 +2,7 @@ import json, re, sys
 
 SRC='tools/real-players-source.json'
 EXTRA='tools/real-players-extra.json'   # curated second wave, see REAL_PLAYERS_EXTRA
+WAVE3='tools/real-players-wave3.json'   # third wave (v70): the two lower divisions and a wider free pool
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -37,6 +38,15 @@ COLORS = {
  'Wales':['#00ab39','#c8102e'],
  'Saudi Arabia':['#006c35','#ffffff'], 'Tunisia':['#e70013','#ffffff'], 'Chile':['#d52b1e','#0039a6'],
  'Jamaica':['#009b3a','#fed100'], 'Australia':['#00843d','#ffcd00'], 'New Zealand':['#000000','#ffffff'],
+ # third wave
+ 'Angola':['#ce1126','#000000'], 'Central African Republic':['#003082','#ffce00'], 'Costa Rica':['#002b7f','#ce1126'],
+ 'DR Congo':['#007fff','#f7d618'], 'El Salvador':['#0f47af','#ffffff'], 'Estonia':['#0072ce','#000000'],
+ 'Gabon':['#009e60','#fcd116'], 'Gambia':['#ce1126','#0c1c8c'], 'Guinea-Bissau':['#ce1126','#fcd116'],
+ 'Honduras':['#0073cf','#ffffff'], 'Iceland':['#02529c','#dc1e35'], 'Israel':['#0038b8','#ffffff'],
+ 'Libya':['#239e46','#e70013'], 'Mali':['#14b53a','#fcd116'], 'Montenegro':['#c40308','#d4af3a'],
+ 'North Macedonia':['#d20000','#ffe600'], 'Panama':['#005293','#da121a'], 'Russia':['#ffffff','#d52b1e'],
+ 'South Africa':['#007a4d','#ffb612'], 'Suriname':['#377e3f','#b40a2d'], 'Syria':['#ce1126','#007a3d'],
+ 'Tanzania':['#1eb53a','#00a3dd'], 'Togo':['#006a4e','#ffce00'],
 }
 
 PARTICLES = {'de','del','della','di','da','dos','das','van','von','le','la','el','al','ben','mac','mc',"o'",'ter','ten'}
@@ -59,7 +69,23 @@ extra = [p for p in extra if p['name'] not in seen]
 # nation's squad; a fixed-seed shuffle spreads them and stays reproducible
 import random
 random.Random(66).shuffle(extra)
-missing = sorted({p['country'] for p in pack + extra} - set(COLORS))
+# third wave: same treatment, deduped against everything already on a card
+# (the source list, the second wave, the Icons/Stars and the SBC legends)
+LEGENDS = {
+ 'Thierry Henry','Ronaldinho','Andrés Iniesta','Andres Iniesta','Andrea Pirlo','Steven Gerrard',
+ 'Sergio Agüero','Sergio Aguero','Didier Drogba','Iker Casillas','Wayne Rooney','Frank Lampard',
+ 'Philipp Lahm','Carles Puyol',
+}
+seen3 = seen | {p['name'] for p in extra} | LEGENDS
+wave3 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE3))]
+w3seen = set()
+kept = []
+for p in wave3:
+    if p['name'] in seen3 or p['name'] in w3seen: continue
+    w3seen.add(p['name']); kept.append(p)
+wave3 = kept
+random.Random(70).shuffle(wave3)
+missing = sorted({p['country'] for p in pack + extra + wave3} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
@@ -70,6 +96,7 @@ def emit(lst):
         for p in lst)
 rows = emit(pack)
 extra_rows = emit(extra)
+wave3_rows = emit(wave3)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -111,9 +138,19 @@ export const REAL_PLAYERS_EXTRA = [
 {extra_rows},
 ];
 
+/**
+ * The third wave: {len(wave3)} more (tools/real-players-wave3.json), for the two
+ * lower divisions and the wider free pool the world grew in v70. Its own list
+ * for the same reason as the second: dealt only to the v70 cards, so nothing
+ * older is ever re-named. Append, never re-sort.
+ */
+export const REAL_PLAYERS_WAVE3 = [
+{wave3_rows},
+];
+
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */
 export const NATION_COLORS = {{
 {cols},
 }};
 ''')
-print('wrote', OUT, len(pack), '+', len(extra), 'players,', len(COLORS), 'countries')
+print('wrote', OUT, len(pack), '+', len(extra), '+', len(wave3), 'players,', len(COLORS), 'countries')

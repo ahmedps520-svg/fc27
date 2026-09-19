@@ -18,6 +18,57 @@
  */
 export const RELEASES = [
   {
+    version: 'v70',
+    date: '2026-09-19',
+    tag: 'Big budget',
+    title: 'Forty grounds, four divisions',
+    lede: 'Every club has its own stadium now, in daylight, at dusk, at night and in the rain. '
+        + 'The world is forty clubs across four divisions with promotion and relegation, '
+        + 'the crowd moves, the shirts carry names, the stands sing, and your best player stands on the menu.',
+    entries: [
+      {
+        head: 'Stadiums',
+        summary: 'Forty distinct grounds plus four showpiece arenas, each built from a one-line definition; day, dusk, night, cloud and rain.',
+        detail: 'Roof styles (open, cantilever, ring, dome, the arch), one or two tiers, lit rims '
+              + 'or corner pylons, five ways of mowing the pitch, seats and facades in the club\'s '
+              + 'colours. Time and weather come from the fixture and the day: a wet pitch mirrors '
+              + 'the floodlights, rain falls through the beams, and by day the lights are simply '
+              + 'off. Kick Off lets you choose the conditions. Career clubs and your Ultimate XI '
+              + 'are dealt a ground of their own; finals and the Weekend League go to the arenas.',
+      },
+      {
+        head: 'Graphics',
+        summary: 'A crowd that sways, waves and jumps; numbers and names on shirts; four replay angles; a Medium tier and GPU detection.',
+        detail: 'The crowd is animated in the vertex shader, so thirty thousand people cost what '
+              + 'a still crowd cost. Every shirt has its number and surname printed on the back. '
+              + 'Goals replay from a different camera each time — pitchside, behind the goal, the '
+              + 'high wide, the reverse — and the highlights cycle them. Auto reads the GPU\'s name '
+              + 'and picks Low, Medium or High; Medium keeps the lighting passes, beams and rain at '
+              + 'a native pixel ratio for modern phones.',
+      },
+      {
+        head: 'The World',
+        summary: 'Forty clubs, four divisions, a round a day, two up and two down. 2,052 real-name players.',
+        detail: 'The Vanguard and Foundation Leagues join the Apex Premier Division and the '
+              + 'Meridian League, each with ten clubs, their own grounds and squads named from a '
+              + 'third wave of real players. Every division plays a double round robin at one round '
+              + 'a day, and at the end of each season two go up and two come down — decided the '
+              + 'same way on every device, with nothing stored. The tables are on the World screen '
+              + '(from Kick Off or Today) and any of today\'s fixtures can be played. Nothing you '
+              + 'owned before changed.',
+      },
+      {
+        head: 'Menu, cards, sound',
+        summary: 'Your best player stands on the title screen in 3D. Foil on Special, Star and Icon cards that tilts with your finger. Packs turn the card over. Chants, rain and a PA announcer.',
+        detail: 'The menu figure loads after the menu is ready and never on a low-tier device. '
+              + 'Foil cards react to the pointer or a touch. The pack reveal flips the card in 3D. '
+              + 'The stands clap and sing between plays and after goals, rain has its own sound, '
+              + 'and the announcer — the browser\'s own voice, nothing recorded — welcomes you to '
+              + 'the ground and names the scorer. All of it generated, none of it downloaded.',
+      },
+    ],
+  },
+  {
     version: 'v69',
     date: '2026-09-19',
     tag: 'Football',

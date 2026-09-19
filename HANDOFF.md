@@ -15,6 +15,120 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Big-budget round (v70) — stadiums, atmosphere, graphics, audio, menu, forty clubs
+**Sweep byte-identical** (12345 and 777 unchanged from v69). Nothing in the sim
+moved; the first 1112 cards are untouched (`tests/unit/generator.test.mjs`
+pins both the 731-card hash and that no pre-v70 card changed club).
+
+- **Scale** (`js/data/pools.js`, `js/data/generator.js`, `tools/build-real-players.py`,
+  `tools/real-players-wave3.json`): 20 new blueprints tagged `wave: 3` in two
+  new leagues (`LEAGUES` is now four; `club.division` = index + 1). Their
+  squads (27 + a star each) and 380 more free agents are generated on their
+  own stream (`WORLD_SEED ^ 0x3a7e70`) *after* the SBC cards and named from
+  `REAL_PLAYERS_WAVE3` (1732 names after dedupe against the source list, the
+  extra list, Icons/Stars and the SBC legends). World: 40 clubs, 2052 players,
+  646 free agents. The Meridian deal filters `c.league === 'Meridian League'`
+  now — the old `!== LEAGUE_NAME` would have dealt into the new clubs and
+  moved cards. Third-division ratings top out around 78, fourth around 72.
+- **Stadiums** (`js/data/stadiums.js`): 44 defs (`id, name, capacity, size,
+  tiers, roof, bowl, seats, facade, pattern, pylons, fill`, four `showpiece`).
+  `stadiumFor(club, {showpiece})`: world clubs by `ground` name; anything else
+  by hash of id/name, sized by `level` 0..1, seats recoloured to the club.
+  `atmosphereFor(seed, force)` → `{time, weather, intensity, wet}`; roughly
+  62% night / 22% day / 16% dusk, 18% rain. `play.js#venueOf(params)` builds
+  `match.venue = {stadium, atmo, label}` from the home side (custom squads →
+  own ground by name; `weekend/online/final` → an arena); `params.atmo` forces
+  time/weather (Kick Off has pickers); `params.atmoSeed` overrides the seed
+  (default `home|away|dayIndex|careerWeek`). The loading veil shows the venue
+  line; commentary `venue` uses the stadium name.
+- **Renderer** (`js/game/renderGL.js`): `specFromDef(def, seed)` replaces
+  `stadiumSpec` when `match.venue` exists (legacy path kept for the perf
+  harness). `lightingFor(atmo)` → hemi/sun/fog/flood/beams/exposure; floodlight
+  SpotLights are scaled by `flood` and not added at all by day; beams only at
+  night/dusk. `skyTexture(atmo)` draws day/overcast/dusk/night. `mow(g, W, H,
+  pattern, …)` shared by colour + roughness maps. Two tiers via `terraceAt(t)`
+  (`TIER_SPLIT 0.55`, gap 2.2 m back / 3 m up) shared by terrace boxes, seats
+  and crowd. Roof styles: cantilever (0.68 depth), ring/dome (0.86 + corner
+  `RingGeometry` caps; dome adds a translucent rim), arch (torus over the far
+  stand), `pylons: 'rim'` = lamp boxes along roof edges, no masts. Wet turf:
+  roughness 0.74 / envMap 0.6 (0.58/1.1 blew the near corners out white — same
+  failure the v6x comment warns about). Rain: one `LineSegments` of N streaks
+  (1200/2600/4200/7000 by tier, none on min) wrapped in a 70×70×34 m box around
+  the camera target by a time uniform. **Crowd animation**: the two instanced
+  materials get `onBeforeCompile` with `uTime/uWave/uJump/uExcite` and an
+  instanced `aCrowd` (phase, position-around-the-bowl); `customProgramCacheKey`
+  is set so three does not share the program. Wave every 40–90 s of open play
+  (11 s round), jump on `phase === 'goal'`. **Kit texture**: `rig.js#kitTexture`
+  — torso cylinder u=0 faces forward (verified numerically), so the number is
+  centred at u=0.5 with the name above; on every tier but min. `renderer.info`
+  now accumulates across composer passes (`autoReset=false`, reset per frame).
+- **rig.js**: `buildPlayer/buildFor/posePlayer/poseDive/kitTexture` moved out
+  of renderGL.js unchanged so the menu can build a figure without the match
+  renderer. renderGL imports them.
+- **Quality** (`render3d.js#resolveQuality(setting, env?)`): five tiers
+  (`min low medium high ultra`); `classifyGPU(name)` from
+  `WEBGL_debug_renderer_info` → strong/mid/weak/unknown; Auto: strong desktop →
+  high, strong phone → medium, mid phone → medium, weak → low, ≤2 cores/2 GB →
+  min (or low on a strong GPU). Ultra is never automatic. `medium` in the
+  renderer: pixel ratio ≤1.5, shadow 1024, terrace 11 rows / step 1.2, cine 5
+  samples, no DOF. Realistic models on medium only if `settings.models ===
+  'realistic'` explicitly. Settings has the Medium button + note.
+- **Replays** (`render3d.js#replayCamera(cam, ball, goalX, t, angle)`): angle
+  0 = old sweep, 1 behind goal, 2 high wide, 3 low reverse from the far
+  touchline; `clip.angle = goalClips.length % 4`.
+- **Audio** (`js/audio.js`): `startRain/setRain/stopRain` (hiss + patter bands,
+  gusting LFO); `chant(kind, level)` (`clap`, `hum`, `goal`: clap noise bursts +
+  four detuned saws through a vowel bandpass, one at a time via `chantUntil`);
+  `announce(text)` via `speechSynthesis` (queued, en voice preferred, silent
+  where unsupported), `silenceAnnouncer()`. play.js: rain when `atmo.wet`, PA
+  welcome as the veil lifts (not online), chants every 28–58 s of open play and
+  on goals, PA names the scorer; all torn down with the crowd.
+- **Menu hero** (`js/menuHero.js`): `heroPlayer()` = best owned card (else the
+  world's best); `mountHero(canvas)` lazy-imports three + rig.js after 700 ms +
+  idle, skipped on reduceMotion or Auto→low/min; alpha canvas, turntable yaw
+  ±0.55 rad, breathing; `disposeHero()` on unmount. ≥1000 px the hub gets a
+  250 px right margin for the figure; below that he stands behind the tiles;
+  ≤480 px hidden.
+- **Cards** (`playerCard.js`, main.css): foil `::before` (conic rainbow +
+  grating, `mix-blend-mode: screen`) on special/star/icon; one document-level
+  pointer listener sets `--tx/--ty` and `.is-tilting`. Pack reveal: `.walkout-card
+  .flipping` with a `.card-back` (rotateY 180 → 0). Touch: `(pointer: coarse)`
+  raises seg/btn/tile min heights.
+- **The World** (`js/world.js`, `js/screens/world.js`): `EPOCH_DAY` =
+  2026-09-01, `ROUNDS 18`, one round per UTC day; `roundRobin(ids)` (circle
+  method, then mirrored); `result(season, div, round, home, away)` = Poisson
+  goals from a hash, expected 1.32+edge+0.22 home vs 1.18−edge with edge =
+  Δrating/11; `composition(season)` applies 2 up / 2 down per finished season
+  (cached; 40 seasons ≈ 80 ms); `worldState(now)` → divisions with table,
+  today's fixtures, up/down zones, movers; `liveDivisionOf`. Cards/chemistry/
+  SBCs keep the blueprint league on purpose. Screen: 4 tabs, table, today's
+  fixtures with the ground and a Play button, last season's movers. Linked
+  from Kick Off ("League tables") and a Today panel — **not** from the menu.
+- **Kick Off**: rails grouped by division with a numbered tag; card shows the
+  league and capacity; Kick-off (Auto/Day/Dusk/Night) and Weather
+  (Auto/Clear/Cloud/Rain) segments.
+- **Tests**: `tests/unit/round4.test.mjs` (stadium defs, hashing, atmosphere,
+  round robin, result bias, promotion/relegation invariants, calendar, GPU
+  classification, Auto tiers). `tests/perf/gl-scan.mjs` takes `--time
+  --weather --home`. New `tests/perf/gl-fps.mjs` reports fps + draw calls +
+  triangles per tier on SwiftShader (ratios, not absolutes — see the header).
+- **Verified headlessly**: six stadium/time/weather/tier screenshot combos
+  (no page errors), menu hero live on desktop + landscape phone, World, Kick
+  Off, Today, store; smoke suite green (phone + watch); gl-scan on night-clear,
+  night-rain and day.
+- **Frame cost, SwiftShader 844×390** (software GL; only the ratios and the
+  scene counts transfer to real hardware): min 111 ms · low 278 ms (343 calls,
+  230k tris) · medium ~1.1 s (957 calls, 648k tris) · high ~0.9 s (972 calls,
+  928k tris) · ultra ~3 s (1021 calls, 1.98M tris). Low costs a fifth of Ultra
+  in raster work and a fifth of the triangles; Medium about a third. 2D path
+  at 4× CPU throttle unchanged from v69 (`tests/perf/fps.mjs`).
+- **Watch**: bundle rebuilt by the release script (pools/generator/realPlayers
+  are in it); the watch does not load the renderer, stadiums or the world.
+- Not done / next: crowd shader is per-instance sway only (no seated→standing
+  transition); kit numbers are not on the scanned GLB model (its shirt is a
+  recoloured material, no UV map for a print); `job` icons/typography kept on
+  the existing tokens rather than a new icon set; no stadium editor.
+
 ### Football + career round (v69) — set pieces, AI, presentation, Career V2, WL queue, reconnects
 **The balance sweep was RE-BASELINED on purpose.** Both goldens in
 `tests/golden/` were re-recorded (`node tests/sweep-check.mjs --update`) after

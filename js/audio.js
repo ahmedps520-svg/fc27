@@ -391,6 +391,127 @@ export function stopCrowd() {
   crowdNodes = null;
 }
 
+/* ------------------------------- rain bed ------------------------------- */
+/** Rain: two bands of noise, one hiss and one patter, modulated so it gusts. */
+let rainNodes = null;
+export function startRain(intensity = 0.6) {
+  if (!ready && !initAudio()) return;
+  if (rainNodes) { setRain(intensity); return; }
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 1.1;
+  const hiss = ctx.createBiquadFilter(); hiss.type = 'highpass'; hiss.frequency.value = 2400; hiss.Q.value = 0.5;
+  const patter = ctx.createBiquadFilter(); patter.type = 'bandpass'; patter.frequency.value = 900; patter.Q.value = 0.9;
+  const pg = ctx.createGain(); pg.gain.value = 0.35;
+  const gust = ctx.createGain(); gust.gain.value = 1;
+  const lfo = ctx.createOscillator(); const lg = ctx.createGain();
+  lfo.frequency.value = 0.09; lg.gain.value = 0.25; lfo.connect(lg).connect(gust.gain);
+  const out = ctx.createGain(); out.gain.value = 0.0001;
+  src.connect(hiss).connect(gust); src.connect(patter).connect(pg).connect(gust);
+  gust.connect(out).connect(sfxBus);
+  src.start(); lfo.start();
+  rainNodes = { src, out, lfo };
+  setRain(intensity);
+}
+export function setRain(intensity) {
+  if (!rainNodes) return;
+  rainNodes.out.gain.setTargetAtTime(0.03 + Math.max(0, Math.min(1, intensity)) * 0.09, now(), 1.2);
+}
+export function stopRain() {
+  if (!rainNodes) return;
+  const { src, out, lfo } = rainNodes;
+  try { out.gain.setTargetAtTime(0.0001, now(), 0.4); src.stop(now() + 1.5); lfo.stop(now() + 1.5); } catch { /* stopped */ }
+  rainNodes = null;
+}
+
+/* -------------------------------- chants -------------------------------- */
+/**
+ * A terrace chant: a clap pattern and a hummed line sung by the mass, all
+ * generated — a chorus of detuned saws through the crowd's own vowel filter,
+ * so it sounds like a stand singing rather than a synth. Three patterns, and
+ * the goal one is the longest.
+ */
+const CHANTS = {
+  // [beat, note] pairs in eighths at 132 bpm; note 0 = rest; claps are 'x'
+  clap:  { steps: [['x'], ['x'], [], ['x'], ['x'], ['x'], [], []], bars: 2, notes: false },
+  hum:   { steps: [[60], [60], [63], [65], [], [65], [63], [60]], bars: 2, notes: true },
+  goal:  { steps: [[67], [67], [], [67], [65], [63], [65], [60]], bars: 3, notes: true },
+};
+let chantUntil = 0;
+export function chant(kind = 'hum', level = 0.6) {
+  if (!settings.enabled || !settings.sfx) return;
+  if (!ready && !initAudio()) return;
+  if (ctx.state === 'suspended') return;
+  const c = CHANTS[kind] || CHANTS.hum;
+  const t0 = now();
+  if (t0 < chantUntil) return;                       // one at a time
+  const eighth = 60 / 132 / 2;
+  const total = c.steps.length * c.bars * eighth;
+  chantUntil = t0 + total + 1;
+  const vowel = ctx.createBiquadFilter(); vowel.type = 'bandpass'; vowel.frequency.value = 620; vowel.Q.value = 1.2;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
+  const out = ctx.createGain(); out.gain.value = 0.0001;
+  vowel.connect(lp).connect(out).connect(sfxBus);
+  out.gain.setTargetAtTime(0.05 + level * 0.09, t0, 0.3);
+  out.gain.setTargetAtTime(0.0001, t0 + total - 0.3, 0.25);
+  for (let b = 0; b < c.bars; b++) {
+    c.steps.forEach((step, i) => {
+      const t = t0 + (b * c.steps.length + i) * eighth;
+      for (const v of step) {
+        if (v === 'x') {
+          noise({ dur: 0.08, gain: 0.14 + level * 0.12, type: 'bandpass', freq: 1500, q: 1.2, delay: t - t0, attack: 0.004 });
+          continue;
+        }
+        if (!c.notes) continue;
+        const f = 440 * Math.pow(2, (v - 69) / 12) / 2;   // sung an octave down: a crowd, not a choir
+        for (const det of [-9, -3, 4, 11]) {
+          const o = ctx.createOscillator(); o.type = 'sawtooth';
+          o.frequency.value = f; o.detune.value = det * 3;
+          const g = ctx.createGain(); g.gain.value = 0.0001;
+          g.gain.setTargetAtTime(0.09, t, 0.05);
+          g.gain.setTargetAtTime(0.0001, t + eighth * 0.85, 0.06);
+          o.connect(g).connect(vowel);
+          o.start(t); o.stop(t + eighth * 1.2);
+        }
+      }
+    });
+  }
+}
+
+/* ------------------------------ the announcer ------------------------------ */
+/**
+ * The stadium PA, through the browser's own speech synthesis — no recorded
+ * voice, nothing downloaded, and silent where the platform offers nothing.
+ * Lines are queued behind each other and never over the top of one another.
+ */
+let paQueue = [];
+let paBusy = false;
+function paNext() {
+  if (paBusy || !paQueue.length) return;
+  const text = paQueue.shift();
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95; u.pitch = 0.85; u.volume = Math.min(1, settings.sfx * settings.master * 0.7);
+    const voices = speechSynthesis.getVoices?.() || [];
+    const en = voices.find((v) => /^en(-|_)?(GB|US)?/i.test(v.lang) && !/female/i.test(v.name)) || voices.find((v) => /^en/i.test(v.lang));
+    if (en) u.voice = en;
+    paBusy = true;
+    u.onend = u.onerror = () => { paBusy = false; setTimeout(paNext, 350); };
+    speechSynthesis.speak(u);
+  } catch { paBusy = false; }
+}
+export function announce(text) {
+  if (!settings.enabled || !settings.sfx) return;
+  if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return;
+  if (paQueue.length > 3) paQueue.shift();
+  paQueue.push(String(text));
+  paNext();
+}
+export function silenceAnnouncer() {
+  paQueue = [];
+  try { speechSynthesis?.cancel?.(); } catch { /* none */ }
+  paBusy = false;
+}
+
 /* ------------------------------ lobby music ----------------------------- */
 // An original loop: four chords, a pad, and a soft arpeggio on top.
 const CHORDS = [

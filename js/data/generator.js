@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -275,6 +275,7 @@ function buildWorld() {
       tier: bp.tier,
       crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
       league: bp.league || LEAGUE_NAME,
+      division: 1,
       founded: bp.founded,
       ground: bp.ground,
       roster,
@@ -290,10 +291,11 @@ function buildWorld() {
       tier: bp.tier,
       crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
       league: bp.league,
+      division: LEAGUES.indexOf(bp.league) + 1,
       founded: bp.founded,
       ground: bp.ground,
-      roster: [],                       // dealt at the end of buildWorld
-      budget: Math.round((12 - bp.tier) * 5_000_000 + 6_000_000),
+      roster: [],                       // dealt (Meridian) or generated (wave 3) at the end of buildWorld
+      budget: Math.round((12 - bp.tier) * (bp.wave === 3 ? 2_000_000 : 5_000_000) + (bp.wave === 3 ? 2_500_000 : 6_000_000)),
     });
   });
 
@@ -469,7 +471,7 @@ function buildWorld() {
    * tier one of the new league is the strongest and the depth is even. It is
    * deterministic and consumes no random numbers, which is how the original
    * fixture list above and both balance sweeps stay byte-identical.        */
-  const newClubs = clubs.filter((c) => c.league !== LEAGUE_NAME);
+  const newClubs = clubs.filter((c) => c.league === 'Meridian League');
   if (newClubs.length) {
     const dealable = freeAgents.map((id) => players.find((p) => p.id === id))
       .filter((p) => p && p.rarity !== 'icon' && p.rarity !== 'star' && p.overall < 88 && !p.sbc);
@@ -519,6 +521,40 @@ function buildWorld() {
     players.push(p);
     sbcCards.push(p.id);
   }
+
+  /* ----------------------- the third and fourth divisions ----------------------- *
+   * v70: forty clubs. The twenty blueprints tagged `wave: 3` get whole new
+   * squads — 27 cards each, the same shape the Meridian deal wanted — plus a
+   * wider free pool, all on their own seeded stream and appended after the
+   * SBC cards so every id above is untouched. Named from the third list of
+   * real players. Ratings sit below the Meridian League: the third division
+   * tops out in the mid 70s, the fourth in the high 60s, so promotion means
+   * something and a fourth-division youngster is a project, not a signing. */
+  const w3 = makeRand(WORLD_SEED ^ 0x3a7e70);
+  const w3Players = [];
+  const W3_SHAPE = ['GK', 'GK', 'GK', 'CB', 'CB', 'CB', 'CB', 'LB', 'LB', 'RB', 'RB', 'CDM', 'CDM',
+    'CM', 'CM', 'CM', 'CAM', 'CAM', 'LM', 'RM', 'LW', 'LW', 'RW', 'RW', 'ST', 'ST', 'ST'];
+  for (const club of clubs) {
+    if (!CLUB_BLUEPRINTS.find((bp) => bp.name === club.name)?.wave) continue;
+    const base = (club.division === 3 ? 76 : 70) - (club.tier - 1) * 1.2;
+    W3_SHAPE.forEach((pos, slot) => {
+      const depth = slot % 3 === 2 ? 5 : slot % 3 === 1 ? 2 : 0;
+      const p = makePlayer(w3, pos, base - depth, club.id);
+      players.push(p); w3Players.push(p);
+      club.roster.push(p.id);
+    });
+    // one name worth knowing at every club, so the lower leagues have stars of their own
+    const star = makePlayer(w3, w3.pick(['ST', 'CAM', 'LW', 'RW', 'CM']), clamp(base + 7, 60, 84), club.id);
+    players.push(star); w3Players.push(star);
+    club.roster.push(star.id);
+  }
+  const W3_POOL = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'ST'];
+  for (let i = 0; i < 380; i++) {
+    const p = makePlayer(w3, w3.pick(W3_POOL), w3.around(72, 10), null);
+    players.push(p); w3Players.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(w3Players, REAL_PLAYERS_WAVE3);
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 

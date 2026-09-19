@@ -8,7 +8,7 @@
  * pitch region of the frame. A healthy build counts a handful (line art
  * edges); a build with the beam NaN counted whole wedges.
  *
- *   node tests/perf/gl-scan.mjs [--root <dir>] [--frames 16]
+ *   node tests/perf/gl-scan.mjs [--root <dir>] [--frames 16] [--time night|day|dusk] [--weather clear|overcast|rain] [--home c1]
  */
 import { chromium } from 'playwright';
 import { startServer } from '../smoke/server.mjs';
@@ -26,7 +26,9 @@ await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.strin
 })));
 await page.goto(`${server.url}/`);
 await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
-await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('play', { homeId: 'c1', awayId: 'c4', duration: 40, skill: 1, mode: 'single' }); });
+const ATMO = { time: arg('--time', 'night'), weather: arg('--weather', 'clear') };
+const HOME = arg('--home', 'c1');
+await page.evaluate(async ({ atmo, home }) => { const app = await import('/js/app.js'); app.navigate('play', { homeId: home, awayId: 'c4', duration: 40, skill: 1, mode: 'single', atmo }); }, { atmo: ATMO, home: HOME });
 await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 60000 });
 // hide the HUD so only the picture is measured
 await page.addStyleTag({ content: '#gmRoot > :not(canvas) { visibility: hidden !important; }' });

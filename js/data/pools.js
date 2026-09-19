@@ -75,10 +75,38 @@ export const CLUB_BLUEPRINTS = [
   { name: 'Greywick Rangers',  short: 'GRW', tier: 8,  crest: 'circle',   pattern: 'quarters', device: 'battlement', founded: 1874, ground: 'Wick Green',       colors: ['#adb5bd', '#212529'], league: 'Meridian League' },
   { name: 'Lumen City',        short: 'LUM', tier: 9,  crest: 'hex',      pattern: 'hoops',    device: 'peak',       founded: 1961, ground: 'Lumen Dome',       colors: ['#ffd166', '#5a189a'], league: 'Meridian League' },
   { name: 'Serrano Nova',      short: 'SRN', tier: 10, crest: 'diamond',  pattern: 'stripes',  device: 'thorn',      founded: 1977, ground: 'Campo Nova',       colors: ['#ef476f', '#073b4c'], league: 'Meridian League' },
+  /* The Vanguard League (third division) and the Foundation League (fourth),
+   * added in v70 to make the world 40 clubs across four divisions with
+   * promotion and relegation between them. Their squads are new cards on
+   * their own seeded stream (see generator.js), named from the third wave of
+   * real players; nothing that existed before v70 moves. `wave: 3` is how the
+   * generator tells them apart from the Meridian clubs, whose squads were
+   * dealt from the free pool. */
+  { name: 'Halden Steel',      short: 'HAL', tier: 1,  crest: 'shield',   pattern: 'stripes',  device: 'keep',       founded: 1899, ground: 'Steelworks Park',  colors: ['#8d99ae', '#2b2d42'], league: 'Vanguard League', wave: 3 },
+  { name: 'Corvina Rovers',    short: 'COR', tier: 2,  crest: 'circle',   pattern: 'hoops',    device: 'bird',       founded: 1912, ground: 'Corvina Field',    colors: ['#1b263b', '#e0e1dd'], league: 'Vanguard League', wave: 3 },
+  { name: 'Brightwater Town',  short: 'BWT', tier: 3,  crest: 'hex',      pattern: 'halves',   device: 'wave',       founded: 1904, ground: 'Riverside',        colors: ['#48cae4', '#023e8a'], league: 'Vanguard League', wave: 3 },
+  { name: 'Oakhurst United',   short: 'OAK', tier: 4,  crest: 'diamond',  pattern: 'solid',    device: 'leaf',       founded: 1887, ground: 'The Acorn',        colors: ['#6a994e', '#386641'], league: 'Vanguard League', wave: 3 },
+  { name: 'Tidemark FC',       short: 'TDM', tier: 5,  crest: 'chevron',  pattern: 'quarters', device: 'crescent',   founded: 1931, ground: 'Harbour Ground',   colors: ['#0077b6', '#caf0f8'], league: 'Vanguard League', wave: 3 },
+  { name: 'Pinecrest Athletic', short: 'PIN', tier: 6,  crest: 'shield',   pattern: 'hoops',    device: 'peak',       founded: 1920, ground: 'Summit Road',      colors: ['#2d6a4f', '#d8f3dc'], league: 'Vanguard League', wave: 3 },
+  { name: 'Ravenshaw City',    short: 'RVS', tier: 7,  crest: 'triangle', pattern: 'stripes',  device: 'bird',       founded: 1896, ground: 'Shaw Lane',        colors: ['#212529', '#ffd60a'], league: 'Vanguard League', wave: 3 },
+  { name: 'Sable Cross',       short: 'SBC', tier: 8,  crest: 'circle',   pattern: 'quarters', device: 'star',       founded: 1953, ground: 'Cross Park',       colors: ['#ff9f1c', '#011627'], league: 'Vanguard League', wave: 3 },
+  { name: 'Windmere Sporting', short: 'WND', tier: 9,  crest: 'hex',      pattern: 'solid',    device: 'sun',        founded: 1964, ground: 'Estadio Windmere', colors: ['#c77dff', '#10002b'], league: 'Vanguard League', wave: 3 },
+  { name: 'Quarry Bank',       short: 'QRY', tier: 10, crest: 'diamond',  pattern: 'halves',   device: 'battlement', founded: 1878, ground: 'The Quarry',       colors: ['#bc6c25', '#283618'], league: 'Vanguard League', wave: 3 },
+  { name: 'Larkspur FC',       short: 'LRK', tier: 1,  crest: 'circle',   pattern: 'stripes',  device: 'leaf',       founded: 1909, ground: 'Meadow Lane',      colors: ['#7b2cbf', '#e0aaff'], league: 'Foundation League', wave: 3 },
+  { name: 'Ironbridge Town',   short: 'IRB', tier: 2,  crest: 'shield',   pattern: 'solid',    device: 'keep',       founded: 1884, ground: 'Bridge Street',    colors: ['#9a031e', '#fb8b24'], league: 'Foundation League', wave: 3 },
+  { name: 'Stonefield Wanderers', short: 'STF', tier: 3, crest: 'hex',    pattern: 'hoops',    device: 'battlement', founded: 1891, ground: 'Stonefield',       colors: ['#adb5bd', '#343a40'], league: 'Foundation League', wave: 3 },
+  { name: 'Marlow Vale',       short: 'MLW', tier: 4,  crest: 'diamond',  pattern: 'quarters', device: 'wave',       founded: 1927, ground: 'Vale Park',        colors: ['#00afb9', '#f07167'], league: 'Foundation League', wave: 3 },
+  { name: 'Heathcote Rangers', short: 'HTC', tier: 5,  crest: 'chevron',  pattern: 'stripes',  device: 'thorn',      founded: 1902, ground: 'Heath Road',       colors: ['#e63946', '#f1faee'], league: 'Foundation League', wave: 3 },
+  { name: 'Fenwick Albion',    short: 'FEN', tier: 6,  crest: 'shield',   pattern: 'halves',   device: 'crescent',   founded: 1919, ground: 'Fen Lane',         colors: ['#f4a261', '#264653'], league: 'Foundation League', wave: 3 },
+  { name: 'Dunmore Celtic',    short: 'DUN', tier: 7,  crest: 'circle',   pattern: 'hoops',    device: 'star',       founded: 1888, ground: 'Dunmore Park',     colors: ['#40916c', '#ffffff'], league: 'Foundation League', wave: 3 },
+  { name: 'Silverlake City',   short: 'SLK', tier: 8,  crest: 'triangle', pattern: 'solid',    device: 'sun',        founded: 1958, ground: 'Lakeside Arena',   colors: ['#dee2e6', '#4361ee'], league: 'Foundation League', wave: 3 },
+  { name: 'Crossgate Athletic', short: 'CRG', tier: 9, crest: 'hex',      pattern: 'stripes',  device: 'peak',       founded: 1936, ground: 'Gate Ground',      colors: ['#ffb703', '#023047'], league: 'Foundation League', wave: 3 },
+  { name: 'Ashby Colliery',    short: 'ASB', tier: 10, crest: 'diamond',  pattern: 'solid',    device: 'keep',       founded: 1871, ground: 'Colliery Row',     colors: ['#3d405b', '#f2cc8f'], league: 'Foundation League', wave: 3 },
 ];
 
 export const LEAGUE_NAME = 'Apex Premier Division';
-export const LEAGUES = [LEAGUE_NAME, 'Meridian League'];
+/** The four divisions of the world, top first. Index + 1 is the division number. */
+export const LEAGUES = [LEAGUE_NAME, 'Meridian League', 'Vanguard League', 'Foundation League'];
 
 // position -> which stats matter, used for weighted overall + chemistry groups
 export const POSITIONS = {

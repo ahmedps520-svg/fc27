@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { WORLD, getPlayer, getClub, rosterOf, clubRating } from '../../js/data/generator.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA } from '../../js/data/realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3 } from '../../js/data/realPlayers.js';
 
 /* The world is content, and content that people own. These pin the shape of
  * it, and the first one pins the *identity* of every card that existed before
@@ -21,10 +21,14 @@ test('the original 731 cards are byte-stable', () => {
 });
 
 test('world shape', () => {
-  assert.equal(WORLD.clubs.length, 20);
-  assert.equal(WORLD.players.length, 1112);
+  assert.equal(WORLD.clubs.length, 40);
+  assert.equal(WORLD.players.length, 2052);
   assert.equal(WORLD.sbcCards.length, 12);
-  assert.equal(new Set(WORLD.clubs.map((c) => c.league)).size, 2);
+  assert.equal(new Set(WORLD.clubs.map((c) => c.league)).size, 4);
+  for (const d of [1, 2, 3, 4]) assert.equal(WORLD.clubs.filter((c) => c.division === d).length, 10, `division ${d} has ten clubs`);
+  // v69 world: the first 1112 cards (20 clubs' worth) are exactly what they were
+  const v69 = WORLD.players.slice(0, 1112);
+  assert.ok(v69.every((p) => !p.clubId || Number(p.clubId.slice(1)) <= 20), 'no pre-v70 card was moved to a new club');
   for (const id of WORLD.sbcCards) assert.ok(WORLD.playersById[id].sbc && WORLD.playersById[id].clubId === null);
   const ids = new Set(WORLD.players.map((p) => p.id));
   assert.equal(ids.size, WORLD.players.length, 'ids are unique');
@@ -33,7 +37,7 @@ test('world shape', () => {
 });
 
 test('every card is a real person with a flag', () => {
-  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA].map((r) => r[0]));
+  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA, ...REAL_PLAYERS_WAVE3].map((r) => r[0]));
   const unnamed = WORLD.players.filter((p) => !real.has(p.name) && p.rarity !== 'icon' && p.rarity !== 'star' && !p.sbc);
   assert.equal(unnamed.length, 0, `generated names left: ${unnamed.slice(0, 5).map((p) => p.name)}`);
   for (const p of WORLD.players) {

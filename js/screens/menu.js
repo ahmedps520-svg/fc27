@@ -3,6 +3,7 @@ import { notesPending, showNotes, markNotesSeen } from './notes.js';
 import { maybeStartTutorial, tutorialSeen } from '../tutorial.js';
 import { claimableCount, dailyStatus } from '../progress.js';
 import { activeEvent } from '../live.js';
+import { mountHero, disposeHero, heroPlayer } from '../menuHero.js';
 
 export const TITLE = 'APEX XI';
 
@@ -86,6 +87,12 @@ export function render() {
            APEX against a green XI. It was briefly removed along with the row of
            counters underneath it; the counters were the problem, not this. -->
       <h1 class="menu-wordmark"><span class="t1">APEX</span><span class="t2">XI</span></h1>
+      <!-- your best player, in 3D, once the menu has settled (menuHero.js);
+           the key art behind is the picture until then and on small devices -->
+      <div class="menu-hero" aria-hidden="true">
+        <canvas class="menu-hero-canvas" id="menuHero"></canvas>
+        <span class="menu-hero-tag">${(() => { const p = heroPlayer(); return p ? `${p.overall} · ${p.short || p.name}` : ''; })()}</span>
+      </div>
     <div class="hub">
       <div class="hub-rail">
         <button class="tile t-mini tone-a t-today" data-go="today">
@@ -160,5 +167,7 @@ export function mount(root) {
   } else if (notesPending()) {
     closeNotes = showNotes(root);
   }
-  return () => { closeNotes?.(); };
+  const heroCanvas = root.querySelector('#menuHero');
+  if (heroCanvas) mountHero(heroCanvas);
+  return () => { closeNotes?.(); disposeHero(); };
 }

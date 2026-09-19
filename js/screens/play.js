@@ -9,8 +9,9 @@ import {
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer } from '../audio.js';
 import { say } from '../data/commentary.js';
+import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/stadiums.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
@@ -63,9 +64,35 @@ function sideOf(params, which) {
   return { ...club, name: squad.name || club.name, short: squad.short || club.short, crest: squad.crest };
 }
 
+/**
+ * Where and when this match is played.
+ *
+ * The home club's own ground, unless the fixture is a showpiece (the Weekend
+ * League and cup finals are played at one of the four arenas). Time and
+ * weather come from the fixture and the day, so the same ground is seen in
+ * every light; Kick Off can force either through `params.atmo`.
+ */
+function venueOf(params) {
+  /* A custom home squad — a Career club, your Ultimate XI, an online opponent
+     — brings its own identity, so it gets its own ground: dealt by name from
+     the same set, sized by its rating, in its colours. A world club plays at
+     the ground its blueprint names. */
+  const sq = params.homeSquad;
+  const home = sq?.name
+    ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
+    : getClub(params.homeId);
+  const showpiece = !!(params.weekend || params.final || params.showpiece || params.online);
+  const stadium = stadiumFor(home, { showpiece });
+  const day = Math.floor(Date.now() / 86_400_000);
+  const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
+  const atmo = atmosphereFor(seed, params.atmo || {});
+  return { stadium, atmo, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}` };
+}
+
 export function render(params) {
   const home = sideOf(params, 'home');
   const away = sideOf(params, 'away');
+  const venue = venueOf(params);
   return `
     <div class="gm" id="gmRoot">
       <canvas id="gmCanvas"></canvas>
@@ -79,6 +106,7 @@ export function render(params) {
             <span class="gl-vs">VS</span>
             <span class="gl-team">${crestSVG(away.crest, away.short, 54)}<b>${away.short}</b></span>
           </div>
+          <p class="gl-venue">${venue.label}</p>
           <div class="gl-bar"><i id="gmLoadFill"></i></div>
           <p class="gl-status" id="gmLoadText">Loading packages</p>
         </div>
@@ -200,8 +228,10 @@ export function mount(root, params) {
   const input = localInput;
   const quality = resolveQuality(getState().settings.quality);
   // Scanned players are a 14 MB download, so they are never forced on the
-  // low-detail path — a machine that asked for Low did so for a reason.
-  const useModels = getState().settings.models !== 'simple' && quality !== 'low' && quality !== 'min';
+  // low-detail path — a machine that asked for Low did so for a reason. Medium
+  // (a phone, usually) gets them only when Realistic was chosen on purpose.
+  const useModels = getState().settings.models !== 'simple' && quality !== 'low' && quality !== 'min'
+    && (quality !== 'medium' || getState().settings.models === 'realistic');
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
@@ -216,10 +246,13 @@ export function mount(root, params) {
     homeSquad: params.homeSquad || null,
     awaySquad: params.awaySquad || null,
   });
+  // the ground and the weather, for the renderer and the commentary
+  match.venue = venueOf(params);
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
   const celebCam = makeCamera();
   let celebT = 0;
+  let chantT = 18;                       // first song a while after kick-off
 
   /* ------------------------------ commentary ------------------------------ *
    * The voice in the gantry. Every cue the sim raises that has lines in
@@ -230,7 +263,7 @@ export function mount(root, params) {
   let feedTimer = 0;
   const teamOf = (i) => match.teams[i];
   const commentCtx = (arg) => {
-    const ctx = { score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(), venue: match.teams[0].club?.ground || 'the stadium' };
+    const ctx = { score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(), venue: match.venue?.stadium?.name || match.teams[0].club?.ground || 'the stadium' };
     let t = null;
     if (arg && typeof arg === 'object' && arg.ref) { ctx.player = arg.ref.short || arg.ref.name; t = arg.team; }
     else if (arg && typeof arg === 'object' && typeof arg.team === 'number') { t = arg.team; ctx.dist = arg.dist; }
@@ -429,6 +462,8 @@ export function mount(root, params) {
       post: 0,
       goalX: team && team.dir > 0 ? PITCH.w : 0,
       minute: match.minute(),
+      // a different camera for every goal: pitchside, behind the goal, high wide, reverse
+      angle: goalClips.length % 4,
     };
     goalClips.push(clip);
   };
@@ -486,6 +521,7 @@ export function mount(root, params) {
       frames: clip.frames,
       i: 0, live, celeb,
       goalX: clip.goalX,
+      angle: clip.angle || 0,
       cam: makeCamera(),
       hold: 0,
     };
@@ -951,6 +987,7 @@ export function mount(root, params) {
   resumeAudio();
   stopMusic();          // menu music steps aside for the stadium
   startCrowd();
+  if (match.venue?.atmo?.wet) startRain(match.venue.atmo.intensity);
 
   let vw = 0;
   let vh = 0;
@@ -975,6 +1012,7 @@ export function mount(root, params) {
   const glLoad = import('../game/renderGL.js').then((m) => {
     if (!running) return;
     gl = m.createRenderer(canvas, match, quality, useModels);
+    window.__apexGL = gl;             // the perf harness reads renderer.info through this
     resize();
     gl.ready.then(() => { assetsReady = true; });
   }).catch((err) => {
@@ -1056,6 +1094,14 @@ export function mount(root, params) {
     loadFill.style.width = '100%';
     loadEl.classList.add('done');
     setTimeout(() => { loadEl.hidden = true; }, 420);
+    /* The PA welcomes the crowd as the veil lifts — the ground, the two
+       sides and the gate. Once per match, and not online, where the two
+       machines lift their veils at different moments. */
+    if (match.venue?.stadium && !online) {
+      const st = match.venue.stadium;
+      const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
+      announce(`Welcome to ${st.name}. Today's match: ${match.teams[0].name} against ${match.teams[1].name}. Attendance ${gate.toLocaleString()}.`);
+    }
     // the clock restarts here, or the match opens having "missed" the wait
     last = performance.now();
     return true;
@@ -1456,7 +1502,7 @@ export function mount(root, params) {
         if (replay.i < N) {
           applyFrame(replay.frames[Math.min(N - 1, Math.floor(replay.i))]);
           const t = replay.i / N;
-          replayCamera(replay.cam, match.ball, replay.goalX, t);
+          replayCamera(replay.cam, match.ball, replay.goalX, t, replay.angle);
           // advanced against the clock, not the frame: the tape was recorded at
           // 60 Hz, and online both machines roll their own copy — a guest at
           // 30 fps would otherwise sit out twice as much of the match as the
@@ -1466,7 +1512,7 @@ export function mount(root, params) {
           // Hold on the finish: the ball sits in the net, everyone frozen, so
           // the goal actually registers before we cut back to the match.
           applyFrame(replay.frames[N - 1]);
-          replayCamera(replay.cam, match.ball, replay.goalX, 1);
+          replayCamera(replay.cam, match.ball, replay.goalX, 1, replay.angle);
           replay.hold += dt;
           if (replay.hold >= HOLD_SECONDS) endReplay();
         }
@@ -1548,6 +1594,12 @@ export function mount(root, params) {
       // crowd lifts as play nears either goal, and roars through a celebration
       const near = Math.min(match.ball.x, PITCH.w - match.ball.x) / (PITCH.w / 2);
       setCrowd(match.phase === 'goal' ? 1 : 0.3 + (1 - near) * 0.5);
+      // the stands sing every so often while the ball is in play, louder when it is close
+      chantT -= dt;
+      if (chantT <= 0 && match.phase === 'play' && !paused && !replay) {
+        chantT = 28 + Math.random() * 30;
+        chant(Math.random() < 0.45 ? 'clap' : 'hum', 0.35 + (1 - near) * 0.5);
+      }
     }
 
     /* Host: ship the world at 30 Hz. Outside the step block on purpose — the
@@ -1600,6 +1652,8 @@ export function mount(root, params) {
       goalCard.hidden = false;
       goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
+      chant('goal', 1);
+      if (t && match.scorerName && match.scorerName !== 'Own goal') announce(`Goal for ${t.name}. ${match.scorerName}.`);
       gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
       void goalCard.offsetWidth;
       goalCard.classList.add('show');
@@ -1869,7 +1923,7 @@ export function mount(root, params) {
       update((st) => { st.settings.sound = st.settings.sound === false; });
       const a = getState().settings;
       setAudioSettings({ enabled: a.sound !== false, music: a.musicVol ?? 0.5, sfx: a.sfxVol ?? 0.9 });
-      if (a.sound === false) stopCrowd(); else startCrowd();
+      if (a.sound === false) { stopCrowd(); stopRain(); silenceAnnouncer(); } else { startCrowd(); if (match.venue?.atmo?.wet) startRain(match.venue.atmo.intensity); }
       paintPause();
       return;
     }
@@ -2190,7 +2244,7 @@ export function mount(root, params) {
     stopP2P();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
-    try { stopCrowd(); } catch { /* audio teardown must not block the rest */ }
+    try { stopCrowd(); stopRain(); silenceAnnouncer(); } catch { /* audio teardown must not block the rest */ }
     try { gl?.dispose(); } catch { /* GPU teardown least of all */ }
     for (const inp of inputs) { try { inp.destroy?.(); } catch { /* ditto */ } }
     // tell the hub we are gone, so the other player is not left waiting
