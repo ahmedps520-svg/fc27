@@ -2156,6 +2156,11 @@ export function createRenderer(canvas, match, quality, models = false) {
       });
 
       if (contextLost) return;
+      /* `info` is reset by every render call, so through the composer it would
+         only ever describe the final fullscreen quad. Accumulate across the
+         passes and reset here, once a frame, so the counters mean the frame. */
+      renderer.info.autoReset = false;
+      renderer.info.reset();
       if (composer) composer.render();
       else renderer.render(scene, camera);
     },
