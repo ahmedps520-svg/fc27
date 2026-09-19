@@ -18,6 +18,51 @@
  */
 export const RELEASES = [
   {
+    version: 'v71',
+    date: '2026-09-19',
+    tag: 'Spectacle',
+    title: 'Sixty clubs, the walk-out, the World',
+    lede: 'Six divisions and 3,092 players, a continental cup and national teams, the walk-out and the anthem, '
+        + 'stadiums with a skyline, tifos and fireworks, photo mode, Arabic, and a first launch that hands you a squad.',
+    entries: [
+      {
+        head: 'The World, twice the size',
+        summary: 'Sixty clubs across six divisions, 3,092 real-name players, a Continental Cup for the top eight, national teams and a Nations Cup, and a Hall of Fame.',
+        detail: 'The Pioneer and Grassroots Leagues join below the Foundation League, each club with '
+              + 'its own ground. Last season\'s top eight play a knockout across the season at the '
+              + 'arenas. Every nation with a full side gets a team built from the pool — Saudi Arabia '
+              + 'among them — and the eight best play a Nations Cup in the international break; any '
+              + 'tie or friendly can be played. The Trophy Room opens with the Icons and an honours '
+              + 'board of every finished season.',
+      },
+      {
+        head: 'Spectacle',
+        summary: 'Stadium exteriors and a skyline, tifos and club-coloured ends, the walk-out with an anthem, a half-time show camera, fireworks for finals, a pitch that wears as the match goes on, and a stadium showcase.',
+        detail: 'The broadcast camera now sees the outside of the ground and the town behind it. '
+              + 'The home end raises a banner at kick-off and wears the colours; the away corner wears '
+              + 'theirs. Before kick-off both sides line up on the halfway line while a generated '
+              + 'anthem plays. Finals end in fireworks and confetti. Every ground can be walked round '
+              + 'in 3D from the Stadiums screen, in any weather.',
+      },
+      {
+        head: 'Graphics',
+        summary: 'Motion blur and depth of field on replays, real reflections on a wet pitch at Ultra, kicks, slides and celebrations on the scanned models, cloth on shirts, and a photo mode that saves a PNG.',
+        detail: 'Replays and the celebration cut run through a frame-blend and a shallower lens. '
+              + 'In the rain at Ultra the pitch reflects the stands and the floodlights — a second '
+              + 'render from a mirrored camera, not a screen-space guess. Pause any match for Photo '
+              + 'Mode: orbit, zoom, six filters, and a PNG straight to your downloads.',
+      },
+      {
+        head: 'For everyone',
+        summary: 'Arabic with a right-to-left layout, larger text, colour-safe kits, and a first launch that hands you a starter squad and a guided match.',
+        detail: 'Settings has a language switch; Arabic mirrors the layout. Colour-safe kits pick '
+              + 'the away strip so it stays distinct for deutan, protan and tritan vision. A new save '
+              + 'is dealt sixteen cards and a full XI, offered a guided match that teaches the '
+              + 'controls one at a time, and lands on Today with its first rewards waiting.',
+      },
+    ],
+  },
+  {
     version: 'v70',
     date: '2026-09-19',
     tag: 'Big budget',

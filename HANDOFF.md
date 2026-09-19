@@ -15,6 +15,80 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Round 5 (v71) — scale, spectacle, polish, QA bot, Arabic, onboarding
+**Sweep byte-identical.** First 2052 cards pinned unchanged (generator test).
+
+- **Scale**: 20 more blueprints (`wave: 4`, Pioneer/Grassroots Leagues),
+  `LEAGUES` has six; wave-4 stream `WORLD_SEED ^ 0x4b4b71`, 28 cards a club +
+  480 free agents, named from `REAL_PLAYERS_WAVE4` (1044 after dedupe;
+  `tools/real-players-wave4.json`, build script `WAVE4`). World: 60 clubs,
+  3092 players, 1126 free agents. 20 more stadium defs (64 total).
+- **world.js**: `continentalCup(season, played)` — last season's top eight
+  (blueprint order in season 0), QF/SF/F on days 6/12/17 (`CUP_DAYS`), pens by
+  hash; `nations()` — every nation with a full 4-3-3 from the pool (Icons/SBC
+  excluded), rated, cached; `nationSquad(nation)` → a playable custom squad;
+  `nationsCup(season, played)` on `BREAK_DAYS` 8/9 for the top eight;
+  `honours(now)` — champions per division + cup winners for the last 12
+  seasons. World screen tabs 6 (cup), 7 (nations), 8 (one nation: XI +
+  friendly picker). Trophy Room opens with the Hall of Fame (Icons + honours).
+- **Renderer (renderGL.js)**: exteriors (instanced facade blocks + lit
+  glazing on three sides) and a skyline (60/90 towers on a 260–380 m ring,
+  far half only); tifo mesh over the far lower tier (`gl.tifo(up)`, fades at
+  26–29 s); crowd colours by section (`sectionCol`: far centre + left = home,
+  0.64–0.71 = away corner); pitch wear (21×14 tally of ball position, painted
+  every 30 s of play into the colour canvas); planar reflection at Ultra when
+  wet (mirror camera → half-res RT, mixed in the turf shader by fresnel ×
+  `uWet` 0.34, capped 0.28 — 0.55/0.6 was a mirror); fireworks/confetti Points
+  (`gl.fireworks(seconds)`, 700/1400 particles); cloth on simple-rig shirts at
+  High+ (`rig.cloth` uniform = speed); replay blur = afterimage ShaderPass
+  pair (`afterimage.damp` 0.55 while `gl.setReplay(true)`, DOF raised too);
+  `gl.snapshot(match, cam, cssFilter)` → PNG blob via a 2D canvas.
+- **play.js**: `walkout` (7 s wall-clock, `lineUp()` both XIs on the halfway
+  line, `walkoutCamera`, `startAnthem(seed)`, tifo up; skipped online / guest /
+  reduceMotion — the smoke and QA suites run with reduceMotion); half-time
+  show = `orbitCamera` while paused at half (not career); `photo` mode from
+  the pause menu (orbit by drag, wheel zoom, six CSS filters, Save PNG, Done);
+  fireworks at full time when `params.final || weekend || showpiece`; sim cues
+  set `p._act/_actT` so scanned models play kick/tackle/header one-shots
+  (`playerModel.js` ACTIONS + `ONE_SHOT`, sprint lean on `root.rotation.x`);
+  `window.__apexMatch` exposed right after construction (QA bot winds the
+  clock: set `half = 2` and `t = duration − 0.6`, or the sim calls half time).
+- **audio.js**: `startAnthem(seed)/stopAnthem()` — saw-stack chords, brass
+  melody, timpani, crowd swell, ~10 s, key and shape from the seed.
+- **render3d.js**: `orbitCamera(cam, t, radius, height, speed)`,
+  `walkoutCamera(cam, t, dur)`; `kitColours` uses `kits.js`.
+- **kits.js**: `clash(a, b, vision)` with Machado-style deutan/protan/tritan
+  matrices; `pickAwayHex(home, awayColors, vision)`; `match.vision = 'all'`
+  when `settings.colorSafeKits`.
+- **Stadium showcase** (`screens/stadiums.js`): builds a still `Match` for
+  the club and runs `createRenderer` with an orbit; time/weather segments
+  rebuild the screen; "Play here". Linked from Kick Off.
+- **i18n** (`js/i18n.js`): `t(key)`, dictionaries EN/AR (~130 keys: menu,
+  Today, Kick Off, World, Trophies, Stadiums, Settings accessibility, pause
+  menu, end card, photo, squad dock, onboarding, guide steps); `applyLanguage`
+  sets `lang`/`dir`/`.rtl`/`.large-text` (called from `applyTheme`). RTL CSS
+  under `[dir="rtl"]` (hub mirrored, hero on the left, tables). Deep screens
+  (career prose, commentary, patch notes, settings body) stay English — the
+  next pass is to route them through `t()`.
+- **Settings**: Accessibility section — Language, Larger text (`html.large-text`
+  118%), Colour-safe kits, Reduce motion (moved here).
+- **Onboarding** (`js/onboarding.js`): `needsOnboarding()` (no `flags.onboarded`,
+  no tutorialDone, empty collection); `dealStarter()` 16 free agents 68–80 into a
+  4-3-3 lineup + bench; welcome overlay from the menu; guided match
+  (`params.guided`, `GUIDE_STEPS` six lessons on `#gmHints.guide`, advancing on
+  the input); `finishOnboarding` pends two rewards and lands on Today.
+- **QA bot** (`tests/qa/bot.mjs`, `npm run test:qa`, in CI): onboarding
+  (skip path + guided match), Ultimate XI (gold pack, XI, division match to
+  the end, ladder counted), career (manager → club → a whole season through
+  `#simWeek`/`#acceptReview`/`#renewDone`), weekend (plays if the window is
+  open, else renders), online (two contexts register via `api.register`, host
+  lobby code → join → both reach kick-off and full time), watch. 2D path by
+  default (`--gl` for WebGL); `--only a,b`. Bugs it found and fixed: none in
+  the game so far — the two false alarms were the bot's own (half-time pause
+  when winding the clock; season boundary is `acceptReview`, not `nextSeason`).
+- **Perf**: see the report; Ultra now carries the reflection pass in rain
+  (second scene render at half res) and the skyline/exterior instances.
+
 ### Big-budget round (v70) — stadiums, atmosphere, graphics, audio, menu, forty clubs
 **Sweep byte-identical** (12345 and 777 unchanged from v69). Nothing in the sim
 moved; the first 1112 cards are untouched (`tests/unit/generator.test.mjs`

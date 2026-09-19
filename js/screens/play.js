@@ -252,6 +252,7 @@ export function mount(root, params) {
   });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
+  window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
   // colour-safe kits: the away strip is chosen against every kind of colour vision
   match.vision = getState().settings.colorSafeKits ? 'all' : 'normal';
   const cam = makeCamera();
