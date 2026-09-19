@@ -14,7 +14,9 @@
  * SBCs keep the blueprint league, because a card must not change what it
  * counts for overnight.
  */
-import { WORLD, clubRating } from './data/generator.js';
+import { WORLD, clubRating, getPlayer } from './data/generator.js';
+import { NATION_COLORS } from './data/realPlayers.js';
+import { SHAPES } from './game/sim.js';
 import { LEAGUES } from './data/pools.js';
 import { hashStr } from './data/stadiums.js';
 
@@ -184,4 +186,153 @@ export function liveDivisionOf(clubId, now = Date.now()) {
   const divs = composition(calendar(now).season);
   const i = divs.findIndex((ids) => ids.includes(clubId));
   return i < 0 ? (WORLD.clubsById[clubId]?.division || 1) : i + 1;
+}
+
+/* ------------------------------ the continental cup ------------------------------ *
+ * The top eight of the top division — last season's table, or the blueprint
+ * order in the first season — play a straight knockout across the season:
+ * quarter-finals on day 6, semi-finals on day 12, the final on day 17, at
+ * the showpiece arenas. A draw goes to penalties, decided by the same hash. */
+export const CUP_DAYS = [5, 11, 16];          // 0-based days within the season
+export const CUP_ROUNDS = ['Quarter-finals', 'Semi-finals', 'Final'];
+
+function cupResult(season, round, home, away) {
+  const [gh, ga] = result(season, 9, 100 + round, home, away);
+  if (gh !== ga) return { gh, ga, winner: gh > ga ? home : away };
+  const r = rng(hashStr(`pens|${season}|${round}|${home}|${away}`));
+  const ph = 3 + Math.floor(r() * 3);
+  const pa = ph === 5 ? 3 + Math.floor(r() * 2) : ph + 1 + Math.floor(r() * (5 - ph));
+  const homeWins = r() < 0.5;
+  return { gh, ga, pens: homeWins ? [Math.max(ph, pa), Math.min(ph, pa)] : [Math.min(ph, pa), Math.max(ph, pa)], winner: homeWins ? home : away };
+}
+
+/** Who qualified for this season's cup: last season's top eight. */
+export function cupEntrants(season) {
+  if (season === 0) return composition(0)[0].slice(0, 8);
+  return divisionTable(season - 1, 1, composition(season - 1)[0], ROUNDS).slice(0, 8).map((r) => r.id);
+}
+
+/**
+ * The cup as it stands after `played` days of the season (all of it when
+ * `played` is omitted). Ties are seeded 1v8, 2v7, 3v6, 4v5.
+ */
+export function continentalCup(season, played = ROUNDS) {
+  const e = cupEntrants(season);
+  let alive = [[e[0], e[7]], [e[3], e[4]], [e[1], e[6]], [e[2], e[5]]];
+  const rounds = [];
+  for (let r = 0; r < 3; r++) {
+    const day = CUP_DAYS[r];
+    const done = played > day;
+    const ties = alive.map(([h, a]) => (done ? { home: h, away: a, ...cupResult(season, r, h, a) } : { home: h, away: a }));
+    rounds.push({ name: CUP_ROUNDS[r], day, done, today: played === day, ties });
+    if (!done) break;
+    const w = ties.map((t) => t.winner);
+    alive = [];
+    for (let i = 0; i < w.length; i += 2) alive.push([w[i], w[i + 1]]);
+  }
+  const final = rounds[2];
+  return { entrants: e, rounds, winner: final?.done ? final.ties[0].winner : null };
+}
+
+/* --------------------------------- nations --------------------------------- *
+ * National teams built from the pool: every nation with a keeper and enough
+ * outfielders gets a side, its best XI picked into a 4-3-3 from every card
+ * in the world (club players and free agents alike, never the Icons, who
+ * are retired). Rated like a club. */
+const NATION_SHAPE = SHAPES['4-3-3'];
+const ROLE_OF = { GK: 'GK', CB: 'DF', LB: 'DF', RB: 'DF', CDM: 'MID', CM: 'MID', CAM: 'MID', LM: 'MID', RM: 'MID', LW: 'FWD', RW: 'FWD', ST: 'FWD' };
+let nationCache = null;
+export function nations() {
+  if (nationCache) return nationCache;
+  const byNation = new Map();
+  for (const p of WORLD.players) {
+    if (p.rarity === 'icon' || p.sbc) continue;
+    if (!byNation.has(p.nation)) byNation.set(p.nation, []);
+    byNation.get(p.nation).push(p);
+  }
+  const out = [];
+  for (const [nation, pool] of byNation) {
+    const sorted = pool.slice().sort((a, b) => b.overall - a.overall);
+    const xi = [];
+    const used = new Set();
+    for (const slot of NATION_SHAPE) {
+      const want = slot.role === 'GK' ? 'GK' : slot.role === 'DEF' ? 'DF' : slot.role === 'MID' ? 'MID' : 'FWD';
+      let pick = sorted.find((p) => !used.has(p.id) && (slot.role === 'GK' ? p.position === 'GK' : ROLE_OF[p.position] === want && p.position !== 'GK'));
+      if (!pick) pick = sorted.find((p) => !used.has(p.id) && (slot.role === 'GK') === (p.position === 'GK'));
+      if (!pick) break;
+      used.add(pick.id); xi.push(pick);
+    }
+    if (xi.length < 11) continue;
+    const bench = sorted.filter((p) => !used.has(p.id)).slice(0, 7);
+    const rating = Math.round(xi.reduce((s, p) => s + p.overall, 0) / 11);
+    const colors = NATION_COLORS[nation] || xi[0].nationColors || ['#ffffff', '#222222'];
+    out.push({ nation, short: nationShort(nation), colors, xi, bench, rating, poolSize: pool.length });
+  }
+  out.sort((a, b) => b.rating - a.rating || a.nation.localeCompare(b.nation));
+  nationCache = out;
+  return out;
+}
+function nationShort(n) {
+  const map = { 'United Arab Emirates': 'UAE', 'Saudi Arabia': 'KSA', 'South Korea': 'KOR', 'Ivory Coast': 'CIV', 'Czech Republic': 'CZE', 'Northern Ireland': 'NIR', 'Bosnia and Herzegovina': 'BIH', 'North Macedonia': 'MKD', 'DR Congo': 'COD', 'South Africa': 'RSA', 'New Zealand': 'NZL', 'USA': 'USA', 'Costa Rica': 'CRC', 'El Salvador': 'SLV', 'Burkina Faso': 'BFA', 'Central African Republic': 'CAF', 'Guinea-Bissau': 'GNB' };
+  return map[n] || n.slice(0, 3).toUpperCase();
+}
+/** A national side as a squad the match screen can field. */
+export function nationSquad(nation) {
+  const n = nations().find((x) => x.nation === nation);
+  if (!n) return null;
+  return {
+    id: `nat-${nation}`, name: nation, short: n.short, colors: n.colors, rating: n.rating,
+    crest: { shape: 'circle', pattern: 'halves', device: 'star', colors: n.colors },
+    xi: n.xi, bench: n.bench,
+  };
+}
+
+/* The international break: days 8 and 9 of every season, when the eight
+ * best national sides play a Nations Cup — quarters and semis on the first
+ * day, the final on the second. Results by the same hash. */
+export const BREAK_DAYS = [7, 8];
+export function nationsCup(season, played = ROUNDS) {
+  const top = nations().slice(0, 8);
+  const ids = top.map((n) => n.nation);
+  const tie = (r, a, b) => {
+    const rr = rng(hashStr(`nations|${season}|${r}|${a}|${b}`));
+    const ra = top.find((n) => n.nation === a).rating;
+    const rb = top.find((n) => n.nation === b).rating;
+    const edge = (ra - rb) / 10;
+    const ga = poisson(Math.max(0.3, 1.3 + edge), rr);
+    const gb = poisson(Math.max(0.3, 1.2 - edge), rr);
+    const winner = ga > gb ? a : gb > ga ? b : (rr() < 0.5 ? a : b);
+    return { home: a, away: b, gh: ga, ga: gb, pens: ga === gb, winner };
+  };
+  const rounds = [];
+  let alive = [[ids[0], ids[7]], [ids[3], ids[4]], [ids[1], ids[6]], [ids[2], ids[5]]];
+  for (let r = 0; r < 3; r++) {
+    const day = r < 2 ? BREAK_DAYS[0] : BREAK_DAYS[1];
+    const done = played > day;
+    const ties = alive.map(([a, b]) => (done ? tie(r, a, b) : { home: a, away: b }));
+    rounds.push({ name: CUP_ROUNDS[r], day, done, today: played === day, ties });
+    if (!done) break;
+    const w = ties.map((t) => t.winner);
+    alive = [];
+    for (let i = 0; i < w.length; i += 2) alive.push([w[i], w[i + 1]]);
+  }
+  return { teams: top, rounds, winner: rounds[2]?.done ? rounds[2].ties[0].winner : null };
+}
+
+/* --------------------------------- honours --------------------------------- *
+ * Every finished season's champions, by division, plus the cup winners —
+ * the board in the Hall of Fame. */
+export function honours(now = Date.now()) {
+  const { season } = calendar(now);
+  const list = [];
+  for (let s = season - 1; s >= Math.max(0, season - 12); s--) {
+    const divs = composition(s);
+    list.push({
+      season: s + 1,
+      champions: divs.map((ids, d) => divisionTable(s, d + 1, ids, ROUNDS)[0].id),
+      cup: continentalCup(s).winner,
+      nationsCup: nationsCup(s).winner,
+    });
+  }
+  return list;
 }
