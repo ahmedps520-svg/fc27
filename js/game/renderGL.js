@@ -10,6 +10,7 @@ import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
+import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -998,8 +999,9 @@ export function createRenderer(canvas, match, quality, models = false) {
   const venueSeed = hashName(`${match.teams[0].name}|${match.teams[1].name}`);
   const VENUE = match.venue?.stadium ? specFromDef(match.venue.stadium, venueSeed) : stadiumSpec(venueSeed);
 
+  const turfMap = pitchTexture(!lo, VENUE.pattern, wet);
   const turfMat = new THREE.MeshStandardMaterial({
-    map: pitchTexture(!lo, VENUE.pattern, wet),
+    map: turfMap,
     /* Cut grass under floodlights is *faintly* specular — that sheen sweeping
        across the stripes is most of what separates a lit pitch from a green
        rectangle. Faintly is the operative word. At 0.74, with a roughness map
@@ -1028,6 +1030,76 @@ export function createRenderer(canvas, match, quality, models = false) {
   turf.position.set(PITCH.w / 2, CY, 0);
   turf.receiveShadow = true;
   scene.add(turf);
+
+  /* ---------------------------- pitch wear ----------------------------
+   * The surface changes as the match goes on. The ball's path is tallied on
+   * a coarse grid and every thirty seconds of play the busiest cells get a
+   * scuff painted into the colour map — paler, browner, a little torn — so
+   * the second half is played on a pitch that shows the first. The upload
+   * is one canvas texture every thirty seconds, which nothing notices. */
+  const wearGrid = new Float32Array(21 * 14);
+  let wearClock = 0;
+  const wearCanvas = turfMap.image;
+  const wearCtx = wearCanvas?.getContext ? wearCanvas.getContext('2d') : null;
+  const paintWear = () => {
+    if (!wearCtx) return;
+    const S = wearCanvas.width / PITCH.w;
+    let painted = 0;
+    for (let i = 0; i < wearGrid.length; i++) {
+      if (wearGrid[i] < 1.2) continue;
+      const gx = (i % 21 + 0.5) * (PITCH.w / 21);
+      const gy = (Math.floor(i / 21) + 0.5) * (PITCH.h / 14);
+      const n = Math.min(6, Math.round(wearGrid[i]));
+      for (let k = 0; k < n; k++) {
+        const x = gx + (Math.random() - 0.5) * 5; const y = gy + (Math.random() - 0.5) * 5;
+        const r = 0.35 + Math.random() * 0.9;
+        const grad = wearCtx.createRadialGradient(x * S, y * S, 0, x * S, y * S, r * S);
+        grad.addColorStop(0, wet ? 'rgba(96,78,52,.34)' : 'rgba(150,146,92,.3)');
+        grad.addColorStop(1, 'rgba(150,146,92,0)');
+        wearCtx.fillStyle = grad;
+        wearCtx.beginPath(); wearCtx.arc(x * S, y * S, r * S, 0, 7); wearCtx.fill();
+        painted++;
+      }
+      wearGrid[i] *= 0.35;
+    }
+    if (painted) turfMap.needsUpdate = true;
+  };
+
+  /* ----------------------- reflections on a wet pitch -----------------------
+   * Ultra only, and only in the rain: the scene is drawn a second time from
+   * the camera mirrored in the pitch plane, into a half-size target, and the
+   * turf shader mixes that in where the surface is wet and the view grazes it.
+   * A real planar reflection, so the floodlights, stands and players are all
+   * in it — the one thing a screen-space trick cannot promise. */
+  let reflect = null;
+  if (ultra && wet) {
+    const rt = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true });
+    const mirrorCam = new THREE.PerspectiveCamera();
+    mirrorCam.up.set(0, 0, 1);
+    const uRefl = { value: rt.texture };
+    const uReflMat = { value: new THREE.Matrix4() };
+    const uWet = { value: 0.34 };
+    turfMat.onBeforeCompile = (sh) => {
+      sh.uniforms.uRefl = uRefl; sh.uniforms.uReflMat = uReflMat; sh.uniforms.uWet = uWet;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform mat4 uReflMat; varying vec4 vReflUv; varying vec3 vWorldPos;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvec4 wp = modelMatrix * vec4(transformed, 1.0); vWorldPos = wp.xyz; vReflUv = uReflMat * wp;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform sampler2D uRefl; uniform float uWet; varying vec4 vReflUv; varying vec3 vWorldPos;')
+        .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+          {
+            vec3 viewDir = normalize(cameraPosition - vWorldPos);
+            float fres = pow(1.0 - clamp(viewDir.z, 0.0, 1.0), 3.0);
+            vec2 ruv = vReflUv.xy / vReflUv.w;
+            if (ruv.x > 0.0 && ruv.x < 1.0 && ruv.y > 0.0 && ruv.y < 1.0) {
+              vec3 refl = texture2D(uRefl, ruv).rgb;
+              gl_FragColor.rgb = mix(gl_FragColor.rgb, refl, clamp(fres * uWet, 0.0, 0.28));
+            }
+          }`);
+    };
+    turfMat.customProgramCacheKey = () => 'apexWetTurf';
+    reflect = { rt, mirrorCam, uReflMat };
+  }
 
   // Perimeter LED boards, touchlines only.
   //
@@ -1296,6 +1368,102 @@ export function createRenderer(canvas, match, quality, models = false) {
     }
   }
 
+  /* ------------------------------ outside ------------------------------
+   * What a broadcast camera sees over the far roof: the stadium's own
+   * outer shell — a ring of facade blocks with lit windows behind the back
+   * walls — and the town beyond it, a skyline of towers on a far ring.
+   * Both are boxes: the shell is one instanced mesh, the skyline another,
+   * and the silhouette is what sells it, not the detail. */
+  if (!potato) {
+    const shellMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(VENUE.facade).multiplyScalar(0.8), roughness: 0.9 });
+    const winMat = new THREE.MeshStandardMaterial({ color: 0x1a2030, emissive: 0xffe9b0, emissiveIntensity: LIGHT.flood > 0 ? 0.9 : 0.05, roughness: 0.6 });
+    const outer = MARGIN + SD + TIER_GAP.d + 2;
+    const shellH = SBZ + TIER_GAP.z + 2;
+    const blocks = [];
+    // three sides (the near touchline stays open for the camera)
+    const sides = [
+      { x0: -outer, x1: PITCH.w + outer, y: PITCH.h + outer, along: 'x' },
+      { x: -outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
+      { x: PITCH.w + outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
+    ];
+    const shellR = mulberry(venueSeed ^ 0x5e11);
+    for (const sd of sides) {
+      const len = sd.along === 'x' ? sd.x1 - sd.x0 : sd.y1 - sd.y0;
+      const n = Math.max(3, Math.round(len / 9));
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const h = shellH * (0.7 + shellR() * 0.45);
+        const w = len / n;
+        if (sd.along === 'x') blocks.push([sd.x0 + t * len, sd.y, w, 3, h]);
+        else blocks.push([sd.x, sd.y0 + t * len, 3, w, h]);
+      }
+    }
+    const shell = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), shellMat, blocks.length);
+    const win = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), winMat, blocks.length);
+    const d2 = new THREE.Object3D();
+    blocks.forEach(([x, y, w, d, h], i) => {
+      d2.position.set(x, y, h / 2); d2.scale.set(w, d, h); d2.rotation.set(0, 0, 0); d2.updateMatrix();
+      shell.setMatrixAt(i, d2.matrix);
+      // a band of lit glazing a little proud of the wall, two thirds of the way up
+      d2.position.set(x, y, h * 0.66); d2.scale.set(w * 0.86, d + 0.3, Math.max(0.8, h * 0.12)); d2.updateMatrix();
+      win.setMatrixAt(i, d2.matrix);
+    });
+    scene.add(shell, win);
+
+    /* The skyline: towers on a ring 300 m out, lit windows at night, and
+       tall enough that the big ones show above a two-tier roof. */
+    const towers = [];
+    const skyR = mulberry(venueSeed ^ 0x7ab3);
+    const N = ultra ? 90 : 60;
+    const cityScale = 0.6 + VENUE.scale * 0.9;      // big clubs, big cities
+    for (let i = 0; i < N; i++) {
+      const a = Math.PI * (0.05 + (i / N) * 0.9);      // the far half only
+      const r = 260 + skyR() * 120;
+      const w = 12 + skyR() * 22;
+      const h = (18 + Math.pow(skyR(), 2.2) * 110) * cityScale;
+      towers.push([PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, w, w * (0.7 + skyR() * 0.6), h, a]);
+    }
+    const towerMat = new THREE.MeshStandardMaterial({ color: LIGHT.flood > 0 ? 0x0e1420 : 0x5a6474, roughness: 0.95, emissive: 0xffd9a0, emissiveIntensity: LIGHT.flood > 0 ? 0.16 : 0 });
+    const city = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), towerMat, towers.length);
+    towers.forEach(([x, y, w, d, h, a], i) => {
+      d2.position.set(x, y, h / 2 - 1); d2.scale.set(w, d, h); d2.rotation.set(0, 0, a); d2.updateMatrix();
+      city.setMatrixAt(i, d2.matrix);
+    });
+    city.frustumCulled = false;
+    scene.add(city);
+  }
+
+  /* -------------------------------- the tifo --------------------------------
+   * A banner the home end holds up at kick-off: the club's colours and its
+   * initials across the lower tier of the far stand, raised for the first
+   * half minute and then lowered (the match screen calls `gl.tifo(false)`,
+   * or it fades on its own). Drawn on a canvas, so it is whatever the club
+   * is, and never a photograph of anything. */
+  let tifoMesh = null;
+  if (!potato) {
+    const c = document.createElement('canvas');
+    c.width = 1024; c.height = 256;
+    const g = c.getContext('2d');
+    const [ca, cb] = [match.teams[0].colors[0], match.teams[0].colors[1] || '#ffffff'];
+    g.fillStyle = ca; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = cb;
+    for (let i = 0; i < 8; i++) if (i % 2) g.fillRect((c.width / 8) * i, 0, c.width / 8, c.height);
+    g.globalAlpha = 0.82; g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, c.height * 0.22, c.width, c.height * 0.56); g.globalAlpha = 1;
+    g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '900 150px "Bahnschrift", "Arial Black", system-ui, sans-serif';
+    g.fillText(String(match.teams[0].short || 'XI').toUpperCase(), c.width / 2, c.height / 2 + 8);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const at0 = terraceAt(0.02); const at1 = terraceAt(Math.min(0.5, TIER_SPLIT - 0.03));
+    const w = PITCH.w * 0.5;
+    const h = Math.hypot(at1.depth - at0.depth, at1.z - at0.z);
+    tifoMesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, transparent: true, opacity: 1, side: THREE.DoubleSide }));
+    tifoMesh.position.set(PITCH.w / 2, PITCH.h + (at0.depth + at1.depth) / 2, (at0.z + at1.z) / 2 + 1.2);
+    tifoMesh.rotation.x = Math.PI / 2 - Math.atan2(at1.z - at0.z, at1.depth - at0.depth);
+    tifoMesh.visible = false;
+    scene.add(tifoMesh);
+  }
+  let tifoT = -1;                    // seconds the tifo has been up; -1 = down
+
   // floodlight pylons at the corners: emissive panels plus real light
   const lampMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, emissive: 0xfff4d8, emissiveIntensity: 3.4, roughness: 0.3,
@@ -1460,13 +1628,28 @@ export function createRenderer(canvas, match, quality, models = false) {
   const crowdCols = atmo.weather === 'rain' ? CROWD_COLS.map((c) => (c & 0xfefefe) >> 1) : CROWD_COLS;
   /* `along` is where a seat sits on a walk round the ground, 0..1 — the left
      bank, the far bank, then the right — which is the path the wave takes. */
+  /* Club colours in the stands. The home end (the middle of the far bank
+     and the left side) is mostly in the home kit; the away corner (far
+     right) is the away kit; everywhere else is coats and scarves. Hex
+     colours are darkened a touch so a white kit is not a white wall. */
+  const homeCol = new THREE.Color(hexOf(match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
+  const homeAlt = new THREE.Color(hexOf(match.teams[0].colors[1] || match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
+  const awayCol = pickAwayKit(match).clone().multiplyScalar(0.85).getHex();
+  const sectionCol = (along, r) => {
+    const roll = rand();
+    // far bank centre: 0.42..0.58 along; left bank: 0..0.32; away corner: 0.64..0.7
+    if (along > 0.42 && along < 0.58) return roll < 0.72 ? (roll < 0.5 ? homeCol : homeAlt) : crowdCols[(r * 7 + 3) % crowdCols.length];
+    if (along < 0.32) return roll < 0.45 ? homeCol : crowdCols[(rand() * crowdCols.length) | 0];
+    if (along > 0.64 && along < 0.71) return roll < 0.7 ? awayCol : crowdCols[(rand() * crowdCols.length) | 0];
+    return roll < 0.12 ? homeCol : crowdCols[(rand() * crowdCols.length) | 0];
+  };
   const put = (x, y, z, face, r, along = 0) => seats.push({
     x, y, z, face, along,
     seatCol: r % 3 === 0 ? SEAT_A : SEAT_B,          // two-tone seating bowl
     // Attendance is this ground's, not a fixed 82%. A half-empty big stadium
     // and a packed small one both happen, and both beat every ground being full.
     occupied: rand() < VENUE.fill,
-    c: crowdCols[(rand() * crowdCols.length) | 0],
+    c: sectionCol(along, r),
   });
 
   for (const bd of bankDefs) {
@@ -1693,6 +1876,27 @@ export function createRenderer(canvas, match, quality, models = false) {
         rig.parts.torso.material = new THREE.MeshStandardMaterial({
           map: kitTexture(base, no, surname, lo ? 128 : 256), roughness: 0.62, metalness: 0.02,
         });
+        /* Cloth, on High and Ultra: the shirt's hem and back ripple with the
+           player's speed — a few sine terms in the vertex shader on the
+           lower half of the torso, driven by a per-player speed uniform. */
+        if (!lo && !med) {
+          const uSpeed = { value: 0 };
+          const mat = rig.parts.torso.material;
+          mat.onBeforeCompile = (sh) => {
+            sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uSpeed = uSpeed;
+            sh.vertexShader = sh.vertexShader
+              .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uSpeed;')
+              .replace('#include <begin_vertex>', `#include <begin_vertex>
+                {
+                  float hem = smoothstep(0.55, -0.5, position.y);       // 1 at the hem, 0 at the shoulders
+                  float w = sin(uTime * 14.0 + position.x * 6.0) * 0.35 + sin(uTime * 9.0 + position.z * 8.0) * 0.25;
+                  float amp = (0.02 + uSpeed * 0.035) * hem;
+                  transformed += normalize(vec3(position.x, 0.0, position.z)) * (w * amp);
+                }`);
+          };
+          mat.customProgramCacheKey = () => 'apexClothKit';
+          rig.cloth = uSpeed;
+        }
       }
       shirtNo++;
       scene.add(rig.grp);
@@ -1931,6 +2135,91 @@ export function createRenderer(canvas, match, quality, models = false) {
     scene.add(rainMesh);
   }
 
+  /* ------------------------- fireworks and confetti -------------------------
+   * For finals and trophies. One Points cloud for the shells and their
+   * sparks, one for confetti, both driven by attributes the CPU updates for
+   * a few hundred particles — cheap, and only alive while a show is on. */
+  const FX_N = potato ? 0 : ultra ? 1400 : 700;
+  const fx = { pos: new Float32Array(FX_N * 3), vel: new Float32Array(FX_N * 3), life: new Float32Array(FX_N), col: new Float32Array(FX_N * 3), kind: new Uint8Array(FX_N), alive: 0, show: 0, nextShell: 0 };
+  let fxPoints = null;
+  if (FX_N) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(fx.pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(fx.col, 3));
+    geo.setAttribute('aLife', new THREE.BufferAttribute(fx.life, 1));
+    fxPoints = new THREE.Points(geo, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+      uniforms: { uScale: { value: 1 } },
+      vertexShader: `attribute float aLife; varying vec3 vC; varying float vL; uniform float uScale;
+        void main() { vC = color; vL = aLife; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = (aLife > 0.0 ? (2.0 + 6.0 * min(1.0, aLife)) : 0.0) * uScale * 300.0 / max(1.0, -mv.z); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying vec3 vC; varying float vL;
+        void main() { vec2 d = gl_PointCoord - 0.5; float a = smoothstep(0.5, 0.1, length(d)); gl_FragColor = vec4(vC, a * min(1.0, vL)); }`,
+    }));
+    fxPoints.frustumCulled = false;
+    fxPoints.visible = false;
+    scene.add(fxPoints);
+  }
+  const fxSpawn = (x, y, z, vx, vy, vz, r, g, b, life, kind) => {
+    if (fx.alive >= FX_N) return;
+    // reuse the first dead slot
+    let i = -1;
+    for (let k = 0; k < FX_N; k++) if (fx.life[k] <= 0) { i = k; break; }
+    if (i < 0) return;
+    fx.pos[i * 3] = x; fx.pos[i * 3 + 1] = y; fx.pos[i * 3 + 2] = z;
+    fx.vel[i * 3] = vx; fx.vel[i * 3 + 1] = vy; fx.vel[i * 3 + 2] = vz;
+    fx.col[i * 3] = r; fx.col[i * 3 + 1] = g; fx.col[i * 3 + 2] = b;
+    fx.life[i] = life; fx.kind[i] = kind; fx.alive++;
+  };
+  const fxBurst = (x, y, z) => {
+    const hue = Math.random();
+    const c = new THREE.Color().setHSL(hue, 0.9, 0.6);
+    const n = ultra ? 90 : 50;
+    for (let k = 0; k < n; k++) {
+      const th = Math.random() * Math.PI * 2; const ph = Math.acos(2 * Math.random() - 1); const sp = 9 + Math.random() * 7;
+      fxSpawn(x, y, z, Math.sin(ph) * Math.cos(th) * sp, Math.sin(ph) * Math.sin(th) * sp, Math.cos(ph) * sp, c.r, c.g, c.b, 1.4 + Math.random() * 0.8, 1);
+    }
+  };
+  const fxStep = (dt) => {
+    if (!fxPoints) return;
+    if (fx.show > 0) {
+      fx.show -= dt;
+      fx.nextShell -= dt;
+      if (fx.nextShell <= 0) {
+        fx.nextShell = 0.35 + Math.random() * 0.5;
+        const x = 10 + Math.random() * (PITCH.w - 20); const y = PITCH.h + 10 + Math.random() * 20;
+        // a rising shell that bursts near the top
+        fxSpawn(x, y, 8, 0, 0, 26 + Math.random() * 8, 1, 0.9, 0.6, 1.1 + Math.random() * 0.3, 2);
+        // confetti over the pitch
+        for (let k = 0; k < (ultra ? 10 : 5); k++) {
+          const c = new THREE.Color().setHSL(Math.random(), 0.85, 0.6);
+          fxSpawn(20 + Math.random() * (PITCH.w - 40), 10 + Math.random() * (PITCH.h - 20), 22 + Math.random() * 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, -1, c.r, c.g, c.b, 6 + Math.random() * 4, 3);
+        }
+      }
+    }
+    let alive = 0;
+    for (let i = 0; i < FX_N; i++) {
+      if (fx.life[i] <= 0) continue;
+      const k = fx.kind[i];
+      fx.life[i] -= dt * (k === 3 ? 0.35 : 1);
+      if (k === 2 && fx.life[i] <= 0.15) { fxBurst(fx.pos[i * 3], fx.pos[i * 3 + 1], fx.pos[i * 3 + 2]); fx.life[i] = 0; fx.alive--; continue; }
+      const drag = k === 3 ? 0.9 : 0.985;
+      fx.vel[i * 3] *= drag; fx.vel[i * 3 + 1] *= drag;
+      fx.vel[i * 3 + 2] = k === 3 ? -1.4 + Math.sin(fx.life[i] * 7 + i) * 0.6 : fx.vel[i * 3 + 2] * drag - 9.8 * dt * (k === 1 ? 0.6 : 0.2);
+      if (k === 3) { fx.vel[i * 3] += Math.sin(fx.life[i] * 5 + i) * 0.4 * dt; }
+      fx.pos[i * 3] += fx.vel[i * 3] * dt; fx.pos[i * 3 + 1] += fx.vel[i * 3 + 1] * dt; fx.pos[i * 3 + 2] += fx.vel[i * 3 + 2] * dt;
+      if (fx.pos[i * 3 + 2] < 0.05) { fx.life[i] = 0; fx.alive--; continue; }
+      alive++;
+    }
+    fx.alive = alive;
+    fxPoints.visible = alive > 0;
+    if (alive) {
+      fxPoints.geometry.attributes.position.needsUpdate = true;
+      fxPoints.geometry.attributes.color.needsUpdate = true;
+      fxPoints.geometry.attributes.aLife.needsUpdate = true;
+    }
+  };
+
   const fine = !lo;
   let focusDist = 40;
   let disposed = false;
@@ -1948,6 +2237,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   // Skipped entirely on low detail, where the extra passes are not worth it.
   let composer = null;
   let cine = null;
+  let afterimage = null;
   if (!lo) {
     composer = new EffectComposer(renderer);
 
@@ -1981,8 +2271,45 @@ export function createRenderer(canvas, match, quality, models = false) {
     // bloom. Lower and the lit turf itself hazes over.
     const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.34, 0.55, 0.95);
     composer.addPass(bloom);
+
+    /* Motion blur for replays: the previous frame is kept and blended under
+       the new one, which smears anything that moved — the cheap, honest
+       version of the effect, and the one a slowed-down replay is flattered
+       by. `damp` 0 is off (the pass then just copies), and it is only turned
+       up while a replay or the celebration cut is running. */
+    afterimage = {
+      damp: { value: 0 },
+      prev: new THREE.WebGLRenderTarget(1, 1),
+    };
+    const blend = new ShaderPass({
+      uniforms: { tDiffuse: { value: null }, tPrev: { value: afterimage.prev.texture }, uDamp: afterimage.damp },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform sampler2D tPrev; uniform float uDamp; varying vec2 vUv;
+        void main() { vec4 a = texture2D(tDiffuse, vUv); vec4 b = texture2D(tPrev, vUv); gl_FragColor = mix(a, b, uDamp); }`,
+    });
+    composer.addPass(blend);
+    // copy the blended result into the history buffer for the next frame
+    afterimage.copy = new ShaderPass({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }',
+    });
+    afterimage.copy.renderToScreen = false;
+    afterimage.copy.needsSwap = false;
+    composer.addPass(afterimage.copy);
     composer.addPass(new OutputPass());
   }
+
+  if (afterimage) {
+    // the copy pass draws the composed frame into the history target
+    afterimage.copy.render = function (renderer2, writeBuffer, readBuffer) {
+      this.uniforms.tDiffuse.value = readBuffer.texture;
+      renderer2.setRenderTarget(afterimage.prev);
+      this.fsQuad.render(renderer2);
+      renderer2.setRenderTarget(null);
+    };
+  }
+  let replayMode = 0;                // 0 live, 1 replay (DOF + motion blur on)
 
   if (!models) warmUp();
 
@@ -2017,6 +2344,33 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      const px = renderer.getPixelRatio();
+      afterimage?.prev.setSize(Math.round(w * px), Math.round(h * px));
+      reflect?.rt.setSize(Math.round(w * px * 0.5), Math.round(h * px * 0.5));
+    },
+    /** Replay mode: depth of field and motion blur on the post chain. */
+    setReplay(on) {
+      replayMode = on ? 1 : 0;
+      if (cine) cine.material.uniforms.uDofScale.value = on ? (ultra ? 1.1 : med ? 0 : 0.75) : (ultra ? 0.85 : 0);
+      if (afterimage) afterimage.damp.value = on && !med ? 0.55 : 0;
+    },
+    /** A fireworks and confetti show for `seconds`. */
+    fireworks(seconds = 8) { fx.show = Math.max(fx.show, seconds); fx.nextShell = 0; },
+    /** Raise or lower the home end's banner. */
+    tifo(up) { if (tifoMesh) { tifoMesh.visible = !!up; tifoMesh.material.opacity = 1; tifoT = up ? 0 : -1; } },
+    /**
+     * Photo mode: render once more and hand back a PNG blob, with a CSS
+     * filter baked in by drawing through a 2D canvas. No preserveDrawingBuffer
+     * needed because the read happens in the same task as the draw.
+     */
+    snapshot(m, cam, filter = 'none') {
+      this.render(m, cam, 0);
+      const out = document.createElement('canvas');
+      out.width = canvas.width; out.height = canvas.height;
+      const g = out.getContext('2d');
+      g.filter = filter || 'none';
+      g.drawImage(canvas, 0, 0);
+      return new Promise((res) => out.toBlob(res, 'image/png'));
     },
     render(m, cam, dt) {
       camera.position.set(cam.x, cam.y, cam.z);
@@ -2055,6 +2409,25 @@ export function createRenderer(canvas, match, quality, models = false) {
       if (rainMesh) {
         rainU.uTime.value += Math.min(dt || 0, 0.1);
         rainU.uCentre.value.set(cam.tx, cam.ty, 0);
+      }
+      // the tifo comes down on its own after half a minute
+      if (tifoMesh && tifoT >= 0) {
+        tifoT += dt || 0;
+        if (tifoT > 26) tifoMesh.material.opacity = Math.max(0, 1 - (tifoT - 26) / 3);
+        if (tifoT > 29) { tifoMesh.visible = false; tifoT = -1; }
+      }
+      // pitch wear: tally where the ball is, paint every thirty seconds of play
+      if (wearCtx && m.phase === 'play') {
+        const gx = Math.max(0, Math.min(20, Math.floor((m.ball.x / PITCH.w) * 21)));
+        const gy = Math.max(0, Math.min(13, Math.floor((m.ball.y / PITCH.h) * 14)));
+        wearGrid[gy * 21 + gx] += (dt || 0) * 1.6;
+        wearClock += dt || 0;
+        if (wearClock > 30) { wearClock = 0; paintWear(); }
+      }
+      fxStep(Math.min(dt || 0, 0.05));
+      // cloth: each shirt knows how fast its player is moving
+      if (!lo && !med) {
+        for (const [p, rig] of rigs) if (rig.cloth) rig.cloth.value = Math.min(1, Math.hypot(p.vx || 0, p.vy || 0) / 7);
       }
 
       for (let t = 0; t < 2; t++) {
@@ -2161,6 +2534,23 @@ export function createRenderer(canvas, match, quality, models = false) {
          passes and reset here, once a frame, so the counters mean the frame. */
       renderer.info.autoReset = false;
       renderer.info.reset();
+      if (reflect) {
+        // the mirrored view: same lens, position and aim flipped in z
+        const mc = reflect.mirrorCam;
+        mc.fov = camera.fov; mc.aspect = camera.aspect; mc.near = camera.near; mc.far = camera.far;
+        mc.position.set(cam.x, cam.y, -cam.z);
+        mc.lookAt(cam.tx, cam.ty, -cam.tz);
+        mc.updateProjectionMatrix();
+        mc.updateMatrixWorld();
+        // texture matrix: clip space -> 0..1
+        reflect.uReflMat.value.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+          .multiply(mc.projectionMatrix).multiply(mc.matrixWorldInverse);
+        turf.visible = false; if (rainMesh) rainMesh.visible = false;
+        renderer.setRenderTarget(reflect.rt);
+        renderer.render(scene, mc);
+        renderer.setRenderTarget(null);
+        turf.visible = true; if (rainMesh) rainMesh.visible = true;
+      }
       if (composer) composer.render();
       else renderer.render(scene, camera);
     },
@@ -2173,6 +2563,8 @@ export function createRenderer(canvas, match, quality, models = false) {
       modelRigs.clear();
       canvas.removeEventListener('webglcontextlost', onLost);
       composer?.dispose?.();
+      afterimage?.prev.dispose();
+      reflect?.rt.dispose();
       pmrem?.dispose();
       renderer.dispose();
     },

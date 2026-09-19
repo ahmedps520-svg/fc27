@@ -957,3 +957,30 @@ export function classifyGPU(name) {
   if (/mali|powervr|videocore|vivante|tegra/.test(n)) return 'weak';
   return 'unknown';
 }
+
+/**
+ * A slow orbit round the ground — the half-time show camera and the stadium
+ * showcase. `t` in seconds; `radius` and `height` in metres; the aim is the
+ * centre spot, lifted a little so the stands fill the top of the frame.
+ */
+export function orbitCamera(cam, t, radius = 70, height = 22, speed = 0.09) {
+  const a = t * speed;
+  cam.x = PITCH.w / 2 + Math.cos(a) * radius;
+  cam.y = CY - 10 + Math.sin(a) * radius * 0.75;
+  cam.z = height + Math.sin(t * 0.21) * 3;
+  cam.tx = PITCH.w / 2; cam.ty = CY + 6; cam.tz = 4;
+  cam.hfov = 46;
+  return cam;
+}
+
+/** The walk-out: a tracking shot along the two lines at the halfway line. */
+export function walkoutCamera(cam, t, duration) {
+  const f = Math.min(1, t / duration);
+  const ease = f * f * (3 - 2 * f);
+  cam.x = PITCH.w / 2 - 16 + ease * 32;
+  cam.y = CY - 14;
+  cam.z = 2.2;
+  cam.tx = PITCH.w / 2 - 12 + ease * 30; cam.ty = CY + 2; cam.tz = 1.2;
+  cam.hfov = 40;
+  return cam;
+}

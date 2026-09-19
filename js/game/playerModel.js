@@ -34,7 +34,15 @@ const ACTIONS = {
   run: ['jog_forward', 'run_forward', 'running'],
   keeperIdle: ['goalkeeper_idle', 'goalkeeper_idle_2_', 'offensive_idle'],
   keeperDive: ['goalkeeper_diving_save', 'goalkeeper_diving_save_2_'],
+  /* v71: the moments the match now flags on the player (`p._act`, set by the
+     match screen from the sim's cues): a kick, a slide, a celebration. Each
+     is a one-shot that blends in fast and hands back to the movement clip. */
+  kick: ['soccer_pass', 'strike', 'kick', 'soccer_kick', 'shooting'],
+  tackle: ['soccer_tackle', 'slide_tackle', 'tackle'],
+  celebrate: ['victory', 'celebrate', 'cheering', 'soccer_celebration'],
+  header: ['header', 'soccer_header'],
 };
+const ONE_SHOT = new Set(['kick', 'tackle', 'celebrate', 'header']);
 
 /**
  * There is no separate sprint clip in this set, so running is one clip played
@@ -306,8 +314,15 @@ export function makeRig(model, { kit, ref, index, isGK }) {
 /** Which action suits what this player is doing right now. */
 export function actionFor(rig, speed, p) {
   if (p.diveT > 0) return rig.actions.keeperDive ? 'keeperDive' : 'idle';
+  if (p._act && p._actT > 0 && rig.actions[p._act]) return p._act;
+  if (p.celebrating && rig.actions.celebrate && speed < 1.5) return 'celebrate';
   if (speed > 1.1) return 'run';
   return rig.isGK && rig.actions.keeperIdle ? 'keeperIdle' : 'idle';
+}
+
+/** Flag a one-shot on a player; the match screen calls this from the sim's cues. */
+export function flagAction(p, act, seconds = 0.6) {
+  p._act = act; p._actT = seconds;
 }
 
 /**
@@ -325,13 +340,20 @@ export function poseRig(rig, p, dt) {
       Math.min(RUN_RATE[1], Math.max(RUN_RATE[0], speed / RUN_CLIP_SPEED));
   }
 
+  if (p._actT > 0) p._actT -= dt;
+  // a sprint leans into the run: the same clip, faster, with the body tipped forward
+  if (rig.root) rig.root.rotation.x = want === 'run' ? -Math.min(0.14, Math.max(0, speed - 4.5) * 0.05) : 0;
+
   if (want !== rig.current) {
     const next = rig.actions[want] || rig.actions.idle;
     if (next) {
       const prev = rig.current && rig.actions[rig.current];
       next.reset();
+      if (ONE_SHOT.has(want)) { next.setLoop(THREE.LoopOnce, 1); next.clampWhenFinished = true; }
       next.play();
-      if (prev && prev !== next) next.crossFadeFrom(prev, 0.22, true);
+      // one-shots cut in fast; movement blends in the usual quarter second
+      const blend = ONE_SHOT.has(want) || ONE_SHOT.has(rig.current) ? 0.1 : 0.22;
+      if (prev && prev !== next) next.crossFadeFrom(prev, blend, true);
       else next.fadeIn(0.15);
       if (rig.current === null) next.time = next.getClip().duration * rig.offset;
     }

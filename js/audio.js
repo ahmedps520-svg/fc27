@@ -512,6 +512,62 @@ export function silenceAnnouncer() {
   paBusy = false;
 }
 
+/* -------------------------------- anthem -------------------------------- *
+ * The walk-out anthem: brass-like saw stacks over a slow chord bed, a
+ * timpani roll and a crowd swell, generated on the spot and different for
+ * each home side (the seed picks the key and the melody shape). */
+let anthemNodes = null;
+export function startAnthem(seed = 1) {
+  if (!settings.enabled || !settings.music) return;
+  if (!ready && !initAudio()) return;
+  if (ctx.state === 'suspended') return;
+  stopAnthem();
+  let a = seed >>> 0 || 1;
+  const rnd = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const root = 48 + Math.floor(rnd() * 5);          // C3..E3
+  const PROG = [[0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7]];
+  const MEL = [0, 4, 7, 12, 11, 7, 9, 4, 5, 7, 12, 14, 12, 7, 4, 0].map((n) => n + (rnd() < 0.5 ? 0 : 12));
+  const beat = 0.62;
+  const t0 = now();
+  const out = ctx.createGain(); out.gain.value = 0.0001;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+  lp.connect(out).connect(musicBus);
+  out.gain.setTargetAtTime(0.16, t0, 0.8);
+  const f = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  const stops = [];
+  // chord bed: two saws per note, detuned, four bars
+  PROG.forEach((chord, bar) => {
+    const tb = t0 + bar * beat * 4;
+    for (const n of chord) for (const det of [-6, 6]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f(root + n); o.detune.value = det;
+      const g = ctx.createGain(); g.gain.value = 0.0001;
+      g.gain.setTargetAtTime(0.045, tb, 0.25); g.gain.setTargetAtTime(0.0001, tb + beat * 3.7, 0.2);
+      o.connect(g).connect(lp); o.start(tb); o.stop(tb + beat * 4.4); stops.push(o);
+    }
+  });
+  // melody: brass-ish (saw + square) an octave up
+  MEL.forEach((n, i) => {
+    const t = t0 + i * beat;
+    for (const type of ['sawtooth', 'square']) {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = f(root + 12 + n);
+      const g = ctx.createGain(); g.gain.value = 0.0001;
+      g.gain.setTargetAtTime(type === 'square' ? 0.03 : 0.06, t, 0.04); g.gain.setTargetAtTime(0.0001, t + beat * 0.8, 0.08);
+      o.connect(g).connect(lp); o.start(t); o.stop(t + beat * 1.1); stops.push(o);
+    }
+  });
+  // timpani on the bar
+  for (let b = 0; b < 4; b++) tone({ freq: f(root - 12), to: f(root - 14), type: 'sine', dur: 0.5, gain: 0.35, delay: b * beat * 4, attack: 0.01 });
+  // crowd swell under it all
+  noise({ dur: beat * 16, gain: 0.05, type: 'bandpass', freq: 500, to: 900, q: 1.5, attack: 2 });
+  anthemNodes = { out, stops };
+  setTimeout(() => { if (anthemNodes && anthemNodes.out === out) anthemNodes = null; }, beat * 16 * 1000 + 800);
+}
+export function stopAnthem() {
+  if (!anthemNodes) return;
+  try { anthemNodes.out.gain.setTargetAtTime(0.0001, now(), 0.3); for (const o of anthemNodes.stops) o.stop(now() + 0.8); } catch { /* done */ }
+  anthemNodes = null;
+}
+
 /* ------------------------------ lobby music ----------------------------- */
 // An original loop: four chords, a pad, and a soft arpeggio on top.
 const CHORDS = [

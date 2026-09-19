@@ -4066,7 +4066,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 }
 
 /* ---- v70: the World screen ---- */
-.wtabs { margin: 0 0 14px; }
+.wtabs { margin: 0 0 14px; flex-wrap: wrap; }
 .wtabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .wtabs button i { font-style: normal; font-size: 11px; color: var(--text-dim); }
 .wtable { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -4119,3 +4119,29 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .hall-tag { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .hall-tag.dim { color: var(--text-dim); }
 .honours td, .honours th { font-size: 12px; }
+
+/* ---- v71: photo mode ---- */
+.photo-mode .gm-hud, .photo-mode #gmFeed, .photo-mode #gmHints, .photo-mode #gmSetPiece, .photo-mode .gm-touch { visibility: hidden !important; }
+.photo-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, rgba(4,6,13,.85)); }
+.photo-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.photo-filters button { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: rgba(6,10,20,.7); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; }
+.photo-filters button.on { border-color: var(--accent); color: var(--accent); }
+.photo-actions { display: flex; align-items: center; gap: 10px; }
+.photo-hint { margin-right: auto; font-size: 12px; color: var(--text-dim); }
+
+/* ---- v71: stadium showcase ---- */
+.showcase { display: grid; gap: 14px; }
+.showcase-view { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #05070e; }
+#scCanvas { width: 100%; height: 100%; display: block; }
+.showcase-cap { position: absolute; left: 14px; bottom: 12px; display: flex; flex-direction: column; gap: 2px; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
+.showcase-cap b { font-family: var(--font-num); font-size: 22px; font-weight: 800; font-style: italic; }
+.showcase-cap span { font-size: 12px; color: var(--text-dim); }
+.showcase-note { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--text-dim); }
+.showcase-opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.showcase-list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.sc-item { display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.03); color: inherit; cursor: pointer; }
+.sc-item svg, .sc-star { grid-row: span 2; }
+.sc-star { color: var(--accent); font-size: 20px; text-align: center; }
+.sc-item b { font-size: 13px; }
+.sc-item span { font-size: 11px; color: var(--text-dim); }
+.sc-item.on { border-color: var(--team); background: color-mix(in srgb, var(--team) 18%, transparent); }

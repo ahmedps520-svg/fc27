@@ -71,6 +71,7 @@ const ASSETS = [
   './js/menuHero.js',
   './js/game/rig.js',
   './js/screens/world.js',
+  './js/screens/stadiums.js',
   './js/world.js',
   './js/data/stadiums.js',
   './js/evolve.js',

@@ -188,6 +188,7 @@ export function render() {
         <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
         <button class="btn primary big" id="kickOff">Kick Off</button>
         <button class="btn ghost" id="worldBtn">League tables · The World →</button>
+        <button class="btn ghost" id="stadiumsBtn">Stadium showcase →</button>
       </div>
 
       <div class="ts-side ts-away">
@@ -314,6 +315,7 @@ export function mount(root) {
   });
 
   q('#worldBtn').addEventListener('click', () => navigate('world'));
+  q('#stadiumsBtn').addEventListener('click', () => navigate('stadiums'));
   seatText();
   const padTimer = setInterval(seatText, 900);
   return () => { clearInterval(padTimer); window.removeEventListener('keydown', onKey); };
