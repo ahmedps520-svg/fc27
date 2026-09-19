@@ -3,6 +3,7 @@ import json, re, sys
 SRC='tools/real-players-source.json'
 EXTRA='tools/real-players-extra.json'   # curated second wave, see REAL_PLAYERS_EXTRA
 WAVE3='tools/real-players-wave3.json'   # third wave (v70): the two lower divisions and a wider free pool
+WAVE4='tools/real-players-wave4.json'   # fourth wave (v71): divisions five and six
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -47,6 +48,8 @@ COLORS = {
  'North Macedonia':['#d20000','#ffe600'], 'Panama':['#005293','#da121a'], 'Russia':['#ffffff','#d52b1e'],
  'South Africa':['#007a4d','#ffb612'], 'Suriname':['#377e3f','#b40a2d'], 'Syria':['#ce1126','#007a3d'],
  'Tanzania':['#1eb53a','#00a3dd'], 'Togo':['#006a4e','#ffce00'],
+ # fourth wave
+ 'Qatar':['#8a1538','#ffffff'], 'Iraq':['#ce1126','#007a3d'], 'United Arab Emirates':['#00732f','#ff0000'],
 }
 
 PARTICLES = {'de','del','della','di','da','dos','das','van','von','le','la','el','al','ben','mac','mc',"o'",'ter','ten'}
@@ -85,7 +88,15 @@ for p in wave3:
     w3seen.add(p['name']); kept.append(p)
 wave3 = kept
 random.Random(70).shuffle(wave3)
-missing = sorted({p['country'] for p in pack + extra + wave3} - set(COLORS))
+seen4 = seen3 | set(w3seen)
+wave4 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE4))]
+w4seen = set(); kept = []
+for p in wave4:
+    if p['name'] in seen4 or p['name'] in w4seen: continue
+    w4seen.add(p['name']); kept.append(p)
+wave4 = kept
+random.Random(71).shuffle(wave4)
+missing = sorted({p['country'] for p in pack + extra + wave3 + wave4} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
@@ -97,6 +108,7 @@ def emit(lst):
 rows = emit(pack)
 extra_rows = emit(extra)
 wave3_rows = emit(wave3)
+wave4_rows = emit(wave4)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -148,9 +160,17 @@ export const REAL_PLAYERS_WAVE3 = [
 {wave3_rows},
 ];
 
+/**
+ * The fourth wave: {len(wave4)} more (tools/real-players-wave4.json), for the fifth
+ * and sixth divisions and the free pool the world grew in v71. Same rules.
+ */
+export const REAL_PLAYERS_WAVE4 = [
+{wave4_rows},
+];
+
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */
 export const NATION_COLORS = {{
 {cols},
 }};
 ''')
-print('wrote', OUT, len(pack), '+', len(extra), '+', len(wave3), 'players,', len(COLORS), 'countries')
+print('wrote', OUT, len(pack), '+', len(extra), '+', len(wave3), '+', len(wave4), 'players,', len(COLORS), 'countries')

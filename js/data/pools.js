@@ -102,11 +102,34 @@ export const CLUB_BLUEPRINTS = [
   { name: 'Silverlake City',   short: 'SLK', tier: 8,  crest: 'triangle', pattern: 'solid',    device: 'sun',        founded: 1958, ground: 'Lakeside Arena',   colors: ['#dee2e6', '#4361ee'], league: 'Foundation League', wave: 3 },
   { name: 'Crossgate Athletic', short: 'CRG', tier: 9, crest: 'hex',      pattern: 'stripes',  device: 'peak',       founded: 1936, ground: 'Gate Ground',      colors: ['#ffb703', '#023047'], league: 'Foundation League', wave: 3 },
   { name: 'Ashby Colliery',    short: 'ASB', tier: 10, crest: 'diamond',  pattern: 'solid',    device: 'keep',       founded: 1871, ground: 'Colliery Row',     colors: ['#3d405b', '#f2cc8f'], league: 'Foundation League', wave: 3 },
+  /* The Pioneer League (fifth) and the Grassroots League (sixth), v71:
+   * sixty clubs, six divisions. Generated on their own stream after the
+   * v70 cards, named from the fourth wave. `wave: 4`. */
+  { name: 'Northbridge FC',    short: 'NTH', tier: 1,  crest: 'shield',   pattern: 'stripes',  device: 'keep',       founded: 1894, ground: 'Bridge Park',      colors: ['#1d4ed8', '#f8fafc'], league: 'Pioneer League', wave: 4 },
+  { name: 'Wexcombe Town',     short: 'WEX', tier: 2,  crest: 'circle',   pattern: 'hoops',    device: 'leaf',       founded: 1903, ground: 'Combe Lane',       colors: ['#16a34a', '#052e16'], league: 'Pioneer League', wave: 4 },
+  { name: 'Estuary Athletic',  short: 'EST', tier: 3,  crest: 'hex',      pattern: 'halves',   device: 'wave',       founded: 1911, ground: 'The Mudflats',     colors: ['#0ea5e9', '#0c1a2a'], league: 'Pioneer League', wave: 4 },
+  { name: 'Kingsmere United',  short: 'KGM', tier: 4,  crest: 'diamond',  pattern: 'solid',    device: 'crescent',   founded: 1889, ground: 'Mere Road',        colors: ['#a21caf', '#fdf4ff'], league: 'Pioneer League', wave: 4 },
+  { name: 'Fallowfield Rovers', short: 'FAL', tier: 5, crest: 'chevron',  pattern: 'quarters', device: 'bird',       founded: 1922, ground: 'Fallow Ground',    colors: ['#ca8a04', '#1c1917'], league: 'Pioneer League', wave: 4 },
+  { name: 'Ironwood City',     short: 'IWD', tier: 6,  crest: 'shield',   pattern: 'hoops',    device: 'thorn',      founded: 1898, ground: 'Ironwood Park',    colors: ['#57534e', '#f97316'], league: 'Pioneer League', wave: 4 },
+  { name: 'Seabrook Wanderers', short: 'SEA', tier: 7, crest: 'triangle', pattern: 'stripes',  device: 'sun',        founded: 1931, ground: 'Brook Field',      colors: ['#f43f5e', '#fff1f2'], league: 'Pioneer League', wave: 4 },
+  { name: 'Alder Heath',       short: 'ALD', tier: 8,  crest: 'circle',   pattern: 'quarters', device: 'star',       founded: 1957, ground: 'Heath Park',       colors: ['#65a30d', '#1a2e05'], league: 'Pioneer League', wave: 4 },
+  { name: 'Moorgate Sporting', short: 'MGT', tier: 9,  crest: 'hex',      pattern: 'solid',    device: 'peak',       founded: 1966, ground: 'Estadio Moorgate', colors: ['#7c3aed', '#faf5ff'], league: 'Pioneer League', wave: 4 },
+  { name: 'Ashwell Colts',     short: 'AWC', tier: 10, crest: 'diamond',  pattern: 'halves',   device: 'battlement', founded: 1880, ground: 'The Paddock',      colors: ['#b45309', '#fef3c7'], league: 'Pioneer League', wave: 4 },
+  { name: 'Riverton Albion',   short: 'RVT', tier: 1,  crest: 'circle',   pattern: 'stripes',  device: 'wave',       founded: 1907, ground: 'Riverton Ground',  colors: ['#0369a1', '#e0f2fe'], league: 'Grassroots League', wave: 4 },
+  { name: 'Hollowmere FC',     short: 'HLM', tier: 2,  crest: 'shield',   pattern: 'solid',    device: 'crescent',   founded: 1886, ground: 'Hollow Lane',      colors: ['#334155', '#cbd5e1'], league: 'Grassroots League', wave: 4 },
+  { name: 'Barrowgate Town',   short: 'BGT', tier: 3,  crest: 'hex',      pattern: 'hoops',    device: 'keep',       founded: 1892, ground: 'Barrow Park',      colors: ['#dc2626', '#fef2f2'], league: 'Grassroots League', wave: 4 },
+  { name: 'Copperfield United', short: 'CPF', tier: 4, crest: 'diamond',  pattern: 'quarters', device: 'sun',        founded: 1929, ground: 'Copper Row',       colors: ['#d97706', '#292524'], league: 'Grassroots League', wave: 4 },
+  { name: 'Thistlewood Rangers', short: 'THS', tier: 5, crest: 'chevron', pattern: 'stripes',  device: 'thorn',      founded: 1904, ground: 'Thistle Lane',     colors: ['#7e22ce', '#fde68a'], league: 'Grassroots League', wave: 4 },
+  { name: 'Greenacre Albion',  short: 'GRA', tier: 6,  crest: 'shield',   pattern: 'halves',   device: 'leaf',       founded: 1917, ground: 'Acre Field',       colors: ['#15803d', '#dcfce7'], league: 'Grassroots League', wave: 4 },
+  { name: 'Saltire Celtic',    short: 'SLC', tier: 7,  crest: 'circle',   pattern: 'hoops',    device: 'star',       founded: 1890, ground: 'Saltire Park',     colors: ['#1e3a8a', '#ffffff'], league: 'Grassroots League', wave: 4 },
+  { name: 'Pebblebrook City',  short: 'PBB', tier: 8,  crest: 'triangle', pattern: 'solid',    device: 'wave',       founded: 1961, ground: 'Brookside Arena',  colors: ['#0f766e', '#ccfbf1'], league: 'Grassroots League', wave: 4 },
+  { name: 'Cinderford Athletic', short: 'CIN', tier: 9, crest: 'hex',     pattern: 'stripes',  device: 'peak',       founded: 1938, ground: 'Cinder Ground',    colors: ['#f59e0b', '#1c1917'], league: 'Grassroots League', wave: 4 },
+  { name: 'Hawkridge Colliery', short: 'HWK', tier: 10, crest: 'diamond', pattern: 'solid',    device: 'bird',       founded: 1873, ground: 'Hawk Row',         colors: ['#1f2937', '#fbbf24'], league: 'Grassroots League', wave: 4 },
 ];
 
 export const LEAGUE_NAME = 'Apex Premier Division';
 /** The four divisions of the world, top first. Index + 1 is the division number. */
-export const LEAGUES = [LEAGUE_NAME, 'Meridian League', 'Vanguard League', 'Foundation League'];
+export const LEAGUES = [LEAGUE_NAME, 'Meridian League', 'Vanguard League', 'Foundation League', 'Pioneer League', 'Grassroots League'];
 
 // position -> which stats matter, used for weighted overall + chemistry groups
 export const POSITIONS = {
