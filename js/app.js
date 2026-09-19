@@ -1,4 +1,4 @@
-import { loadState, getState } from './state.js';
+import { loadState, getState, update } from './state.js';
 import * as Menu from './screens/menu.js';
 import * as Squad from './screens/squad.js';
 import * as Career from './screens/career.js';
@@ -8,6 +8,10 @@ import * as MatchScreen from './screens/match.js';
 import * as Play from './screens/play.js';
 import * as Splash from './screens/splash.js';
 import * as Online from './screens/online.js';
+import * as Today from './screens/today.js';
+import * as Trophies from './screens/trophies.js';
+import * as Weekend from './screens/weekend.js';
+import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
 import * as api from './net/api.js';
@@ -19,6 +23,7 @@ import { persistent } from './storage.js';
 const SCREENS = {
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
   settings: Settings, match: MatchScreen, play: Play, online: Online,
+  today: Today, trophies: Trophies, weekend: Weekend,
 };
 
 /**
@@ -36,7 +41,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v67';
+export const APP_VERSION = 'v68';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -121,6 +126,14 @@ export function navigate(name, params = {}) {
   }
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
+  /* Overlays that were appended to <body> — a pack reveal opened from the
+   * locker, a card detail — belong to the screen that opened them. Leaving
+   * that screen mid-reveal used to leave the overlay sitting over every
+   * screen after it, with nothing underneath that could close it. */
+  for (const id of ['packOverlay', 'detailOverlay']) {
+    const el = document.getElementById(id);
+    if (el && el.parentElement === document.body) el.remove();
+  }
 
   // The hub is the only place you go *back* to, so it is what names the
   // direction — everything else is deeper in.
@@ -291,6 +304,17 @@ crashGuard.setVersion(APP_VERSION);
 crashGuard.install();
 loadState();
 applyTheme();
+/* Live content: the copy the save remembers is adopted first so the week's
+ * event is known offline, then the server's file replaces it when it lands. */
+{
+  const kept = getState().flags?.live;
+  if (kept?.data) live.adopt(kept.data, kept.at);
+  live.refresh().then((data) => {
+    if (!data) return;
+    update((s) => { s.flags.live = { data, at: Date.now() }; });
+    if (current === 'menu' || current === 'today') navigate(current);
+  });
+}
 if (!persistent()) {
   // once, quietly: the game works, the save just will not outlive the tab
   setTimeout(() => toast('Storage is blocked in this browser — progress will not be kept after you close the tab. Sign in to save to the cloud.', 'warn'), 2500);

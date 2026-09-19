@@ -15,6 +15,62 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Live game round (v68) — Today, events, Season Pass, Weekend League, trophies, evolve, 20 clubs
+**One hub for everything that counts: `js/progress.js`.** A match, a pack, an
+SBC, a career milestone, an evolve, a login — the screen that did it calls one
+`progress.onX()` and that feeds `club.stats` (what achievements read), season
+XP, the week's event objectives, the Weekend League tally and the pending
+rewards list. Never bump those from a screen. Claims (`claimTier`,
+`claimAchievement`, `claimWeekend`, `claimPending`, `claimDaily`) also live
+here. `claimableCount()` is the menu badge.
+
+- **World is 20 clubs.** `CLUB_BLUEPRINTS` entries with a `league` field are
+  the Meridian League. **Every generation loop runs over `CORE` (the first
+  ten)**; the new clubs are created empty and their squads are dealt from the
+  free-agent pool at the end of `buildWorld` (snake draft by position, no
+  random numbers). Icons/Stars/88+ stay free. So: 1112 players (1100 + 12
+  SBC legends), first 731 identity-identical (the generator test now hashes
+  without clubId — `sha256:d81ab6b3`), `WORLD.fixtures` is still the original
+  league's 18 rounds, and **`tools/sweep.mjs` runs `WORLD.clubs.slice(0,10)`**
+  so the goldens are unchanged. `WORLD.sbcCards` are `sbc: true` and
+  `drawPlayer` never returns them.
+- **Chemistry** moved to `js/data/chemistry.js` (squad.js re-exports
+  `chemistryFor`). League links: 4+ league-mates is a link. `moddedRef(p,
+  {chem, level})` returns a copy with stats ×(1+(chem−1.5)·0.012)×(1+level·0.01)
+  and overall+level. Applied ONLY in `ultimateSquad()` (the custom squad path
+  → makeTeam `custom.xi`); club XIs and the sweep are untouched.
+- **Evolve**: `js/evolve.js` — 5 levels, pay with a banked dupe
+  (`club.dupes[id]`, banked by `progress.onPack`; coins still paid) or Apex
+  (`apexCost`: 600 + 90/point above 60, ×(1+0.6·level)). `club.upgrades[id]`.
+  Detail overlay has the panel; slots show the evolved rating with ▲.
+- **Live content**: `events.json` (site root, served static, fetched
+  `no-store` at boot by `js/live.js`, kept in `flags.live` for offline).
+  Bundled fallback `js/data/liveDefault.js` — **keep both in step; the unit
+  test asserts events.json equals the default until deliberately edited**.
+  Dated events win; undated ones rotate by ISO week. Event packs: `pack.filter`
+  (`nations/leagues/clubs/positions/minOverall`) via `packs.filterOf`; the
+  store shows an event shelf (`eventShelf`, `findPack`). Featured card: pulled
+  from the event pack ⇒ `upgrades[id] = max(boost)`.
+- **Season Pass**: `js/data/season.js` (30 tiers × 250 XP, XP table,
+  DEFAULT_TIERS overridable by `events.json.season.tiers`). `club.season =
+  {id, xp, claimed}`; a new season id resets XP (best tier kept in stats).
+- **Weekend League**: `js/weekend.js` — window Fri 18:00 → Mon 06:00 UTC, id =
+  the Friday. `club.weekend` tally (10 matches), `weekendPending` for an
+  unclaimed finished weekend. Screen `screens/weekend.js` launches division
+  opponents with `params.weekend = id` (play.js result block → onMatch weekend).
+  Online: play.js sends `wl` with the result; server `store.recordWeekend`
+  (validated host results only, 10 cap, last 4 weekends kept) and
+  `GET /api/weekend?id=`.
+- **Achievements**: `js/data/achievements.js` — 50 rows `{get, need}` over the
+  save; `screens/trophies.js` cabinet. Watch feeds `club.watchStats`.
+- **Daily login**: 7-day calendar in progress.js (`DAILY`), also claimable on
+  the watch (`watch/store.js dailyStatus/claimDaily`, same table — keep in
+  step). Watch club screen shows season tier (from the synced save) and the
+  event card (fetches events.json).
+- Screens: `today.js`, `trophies.js`, `weekend.js`; menu rail has Today (badge
+  = claimable count) and Trophies. `adoptCloudSave`/`loadState` fill the new
+  club fields from defaults, so old saves migrate by merge.
+
 ### Foundation round (v67) — tests, CI, release script, flicker, perf, resilience
 **Run `npm test` before anything else now.** It is: `test:unit` (node:test,
 `tests/unit/*.test.mjs`), `test:sweep` (both seeds diffed against

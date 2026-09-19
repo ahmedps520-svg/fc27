@@ -61,9 +61,24 @@ export const CLUB_BLUEPRINTS = [
   { name: 'Aurora Nord',       short: 'AUR', tier: 8,  crest: 'triangle', pattern: 'solid',    device: 'star',       founded: 1955, ground: 'Nordlys Arena',    colors: ['#41d3ff', '#2b2d6e'] },
   { name: 'Bastion Rovers',    short: 'BAS', tier: 9,  crest: 'hex',      pattern: 'stripes',  device: 'battlement', founded: 1883, ground: 'The Rampart',      colors: ['#6c8ea4', '#c9d6df'] },
   { name: 'Calderon Zenith',   short: 'CAL', tier: 10, crest: 'diamond',  pattern: 'halves',   device: 'peak',       founded: 1968, ground: 'Cumbre Stadium',   colors: ['#ff2e88', '#150d1f'] },
+  /* The Meridian League — the second division of the world, added in v68.
+   * Ten more clubs with their own kits and grounds; their squads are dealt
+   * from the real players who were unattached until then (see generator.js),
+   * so nobody's card changed, only where some of them play. */
+  { name: 'Harbourlight FC',   short: 'HBL', tier: 1,  crest: 'shield',   pattern: 'hoops',    device: 'wave',       founded: 1893, ground: 'The Lantern',      colors: ['#00b4d8', '#03203c'], league: 'Meridian League' },
+  { name: 'Redcliffe Athletic', short: 'RDC', tier: 2,  crest: 'circle',   pattern: 'stripes',  device: 'keep',       founded: 1908, ground: 'Cliffside Park',   colors: ['#d62828', '#f1f1f1'], league: 'Meridian League' },
+  { name: 'Ashgrove Wanderers', short: 'ASH', tier: 3,  crest: 'hex',      pattern: 'solid',    device: 'leaf',       founded: 1911, ground: 'Grove Road',       colors: ['#2a9d8f', '#1b1b1e'], league: 'Meridian League' },
+  { name: 'Saltmarsh Town',    short: 'SLT', tier: 4,  crest: 'diamond',  pattern: 'quarters', device: 'bird',       founded: 1926, ground: 'Marsh Lane',       colors: ['#e9c46a', '#264653'], league: 'Meridian League' },
+  { name: 'Vireo Sporting',    short: 'VIR', tier: 5,  crest: 'chevron',  pattern: 'halves',   device: 'star',       founded: 1949, ground: 'Estadio Vireo',    colors: ['#8ac926', '#101820'], league: 'Meridian League' },
+  { name: 'Coldwater United',  short: 'CWU', tier: 6,  crest: 'shield',   pattern: 'solid',    device: 'crescent',   founded: 1881, ground: 'The Weir',         colors: ['#a2d2ff', '#1d3557'], league: 'Meridian League' },
+  { name: 'Ember Vale',        short: 'EMB', tier: 7,  crest: 'triangle', pattern: 'stripes',  device: 'sun',        founded: 1932, ground: 'Kiln Field',       colors: ['#f77f00', '#3d0c02'], league: 'Meridian League' },
+  { name: 'Greywick Rangers',  short: 'GRW', tier: 8,  crest: 'circle',   pattern: 'quarters', device: 'battlement', founded: 1874, ground: 'Wick Green',       colors: ['#adb5bd', '#212529'], league: 'Meridian League' },
+  { name: 'Lumen City',        short: 'LUM', tier: 9,  crest: 'hex',      pattern: 'hoops',    device: 'peak',       founded: 1961, ground: 'Lumen Dome',       colors: ['#ffd166', '#5a189a'], league: 'Meridian League' },
+  { name: 'Serrano Nova',      short: 'SRN', tier: 10, crest: 'diamond',  pattern: 'stripes',  device: 'thorn',      founded: 1977, ground: 'Campo Nova',       colors: ['#ef476f', '#073b4c'], league: 'Meridian League' },
 ];
 
 export const LEAGUE_NAME = 'Apex Premier Division';
+export const LEAGUES = [LEAGUE_NAME, 'Meridian League'];
 
 // position -> which stats matter, used for weighted overall + chemistry groups
 export const POSITIONS = {

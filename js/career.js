@@ -15,6 +15,7 @@
 import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './data/careerDb.js';
 import { getState, update } from './state.js';
+import { onCareer } from './progress.js';
 
 export { CAREER_CLUBS, REAL_MANAGERS };
 export const careerClub = (id) => CAREER_CLUBS.find((c) => c.id === id);
@@ -148,6 +149,7 @@ export function startCareer(manager, clubId) {
       history: [],
     };
   });
+  onCareer('start');
   return getState().career;
 }
 
@@ -216,6 +218,7 @@ function endSeason(car) {
   }
   car.expiring = car.squads[car.clubId].filter((r) => r[3].years <= 0).map((r) => r[0]);
   car.season += 1;
+  onCareer('season');
   car.week = 1;
   car.fixtures = makeFixtures(careerClub(car.clubId).league);
   for (const id of Object.keys(car.table)) car.table[id] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
@@ -327,6 +330,7 @@ export function completeTransfer(car, neg) {
   row[3] = { years: neg.years, signed: car.season, wage: neg.wage };
   car.squads[car.clubId].push(row);
   car.coins -= neg.agreedFee;
+  onCareer('sign');
   return true;
 }
 

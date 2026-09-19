@@ -1,5 +1,5 @@
 import {
-  FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, POSITIONS, rarityFor,
+  FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
 import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, NATION_COLORS } from './realPlayers.js';
@@ -217,13 +217,35 @@ function buildFixtures(clubIds, rand) {
   }));
 }
 
+/* [name, short, nation, position, overall, age] — see the SBC block in buildWorld. */
+const SBC_LEGENDS = [
+  ['Thierry Henry', 'T. Henry', 'France', 'ST', 91, 27],
+  ['Ronaldinho', 'Ronaldinho', 'Brazil', 'LW', 91, 26],
+  ['Andrés Iniesta', 'A. Iniesta', 'Spain', 'CM', 90, 28],
+  ['Andrea Pirlo', 'A. Pirlo', 'Italy', 'CDM', 89, 30],
+  ['Steven Gerrard', 'S. Gerrard', 'England', 'CM', 89, 27],
+  ['Sergio Agüero', 'S. Agüero', 'Argentina', 'ST', 89, 26],
+  ['Didier Drogba', 'D. Drogba', 'Ivory Coast', 'ST', 89, 29],
+  ['Iker Casillas', 'I. Casillas', 'Spain', 'GK', 89, 27],
+  ['Wayne Rooney', 'W. Rooney', 'England', 'ST', 88, 25],
+  ['Frank Lampard', 'F. Lampard', 'England', 'CAM', 88, 28],
+  ['Philipp Lahm', 'P. Lahm', 'Germany', 'RB', 88, 28],
+  ['Carles Puyol', 'C. Puyol', 'Spain', 'CB', 88, 29],
+];
+
+/* The original ten. Every generation loop below runs over these and only
+ * these: the league clubs added in v68 draw no random numbers of their own
+ * (their squads are dealt from the free pool at the end), which is what keeps
+ * the whole original world — and both balance sweeps — byte-identical. */
+const CORE = CLUB_BLUEPRINTS.filter((bp) => !bp.league);
+
 function buildWorld() {
   idCounter = 0;
   const rand = makeRand(WORLD_SEED);
   const clubs = [];
   const players = [];
 
-  CLUB_BLUEPRINTS.forEach((bp, index) => {
+  CORE.forEach((bp, index) => {
     const clubId = `c${index + 1}`;
     // tier 1 club averages ~82, tier 10 averages ~68
     const clubLevel = 83 - (bp.tier - 1) * 1.7;
@@ -252,11 +274,26 @@ function buildWorld() {
       short: bp.short,
       tier: bp.tier,
       crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
-      league: LEAGUE_NAME,
+      league: bp.league || LEAGUE_NAME,
       founded: bp.founded,
       ground: bp.ground,
       roster,
       budget: Math.round((12 - bp.tier) * 6_500_000 + 8_000_000),
+    });
+  });
+
+  CLUB_BLUEPRINTS.filter((bp) => bp.league).forEach((bp, i) => {
+    clubs.push({
+      id: `c${CORE.length + i + 1}`,
+      name: bp.name,
+      short: bp.short,
+      tier: bp.tier,
+      crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
+      league: bp.league,
+      founded: bp.founded,
+      ground: bp.ground,
+      roster: [],                       // dealt at the end of buildWorld
+      budget: Math.round((12 - bp.tier) * 5_000_000 + 6_000_000),
     });
   });
 
@@ -278,7 +315,7 @@ function buildWorld() {
    * and a saved collection survives untouched. Adding these names inside
    * the loops above would have renumbered the lot.
    * ---------------------------------------------------------------- */
-  CLUB_BLUEPRINTS.forEach((bp, index) => {
+  CORE.forEach((bp, index) => {
     const club = clubs[index];
     const clubLevel = 83 - (bp.tier - 1) * 1.7;
     DEPTH_SHAPE.forEach((pos, slot) => {
@@ -344,7 +381,7 @@ function buildWorld() {
    * one, and a squad that wanted two full-backs and two wingers was competing
    * for a handful of cards. This pass is aimed squarely at that.             */
   const THIN = ['LB', 'RB', 'LM', 'RM', 'LB', 'RB', 'LM', 'RM', 'GK', 'CB'];
-  CLUB_BLUEPRINTS.forEach((bp, index) => {
+  CORE.forEach((bp, index) => {
     const club = clubs[index];
     const clubLevel = 83 - (bp.tier - 1) * 1.7;
     THIN.forEach((pos, slot) => {
@@ -379,7 +416,7 @@ function buildWorld() {
 
   nameTheWorld(players);
 
-  const fixtures = buildFixtures(clubs.map((c) => c.id), rand);
+  const fixtures = buildFixtures(clubs.slice(0, CORE.length).map((c) => c.id), rand);
 
   /* --------------------------- the second wave --------------------------- *
    * v66 grew the world by half again: every club gets a full extra shape of
@@ -393,7 +430,7 @@ function buildWorld() {
   const wave = makeRand(WORLD_SEED ^ 0x2a3b4c5d);
   const wavePlayers = [];
   const WAVE_SHAPE = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'ST'];
-  CLUB_BLUEPRINTS.forEach((bp, index) => {
+  CORE.forEach((bp, index) => {
     const club = clubs[index];
     const clubLevel = 83 - (bp.tier - 1) * 1.7;
     WAVE_SHAPE.forEach((pos, slot) => {
@@ -420,6 +457,69 @@ function buildWorld() {
   }
   nameTheWorld(wavePlayers, REAL_PLAYERS_EXTRA);
 
+  /* ------------------------- the Meridian League ------------------------- *
+   * v68: the world grows from ten clubs to twenty. The ten new clubs are the
+   * blueprints tagged with a league, and their squads are *dealt from the
+   * players who were unattached* — no new cards, no new names, no new ids:
+   * the only thing that changes about a dealt player is `clubId`. Saves that
+   * hold those cards are untouched. Icons, Stars and the marquee free agents
+   * (88+) stay unattached, because they are pack prizes, not squad players.
+   *
+   * The deal is a snake draft per position over the pool sorted by rating, so
+   * tier one of the new league is the strongest and the depth is even. It is
+   * deterministic and consumes no random numbers, which is how the original
+   * fixture list above and both balance sweeps stay byte-identical.        */
+  const newClubs = clubs.filter((c) => c.league !== LEAGUE_NAME);
+  if (newClubs.length) {
+    const dealable = freeAgents.map((id) => players.find((p) => p.id === id))
+      .filter((p) => p && p.rarity !== 'icon' && p.rarity !== 'star' && p.overall < 88 && !p.sbc);
+    const WANT = ['GK', 'GK', 'GK', 'CB', 'CB', 'CB', 'CB', 'LB', 'LB', 'RB', 'RB', 'CDM', 'CDM',
+      'CM', 'CM', 'CM', 'CAM', 'CAM', 'LM', 'RM', 'LW', 'LW', 'RW', 'RW', 'ST', 'ST', 'ST'];
+    const byPos = new Map();
+    for (const p of dealable) {
+      if (!byPos.has(p.position)) byPos.set(p.position, []);
+      byPos.get(p.position).push(p);
+    }
+    for (const q of byPos.values()) q.sort((a, b) => b.overall - a.overall || (a.id < b.id ? -1 : 1));
+    const counts = new Map(WANT.map((pos) => [pos, 0]));
+    for (const pos of WANT) counts.set(pos, counts.get(pos) + 1);
+    const dealt = new Set();
+    for (const [pos, n] of counts) {
+      const q = byPos.get(pos) || [];
+      // round r of this position goes down the table, then back up (snake)
+      for (let r = 0; r < n; r++) {
+        const order = r % 2 ? newClubs.slice().reverse() : newClubs;
+        for (const club of order) {
+          const p = q.shift();
+          if (!p) break;
+          p.clubId = club.id;
+          club.roster.push(p.id);
+          dealt.add(p.id);
+        }
+      }
+    }
+    for (let i = freeAgents.length - 1; i >= 0; i--) if (dealt.has(freeAgents[i])) freeAgents.splice(i, 1);
+  }
+
+  /* ---------------------------- SBC reward cards ---------------------------- *
+   * Twelve legends, obtainable only by completing a Squad-Building Challenge.
+   * `sbc: true` keeps them out of every pack. Appended last, on their own
+   * seeded stream, so nothing above moves. */
+  const sbcRand = makeRand(WORLD_SEED ^ 0x5bc5bc);
+  const sbcCards = [];
+  for (const [name, short, nation, pos, overall, age] of SBC_LEGENDS) {
+    const p = makePlayer(sbcRand, pos, overall, null);
+    p.name = name; p.short = short; p.nation = nation; p.age = age;
+    p.nationColors = NATION_COLORS[nation] || p.nationColors;
+    p.overall = overall;
+    for (const k of Object.keys(p.stats)) p.stats[k] = clamp(Math.round(p.stats[k] + (overall - 80) * 0.6), 40, 99);
+    p.rarity = 'special';
+    p.sbc = true;
+    p.value = marketValue(overall, age);
+    players.push(p);
+    sbcCards.push(p.id);
+  }
+
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 
   return {
@@ -431,6 +531,8 @@ function buildWorld() {
     freeAgents,
     icons,
     stars,
+    sbcCards,
+    leagues: LEAGUES,
     fixtures,
   };
 }

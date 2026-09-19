@@ -1,0 +1,88 @@
+/**
+ * The live content the game ships with — the same shape as `events.json`.
+ *
+ * `events.json` at the site root is what the server serves and what you edit
+ * to change the week's event, the season or the featured card without a
+ * deploy. This is the fallback when it cannot be fetched (offline, first run
+ * behind a bad connection) and the reference for the shape. Keep the two in
+ * step: a field that exists here and not there is a field the live file
+ * cannot turn off.
+ *
+ * Dates are ISO days, inclusive, in UTC. An event with no dates is part of the
+ * weekly rotation: when nothing dated is active, the rotation picks by ISO
+ * week number, so there is always exactly one event on.
+ */
+export const LIVE_DEFAULT = {
+  version: 1,
+  season: {
+    id: 's1',
+    name: 'Season 1 · Kick-Off',
+    from: '2026-09-14',
+    to: '2026-10-25',
+    // tiers: optional override of data/season.js DEFAULT_TIERS
+  },
+  events: [
+    {
+      id: 'falcons',
+      name: 'Green Falcons Week',
+      blurb: 'The Saudi national side takes over the store. Falcons Packs pull only Saudi internationals; the featured card is the captain.',
+      theme: '#006c35',
+      pack: { id: 'ev-falcons', name: 'Falcons Pack', cost: 6000, size: 4, floor: 'silver',
+        odds: { bronze: 0.2, silver: 0.45, gold: 0.3, special: 0.05 }, filter: { nations: ['Saudi Arabia'] },
+        note: '4 · Saudi only', promise: 'Saudi internationals only' },
+      featured: { player: 'Salem Al-Dawsari', boost: 4, chance: 0.12 },
+      objectives: [
+        { id: 'ev-falcons-1', metric: 'eventPack', need: 1, text: 'Open a Falcons Pack', apex: 1500, xp: 120 },
+        { id: 'ev-falcons-2', metric: 'win', need: 3, text: 'Win 3 matches this week', apex: 2500, xp: 200 },
+        { id: 'ev-falcons-3', metric: 'goal', need: 8, text: 'Score 8 goals this week', apex: 2000, xp: 160 },
+      ],
+    },
+    {
+      id: 'meridian',
+      name: 'Meridian Rising',
+      blurb: 'The new league’s best in one pack. Meridian Packs draw only from the ten new clubs.',
+      theme: '#00b4d8',
+      pack: { id: 'ev-meridian', name: 'Meridian Pack', cost: 5500, size: 4, floor: 'silver',
+        odds: { bronze: 0.2, silver: 0.45, gold: 0.32, special: 0.03 }, filter: { leagues: ['Meridian League'] },
+        note: '4 · Meridian League', promise: 'Meridian League only' },
+      featured: { player: 'Nico Williams', boost: 3, chance: 0.1 },
+      objectives: [
+        { id: 'ev-meridian-1', metric: 'eventPack', need: 2, text: 'Open 2 Meridian Packs', apex: 2000, xp: 160 },
+        { id: 'ev-meridian-2', metric: 'clean', need: 2, text: 'Keep 2 clean sheets', apex: 2500, xp: 200 },
+        { id: 'ev-meridian-3', metric: 'played', need: 6, text: 'Play 6 matches this week', apex: 1500, xp: 120 },
+      ],
+    },
+    {
+      id: 'keepers',
+      name: 'Wall Week',
+      blurb: 'Goalkeepers and defenders, 80 and up. Build the back line you never pull.',
+      theme: '#f4c95d',
+      pack: { id: 'ev-wall', name: 'Wall Pack', cost: 7000, size: 3, floor: 'gold',
+        odds: { bronze: 0, silver: 0.2, gold: 0.7, special: 0.1 },
+        filter: { positions: ['GK', 'CB', 'LB', 'RB'], minOverall: 80 },
+        note: '3 · defenders 80+', promise: 'Defenders and keepers, 80+' },
+      featured: { player: 'Alisson', boost: 3, chance: 0.08 },
+      objectives: [
+        { id: 'ev-wall-1', metric: 'clean', need: 3, text: 'Keep 3 clean sheets', apex: 3000, xp: 240 },
+        { id: 'ev-wall-2', metric: 'eventPack', need: 1, text: 'Open a Wall Pack', apex: 1500, xp: 120 },
+        { id: 'ev-wall-3', metric: 'win', need: 4, text: 'Win 4 matches this week', apex: 2500, xp: 200 },
+      ],
+    },
+    {
+      id: 'strikers',
+      name: 'Finishing School',
+      blurb: 'Forwards only. Big odds on gold, and the featured card is the best finisher in the world.',
+      theme: '#ff2e88',
+      pack: { id: 'ev-strikers', name: 'Striker Pack', cost: 7000, size: 3, floor: 'gold',
+        odds: { bronze: 0, silver: 0.15, gold: 0.73, special: 0.12 },
+        filter: { positions: ['ST', 'LW', 'RW', 'CAM'], minOverall: 80 },
+        note: '3 · attackers 80+', promise: 'Attackers, 80+' },
+      featured: { player: 'Erling Haaland', boost: 3, chance: 0.06 },
+      objectives: [
+        { id: 'ev-strikers-1', metric: 'goal', need: 12, text: 'Score 12 goals this week', apex: 3000, xp: 240 },
+        { id: 'ev-strikers-2', metric: 'bigwin', need: 1, text: 'Win by three or more', apex: 2000, xp: 160 },
+        { id: 'ev-strikers-3', metric: 'eventPack', need: 1, text: 'Open a Striker Pack', apex: 1500, xp: 120 },
+      ],
+    },
+  ],
+};

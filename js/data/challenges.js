@@ -26,6 +26,8 @@
  * @property {number} need  what it has to reach
  */
 
+import { getClub } from './generator.js';
+
 const avg = (cards) => (cards.length
   ? Math.round(cards.reduce((s, p) => s + p.overall, 0) / cards.length)
   : 0);
@@ -54,6 +56,17 @@ const R = {
   nations: (n) => ({ text: `${n} different nations`, got: (c) => distinct(c, 'nation'), need: n }),
   sameNation: (n) => ({ text: `${n} from one nation`, got: (c) => maxSameNation(c), need: n }),
   clubs: (n) => ({ text: `${n} different clubs`, got: (c) => distinct(c, 'clubId'), need: n }),
+  nation: (nation, n) => ({ text: `${n}× ${nation}`, got: (c) => c.filter((p) => p.nation === nation).length, need: n }),
+  league: (league, n) => ({
+    text: `${n}× ${league}`,
+    got: (c) => c.filter((p) => p.clubId && getClub(p.clubId)?.league === league).length,
+    need: n,
+  }),
+  maxAge: (age, n) => ({ text: `${n}× aged ${age} or under`, got: (c) => c.filter((p) => p.age <= age).length, need: n }),
+  minAge: (age, n) => ({ text: `${n}× aged ${age}+`, got: (c) => c.filter((p) => p.age >= age).length, need: n }),
+  positions: (group, n, label) => ({
+    text: `${n}× ${label}`, got: (c) => c.filter((p) => group.includes(p.position)).length, need: n,
+  }),
 };
 
 export const CHALLENGES = [
@@ -107,6 +120,93 @@ export const CHALLENGES = [
     brief: 'The kind of eleven that wins a division.',
     reqs: [R.size(11), R.rating(84), R.minRated(85, 5), R.chem(60)],
     reward: { apex: 20000, pack: 'stars' },
+  },
+  /* ---- v68: the legend challenges. Each pays a unique SBC card — a player
+   * who exists nowhere else in the game — on top of the coins. `card` is a
+   * name, resolved against WORLD.sbcCards at claim time. ---- */
+  {
+    id: 'saudi-xi',
+    name: 'Saudi XI',
+    brief: 'Seven Green Falcons in one squad. The Falcons Pack is the fast way in.',
+    reqs: [R.size(11), R.nation('Saudi Arabia', 7), R.rating(74)],
+    reward: { apex: 5000, pack: 'gold', card: 'Didier Drogba' },
+  },
+  {
+    id: 'bronze-silver',
+    name: 'Bronze to Silver',
+    brief: 'Eleven bronzes in, a silver pack and a legend out. The cheapest legend in the game.',
+    reqs: [R.size(11), R.rarity('bronze', 11, 'Bronze')],
+    reward: { apex: 1500, pack: 'silver', card: 'Carles Puyol' },
+  },
+  {
+    id: 'league-mix',
+    name: 'League Mix',
+    brief: 'Four from each league, and chemistry that survives it.',
+    reqs: [R.size(11), R.league('Apex Premier Division', 4), R.league('Meridian League', 4), R.chem(45)],
+    reward: { apex: 6000, pack: 'gold', card: 'Philipp Lahm' },
+  },
+  {
+    id: 'meridian-xi',
+    name: 'Meridian XI',
+    brief: 'The new league, eight deep.',
+    reqs: [R.size(11), R.league('Meridian League', 8), R.rating(76)],
+    reward: { apex: 7000, pack: 'prime', card: 'Frank Lampard' },
+  },
+  {
+    id: 'wonderkids',
+    name: 'Wonderkids',
+    brief: 'Youth, in bulk. Eight players aged 22 or under.',
+    reqs: [R.size(11), R.maxAge(22, 8), R.rating(72)],
+    reward: { apex: 6500, pack: 'gold', card: 'Wayne Rooney' },
+  },
+  {
+    id: 'old-guard',
+    name: 'Old Guard',
+    brief: 'Experience. Eight players aged 30 or over, and a proper rating.',
+    reqs: [R.size(11), R.minAge(30, 8), R.rating(78)],
+    reward: { apex: 8000, pack: 'prime', card: 'Andrea Pirlo' },
+  },
+  {
+    id: 'back-line',
+    name: 'The Wall',
+    brief: 'Six defenders and two keepers, all gold or better.',
+    reqs: [R.size(11), R.positions(['CB', 'LB', 'RB'], 6, 'defenders'), R.positions(['GK'], 2, 'goalkeepers'), R.rarity('gold', 8, 'Gold')],
+    reward: { apex: 9000, pack: 'prime', card: 'Iker Casillas' },
+  },
+  {
+    id: 'front-line',
+    name: 'Strike Force',
+    brief: 'Six attackers rated 82 or better.',
+    reqs: [R.size(11), R.positions(['ST', 'LW', 'RW', 'CAM'], 6, 'attackers'), R.minRated(82, 6)],
+    reward: { apex: 9500, pack: 'prime', card: 'Sergio Agüero' },
+  },
+  {
+    id: 'engine-room',
+    name: 'Engine Room',
+    brief: 'Five midfielders from one club — a real engine room.',
+    reqs: [R.size(11), R.positions(['CDM', 'CM', 'CAM', 'LM', 'RM'], 5, 'midfielders'), R.chem(60), R.rating(80)],
+    reward: { apex: 10000, pack: 'prime', card: 'Steven Gerrard' },
+  },
+  {
+    id: 'world-tour',
+    name: 'World Tour',
+    brief: 'Eleven nations, eleven players, nobody sharing a flag.',
+    reqs: [R.size(11), R.nations(11), R.rating(78)],
+    reward: { apex: 11000, pack: 'prime', card: 'Thierry Henry' },
+  },
+  {
+    id: 'samba',
+    name: 'Samba',
+    brief: 'Six Brazilians and a chemistry to match.',
+    reqs: [R.size(11), R.nation('Brazil', 6), R.chem(55), R.rating(80)],
+    reward: { apex: 12000, pack: 'prime', card: 'Ronaldinho' },
+  },
+  {
+    id: 'tiki-taka',
+    name: 'Tiki-Taka',
+    brief: 'Six Spaniards, and the whole eleven rated 82+.',
+    reqs: [R.size(11), R.nation('Spain', 6), R.minRated(82, 11)],
+    reward: { apex: 15000, pack: 'limited', card: 'Andrés Iniesta' },
   },
   {
     id: 'immortals',

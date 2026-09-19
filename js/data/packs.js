@@ -187,9 +187,10 @@ export function rollRarity(odds) {
  * a repeat come back, and the caller pays that out in coins instead.
  */
 export function drawPlayer(rarity, seen, only = null) {
-  const matches = (p) => p.rarity === rarity && (!only || only(p));
+  // SBC reward cards are earned, never pulled
+  const matches = (p) => !p.sbc && p.rarity === rarity && (!only || only(p));
   let src = WORLD.players.filter(matches);
-  if (!src.length) src = only ? WORLD.players.filter(only) : WORLD.players;
+  if (!src.length) src = only ? WORLD.players.filter((p) => !p.sbc && only(p)) : WORLD.players.filter((p) => !p.sbc);
   const fresh = seen ? src.filter((p) => !seen.has(p.id)) : src;
   const from = fresh.length ? fresh : src;
   return from[Math.floor(Math.random() * from.length)];
@@ -204,8 +205,24 @@ export const hasKeeper = (ids) => ids.some((id) => getPlayer(id)?.position === '
  *   a new player's first four packs a coin toss on whether they could play.
  * @returns {{p: object, dup: boolean}[]} one entry per card in the pack.
  */
+/**
+ * A pack's content filter, from data: `{ nations: [...], leagues: [...],
+ * clubs: [...], minOverall: n }`. Event packs are written in events.json and
+ * this is what turns that JSON into a predicate. Missing = no restriction.
+ */
+export function filterOf(f) {
+  if (!f) return null;
+  return (p) => (!f.nations || f.nations.includes(p.nation))
+    && (!f.leagues || (p.clubId && f.leagues.includes(WORLD.clubsById[p.clubId]?.league)))
+    && (!f.clubs || f.clubs.includes(p.clubId))
+    && (!f.positions || f.positions.includes(p.position))
+    && (!f.minOverall || p.overall >= f.minOverall);
+}
+
 export function openPack(pack, seen = new Set(), needGK = false) {
-  const draw = (rarity, only = null) => {
+  const scope = filterOf(pack.filter);
+  const draw = (rarity, extra = null) => {
+    const only = scope && extra ? (p) => scope(p) && extra(p) : (scope || extra);
     const p = drawPlayer(rarity, seen, only);
     const dup = seen.has(p.id);
     seen.add(p.id);

@@ -108,6 +108,40 @@ function push() {
   }, 1200);
 }
 
+/* Counters the phone's achievements read ("open a pack on the watch"). */
+export function stat(key) {
+  if (!state.club.watchStats) state.club.watchStats = { packs: 0, wins: 0 };
+  state.club.watchStats[key] = (state.club.watchStats[key] | 0) + 1;
+  push();
+}
+
+/* The account's daily login calendar — the same seven days the phone shows,
+ * claimable from either wrist or pocket, once a day. Mirrors progress.js. */
+const DAILY = [
+  { apex: 300 }, { apex: 500 }, { pack: 'bronze' }, { apex: 800 },
+  { pack: 'silver' }, { apex: 1200 }, { pack: 'gold', apex: 1000 },
+];
+const today = () => new Date().toISOString().slice(0, 10);
+export function dailyStatus() {
+  const t = today();
+  const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const d = state.club.daily || (state.club.daily = { last: null, streak: 0, best: 0, claimedOn: null });
+  if (d.last !== t) { d.streak = d.last === y ? d.streak + 1 : 1; d.last = t; d.best = Math.max(d.best | 0, d.streak); push(); }
+  const day = ((d.streak - 1) % 7) + 1;
+  return { day, streak: d.streak, claimable: d.claimedOn !== t, reward: DAILY[day - 1] };
+}
+export function claimDaily() {
+  const st = dailyStatus();
+  if (!st.claimable) return null;
+  state.club.daily.claimedOn = today();
+  if (st.reward.apex) state.club.apex = (state.club.apex || 0) + st.reward.apex;
+  if (st.reward.pack) (state.club.packs = state.club.packs || []).push(st.reward.pack);
+  if (!state.club.season) state.club.season = { id: null, xp: 0, claimed: [] };
+  state.club.season.xp = (state.club.season.xp | 0) + 50;
+  push();
+  return st.reward;
+}
+
 export function earn(apex) {
   state.club.apex = Math.max(0, (state.club.apex || 0) + apex);
   push();
@@ -131,5 +165,7 @@ export function addCards(drawn) {
   for (const { p, dup } of drawn) if (!dup) coll.add(p.id);
   state.club.collection = [...coll];
   state.club.packsOpened = (state.club.packsOpened || 0) + 1;
+  if (!state.club.watchStats) state.club.watchStats = { packs: 0, wins: 0 };
+  state.club.watchStats.packs = (state.club.watchStats.packs | 0) + 1;
   push();
 }
