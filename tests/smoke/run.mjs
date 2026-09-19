@@ -73,13 +73,15 @@ try {
   await page.click('[data-open-pack="bronze"]');
   await page.waitForSelector('#packRip', { timeout: 10000 });
   await page.click('#packRip', { force: true });
-  for (let i = 0; i < 12; i++) {
-    const open = await page.evaluate(() => { const o = document.getElementById('packOverlay'); return !!o && !o.hidden; });
+  for (let i = 0; i < 24; i++) {
+    const open = await page.evaluate(() => [...document.querySelectorAll('#packOverlay')].some((o) => !o.hidden));
     if (!open) break;
-    const next = await page.$('#packNext');
-    if (next) await next.click({ force: true }).catch(() => {});
-    await page.waitForTimeout(500);
+    // a DOM click: on a 390px-tall landscape phone the button can sit below
+    // the fold of the overlay, which is exactly what a thumb would scroll to
+    await page.evaluate(() => document.querySelector('#packNext')?.click());
+    await page.waitForTimeout(400);
   }
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('#packOverlay')].some((o) => !o.hidden)), false, 'the reveal closed');
   const collection = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).club.collection.length);
   assert.ok(collection >= 3, `pack landed in the collection (${collection})`);
   step(`pack opened: ${collection} cards saved locally`);
@@ -112,6 +114,48 @@ try {
   await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('menu'); });
   await page.waitForSelector('[data-go="squad"]', { timeout: 10000 });
   assert.equal(await page.evaluate(() => document.body.classList.contains('in-game')), false, 'in-game class released');
+
+  await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('menu'); });
+  await page.waitForSelector('[data-go="today"]', { timeout: 10000 });
+  // ---- round 2: the Today hub, a daily claim, the trophy room, the event shelf, evolve
+  await page.click('[data-go="today"]');
+  await page.waitForSelector('#claimDaily', { timeout: 10000 });
+  const apexBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).club.apex);
+  await page.click('#claimDaily');
+  await page.waitForTimeout(400);
+  const apexAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).club.apex);
+  assert.ok(apexAfter > apexBefore, `daily reward paid (${apexBefore} -> ${apexAfter})`);
+  assert.match(await text(page, '.today'), /Season|Tier/i);
+  assert.match(await text(page, '.today'), /this week|Weekend League/i);
+  step('today: daily reward claimed, season + event + weekend shown');
+  await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('trophies'); });
+  await page.waitForSelector('.trophy', { timeout: 10000 });
+  const trophies = await page.$$eval('.trophy', (els) => els.length);
+  assert.ok(trophies >= 40, `${trophies} trophies in the cabinet`);
+  const claimBtn = await page.$('.trophy [data-claim]');
+  if (claimBtn) { await claimBtn.click(); await page.waitForTimeout(300); }
+  step(`trophy room: ${trophies} achievements${claimBtn ? ', one collected' : ''}`);
+  await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('weekend'); });
+  await page.waitForSelector('.wl-hero', { timeout: 10000 });
+  step('weekend league screen renders');
+  await page.evaluate(async () => { const m = await import('/js/screens/squad.js'); m.openStore(); const app = await import('/js/app.js'); app.navigate('squad'); });
+  await page.waitForSelector('.ev-shelf [data-buy-pack]', { timeout: 10000 });
+  step('event pack on the store shelf');
+  // evolve: open a card's detail from the collection and use Apex
+  await page.evaluate(async () => {
+    const st = await import('/js/state.js');
+    st.update((s) => { s.club.apex += 50000; });
+    const sq = await import('/js/screens/squad.js');
+    const gen = await import('/js/data/generator.js');
+    sq.showDetail(document, gen.getPlayer(st.getState().club.collection[0]));
+  });
+  await page.waitForSelector('[data-evolve="apex"]', { timeout: 5000 });
+  await page.click('[data-evolve="apex"]');
+  await page.waitForTimeout(400);
+  const level = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('apexxi.save.v1')).club.upgrades || {})[0]);
+  assert.equal(level, 1, 'card evolved to +1');
+  step('evolve: a card went to +1');
+  await page.evaluate(() => document.querySelector('#detailOverlay')?.remove());
 
   // ---- cloud: register, push the save, read it back
   const name = `smoke${Date.now().toString(36).slice(-6)}`;
@@ -151,6 +195,10 @@ try {
   await w.click('[data-tab="club"]');
   const club = await text(w, '#wApp');
   assert.match(club, /Cards [1-9]/, `watch collection: ${club}`);
+  assert.match(club, /Season Tier \d/, 'season tier on the watch');
+  assert.match(club, /THIS WEEK|This week/, 'event card on the watch');
+  if (await w.$('#wDaily:not([disabled])')) { await w.click('#wDaily'); await w.waitForTimeout(300); assert.match(await text(w, '#wApp'), /claimed/i); }
+  step('watch mirrors season, event and the daily reward');
   step('watch pack opened and banked');
   await wctx.close();
 } catch (e) {

@@ -165,3 +165,10 @@ html, body {
 .w-pens-msg { text-align: center; font-family: var(--num); font-size: 13px; font-weight: 700; margin: 2px 0; min-height: 16px; }
 .w-dive { display: flex; gap: 4px; }
 .w-dive .w-btn { margin: 0; padding: 10px 0; font-size: 16px; }
+
+/* ------------------------------ v68: today ------------------------------ */
+.w-track { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .12); margin: 2px 0 8px; overflow: hidden; }
+.w-track i { display: block; height: 100%; background: var(--accent); }
+.w-ev { border-radius: 10px; padding: 7px 9px; margin: 4px 0 8px; background: linear-gradient(140deg, color-mix(in srgb, var(--ev) 35%, transparent), rgba(255, 255, 255, .05)); border: 1px solid rgba(255, 255, 255, .14); }
+.w-ev span { display: block; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.w-ev b { font-size: 12px; }

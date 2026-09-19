@@ -345,6 +345,30 @@ function recordResult(acct, { scored, conceded, divIdx }) {
   return o;
 }
 
+/* Weekend League: per-account tallies keyed by the weekend id, written only
+ * from validated host results (see the 'result' handler). Ten count. */
+function recordWeekend(acct, id, won) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(id)) return null;
+  if (!acct.weekend) acct.weekend = {};
+  const w = acct.weekend[id] || (acct.weekend[id] = { played: 0, wins: 0 });
+  if (w.played >= 10) return w;
+  w.played += 1;
+  if (won) w.wins += 1;
+  // keep the last four weekends only
+  const keys = Object.keys(acct.weekend).sort();
+  while (keys.length > 4) delete acct.weekend[keys.shift()];
+  flush();
+  return w;
+}
+
+function weekendBoard(id, limit = 25) {
+  return Object.values(db.accounts)
+    .filter((a) => a.weekend?.[id]?.played)
+    .map((a) => ({ name: a.name, ...a.weekend[id] }))
+    .sort((x, y) => y.wins - x.wins || x.played - y.played || x.name.localeCompare(y.name))
+    .slice(0, limit);
+}
+
 function leaderboard(limit = 25) {
   return Object.values(db.accounts)
     .filter((a) => a.online.played > 0)
@@ -375,6 +399,7 @@ module.exports = {
   mintToken,
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
+  recordWeekend, weekendBoard,
   // operator tools only — see the note on accountByName
   accountByName,
 };

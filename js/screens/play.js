@@ -14,6 +14,8 @@ import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
+import * as progress from '../progress.js';
+import { weekendWindow } from '../weekend.js';
 import {
   InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel, SNAP_MS,
 } from '../net/netplay.js';
@@ -1751,11 +1753,14 @@ export function mount(root, params) {
       // A walkover still counts: the player who stayed takes the points.
       const scored = oppGone ? Math.max(mine, theirs + 1) : mine;
       const conceded = oppGone ? theirs : theirs;
+      const wl = weekendWindow();
       net.send({
         t: 'result',
         scored,
         conceded,
         divIdx: getState().ultimate.divIdx,
+        // inside the weekend window, an online division match counts for it
+        wl: wl.open && params.ultimate ? wl.id : null,
       });
     }
 
@@ -1774,10 +1779,23 @@ export function mount(root, params) {
        * out of the match — advanceWeek folds the result on top of it. */
       update((s) => { if (s.career) s.career.morale = mgr ? mgr.morale : s.career.morale; });
       advanceWeek([h.score, a.score]);
+    } else if (params.weekend) {
+      // Weekend League pays at the end of the window, by rank; the match itself is tallied below
     } else {
       // a friendly is pocket money next to a division match
       update((s) => { s.club.apex += 200 + (online ? mine : h.score) * 60; });
     }
+    /* Everything the result counts for beyond this screen — achievements,
+     * season XP, the week's event, the weekend tally — goes through one call. */
+    const myScore = online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score;
+    const theirScore = online ? theirs : a.score;
+    const prog = progress.onMatch({
+      mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
+      scored: myScore, conceded: theirScore, online: !!online,
+      possession: online && online.seat === 1 ? pa : ph, weekend: !!params.weekend,
+    });
+    if (div?.objectivesDone?.length) progress.onObjective(div.objectivesDone.length);
+    if (prog.tiers) toast(`Season Pass: tier up! +${prog.tiers}`, 'good');
     refreshCoins();
 
     overlay.hidden = false;
@@ -1855,7 +1873,7 @@ export function mount(root, params) {
       }
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
-      if (o === 'quit') { exitFullscreen(); navigate(online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);

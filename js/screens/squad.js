@@ -1,6 +1,10 @@
 import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE, ULTIMATE_RUNGS } from '../state.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
+import { chemistryFor, moddedRef, levelOf, linksFor } from '../data/chemistry.js';
+import * as progress from '../progress.js';
+import { eventPack, activeEvent } from '../live.js';
+import { evolveInfo, evolve } from '../evolve.js';
 import {
   PACKS, PACK_BY_ID, packTone, RARITY_RANK, rollRarity, drawPlayer, openPack, dupValue,
   FREE_MS, fmtLeft, hasKeeper,
@@ -33,6 +37,9 @@ let storeTab = 'packs';      // packs | locker | icons — the Store tab's own r
 let clubTab = 'squad';       // squad | badge | name
 let openChallenge = null;    // the SBC being filled in, if any
 let submission = [];         // card ids staged for it
+
+/** Land on the store's pack shelf next time the screen opens (the Today hub uses this). */
+export function openStore() { tab = 'store'; storeTab = 'packs'; }
 
 /**
  * Prices.
@@ -81,30 +88,7 @@ const SORTS = {
 /* ------------------------------------------------------------------ *
  * Chemistry
  * ------------------------------------------------------------------ */
-export function chemistryFor(lineup, formation) {
-  const slots = FORMATIONS[formation];
-  const ids = lineup.filter(Boolean);
-  const placed = ids.map(getPlayer);
-
-  const per = lineup.map((id, i) => {
-    if (!id) return 0;
-    const p = getPlayer(id);
-    const slot = slots[i];
-    const exact = p.position === slot.pos;
-    const sameGroup = POSITIONS[p.position].group === POSITIONS[slot.pos].group;
-    let chem = exact ? 2 : sameGroup ? 1 : 0;
-
-    const clubMates = placed.filter((o) => o.id !== p.id && o.clubId && o.clubId === p.clubId).length;
-    const nationMates = placed.filter((o) => o.id !== p.id && o.nation === p.nation).length;
-    if (clubMates >= 2 || nationMates >= 3 || (clubMates >= 1 && nationMates >= 1)) chem += 1;
-
-    return Math.max(0, Math.min(3, chem));
-  });
-
-  const team = Math.min(100, Math.round((per.reduce((a, b) => a + b, 0) / 33) * 100));
-  const rating = placed.length ? Math.round(placed.reduce((s, p) => s + p.overall, 0) / placed.length) : 0;
-  return { per, team, rating, placedCount: placed.length };
-}
+export { chemistryFor };
 
 /* ------------------------------------------------------------------ *
  * Pack logic
@@ -121,10 +105,16 @@ export function ultimateSquad() {
   const s = getState();
   const ids = s.club.lineup;
   if (ids.some((id) => !id)) return null;
-  const xi = ids.map(getPlayer);
-  if (xi.some((p) => !p)) return null;
+  const raw = ids.map(getPlayer);
+  if (raw.some((p) => !p)) return null;
+  /* Chemistry and evolve levels are baked into copies of the cards here, at
+   * the one place a custom squad is handed to the engine — the engine itself
+   * never learns the words. See data/chemistry.js. */
+  const chem = chemistryFor(ids, s.club.formation);
+  const xi = raw.map((p, i) => moddedRef(p, { chem: chem.per[i], level: levelOf(s.club, p.id) }));
   // The bench is optional — an empty seat simply means nobody to bring on there.
-  const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean);
+  const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean)
+    .map((p) => moddedRef(p, { level: levelOf(s.club, p.id) }));
   const id = clubIdentity();
   return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest };
 }
@@ -354,6 +344,7 @@ export function storeView() {
 
   if (storeTab === 'locker') return subs + lockerView(owned, counts);
   if (storeTab === 'icons') return subs + iconExchangeView();
+  const shelfEvent = eventShelf(s);
 
   /* Shelves, not one grid.
    *
@@ -400,7 +391,7 @@ export function storeView() {
     ['limited', 'Limited & Icons', 'Guaranteed headline cards. The top of the store.'],
   ];
 
-  return subs + `
+  return subs + shelfEvent + `
     <div class="store-head">
       <h2>Packs</h2>
       <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
@@ -416,6 +407,35 @@ export function storeView() {
     }).join('')}`;
 }
 
+/** A pack by id, from the store or from this week's event. */
+export function findPack(id) {
+  const ev = eventPack();
+  if (ev && ev.id === id) return ev;
+  return PACKS.find((p) => p.id === id) || PACKS[0];
+}
+
+/** The event shelf at the top of the store, when an event is on. */
+function eventShelf(s) {
+  const ev = activeEvent();
+  const pack = eventPack(ev);
+  if (!ev || !pack) return '';
+  const afford = (s.club.apex || 0) >= pack.cost;
+  return `
+    <section class="panel glass ev-shelf" style="--ev:${ev.theme || 'var(--accent)'}">
+      <header class="panel-head"><h2>${ev.name} <small>this week</small></h2></header>
+      <p class="hint">${ev.blurb}</p>
+      <div class="ev-pack">
+        <div class="ev-pack-body">
+          <b>${pack.name}</b>
+          <span class="sp-note">${pack.note || ''}</span>
+          ${pack.promise ? `<span class="sp-promise">${pack.promise}</span>` : ''}
+          ${ev.featured ? `<span class="sp-promise">Featured: ${ev.featured.player} +${ev.featured.boost} · ${Math.round(ev.featured.chance * 100)}% per pack</span>` : ''}
+        </div>
+        <button class="btn ${afford ? 'primary' : 'ghost'}" data-buy-pack="${pack.id}" ${afford ? '' : 'disabled'}>◈ ${pack.cost.toLocaleString()}</button>
+      </div>
+    </section>`;
+}
+
 function lockerView(owned, counts) {
   return `
     <section class="panel glass">
@@ -426,7 +446,7 @@ function lockerView(owned, counts) {
       ${owned.length ? `
         <div class="locker">
           ${Object.entries(counts).map(([id, n]) => {
-            const pack = PACKS.find((p) => p.id === id) || PACKS[0];
+            const pack = findPack(id);
             return `
               <button class="locker-pack rar-${packTone(pack)}" data-open-pack="${id}">
                 <span class="lp-art"><i>UXI</i></span>
@@ -516,6 +536,7 @@ function challengesView() {
                   <span class="sbc-reward">◈ ${c.reward.apex.toLocaleString()}</span>
                   ${c.reward.ultimate ? `<span class="sbc-reward ult">✦ ${c.reward.ultimate}</span>` : ''}
                   <span class="sbc-pack">${c.reward.pack} pack</span>
+                  ${c.reward.card ? `<span class="sbc-card">★ ${c.reward.card}</span>` : ''}
                   ${done
                     ? '<span class="sbc-tick">Completed</span>'
                     : `<button class="btn primary" data-sbc="${c.id}">Start</button>`}
@@ -852,7 +873,7 @@ function slotHTML(slot, i, playerId, chem) {
          style="left:${slot.x}%;top:${slot.y}%${p ? `;--rar:${r.color};--rar-glow:${r.glow}` : ''}">
       ${p ? `
         <span class="slot-chem chem-${chem >= 3 ? 'hi' : chem >= 2 ? 'mid' : 'lo'}">${chem}</span>
-        <span class="slot-ovr">${p.overall}</span>
+        <span class="slot-ovr">${Math.min(99, p.overall + levelOf(getState().club, p.id))}${levelOf(getState().club, p.id) ? '<i class="slot-lvl">▲</i>' : ''}</span>
         <span class="slot-crest">${club ? crestSVG(club.crest, club.short, 18) : ''}</span>
         <span class="slot-name">${p.short}</span>
         <span class="slot-pos">${slot.pos}</span>
@@ -1114,13 +1135,20 @@ export function mount(root) {
         st.club.apex += c.reward.apex;
         if (c.reward.ultimate) st.club.ultimate = (st.club.ultimate || 0) + c.reward.ultimate;
         if (c.reward.pack) st.club.packs.push(c.reward.pack);
+        // the legend: a card that exists nowhere else, straight into the collection
+        if (c.reward.card) {
+          const legend = WORLD.sbcCards.map(getPlayer).find((p) => p.name === c.reward.card);
+          if (legend && !st.club.collection.includes(legend.id)) st.club.collection.push(legend.id);
+        }
         if (!Array.isArray(st.club.challengesDone)) st.club.challengesDone = [];
         if (!st.club.challengesDone.includes(c.id)) st.club.challengesDone.push(c.id);
       });
+      progress.onSbc(c);
       refreshCoins();
       sfx('coin');
       toast(`${c.name} complete — ◈${c.reward.apex.toLocaleString()}`
-        + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''} · ${c.reward.pack} pack`);
+        + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''} · ${c.reward.pack} pack`
+        + `${c.reward.card ? ` · ${c.reward.card}` : ''}`);
       openChallenge = null;
       submission = [];
       refresh();
@@ -1132,7 +1160,7 @@ export function mount(root) {
     // buy -> straight into the locker, never auto-opened
     root.querySelectorAll('[data-buy-pack]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const pack = PACKS.find((p) => p.id === btn.dataset.buyPack);
+        const pack = findPack(btn.dataset.buyPack);
         const s = getState();
         if (pack.cost > (s.club.apex || 0)) return toast('Not enough Apex', 'warn');
         /* The free pack is a timer, not a ratio. The old gate was
@@ -1161,11 +1189,13 @@ export function mount(root) {
       const seen = ownedIds();
       let needGK = !hasKeeper(getState().club.collection);
       const drawn = [];
+      const opened = [];
       for (const id of ids) {
-        const pack = PACKS.find((p) => p.id === id) || PACKS[0];
+        const pack = findPack(id);
         const pulls = openPack(pack, seen, needGK);
         if (pulls.some((x) => x.p.position === 'GK')) needGK = false;
         drawn.push(...pulls);
+        opened.push([pack, pulls]);
       }
       const coins = drawn.filter((x) => x.dup).reduce((sum, x) => sum + dupValue(x.p), 0);
 
@@ -1178,6 +1208,7 @@ export function mount(root) {
         drawn.forEach(({ p }) => { if (!st.club.collection.includes(p.id)) st.club.collection.push(p.id); });
         st.club.apex += coins;
       });
+      for (const [pack, pulls] of opened) progress.onPack(pack, pulls);
       refreshCoins();
       runPackAnimation(root, drawn, coins, () => navigate('squad'));
     };
@@ -1789,6 +1820,7 @@ export function showDetail(scope, p) {
           <p>${flagSVG(p.nationColors, 22)} ${p.nation} · ${p.age} years · ${fmtMoney(p.value)}</p>
         </div>
       </div>
+      ${evolvePanel(p)}
       <div class="detail-body">
         ${radarSVG(p.stats, 210)}
         <div class="detail-stats">
@@ -1800,5 +1832,38 @@ export function showDetail(scope, p) {
   const close = () => { overlay.classList.remove('open'); overlay.hidden = true; overlay.innerHTML = ''; };
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.closest('[data-close]')) close();
+    const ev = e.target.closest('[data-evolve]');
+    if (ev) {
+      const r = evolve(p.id, ev.dataset.evolve);
+      if (!r.ok) { toast(r.why, 'warn'); return; }
+      sfx('coin'); refreshCoins();
+      toast(`${p.name} evolved to +${r.level}`, 'good');
+      showDetail(scope, p);
+      // the squad behind the overlay shows the new rating
+      if (document.querySelector('#uTabs')) navigate('squad');
+    }
   });
+}
+
+/** The evolve strip on a card's detail: level, path and the two ways to pay. */
+function evolvePanel(p) {
+  const s = getState();
+  if (!s.club.collection.includes(p.id)) return '';
+  const info = evolveInfo(p.id);
+  const pips = Array.from({ length: info.max }, (_, i) => `<i class="${i < info.level ? 'on' : ''}"></i>`).join('');
+  return `
+    <div class="evo">
+      <div class="evo-head">
+        <span class="evo-kicker">Evolve</span>
+        <b>${Math.min(99, p.overall + info.level)}<small>${info.level ? ` (+${info.level})` : ''}</small></b>
+        <span class="evo-pips">${pips}</span>
+        <span class="evo-max">${info.capped ? 'Final level' : `→ ${Math.min(99, p.overall + info.max)} at max`}</span>
+      </div>
+      ${info.capped ? '' : `
+        <div class="evo-actions">
+          <button class="btn ${info.dupes ? 'primary' : 'ghost'}" data-evolve="dupe" ${info.dupes ? '' : 'disabled'}>Use duplicate <small>${info.dupes} banked</small></button>
+          <button class="btn ${(s.club.apex || 0) >= info.cost ? '' : 'ghost'}" data-evolve="apex" ${(s.club.apex || 0) >= info.cost ? '' : 'disabled'}>◈ ${info.cost.toLocaleString()}</button>
+        </div>
+        <p class="hint">+1 overall and +1% on every stat per level. Duplicates pulled from packs are banked here.</p>`}
+    </div>`;
 }

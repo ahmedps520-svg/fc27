@@ -18,6 +18,71 @@
  */
 export const RELEASES = [
   {
+    version: 'v68',
+    date: '2026-09-19',
+    tag: 'Live',
+    title: 'Something to come back for',
+    lede: 'A Today hub with daily rewards, weekly events and a 30-tier Season Pass; '
+        + 'Weekend League; a trophy room; card evolution; twelve legend SBCs; and ten new clubs.',
+    entries: [
+      {
+        head: 'Today',
+        summary: 'Daily login calendar, the week\'s event, Season Pass and everything to claim, in one place.',
+        detail: 'The new tile on the menu. A seven-day login calendar that pays coins and packs, '
+              + 'the event that is on this week with its own objectives, your Season Pass tiers to '
+              + 'claim, the weekend, and the top of your objective slate. The watch shows the '
+              + 'same daily reward, season tier and event card.',
+      },
+      {
+        head: 'Live events and the Season Pass',
+        summary: 'A themed pack, three objectives and a featured card every week; 30 tiers of rewards for XP.',
+        detail: 'Green Falcons Week, Meridian Rising, Wall Week and Finishing School rotate, each '
+              + 'with a pack that only pulls its theme and a featured card that lands evolved. XP '
+              + 'comes from every match, objective, challenge and login; each tier is 250 XP and '
+              + 'the finale pays Ultimate. All of it is data the server serves, so a new event '
+              + 'never needs an update.',
+      },
+      {
+        head: 'Weekend League',
+        summary: 'Ten matches from Friday evening to Monday morning; wins set your rank, the rank pays.',
+        detail: 'Against squads built to your division offline, and any online division match '
+              + 'inside the window counts too — the server keeps its own validated tally and a '
+              + 'board for the weekend. Bronze to Apex; rewards are claimed on Monday.',
+      },
+      {
+        head: 'Trophy room',
+        summary: 'Fifty achievements across collecting, matches, career, online, the weekend and the watch.',
+        detail: 'Each one is a shelf in the cabinet with a bronze, silver or gold cup, a progress bar '
+              + 'and an Apex reward to collect. Every one also pays Season XP the moment it unlocks.',
+      },
+      {
+        head: 'Evolve',
+        summary: 'Take any card up five levels with duplicates or Apex — +1 overall and +1% on every stat per level.',
+        detail: 'Duplicates pulled from packs are banked as material now as well as paying coins. '
+              + 'The price in Apex climbs with the level and the rating. Open any card you own to '
+              + 'see its path; the squad shows the evolved rating.',
+      },
+      {
+        head: 'Chemistry on the pitch, and twelve legends',
+        summary: 'Links by club, nation and league now change how your XI plays, slightly; twelve new SBCs pay unique legend cards.',
+        detail: 'A card at full chemistry plays a shade above its printed stats and one with none a '
+              + 'shade below — never more than about two per cent, and only for your own squad. '
+              + 'Saudi XI, Bronze to Silver, League Mix, Meridian XI, Wonderkids, Old Guard, The Wall, '
+              + 'Strike Force, Engine Room, World Tour, Samba and Tiki-Taka each pay a legend that '
+              + 'exists nowhere else: Henry, Ronaldinho, Iniesta, Pirlo, Gerrard, Agüero, Drogba, '
+              + 'Casillas, Rooney, Lampard, Lahm and Puyol.',
+      },
+      {
+        head: 'The Meridian League',
+        summary: 'Ten new clubs with their own kits and grounds — twenty in the world now.',
+        detail: 'Harbourlight, Redcliffe, Ashgrove, Saltmarsh, Vireo, Coldwater, Ember Vale, Greywick, '
+              + 'Lumen City and Serrano Nova. Their squads are the real players who were free agents, '
+              + 'so nothing you own changed except where some of them play; league links count for '
+              + 'chemistry and the Meridian Pack pulls only from them.',
+      },
+    ],
+  },
+  {
     version: 'v67',
     date: '2026-09-18',
     tag: 'Foundation',

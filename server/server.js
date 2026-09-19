@@ -257,6 +257,11 @@ async function api(req, res, route) {
     return json(res, 202, { ok: true });
   }
 
+  if (route === '/api/weekend') {
+    const id = String(new URL(req.url, 'http://x').searchParams.get('id') || '').slice(0, 10);
+    return json(res, 200, { id, rows: store.weekendBoard(id) });
+  }
+
   if (route === '/api/leaderboard') {
     return json(res, 200, { rows: store.leaderboard(25) });
   }
@@ -680,6 +685,12 @@ ws.attach(server, '/ws', (sock) => {
           store.recordResult(peer.acct, {
             scored: check.scored, conceded: check.conceded, divIdx: check.divIdx,
           });
+          // Weekend League: the same validated result, filed under the weekend
+          const wl = typeof m.wl === 'string' ? m.wl.slice(0, 10) : null;
+          if (wl) {
+            store.recordWeekend(peer.acct, wl, check.scored > check.conceded);
+            if (peer.opponent?.acct) store.recordWeekend(peer.opponent.acct, wl, check.conceded > check.scored);
+          }
           if (peer.opponent) {
             store.recordResult(peer.opponent.acct, {
               scored: check.conceded, conceded: check.scored, divIdx: peer.opponent.divIdx,

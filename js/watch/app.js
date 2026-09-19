@@ -19,6 +19,8 @@ import { RARITY } from '../data/pools.js';
 import { playMatch, LEVELS } from './match.js';
 import { playPens } from './pens.js';
 import * as daily from './daily.js';
+import { activeEvent, refresh as refreshLive } from '../live.js';
+import { tierOf, tierProgress, TIERS } from '../data/season.js';
 import { openPackScreen } from './pack.js';
 import * as store from './store.js';
 
@@ -85,6 +87,14 @@ function clubScreen() {
       <div class="w-big">◈ ${(s.club.apex || 0).toLocaleString()}</div>
       <div class="w-sub">Apex balance${bonus ? ` · <b class="w-up">+${bonus} streak</b>` : ''}</div>
     </div>
+    ${(() => { const d = store.dailyStatus(); return `
+      <button class="w-btn ${d.claimable ? '' : 'ghost'}" id="wDaily" ${d.claimable ? '' : 'disabled'}>
+        ${d.claimable ? `Claim day ${d.day}: ${d.reward.pack ? `${d.reward.pack} pack` : ''}${d.reward.pack && d.reward.apex ? ' + ' : ''}${d.reward.apex ? `◈${d.reward.apex}` : ''}` : `Day ${d.day} claimed`}
+      </button>`; })()}
+    ${(() => { const xp = s.club.season?.xp | 0; const t = tierOf(xp); return `
+      <div class="w-row"><span>Season</span><b>Tier ${t}/${TIERS}</b></div>
+      <div class="w-track"><i style="width:${Math.round(100 * tierProgress(xp))}%"></i></div>`; })()}
+    ${(() => { const ev = activeEvent(); return ev ? `<div class="w-ev" style="--ev:${ev.theme || '#22c55e'}"><span>This week</span><b>${ev.name}</b></div>` : ''; })()}
     <div class="w-row"><span>Day streak</span><b>🔥 ${daily.streak()}</b></div>
     <p class="w-title" style="margin-top:8px">Today</p>
     ${objs.map((o) => `
@@ -103,6 +113,12 @@ function clubScreen() {
         </div>`).join('')}</div>` : ''}
     <div class="w-row"><span>Synced</span><b>${store.syncLabel()}</b></div>
   `);
+  app.querySelector('#wDaily')?.addEventListener('click', () => {
+    const r = store.claimDaily();
+    if (!r) return;
+    buzz([12, 40, 20]);
+    clubScreen();
+  });
 }
 
 /* Objective payouts are banked where the event happens, with a buzz so the
@@ -146,7 +162,7 @@ function playScreen() {
       if (reward) store.earn(reward);
       report('match');
       if (stats?.goals) report('goal', stats.goals);
-      if (stats?.won) { report('win'); if (stats.level === 'hard') report('hardwin'); }
+      if (stats?.won) { report('win'); store.stat('wins'); if (stats.level === 'hard') report('hardwin'); }
       tab = 'play'; render();
     }, level);
   }));
@@ -226,7 +242,7 @@ function render() {
  * playable club from what the watch remembers. The flag tells the page's
  * error surface (watch.html) that the app is up, so late noise stays quiet. */
 const BOOT_MS = 6000;
-Promise.race([store.boot(), new Promise((r) => setTimeout(r, BOOT_MS))])
+Promise.race([Promise.all([store.boot(), refreshLive().catch(() => null)]), new Promise((r) => setTimeout(r, BOOT_MS))])
   .catch(() => {})
   .then(() => {
     try { render(); window.__apexWatchBooted = true; }

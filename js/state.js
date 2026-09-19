@@ -58,6 +58,19 @@ const defaults = () => ({
     packs: ['gold', 'silver', 'silver', 'bronze'],
     freeAt: 0,                // when the next free bronze unlocks; 0 = now
     challengesDone: [],       // one-off SBCs already claimed
+    /* v68 progression. All optional in old saves — loadState's merge fills
+     * them from here, and progress.js tolerates their absence anyway. */
+    stats: {},                // lifetime counters achievements read (progress.js)
+    achievements: {},         // id -> { at, claimed }
+    season: null,             // { id, xp, claimed: [tier...] } for the current Season Pass
+    weekend: null,            // this weekend's tally (weekend.js)
+    weekendPending: null,     // a finished weekend whose reward is still unclaimed
+    daily: null,              // login calendar { last, streak, best, claimedOn }
+    pending: [],              // rewards waiting on the Today hub
+    upgrades: {},             // card id -> evolve level
+    dupes: {},                // card id -> duplicate pulls banked as evolve material
+    events: {},               // event week key -> { done, claimed }
+    watchStats: { packs: 0, wins: 0 },
     /* The club you actually take onto the pitch.
      *
      * Ultimate XI used to be called "Ultimate XI" in a fixed cyan, on every

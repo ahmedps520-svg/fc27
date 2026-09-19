@@ -1,6 +1,8 @@
 import { navigate, toast } from '../app.js';
 import { notesPending, showNotes, markNotesSeen } from './notes.js';
 import { maybeStartTutorial, tutorialSeen } from '../tutorial.js';
+import { claimableCount, dailyStatus } from '../progress.js';
+import { activeEvent } from '../live.js';
 
 export const TITLE = 'APEX XI';
 
@@ -35,6 +37,10 @@ const ICONS = {
              <circle cx="6" cy="12" r="2.3"/><circle cx="12" cy="16" r="2.3"/><circle cx="18" cy="9" r="2.3"/>`,
   lock: `<rect x="5.5" y="10.5" width="13" height="9" rx="2"/>
          <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>`,
+  /** Today: a calendar page with today's square marked. */
+  today: `<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/><rect x="10" y="12.5" width="4" height="3.5" rx=".6"/>`,
+  /** Trophies: a cup on a plinth. */
+  trophies: `<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5.5H5.6v1.2A3.4 3.4 0 0 0 9 10.1M16 5.5h2.4v1.2A3.4 3.4 0 0 1 15 10.1"/><path d="M12 13v3.2M9 20h6M9.6 16.2h4.8L15 20H9z"/>`,
 };
 
 const icon = (name, size = 24) => `
@@ -71,6 +77,9 @@ const swoosh = `
  * and Settings are visited once a week, so they hold the rail.
  */
 export function render() {
+  const claims = claimableCount();
+  const ev = activeEvent();
+  void dailyStatus();
   return `
     <section class="menu-screen">
       <!-- The wordmark set exactly as the cover sets it: heavy, italic, white
@@ -79,6 +88,16 @@ export function render() {
       <h1 class="menu-wordmark"><span class="t1">APEX</span><span class="t2">XI</span></h1>
     <div class="hub">
       <div class="hub-rail">
+        <button class="tile t-mini tone-a t-today" data-go="today">
+          <span class="tile-icon">${icon('today')}</span>
+          <span class="tile-name">Today</span>
+          ${claims ? `<i class="tile-badge">${claims}</i>` : ''}
+          ${ev ? `<span class="tile-sub">${ev.name}</span>` : ''}
+        </button>
+        <button class="tile t-mini tone-c" data-go="trophies">
+          <span class="tile-icon">${icon('trophies')}</span>
+          <span class="tile-name">Trophies</span>
+        </button>
         <button class="tile t-mini tone-b" data-go="career">
           <span class="tile-icon">${icon('career')}</span>
           <span class="tile-name">Career</span>

@@ -59,12 +59,17 @@ Match.prototype.cross = function wrappedCross(p, aim) {
 };
 
 const total = { goals: 0, shots: 0, onTarget: 0, poss: 0 };
+/* The original ten clubs, always. v68 grew the world to twenty; the sweep
+ * keeps measuring the same fixtures with the same squads so its goldens mean
+ * the same thing before and after — the new league is content, not balance. */
+const CLUBS = WORLD.clubs.slice(0, 10);
+
 for (let i = 0; i < N; i++) {
   Math.random = mulberry32(SEED + i * 7919);
 
-  const home = WORLD.clubs[i % WORLD.clubs.length];
-  let awayId = WORLD.clubs[(i * 3 + 1) % WORLD.clubs.length].id;
-  if (awayId === home.id) awayId = WORLD.clubs[(i + 5) % WORLD.clubs.length].id;
+  const home = CLUBS[i % CLUBS.length];
+  let awayId = CLUBS[(i * 3 + 1) % CLUBS.length].id;
+  if (awayId === home.id) awayId = CLUBS[(i + 5) % CLUBS.length].id;
 
   const m = new Match(home.id, awayId, { human: null, duration: DURATION, preset: PRESET });
   const steps = Math.ceil(DURATION * 60);

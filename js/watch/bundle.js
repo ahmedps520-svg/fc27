@@ -179,8 +179,22 @@
     { name: "Marisol CF", short: "MAR", tier: 7, crest: "circle", pattern: "hoops", device: "wave", founded: 1947, ground: "Puerto Marisol", colors: ["#ff5c8a", "#13315c"] },
     { name: "Aurora Nord", short: "AUR", tier: 8, crest: "triangle", pattern: "solid", device: "star", founded: 1955, ground: "Nordlys Arena", colors: ["#41d3ff", "#2b2d6e"] },
     { name: "Bastion Rovers", short: "BAS", tier: 9, crest: "hex", pattern: "stripes", device: "battlement", founded: 1883, ground: "The Rampart", colors: ["#6c8ea4", "#c9d6df"] },
-    { name: "Calderon Zenith", short: "CAL", tier: 10, crest: "diamond", pattern: "halves", device: "peak", founded: 1968, ground: "Cumbre Stadium", colors: ["#ff2e88", "#150d1f"] }
-  ], LEAGUE_NAME = "Apex Premier Division", POSITIONS = {
+    { name: "Calderon Zenith", short: "CAL", tier: 10, crest: "diamond", pattern: "halves", device: "peak", founded: 1968, ground: "Cumbre Stadium", colors: ["#ff2e88", "#150d1f"] },
+    /* The Meridian League — the second division of the world, added in v68.
+     * Ten more clubs with their own kits and grounds; their squads are dealt
+     * from the real players who were unattached until then (see generator.js),
+     * so nobody's card changed, only where some of them play. */
+    { name: "Harbourlight FC", short: "HBL", tier: 1, crest: "shield", pattern: "hoops", device: "wave", founded: 1893, ground: "The Lantern", colors: ["#00b4d8", "#03203c"], league: "Meridian League" },
+    { name: "Redcliffe Athletic", short: "RDC", tier: 2, crest: "circle", pattern: "stripes", device: "keep", founded: 1908, ground: "Cliffside Park", colors: ["#d62828", "#f1f1f1"], league: "Meridian League" },
+    { name: "Ashgrove Wanderers", short: "ASH", tier: 3, crest: "hex", pattern: "solid", device: "leaf", founded: 1911, ground: "Grove Road", colors: ["#2a9d8f", "#1b1b1e"], league: "Meridian League" },
+    { name: "Saltmarsh Town", short: "SLT", tier: 4, crest: "diamond", pattern: "quarters", device: "bird", founded: 1926, ground: "Marsh Lane", colors: ["#e9c46a", "#264653"], league: "Meridian League" },
+    { name: "Vireo Sporting", short: "VIR", tier: 5, crest: "chevron", pattern: "halves", device: "star", founded: 1949, ground: "Estadio Vireo", colors: ["#8ac926", "#101820"], league: "Meridian League" },
+    { name: "Coldwater United", short: "CWU", tier: 6, crest: "shield", pattern: "solid", device: "crescent", founded: 1881, ground: "The Weir", colors: ["#a2d2ff", "#1d3557"], league: "Meridian League" },
+    { name: "Ember Vale", short: "EMB", tier: 7, crest: "triangle", pattern: "stripes", device: "sun", founded: 1932, ground: "Kiln Field", colors: ["#f77f00", "#3d0c02"], league: "Meridian League" },
+    { name: "Greywick Rangers", short: "GRW", tier: 8, crest: "circle", pattern: "quarters", device: "battlement", founded: 1874, ground: "Wick Green", colors: ["#adb5bd", "#212529"], league: "Meridian League" },
+    { name: "Lumen City", short: "LUM", tier: 9, crest: "hex", pattern: "hoops", device: "peak", founded: 1961, ground: "Lumen Dome", colors: ["#ffd166", "#5a189a"], league: "Meridian League" },
+    { name: "Serrano Nova", short: "SRN", tier: 10, crest: "diamond", pattern: "stripes", device: "thorn", founded: 1977, ground: "Campo Nova", colors: ["#ef476f", "#073b4c"], league: "Meridian League" }
+  ], LEAGUE_NAME = "Apex Premier Division", LEAGUES = [LEAGUE_NAME, "Meridian League"], POSITIONS = {
     GK: { group: "GK", weights: { pace: 0.05, shooting: 0.05, passing: 0.15, dribbling: 0.1, defending: 0.35, physical: 0.3 } },
     CB: { group: "DEF", weights: { pace: 0.1, shooting: 0.02, passing: 0.13, dribbling: 0.05, defending: 0.45, physical: 0.25 } },
     LB: { group: "DEF", weights: { pace: 0.22, shooting: 0.05, passing: 0.2, dribbling: 0.15, defending: 0.28, physical: 0.1 } },
@@ -1560,10 +1574,24 @@
       matches: matches.map((m) => ({ ...m, played: !1, homeGoals: null, awayGoals: null }))
     }));
   }
+  var SBC_LEGENDS = [
+    ["Thierry Henry", "T. Henry", "France", "ST", 91, 27],
+    ["Ronaldinho", "Ronaldinho", "Brazil", "LW", 91, 26],
+    ["Andrés Iniesta", "A. Iniesta", "Spain", "CM", 90, 28],
+    ["Andrea Pirlo", "A. Pirlo", "Italy", "CDM", 89, 30],
+    ["Steven Gerrard", "S. Gerrard", "England", "CM", 89, 27],
+    ["Sergio Agüero", "S. Agüero", "Argentina", "ST", 89, 26],
+    ["Didier Drogba", "D. Drogba", "Ivory Coast", "ST", 89, 29],
+    ["Iker Casillas", "I. Casillas", "Spain", "GK", 89, 27],
+    ["Wayne Rooney", "W. Rooney", "England", "ST", 88, 25],
+    ["Frank Lampard", "F. Lampard", "England", "CAM", 88, 28],
+    ["Philipp Lahm", "P. Lahm", "Germany", "RB", 88, 28],
+    ["Carles Puyol", "C. Puyol", "Spain", "CB", 88, 29]
+  ], CORE = CLUB_BLUEPRINTS.filter((bp) => !bp.league);
   function buildWorld() {
     idCounter = 0;
     let rand = makeRand(WORLD_SEED), clubs = [], players = [];
-    CLUB_BLUEPRINTS.forEach((bp, index) => {
+    CORE.forEach((bp, index) => {
       let clubId = "c".concat(index + 1), clubLevel = 83 - (bp.tier - 1) * 1.7, roster = [];
       ROSTER_SHAPE.forEach((pos, slot) => {
         let depthPenalty = slot % 3 === 2 ? 6 : slot % 3 === 1 ? 2 : 0, p = makePlayer(rand, pos, clubLevel - depthPenalty, clubId);
@@ -1576,11 +1604,25 @@
         short: bp.short,
         tier: bp.tier,
         crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
-        league: LEAGUE_NAME,
+        league: bp.league || LEAGUE_NAME,
         founded: bp.founded,
         ground: bp.ground,
         roster,
         budget: Math.round((12 - bp.tier) * 65e5 + 8e6)
+      });
+    }), CLUB_BLUEPRINTS.filter((bp) => bp.league).forEach((bp, i) => {
+      clubs.push({
+        id: "c".concat(CORE.length + i + 1),
+        name: bp.name,
+        short: bp.short,
+        tier: bp.tier,
+        crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
+        league: bp.league,
+        founded: bp.founded,
+        ground: bp.ground,
+        roster: [],
+        // dealt at the end of buildWorld
+        budget: Math.round((12 - bp.tier) * 5e6 + 6e6)
       });
     });
     let freeAgents = [];
@@ -1588,7 +1630,7 @@
       let pos = rand.pick(Object.keys(POSITIONS)), p = makePlayer(rand, pos, rand.around(74, 11), null);
       players.push(p), freeAgents.push(p.id);
     }
-    CLUB_BLUEPRINTS.forEach((bp, index) => {
+    CORE.forEach((bp, index) => {
       let club = clubs[index], clubLevel = 83 - (bp.tier - 1) * 1.7;
       DEPTH_SHAPE.forEach((pos, slot) => {
         let p = makePlayer(rand, pos, clubLevel - slot % 3, club.id);
@@ -1614,7 +1656,7 @@
         players.push(p), freeAgents.push(p.id), (tier === "icon" ? icons : stars).push(p.id);
       }
     let THIN = ["LB", "RB", "LM", "RM", "LB", "RB", "LM", "RM", "GK", "CB"];
-    CLUB_BLUEPRINTS.forEach((bp, index) => {
+    CORE.forEach((bp, index) => {
       let club = clubs[index], clubLevel = 83 - (bp.tier - 1) * 1.7;
       THIN.forEach((pos, slot) => {
         let p = makePlayer(rand, pos, clubLevel - slot % 4, club.id);
@@ -1635,8 +1677,8 @@
       players.push(p), freeAgents.push(p.id);
     }
     nameTheWorld(players);
-    let fixtures = buildFixtures(clubs.map((c) => c.id), rand), wave = makeRand(WORLD_SEED ^ 708529245), wavePlayers = [], WAVE_SHAPE = ["GK", "CB", "CB", "LB", "RB", "CDM", "CM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "ST"];
-    CLUB_BLUEPRINTS.forEach((bp, index) => {
+    let fixtures = buildFixtures(clubs.slice(0, CORE.length).map((c) => c.id), rand), wave = makeRand(WORLD_SEED ^ 708529245), wavePlayers = [], WAVE_SHAPE = ["GK", "CB", "CB", "LB", "RB", "CDM", "CM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "ST"];
+    CORE.forEach((bp, index) => {
       let club = clubs[index], clubLevel = 83 - (bp.tier - 1) * 1.7;
       WAVE_SHAPE.forEach((pos, slot) => {
         let p = makePlayer(wave, pos, clubLevel - 3 - slot % 3 * 1.5, club.id);
@@ -1653,6 +1695,63 @@
       p.rarity = rarityFor(p.overall), p.value = marketValue(p.overall, p.age), players.push(p), wavePlayers.push(p), freeAgents.push(p.id);
     }
     nameTheWorld(wavePlayers, REAL_PLAYERS_EXTRA);
+    let newClubs = clubs.filter((c) => c.league !== LEAGUE_NAME);
+    if (newClubs.length) {
+      let dealable = freeAgents.map((id) => players.find((p) => p.id === id)).filter((p) => p && p.rarity !== "icon" && p.rarity !== "star" && p.overall < 88 && !p.sbc), WANT = [
+        "GK",
+        "GK",
+        "GK",
+        "CB",
+        "CB",
+        "CB",
+        "CB",
+        "LB",
+        "LB",
+        "RB",
+        "RB",
+        "CDM",
+        "CDM",
+        "CM",
+        "CM",
+        "CM",
+        "CAM",
+        "CAM",
+        "LM",
+        "RM",
+        "LW",
+        "LW",
+        "RW",
+        "RW",
+        "ST",
+        "ST",
+        "ST"
+      ], byPos = /* @__PURE__ */ new Map();
+      for (let p of dealable)
+        byPos.has(p.position) || byPos.set(p.position, []), byPos.get(p.position).push(p);
+      for (let q of byPos.values()) q.sort((a, b) => b.overall - a.overall || (a.id < b.id ? -1 : 1));
+      let counts = new Map(WANT.map((pos) => [pos, 0]));
+      for (let pos of WANT) counts.set(pos, counts.get(pos) + 1);
+      let dealt = /* @__PURE__ */ new Set();
+      for (let [pos, n] of counts) {
+        let q = byPos.get(pos) || [];
+        for (let r = 0; r < n; r++) {
+          let order = r % 2 ? newClubs.slice().reverse() : newClubs;
+          for (let club of order) {
+            let p = q.shift();
+            if (!p) break;
+            p.clubId = club.id, club.roster.push(p.id), dealt.add(p.id);
+          }
+        }
+      }
+      for (let i = freeAgents.length - 1; i >= 0; i--) dealt.has(freeAgents[i]) && freeAgents.splice(i, 1);
+    }
+    let sbcRand = makeRand(WORLD_SEED ^ 6014396), sbcCards = [];
+    for (let [name2, short, nation, pos, overall, age] of SBC_LEGENDS) {
+      let p = makePlayer(sbcRand, pos, overall, null);
+      p.name = name2, p.short = short, p.nation = nation, p.age = age, p.nationColors = NATION_COLORS[nation] || p.nationColors, p.overall = overall;
+      for (let k of Object.keys(p.stats)) p.stats[k] = clamp(Math.round(p.stats[k] + (overall - 80) * 0.6), 40, 99);
+      p.rarity = "special", p.sbc = !0, p.value = marketValue(overall, age), players.push(p), sbcCards.push(p.id);
+    }
     let byId = Object.fromEntries(players.map((p) => [p.id, p]));
     return {
       leagueName: LEAGUE_NAME,
@@ -1663,6 +1762,8 @@
       freeAgents,
       icons,
       stars,
+      sbcCards,
+      leagues: LEAGUES,
       fixtures
     };
   }
@@ -1902,14 +2003,20 @@
     return "silver";
   }
   function drawPlayer(rarity, seen, only = null) {
-    let matches = (p) => p.rarity === rarity && (!only || only(p)), src = WORLD.players.filter(matches);
-    src.length || (src = only ? WORLD.players.filter(only) : WORLD.players);
+    let matches = (p) => !p.sbc && p.rarity === rarity && (!only || only(p)), src = WORLD.players.filter(matches);
+    src.length || (src = only ? WORLD.players.filter((p) => !p.sbc && only(p)) : WORLD.players.filter((p) => !p.sbc));
     let fresh = seen ? src.filter((p) => !seen.has(p.id)) : src, from = fresh.length ? fresh : src;
     return from[Math.floor(Math.random() * from.length)];
   }
+  function filterOf(f) {
+    return f ? (p) => {
+      var _a;
+      return (!f.nations || f.nations.includes(p.nation)) && (!f.leagues || p.clubId && f.leagues.includes((_a = WORLD.clubsById[p.clubId]) == null ? void 0 : _a.league)) && (!f.clubs || f.clubs.includes(p.clubId)) && (!f.positions || f.positions.includes(p.position)) && (!f.minOverall || p.overall >= f.minOverall);
+    } : null;
+  }
   function openPack(pack, seen = /* @__PURE__ */ new Set(), needGK = !1) {
-    let draw2 = (rarity, only = null) => {
-      let p = drawPlayer(rarity, seen, only), dup = seen.has(p.id);
+    let scope = filterOf(pack.filter), draw2 = (rarity, extra = null) => {
+      let p = drawPlayer(rarity, seen, scope && extra ? (p2) => scope(p2) && extra(p2) : scope || extra), dup = seen.has(p.id);
       return seen.add(p.id), { p, dup };
     }, pulls = [];
     for (let i = 0; i < pack.size; i++) pulls.push(draw2(rollRarity(pack.odds)));
@@ -3132,8 +3239,8 @@
     /** Call once per frame before reading anything. */
     poll(dt = 0) {
       var _a, _b, _c, _d, _e;
-      let live = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
-      this.pad = this.padIndex === null ? live[0] || null : live[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
+      let live2 = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
+      this.pad = this.padIndex === null ? live2[0] || null : live2[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
       let x = 0, y = 0;
       for (let [code, v] of Object.entries(this.moveMap))
         this.keys.has(code) && (x += v[0], y += v[1]);
@@ -3839,7 +3946,7 @@
   };
   function playPens(app2, opts, onDone) {
     let { oppShort, onEvent = () => {
-    } } = opts, you = [], them = [], round = 0, phase = "shoot", raf = null, markerX = 0, dir = 1, speed = 0.9, live = !0;
+    } } = opts, you = [], them = [], round = 0, phase = "shoot", raf = null, markerX = 0, dir = 1, speed = 0.9, live2 = !0;
     app2.innerHTML = '\n    <div class="w-pens">\n      <div class="w-pens-top">\n        <div class="w-pens-side"><span>YOU</span><div class="w-dots" id="wYou"></div></div>\n        <div class="w-pens-side"><span>'.concat(oppShort, '</span><div class="w-dots" id="wThem"></div></div>\n      </div>\n      <div class="w-goal" id="wGoal">\n        <div class="w-net"></div>\n        <div class="w-keeper" id="wKeeper">▲</div>\n        <div class="w-marker" id="wMarker"></div>\n        <div class="w-ball" id="wBall" hidden>●</div>\n      </div>\n      <p class="w-pens-msg" id="wMsg">Tap to shoot</p>\n      <div class="w-dive" id="wDive" hidden>\n        <button class="w-btn ghost" data-dive="0">◀</button>\n        <button class="w-btn ghost" data-dive="1">▲</button>\n        <button class="w-btn ghost" data-dive="2">▶</button>\n      </div>\n    </div>');
     let $ = (s) => app2.querySelector(s), goal = $("#wGoal"), marker = $("#wMarker"), keeper = $("#wKeeper"), ball = $("#wBall"), msg = $("#wMsg"), dive = $("#wDive"), paintDots = () => {
       let dots = (arr) => {
@@ -3855,15 +3962,15 @@
     place(keeper, 0.5);
     let last = performance.now(), sweep = (now) => {
       let dt = Math.min(0.05, (now - last) / 1e3);
-      last = now, phase === "shoot" && live && (markerX += dir * speed * 2 * dt, markerX >= 1 && (markerX = 1, dir = -1), markerX <= 0 && (markerX = 0, dir = 1), place(marker, markerX)), raf = requestAnimationFrame(sweep);
+      last = now, phase === "shoot" && live2 && (markerX += dir * speed * 2 * dt, markerX >= 1 && (markerX = 1, dir = -1), markerX <= 0 && (markerX = 0, dir = 1), place(marker, markerX)), raf = requestAnimationFrame(sweep);
     };
     raf = requestAnimationFrame(sweep);
     let decided = () => {
       let y = you.filter(Boolean).length, t = them.filter(Boolean).length, yLeft = Math.max(0, 5 - you.length), tLeft = Math.max(0, 5 - them.length);
       return you.length < 5 || them.length < 5 ? y > t + tLeft || t > y + yLeft : you.length === them.length && y !== t ? !0 : you.length >= 8 && them.length >= 8;
     }, shootAt = (x) => {
-      if (phase !== "shoot" || !live) return;
-      live = !1;
+      if (phase !== "shoot" || !live2) return;
+      live2 = !1;
       let aim = third(x), guess = Math.random() < 0.55 ? aim : Math.floor(Math.random() * 3);
       place(keeper, guess === 0 ? 0.12 : guess === 2 ? 0.88 : 0.5), place(ball, x), ball.hidden = !1;
       let corner2 = x < 0.2 || x > 0.8, pGoal = guess === aim ? corner2 ? 0.5 : aim === 1 ? 0.22 : 0.3 : corner2 ? 0.94 : 0.8, scored = Math.random() < pGoal;
@@ -3875,8 +3982,8 @@
       e.preventDefault(), shootAt(markerX);
     });
     let diveTo = (side) => {
-      if (phase !== "dive" || !live) return;
-      live = !1;
+      if (phase !== "dive" || !live2) return;
+      live2 = !1;
       let aim = Math.random() < 0.7 ? Math.floor(Math.random() * 3) : 1;
       place(keeper, side === 0 ? 0.12 : side === 2 ? 0.88 : 0.5), place(ball, aim === 0 ? 0.1 : aim === 2 ? 0.9 : 0.5), ball.hidden = !1;
       let saved = side === aim ? Math.random() < 0.72 : Math.random() < 0.08;
@@ -3890,7 +3997,7 @@
         finish();
         return;
       }
-      phase === "shoot" ? (phase = "dive", dive.hidden = !1, marker.hidden = !0, msg.textContent = "Pick a side") : (phase = "shoot", dive.hidden = !0, marker.hidden = !1, msg.textContent = "Tap to shoot"), live = !0;
+      phase === "shoot" ? (phase = "dive", dive.hidden = !1, marker.hidden = !0, msg.textContent = "Pick a side") : (phase = "shoot", dive.hidden = !0, marker.hidden = !1, msg.textContent = "Tap to shoot"), live2 = !0;
     }
     function finish() {
       cancelAnimationFrame(raf);
@@ -3965,6 +4072,147 @@
       o.ev !== ev || d.done.includes(id) || (d.prog[ev] || 0) < o.n || (d.done.push(id), pay += o.pay);
     }
     return write(), pay;
+  }
+
+  // js/data/liveDefault.js
+  var LIVE_DEFAULT = {
+    version: 1,
+    season: {
+      id: "s1",
+      name: "Season 1 · Kick-Off",
+      from: "2026-09-14",
+      to: "2026-10-25"
+      // tiers: optional override of data/season.js DEFAULT_TIERS
+    },
+    events: [
+      {
+        id: "falcons",
+        name: "Green Falcons Week",
+        blurb: "The Saudi national side takes over the store. Falcons Packs pull only Saudi internationals; the featured card is the captain.",
+        theme: "#006c35",
+        pack: {
+          id: "ev-falcons",
+          name: "Falcons Pack",
+          cost: 6e3,
+          size: 4,
+          floor: "silver",
+          odds: { bronze: 0.2, silver: 0.45, gold: 0.3, special: 0.05 },
+          filter: { nations: ["Saudi Arabia"] },
+          note: "4 · Saudi only",
+          promise: "Saudi internationals only"
+        },
+        featured: { player: "Salem Al-Dawsari", boost: 4, chance: 0.12 },
+        objectives: [
+          { id: "ev-falcons-1", metric: "eventPack", need: 1, text: "Open a Falcons Pack", apex: 1500, xp: 120 },
+          { id: "ev-falcons-2", metric: "win", need: 3, text: "Win 3 matches this week", apex: 2500, xp: 200 },
+          { id: "ev-falcons-3", metric: "goal", need: 8, text: "Score 8 goals this week", apex: 2e3, xp: 160 }
+        ]
+      },
+      {
+        id: "meridian",
+        name: "Meridian Rising",
+        blurb: "The new league’s best in one pack. Meridian Packs draw only from the ten new clubs.",
+        theme: "#00b4d8",
+        pack: {
+          id: "ev-meridian",
+          name: "Meridian Pack",
+          cost: 5500,
+          size: 4,
+          floor: "silver",
+          odds: { bronze: 0.2, silver: 0.45, gold: 0.32, special: 0.03 },
+          filter: { leagues: ["Meridian League"] },
+          note: "4 · Meridian League",
+          promise: "Meridian League only"
+        },
+        featured: { player: "Nico Williams", boost: 3, chance: 0.1 },
+        objectives: [
+          { id: "ev-meridian-1", metric: "eventPack", need: 2, text: "Open 2 Meridian Packs", apex: 2e3, xp: 160 },
+          { id: "ev-meridian-2", metric: "clean", need: 2, text: "Keep 2 clean sheets", apex: 2500, xp: 200 },
+          { id: "ev-meridian-3", metric: "played", need: 6, text: "Play 6 matches this week", apex: 1500, xp: 120 }
+        ]
+      },
+      {
+        id: "keepers",
+        name: "Wall Week",
+        blurb: "Goalkeepers and defenders, 80 and up. Build the back line you never pull.",
+        theme: "#f4c95d",
+        pack: {
+          id: "ev-wall",
+          name: "Wall Pack",
+          cost: 7e3,
+          size: 3,
+          floor: "gold",
+          odds: { bronze: 0, silver: 0.2, gold: 0.7, special: 0.1 },
+          filter: { positions: ["GK", "CB", "LB", "RB"], minOverall: 80 },
+          note: "3 · defenders 80+",
+          promise: "Defenders and keepers, 80+"
+        },
+        featured: { player: "Alisson", boost: 3, chance: 0.08 },
+        objectives: [
+          { id: "ev-wall-1", metric: "clean", need: 3, text: "Keep 3 clean sheets", apex: 3e3, xp: 240 },
+          { id: "ev-wall-2", metric: "eventPack", need: 1, text: "Open a Wall Pack", apex: 1500, xp: 120 },
+          { id: "ev-wall-3", metric: "win", need: 4, text: "Win 4 matches this week", apex: 2500, xp: 200 }
+        ]
+      },
+      {
+        id: "strikers",
+        name: "Finishing School",
+        blurb: "Forwards only. Big odds on gold, and the featured card is the best finisher in the world.",
+        theme: "#ff2e88",
+        pack: {
+          id: "ev-strikers",
+          name: "Striker Pack",
+          cost: 7e3,
+          size: 3,
+          floor: "gold",
+          odds: { bronze: 0, silver: 0.15, gold: 0.73, special: 0.12 },
+          filter: { positions: ["ST", "LW", "RW", "CAM"], minOverall: 80 },
+          note: "3 · attackers 80+",
+          promise: "Attackers, 80+"
+        },
+        featured: { player: "Erling Haaland", boost: 3, chance: 0.06 },
+        objectives: [
+          { id: "ev-strikers-1", metric: "goal", need: 12, text: "Score 12 goals this week", apex: 3e3, xp: 240 },
+          { id: "ev-strikers-2", metric: "bigwin", need: 1, text: "Win by three or more", apex: 2e3, xp: 160 },
+          { id: "ev-strikers-3", metric: "eventPack", need: 1, text: "Open a Striker Pack", apex: 1500, xp: 120 }
+        ]
+      }
+    ]
+  };
+
+  // js/data/season.js
+  var DEFAULT_TIERS = Array.from({ length: 30 }, (_, i) => {
+    let t = i + 1;
+    return t === 30 ? { ultimate: 6, pack: "limited", label: "Season finale" } : t === 20 ? { pack: "prime", apex: 4e3, label: "Milestone" } : t === 10 ? { pack: "gold", apex: 2e3, label: "Milestone" } : t % 5 === 0 ? { pack: "gold" } : t % 3 === 0 ? { pack: "silver" } : t % 7 === 0 ? { pack: "dip" } : { apex: 400 + Math.floor(t / 4) * 200 };
+  }), tierOf = (xp) => Math.min(30, Math.floor((xp || 0) / 250)), tierProgress = (xp) => tierOf(xp) >= 30 ? 1 : (xp || 0) % 250 / 250;
+
+  // js/live.js
+  var live = LIVE_DEFAULT, fetchedAt = 0, day = (d2 = /* @__PURE__ */ new Date()) => d2.toISOString().slice(0, 10);
+  function isoWeek(d2 = /* @__PURE__ */ new Date()) {
+    let t = new Date(Date.UTC(d2.getUTCFullYear(), d2.getUTCMonth(), d2.getUTCDate())), dayNum = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - dayNum);
+    let yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+    return Math.ceil(((t - yearStart) / 864e5 + 1) / 7);
+  }
+  var inWindow = (x, today3) => (!x.from || today3 >= x.from) && (!x.to || today3 <= x.to);
+  function adopt(data, at = Date.now()) {
+    return !data || typeof data != "object" || !Array.isArray(data.events) ? !1 : (live = data, fetchedAt = at, !0);
+  }
+  async function refresh() {
+    try {
+      let res = await fetch("events.json", { cache: "no-store" });
+      if (!res.ok) return null;
+      let data = await res.json();
+      return adopt(data) ? data : null;
+    } catch {
+      return null;
+    }
+  }
+  function activeEvent(now = /* @__PURE__ */ new Date()) {
+    let today3 = day(now), hit = live.events.filter((e) => e.from || e.to).find((e) => inWindow(e, today3));
+    if (hit) return hit;
+    let rotation = live.events.filter((e) => !e.from && !e.to);
+    return rotation.length ? rotation[isoWeek(now) % rotation.length] : live.events[0] || null;
   }
 
   // js/watch/pack.js
@@ -4059,6 +4307,28 @@
       }
     }, 1200));
   }
+  function stat(key) {
+    state.club.watchStats || (state.club.watchStats = { packs: 0, wins: 0 }), state.club.watchStats[key] = (state.club.watchStats[key] | 0) + 1, push();
+  }
+  var DAILY = [
+    { apex: 300 },
+    { apex: 500 },
+    { pack: "bronze" },
+    { apex: 800 },
+    { pack: "silver" },
+    { apex: 1200 },
+    { pack: "gold", apex: 1e3 }
+  ], today2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  function dailyStatus() {
+    let t = today2(), y = new Date(Date.now() - 864e5).toISOString().slice(0, 10), d2 = state.club.daily || (state.club.daily = { last: null, streak: 0, best: 0, claimedOn: null });
+    d2.last !== t && (d2.streak = d2.last === y ? d2.streak + 1 : 1, d2.last = t, d2.best = Math.max(d2.best | 0, d2.streak), push());
+    let day2 = (d2.streak - 1) % 7 + 1;
+    return { day: day2, streak: d2.streak, claimable: d2.claimedOn !== t, reward: DAILY[day2 - 1] };
+  }
+  function claimDaily() {
+    let st = dailyStatus();
+    return st.claimable ? (state.club.daily.claimedOn = today2(), st.reward.apex && (state.club.apex = (state.club.apex || 0) + st.reward.apex), st.reward.pack && (state.club.packs = state.club.packs || []).push(st.reward.pack), state.club.season || (state.club.season = { id: null, xp: 0, claimed: [] }), state.club.season.xp = (state.club.season.xp | 0) + 50, push(), st.reward) : null;
+  }
   function earn(apex) {
     state.club.apex = Math.max(0, (state.club.apex || 0) + apex), push();
   }
@@ -4072,7 +4342,7 @@
   function addCards(drawn) {
     let coll = new Set(state.club.collection || []);
     for (let { p, dup } of drawn) dup || coll.add(p.id);
-    state.club.collection = [...coll], state.club.packsOpened = (state.club.packsOpened || 0) + 1, push();
+    state.club.collection = [...coll], state.club.packsOpened = (state.club.packsOpened || 0) + 1, state.club.watchStats || (state.club.watchStats = { packs: 0, wins: 0 }), state.club.watchStats.packs = (state.club.watchStats.packs | 0) + 1, push();
   }
 
   // js/watch/app.js
@@ -4106,13 +4376,26 @@
     });
   }
   function clubScreen() {
+    var _a;
     let s = save(), coll = s.club.collection || [], cards = coll.map((id) => WORLD.playersById[id]).filter(Boolean).sort((a, b) => b.overall - a.overall), best = cards[0], packs = s.club.packs || [], bonus = claimBonus();
     bonus && (earn(bonus), buzz2([10, 30, 10]));
     let objs = objectives();
-    shell('\n    <p class="w-title">'.concat(name() || "Your club", '</p>\n    <div class="w-card">\n      <div class="w-big">◈ ').concat((s.club.apex || 0).toLocaleString(), '</div>\n      <div class="w-sub">Apex balance').concat(bonus ? ' · <b class="w-up">+'.concat(bonus, " streak</b>") : "", '</div>\n    </div>\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, "</b></div>") : "", "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
-      var _a;
-      return '\n        <div class="w-mini" style="--rar:'.concat(((_a = RARITY[p.rarity]) == null ? void 0 : _a.color) || "#888", '">\n          <b>').concat(p.overall, "</b><span>").concat(p.position, "</span><em>").concat(p.short, "</em>\n        </div>");
-    }).join(""), "</div>") : "", '\n    <div class="w-row"><span>Synced</span><b>').concat(syncLabel(), "</b></div>\n  "));
+    shell('\n    <p class="w-title">'.concat(name() || "Your club", '</p>\n    <div class="w-card">\n      <div class="w-big">◈ ').concat((s.club.apex || 0).toLocaleString(), '</div>\n      <div class="w-sub">Apex balance').concat(bonus ? ' · <b class="w-up">+'.concat(bonus, " streak</b>") : "", "</div>\n    </div>\n    ").concat((() => {
+      let d2 = dailyStatus();
+      return '\n      <button class="w-btn '.concat(d2.claimable ? "" : "ghost", '" id="wDaily" ').concat(d2.claimable ? "" : "disabled", ">\n        ").concat(d2.claimable ? "Claim day ".concat(d2.day, ": ").concat(d2.reward.pack ? "".concat(d2.reward.pack, " pack") : "").concat(d2.reward.pack && d2.reward.apex ? " + " : "").concat(d2.reward.apex ? "◈".concat(d2.reward.apex) : "") : "Day ".concat(d2.day, " claimed"), "\n      </button>");
+    })(), "\n    ").concat((() => {
+      var _a2;
+      let xp = ((_a2 = s.club.season) == null ? void 0 : _a2.xp) | 0, t = tierOf(xp);
+      return '\n      <div class="w-row"><span>Season</span><b>Tier '.concat(t, "/").concat(30, '</b></div>\n      <div class="w-track"><i style="width:').concat(Math.round(100 * tierProgress(xp)), '%"></i></div>');
+    })(), "\n    ").concat((() => {
+      let ev = activeEvent();
+      return ev ? '<div class="w-ev" style="--ev:'.concat(ev.theme || "#22c55e", '"><span>This week</span><b>').concat(ev.name, "</b></div>") : "";
+    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, "</b></div>") : "", "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
+      var _a2;
+      return '\n        <div class="w-mini" style="--rar:'.concat(((_a2 = RARITY[p.rarity]) == null ? void 0 : _a2.color) || "#888", '">\n          <b>').concat(p.overall, "</b><span>").concat(p.position, "</span><em>").concat(p.short, "</em>\n        </div>");
+    }).join(""), "</div>") : "", '\n    <div class="w-row"><span>Synced</span><b>').concat(syncLabel(), "</b></div>\n  ")), (_a = app.querySelector("#wDaily")) == null || _a.addEventListener("click", () => {
+      claimDaily() && (buzz2([12, 40, 20]), clubScreen());
+    });
   }
   var report = (ev, n = 1) => {
     let pay = event(ev, n);
@@ -4130,7 +4413,7 @@
       });
     }), app.querySelectorAll("[data-club]").forEach((el) => el.addEventListener("click", () => {
       buzz2(14), playMatch(app, el.dataset.club, (reward, stats) => {
-        reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stats.level === "hard" && report("hardwin")), tab = "play", render();
+        reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins"), stats.level === "hard" && report("hardwin")), tab = "play", render();
       }, level);
     }));
   }
@@ -4167,7 +4450,7 @@
     tab === "play" ? playScreen() : tab === "packs" ? packsScreen() : clubScreen();
   }
   var BOOT_MS = 6e3;
-  Promise.race([boot(), new Promise((r) => setTimeout(r, BOOT_MS))]).catch(() => {
+  Promise.race([Promise.all([boot(), refresh().catch(() => null)]), new Promise((r) => setTimeout(r, BOOT_MS))]).catch(() => {
   }).then(() => {
     var _a;
     try {
