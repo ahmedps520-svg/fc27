@@ -10,6 +10,7 @@ import { worldState, continentalCup, calendar, nations, nationsCup, nationSquad,
 import { flagSVG } from '../components/crest.js';
 import { stadiumFor } from '../data/stadiums.js';
 import { enterFullscreen } from '../fullscreen.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'World';
 
@@ -19,7 +20,7 @@ function tableHTML(div) {
   const n = div.table.length;
   return `
     <table class="wtable">
-      <thead><tr><th>#</th><th class="club">Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th class="form">Form</th></tr></thead>
+      <thead><tr><th>#</th><th class="club">${t('world.club')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th class="form">${t('world.form')}</th></tr></thead>
       <tbody>
         ${div.table.map((row, i) => {
           const c = WORLD.clubsById[row.id];
@@ -43,7 +44,7 @@ function fixturesHTML(div, state) {
   if (!div.today.length) return '';
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Today's fixtures</h2><span class="ph-sub">Round ${state.round} of ${state.rounds}</span></header>
+      <header class="panel-head"><h2>${t('world.today')}</h2><span class="ph-sub">Round ${state.round} of ${state.rounds}</span></header>
       <div class="wfix">
         ${div.today.map(([h, a]) => {
           const hc = WORLD.clubsById[h];
@@ -54,7 +55,7 @@ function fixturesHTML(div, state) {
             <span class="wfix-v">v</span>
             <span class="wclub" style="--team:${ac.crest.colors[0]}">${crestSVG(ac.crest, ac.short, 22)}<b>${ac.short}</b></span>
             <span class="wfix-ground">${stadiumFor(hc).name}</span>
-            <button class="btn small" data-play="${h}|${a}">Play</button>
+            <button class="btn small" data-play="${h}|${a}">${t('world.play')}</button>
           </div>`;
         }).join('')}
       </div>
@@ -69,7 +70,7 @@ function moversHTML(state) {
   }).join('');
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Last season</h2></header>
+      <header class="panel-head"><h2>${t('world.last')}</h2></header>
       <div class="wmovers">
         <div><span class="z-up">▲ Promoted</span>${list(state.movers.promoted, 'up')}</div>
         <div><span class="z-down">▼ Relegated</span>${list(state.movers.relegated, 'down')}</div>
@@ -165,15 +166,15 @@ export function render(params = {}) {
     ${moversHTML(state)}`;
   return `
     ${screenHead({
-      kicker: 'Sixty clubs · six divisions',
-      title: 'The World',
+      kicker: t('world.kicker'),
+      title: t('world.title'),
       sub: `Season ${state.season} · Round ${state.round} of ${state.rounds} · a round a day, two up and two down`,
       motif: 'ladder', tone: 'b',
     })}
     <div class="seg wtabs" id="wtabs">
       ${state.divisions.map((d, i) => `<button class="${i === tab ? 'on' : ''}" data-tab="${i}"><b>${d.division}</b><i>${d.name}</i></button>`).join('')}
-      <button class="${tab === 6 ? 'on' : ''}" data-tab="6"><b>★</b><i>Continental Cup</i></button>
-      <button class="${tab >= 7 ? 'on' : ''}" data-tab="7"><b>⚑</b><i>Nations</i></button>
+      <button class="${tab === 6 ? 'on' : ''}" data-tab="6"><b>★</b><i>${t('world.cup')}</i></button>
+      <button class="${tab >= 7 ? 'on' : ''}" data-tab="7"><b>⚑</b><i>${t('world.nations')}</i></button>
     </div>
     ${body}`;
 }

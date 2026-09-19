@@ -11,6 +11,7 @@ import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
 import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
+import { pickAwayHex } from '../kits.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -156,14 +157,11 @@ function mulberry(seed) {
 }
 
 const hexOf = (c) => parseInt(String(c).replace('#', ''), 16);
+/* The away strip: chosen so it never clashes with the home shirt — and, when
+   the player has asked for colour-safe kits (`match.vision`), never clashes
+   for a deutan, protan or tritan viewer either. See js/kits.js. */
 function pickAwayKit(match) {
-  const home = new THREE.Color(hexOf(match.teams[0].colors[0]));
-  const tryCols = [match.teams[1].colors[0], match.teams[1].colors[1], '#f2f4f8', '#1b1d24'];
-  for (const c of tryCols) {
-    const col = new THREE.Color(hexOf(c));
-    if (Math.abs(col.r - home.r) + Math.abs(col.g - home.g) + Math.abs(col.b - home.b) > 0.55) return col;
-  }
-  return new THREE.Color(0xf2f4f8);
+  return new THREE.Color(hexOf(pickAwayHex(match.teams[0].colors[0], match.teams[1].colors, match.vision || 'normal')));
 }
 
 /* --------------------------- pitch texture -------------------------

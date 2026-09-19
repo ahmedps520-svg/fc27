@@ -1,3 +1,4 @@
+import { pickAwayHex } from '../kits.js';
 import { PITCH, GOAL_HALF, BOX } from './sim.js';
 
 /* ------------------------------------------------------------------ *
@@ -25,10 +26,7 @@ const darken = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 
 export function kitColours(match) {
   const home = match.teams[0].colors[0];
-  let away = match.teams[1].colors[0];
-  if (dist3(rgb(home), rgb(away)) < 110) away = match.teams[1].colors[1];
-  if (dist3(rgb(home), rgb(away)) < 110) away = '#f2f4f8';
-  if (dist3(rgb(home), rgb(away)) < 110) away = '#1b1d24';
+  const away = pickAwayHex(home, match.teams[1].colors, match.vision || 'normal');
   return [home, away];
 }
 

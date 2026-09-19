@@ -13,7 +13,9 @@ import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
 import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/stadiums.js';
+import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
+import { t } from '../i18n.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
@@ -250,6 +252,8 @@ export function mount(root, params) {
   });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
+  // colour-safe kits: the away strip is chosen against every kind of colour vision
+  match.vision = getState().settings.colorSafeKits ? 'all' : 'normal';
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
   const celebCam = makeCamera();
@@ -370,6 +374,12 @@ export function mount(root, params) {
   ];
   let hintIdx = 0;
   let hintTimer = 0;
+  /* The guided match (onboarding): the lesson plan replaces the rotating
+     hints, each step staying up until the player does the thing, and the
+     end of the match banks the first rewards and lands on Today. */
+  const guided = !!params.guided;
+  let guideIdx = 0;
+  let guideHold = 0;
   const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online;
   if (wantHints) update((st) => { st.flags.hintMatches = (st.flags.hintMatches | 0) + 1; });
 
@@ -1673,7 +1683,18 @@ export function mount(root, params) {
     if (feedTimer > 0) { feedTimer -= dt; if (feedTimer <= 0) feedEl?.classList.remove('flash'); }
     paintSetPiece();
     if (!loading && !ended) clockCommentary();
-    if (wantHints && !loading && !paused) {
+    if (guided && !loading && !paused && !ended) {
+      const stepDef = GUIDE_STEPS[guideIdx];
+      if (stepDef) {
+        hintsEl.hidden = false;
+        hintsEl.textContent = `${guideIdx + 1}/${GUIDE_STEPS.length} · ${t(stepDef.key)}`;
+        hintsEl.classList.add('guide');
+        guideHold -= dt;
+        let ok = false;
+        try { ok = stepDef.done(match, input); } catch { ok = false; }
+        if (ok && guideHold <= 0) { guideIdx += 1; guideHold = 1.2; sfx('coin'); }
+      } else if (hintsEl.textContent !== t('guide.done')) { hintsEl.textContent = t('guide.done'); }
+    } else if (wantHints && !loading && !paused) {
       hintTimer -= dt;
       if (hintTimer <= 0) {
         hintTimer = 7;
@@ -1796,14 +1817,14 @@ export function mount(root, params) {
 
   /* ---------------------------- pause menu ----------------------------- */
   const PAUSE_ITEMS = [
-    { id: 'resume', label: 'Resume Match' },
-    { id: 'team', label: 'Team Management' },
-    { id: 'subs', label: 'Substitutions' },
-    { id: 'facts', label: 'Match Facts' },
-    { id: 'controls', label: 'Controls' },
-    { id: 'sound', label: 'Sound' },
-    { id: 'photo', label: 'Photo Mode' },
-    { id: 'leave', label: 'Leave Match' },
+    { id: 'resume', label: t('pause.resume') },
+    { id: 'team', label: t('pause.team') },
+    { id: 'subs', label: t('pause.subs') },
+    { id: 'facts', label: t('pause.facts') },
+    { id: 'controls', label: t('pause.controls') },
+    { id: 'sound', label: t('pause.sound') },
+    { id: 'photo', label: t('pause.photo') },
+    { id: 'leave', label: t('pause.leave') },
   ];
   const PHOTO_FILTERS = [['none', 'None'], ['saturate(1.25) contrast(1.08)', 'Vivid'], ['sepia(.35) contrast(1.05) saturate(1.2)', 'Warm'], ['hue-rotate(-12deg) saturate(.9) contrast(1.1)', 'Cool'], ['grayscale(1) contrast(1.15)', 'Mono'], ['sepia(.6) contrast(.95) brightness(1.05)', 'Film']];
   let photoBar = null;
@@ -1815,7 +1836,7 @@ export function mount(root, params) {
     photoBar.className = 'photo-bar';
     photoBar.innerHTML = `
       <div class="photo-filters">${PHOTO_FILTERS.map(([v, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-filter="${v}">${l}</button>`).join('')}</div>
-      <div class="photo-actions"><span class="photo-hint">Drag to orbit · wheel or pinch to zoom</span><button class="btn primary" data-photo="save">Save PNG</button><button class="btn ghost" data-photo="done">Done</button></div>`;
+      <div class="photo-actions"><span class="photo-hint">${t('photo.hint')}</span><button class="btn primary" data-photo="save">${t('photo.save')}</button><button class="btn ghost" data-photo="done">${t('photo.done')}</button></div>`;
     root.appendChild(photoBar);
     root.classList.add('photo-mode');
     photoBar.addEventListener('click', async (e) => {
@@ -2238,13 +2259,13 @@ export function mount(root, params) {
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
         <div class="gm-btns">
           ${mode === 'career'
-            ? '<button class="btn primary" data-o="career">Continue the season</button>'
+            ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
             : online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
-              : '<button class="btn primary" data-o="again">Rematch</button>'}
-          <button class="btn ghost" data-o="quit">Quit</button>
+              : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+          <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
         </div>
       </div>`;
   }
@@ -2267,7 +2288,7 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
-      if (o === 'quit') { exitFullscreen(); navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);

@@ -15,6 +15,7 @@ import { Match } from '../game/sim.js';
 import { makeCamera, orbitCamera, resolveQuality } from '../game/render3d.js';
 import { crestSVG } from '../components/crest.js';
 import { screenHead } from '../components/screenHead.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'Stadiums';
 
@@ -29,7 +30,7 @@ export function render(params = {}) {
   const st = STADIUMS.find((x) => x.id === pick) || STADIUMS[0];
   const club = clubOf(st);
   return `
-    ${screenHead({ kicker: `${STADIUMS.length} grounds`, title: 'Stadiums', sub: 'Every venue in the world, in 3D. Pick one, walk round it, change the weather.', motif: 'pitch', tone: 'c' })}
+    ${screenHead({ kicker: `${STADIUMS.length} grounds`, title: t('stadiums.title'), sub: t('stadiums.sub'), motif: 'pitch', tone: 'c' })}
     <div class="showcase">
       <div class="showcase-view">
         <canvas id="scCanvas"></canvas>
@@ -42,7 +43,7 @@ export function render(params = {}) {
       <div class="showcase-opts">
         <div class="seg" id="scTime">${['day', 'dusk', 'night'].map((v) => `<button class="${time === v ? 'on' : ''}" data-time="${v}">${TIME_LABEL[v]}</button>`).join('')}</div>
         <div class="seg" id="scWeather">${['clear', 'overcast', 'rain'].map((v) => `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${WEATHER_LABEL[v]}</button>`).join('')}</div>
-        ${club ? `<button class="btn primary" id="scPlay">Play here</button>` : ''}
+        ${club ? `<button class="btn primary" id="scPlay">${t('stadiums.playhere')}</button>` : ''}
       </div>
       <div class="showcase-list">
         ${STADIUMS.map((x) => {

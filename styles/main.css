@@ -4145,3 +4145,34 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .sc-item b { font-size: 13px; }
 .sc-item span { font-size: 11px; color: var(--text-dim); }
 .sc-item.on { border-color: var(--team); background: color-mix(in srgb, var(--team) 18%, transparent); }
+
+/* ---- v71: larger text, right-to-left ---- */
+html.large-text { font-size: 118%; }
+html.large-text .tile-name { font-size: 27px; }
+[dir="rtl"] { text-align: right; }
+[dir="rtl"] .hub { grid-template-columns: 1fr 128px; }
+[dir="rtl"] .hub-rail { order: 2; }
+[dir="rtl"] .hub-main { order: 1; }
+[dir="rtl"] .tile-swoosh { transform: scaleX(-1); }
+[dir="rtl"] .menu-hero { right: auto; left: -6px; }
+@media (min-width: 1000px) { [dir="rtl"] .menu-wordmark, [dir="rtl"] .hub { margin-right: 0; margin-left: 250px; } [dir="rtl"] .menu-hero { right: auto; left: -10px; } }
+[dir="rtl"] .menu-wordmark { flex-direction: row-reverse; justify-content: flex-end; }
+[dir="rtl"] .wtable th, [dir="rtl"] .wtable td { text-align: center; }
+[dir="rtl"] .wtable .club { text-align: right; }
+[dir="rtl"] .wtable tr.up td:first-child, [dir="rtl"] .wtable tr.down td:first-child { box-shadow: inset -3px 0 0 var(--accent); }
+[dir="rtl"] .photo-hint { margin-right: 0; margin-left: auto; }
+[dir="rtl"] .gm-bug, [dir="rtl"] .gm-hud { direction: ltr; }
+[dir="rtl"] .pc-head { flex-direction: row-reverse; }
+[dir="rtl"] .setting-row > div:first-child { text-align: right; }
+[dir="rtl"] .ts-kit span { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .seg button i, [dir="rtl"] .seg button b { direction: rtl; }
+
+/* ---- v71: onboarding ---- */
+.onboard { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 13, .78); backdrop-filter: blur(6px); }
+.onboard-card { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: center; max-width: 720px; width: 100%; padding: 22px; border-radius: 20px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, #0d1426, #080c17); box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.onboard-kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.onboard-text h2 { margin: 4px 0 8px; font-family: var(--font-num); font-weight: 800; font-style: italic; font-size: 30px; }
+.onboard-text p { margin: 0 0 16px; color: var(--text-dim); line-height: 1.5; }
+.onboard-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+#gmHints.guide { background: color-mix(in srgb, var(--accent) 22%, rgba(6,10,20,.85)); border-color: var(--accent); font-weight: 700; }
+@media (max-width: 640px) { .onboard-card { grid-template-columns: 1fr; } .onboard-hero { display: none; } }

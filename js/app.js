@@ -21,6 +21,7 @@ import * as net from './net/socket.js';
 import { adoptCloudSave, cloudWins } from './state.js';
 import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
+import { applyLanguage } from './i18n.js';
 
 const SCREENS = {
   world: World,
@@ -58,6 +59,7 @@ let activeCleanup = null;
 
 export function applyTheme() {
   const s = getState().settings;
+  applyLanguage();
   document.documentElement.style.setProperty('--accent', GREEN.accent);
   document.documentElement.style.setProperty('--accent-deep', GREEN.deep);
   document.documentElement.style.setProperty('--accent-soft', GREEN.soft);

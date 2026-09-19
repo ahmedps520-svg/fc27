@@ -20,6 +20,7 @@ import { ICONS } from '../data/pools.js';
 import { flagSVG } from '../components/crest.js';
 
 import { LEAGUES } from '../data/pools.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'Trophy Room';
 
@@ -47,7 +48,7 @@ function hallHTML(s) {
   const board = honours();
   return `
     <section class="panel glass hall">
-      <header class="panel-head"><h2>Hall of Fame</h2><span class="ph-sub">${icons.filter((p) => owned.has(p.id)).length} of ${icons.length} Icons in your collection</span></header>
+      <header class="panel-head"><h2>${t('trophies.hall')}</h2><span class="ph-sub">${icons.filter((p) => owned.has(p.id)).length} of ${icons.length} Icons in your collection</span></header>
       <div class="hall-grid">
         ${icons.map((p) => {
           const def = ICONS.find((d) => d.name === p.name) || {};
@@ -60,7 +61,7 @@ function hallHTML(s) {
         }).join('')}
       </div>
       ${board.length ? `
-      <h3 class="wround">Honours board</h3>
+      <h3 class="wround">${t('trophies.honours')}</h3>
       <table class="wtable honours">
         <thead><tr><th>Season</th>${LEAGUES.map((l, i) => `<th title="${l}">Div ${i + 1}</th>`).join('')}<th>Continental Cup</th><th>Nations Cup</th></tr></thead>
         <tbody>
@@ -75,7 +76,7 @@ export function render() {
   const all = evaluateAll(s, WORLD.playersById);
   const earned = all.filter((a) => a.complete).length;
   const unclaimed = all.filter((a) => a.complete && !a.claimed);
-  const head = screenHead({ kicker: 'Cabinet', title: 'Trophy Room', sub: `${earned} of ${ACHIEVEMENTS.length} earned${unclaimed.length ? ` · ${unclaimed.length} to collect` : ''}`, motif: 'ladder', tone: 'b' });
+  const head = screenHead({ kicker: t('trophies.kicker'), title: t('trophies.title'), sub: `${earned} of ${ACHIEVEMENTS.length} earned${unclaimed.length ? ` · ${unclaimed.length} to collect` : ''}`, motif: 'ladder', tone: 'b' });
   const hall = hallHTML(s);
   return head + `
     <div class="trophies">
