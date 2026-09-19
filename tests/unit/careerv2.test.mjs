@@ -75,6 +75,11 @@ test('offers: accept sells, counter negotiates, reject closes', () => {
 
 test('AI transfers move real players between AI clubs in a window and never touch mine', () => {
   const car = startCareer({ name: 'T', nation: 'England', age: 40 }, 'mci');
+  // deals are dice; pin them so the count below is a fact, not a probability
+  const realRandom = Math.random;
+  let a = 99;
+  Math.random = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  try {
   update((s) => {
     const c = s.career;
     const mine = c.squads.mci.map((r) => r[0]).join();
@@ -85,6 +90,7 @@ test('AI transfers move real players between AI clubs in a window and never touc
     for (const d of deals) assert.ok(c.squads[d.to].some((r) => r[0] === d.player));
     assert.equal(v2.aiTransfers(c, 6).length, 0, 'window closed mid-season');
   });
+  } finally { Math.random = realRandom; }
   void car;
 });
 
