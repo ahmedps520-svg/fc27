@@ -97,6 +97,18 @@ const STEPS = [
            you want it. Tapping is a soft pass; holding is a raking one.</p>`,
   },
   {
+    chapter: 'Kick Off', icon: 'wand', screen: 'menu',
+    title: 'Skill, lob and set pieces',
+    body: `<div class="tut-keys">
+             <div><span>${key('H')} ${key('L2')}</span><em>Skill move — a feint that beats a lunging tackle</em></div>
+             <div><span>${key('U')} ${key('Select')}</span><em>Lob — chip the ball over the defence to a runner</em></div>
+             <div><span>${key('E')} ${key('R1')}</span><em>Curl, held while shooting</em></div>
+           </div>
+           <p class="tut-note">Corners, free kicks, penalties and throw-ins are
+           yours to take: aim with the stick, then hold the button for the
+           kick you want. On a phone the buttons relabel themselves.</p>`,
+  },
+  {
     chapter: 'Kick Off', icon: 'target',
     title: 'Defending',
     body: `<div class="tut-keys">

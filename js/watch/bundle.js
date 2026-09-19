@@ -1514,11 +1514,11 @@
       stats[key] = clamp(stats[key] + delta * 2, 24, 99), overall = weightedOverall(position, stats);
     }
     overall = clamp(overall, 60, 99);
-    let age = rand.int(17, 35), nation = rand.pick(NATIONS), first = rand.pick(FIRST_NAMES), last = rand.pick(LAST_NAMES), id = ++idCounter;
+    let age = rand.int(17, 35), nation = rand.pick(NATIONS), first = rand.pick(FIRST_NAMES), last2 = rand.pick(LAST_NAMES), id = ++idCounter;
     return {
       id: "p".concat(id),
-      name: "".concat(first, " ").concat(last),
-      short: "".concat(first[0], ". ").concat(last),
+      name: "".concat(first, " ").concat(last2),
+      short: "".concat(first[0], ". ").concat(last2),
       position,
       overall,
       stats,
@@ -2149,7 +2149,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, GOAL_HEIGHT = 2.44, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, GOAL_HEIGHT = 2.44, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -2195,7 +2195,10 @@
         holdT: 0,
         slide: 0,
         diveT: 0,
-        diveDir: 0
+        diveDir: 0,
+        skillT: 0,
+        injured: !1,
+        runUntil: 0
       };
     }), onPitch = new Set(xi.map((r) => r.id)), bench = ((_b = custom == null ? void 0 : custom.bench) != null && _b.filter(Boolean).length ? custom.bench.filter(Boolean) : null) || rosterOf(clubId).filter((r) => !onPitch.has(r.id)).sort((a, b) => b.overall - a.overall).slice(0, BENCH_SIZE);
     return {
@@ -2233,7 +2236,7 @@
       ], this.teams[1].isHuman = !0) : this.mode === "coop" ? this.controllers = [
         { team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: 9, charge: 0, passCharge: 0 }
-      ] : this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.kickoffSide = 1, this.resetPositions(0);
+      ] : this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -2352,10 +2355,15 @@
     }
     /* ------------------------------ update ----------------------------- */
     update(dt, input) {
-      var _a;
+      var _a, _b;
       if (this.phase === "end") return;
+      let seats = Array.isArray(input) ? input : [input];
       if (this.phase !== "play") {
-        if (this.phaseT -= dt, this.phase === "goal" && this.updateCelebration(dt), this.phaseT <= 0) {
+        if (this.phaseT -= dt, this.phase === "goal" && this.updateCelebration(dt), (_a = this.setPiece) != null && _a.human && this.phaseT > 0) {
+          let c = this.controllers.find((k) => k.team === this.setPiece.team), inp = c ? seats[this.controllers.indexOf(c)] || seats[0] : null;
+          if (c && inp && this.readSetPieceInput(c, inp, dt)) return;
+        }
+        if (this.phaseT <= 0) {
           if (this.phase === "corner") {
             this.takeCorner();
             return;
@@ -2364,7 +2372,15 @@
             this.takePenalty();
             return;
           }
-          this.phase === "goal" && this.resetPositions((_a = this.pendingKickoff) != null ? _a : 0), this.phase === "half" && (this.half = 2, this.resetPositions(0)), this.startPlay();
+          if (this.phase === "freekick") {
+            this.takeFreeKick();
+            return;
+          }
+          if (this.phase === "throwin") {
+            this.takeThrowIn();
+            return;
+          }
+          this.phase === "goal" && this.resetPositions((_b = this.pendingKickoff) != null ? _b : 0), this.phase === "half" && (this.half = 2, this.resetPositions(0)), this.startPlay();
         }
         return;
       }
@@ -2376,7 +2392,16 @@
         this.phase = "end", this.banner = "FULL TIME", this.cue("whistle", 3);
         return;
       }
-      this.ball.owner && (this.teams[this.ball.owner.team].poss += dt), this._tick = (this._tick || 0) + 1, this.chasers = [this.nearestTo(0, this.ball, !0), this.nearestTo(1, this.ball, !0)], this.chasers2 = [
+      if (this.ball.owner && (this.teams[this.ball.owner.team].poss += dt), this.ball.owner) {
+        let t = this.ball.owner.team;
+        if (t !== this.lastOwnerTeam) {
+          let ownHalf = (this.ball.x - PITCH.w / 2) * this.teams[t].dir < 0;
+          this.lastOwnerTeam !== null && ownHalf && (this.possessT || 0) > 2.5 && this.t - (this.lastCounterAt || -99) > 12 && (this.teams[t].counterT = 2.8, this.lastCounterAt = this.t, this.cue("counter", t)), this.lastOwnerTeam = t, this.possessT = 0;
+        }
+        this.possessT = (this.possessT || 0) + dt;
+      }
+      for (let team of this.teams) team.counterT = Math.max(0, (team.counterT || 0) - dt);
+      this._tick = (this._tick || 0) + 1, this.chasers = [this.nearestTo(0, this.ball, !0), this.nearestTo(1, this.ball, !0)], this.chasers2 = [
         this.pressingOf(0) >= 1.4 ? this.secondNearest(0, this.ball) : null,
         this.pressingOf(1) >= 1.4 ? this.secondNearest(1, this.ball) : null
       ], this.supporters = [null, null];
@@ -2385,14 +2410,13 @@
         let mates = this.teams[carrier.team].players.filter((q) => q !== carrier && q.role !== "GK").sort((a, z) => dist(a, carrier) - dist(z, carrier));
         this.supporters[carrier.team] = [mates[0], mates[1]];
       }
-      let seats = Array.isArray(input) ? input : [input];
       this.controllers.forEach((c, i) => {
         let inp = seats[i] || seats[0];
         inp && this.handleSeat(c, dt, inp);
       });
       for (let team of this.teams)
         for (let p of team.players)
-          p.touchLock = Math.max(0, p.touchLock - dt), p.stumble = Math.max(0, p.stumble - dt), p.slide = Math.max(0, p.slide - dt), !this.isControlled(p) && this.think(p, dt);
+          p.touchLock = Math.max(0, p.touchLock - dt), p.stumble = Math.max(0, p.stumble - dt), p.slide = Math.max(0, p.slide - dt), p.skillT = Math.max(0, (p.skillT || 0) - dt), !this.isControlled(p) && this.think(p, dt);
       for (let team of this.teams)
         for (let p of team.players)
           this.integrate(p, dt), this.fatigue(p, dt);
@@ -2450,7 +2474,7 @@
       let team = this.teams[teamIdx];
       if (!team || team.subsLeft <= 0) return !1;
       let p = team.players[pitchIdx], incoming = (_a = team.bench) == null ? void 0 : _a[benchIdx];
-      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.diveT = 0, team.subsLeft -= 1, this.cue("whistle"), !0);
+      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, team.subsLeft -= 1, this.cue("whistle"), !0);
     }
     /* ----------------------------- movement ---------------------------- */
     /**
@@ -2523,7 +2547,7 @@
       if (!p) return;
       let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
       if (this.drive(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
-        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge)), c.passCharge = 0), input.pressed("through") ? this.pass(p, aim, !0, 0.5) : input.pressed("cross") && this.cross(p, aim), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85)), input.released("shoot")) {
+        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge)), c.passCharge = 0), input.pressed("through") ? this.pass(p, aim, !0, 0.5) : input.pressed("lob") ? this.pass(p, aim, !0, 0.55, !0) : input.pressed("cross") && this.cross(p, aim), input.pressed("skill") && this.skillMove(p, aim), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85)), input.released("shoot")) {
           let curled = input.held("curl");
           this.shoot(p, aim, Math.max(0.28, c.charge), {
             loft: curled ? 1.35 : 1,
@@ -2595,7 +2619,11 @@
       if (b.owner) {
         let o = b.owner;
         if (b.z = 0.16, b.vz = 0, o.role === "GK") {
-          o.holdT += dt, b.x = o.x + o.dirX * 1.1, b.y = o.y + o.dirY * 1.1, b.vx = b.vy = 0, o.holdT > 1.1 && (o.holdT = 0, this.pass(o, { x: this.teams[o.team].dir, y: 0 }, !0, 0.8));
+          if (o.holdT += dt, b.x = o.x + o.dirX * 1.1, b.y = o.y + o.dirY * 1.1, b.vx = b.vy = 0, o.holdT > 0.9) {
+            o.holdT = 0;
+            let team = this.teams[o.team], free = team.players.filter((q) => q !== o && q.role !== "GK" && dist(q, o) < 34).map((q) => [q, this.nearestTo(1 - o.team, q)]).filter(([q, f]) => !f || dist(q, f) > 7).sort((x, y) => dist(x[0], o) - dist(y[0], o))[0];
+            TUNE.keeperDist && free && Math.random() < 0.7 ? this.pass(o, { x: free[0].x - o.x, y: free[0].y - o.y }, !1, 0.45) : this.pass(o, { x: team.dir, y: (Math.random() - 0.5) * 0.5 }, !0, 0.85);
+          }
           return;
         }
         let speed = Math.hypot(o.vx, o.vy), dx = b.x - o.x, dy = b.y - o.y, gap = Math.hypot(dx, dy), skill = o.ref.stats.dribbling / 100, lead = 0.85 + speed * 0.13, off = 0.34 * strongSide(o), tx = o.x + o.dirX * lead + o.dirY * off, ty = o.y + o.dirY * lead - o.dirX * off, stiff = (30 + skill * 26) * this.preset.control, damp2 = 10;
@@ -2679,7 +2707,7 @@
       if (!b.inNet && this.hitFrame()) return;
       let attackerSide = b.lastTouch ? b.lastTouch.team : 0;
       if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
-        b.y = clamp2(b.y, 0.8, PITCH.h - 0.8), this.giveTo(1 - attackerSide, b.x, b.y), this.markStoppage("throwin");
+        b.shotBy && (this.cue("shotWide", b.shotBy), b.shotBy = null), this.startThrowIn(1 - attackerSide, b.x, b.y), this.markStoppage("throwin");
         return;
       }
       if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
@@ -2689,7 +2717,7 @@
           return;
         }
         let defending = leftGoal ? 0 : 1;
-        if (b.lastTouch && b.lastTouch.team === defending) {
+        if (b.shotBy && b.shotBy.team !== defending && (this.cue("shotWide", b.shotBy), b.shotBy = null), b.lastTouch && b.lastTouch.team === defending) {
           this.startCorner(1 - defending, b.y < CY ? 0 : PITCH.h, leftGoal ? 0 : PITCH.w), this.markStoppage("corner");
           return;
         }
@@ -2699,7 +2727,7 @@
     }
     /** Record a dead-ball restart. Called by bounds() and scoreGoal, read by whoever polls. */
     markStoppage(kind) {
-      this.stoppages += 1, this.stoppage = kind;
+      this.stoppages += 1, this.stoppage = kind, this.autoSubInjured(0), this.autoSubInjured(1);
     }
     /**
      * Corner kick. Everyone is placed for the set piece, then the taker whips it
@@ -2720,12 +2748,12 @@
           let t = attackers[i];
           t ? (p.x = t.x - inw * 1.6, p.y = t.y + (i % 2 ? 1.3 : -1.3)) : (p.x = goalX + inw * 5, p.y = CY + (i - 2) * 3.2);
         } else i === DEFEND_IN_BOX ? (p.x = goalX + inw * 12, p.y = CY) : (p.x = clamp2(goalX + inw * (26 + (i - DEFEND_IN_BOX) * 10), 5, PITCH.w - 5), p.y = clamp2(CY + (i % 3 - 1) * 14, 5, PITCH.h - 5));
-      }), this.cue("whistle", 1), this.cornerTaker = taker, this.phase = "corner", this.phaseT = 1.5, this.banner = "CORNER", this.corners = (this.corners || 0) + 1, this.teams[attacking].cornerCount = (this.teams[attacking].cornerCount || 0) + 1;
+      }), this.cue("whistle", 1), this.cue("cornerKick", attacking), this.cornerTaker = taker, this.phase = "corner", this.banner = "CORNER", this.setPiece = this.beginSetPiece("corner", attacking, taker, 1.5), this.corners = (this.corners || 0) + 1, this.teams[attacking].cornerCount = (this.teams[attacking].cornerCount || 0) + 1;
     }
     /** Whip the corner into the six-yard area and let the crowd of bodies attack it. */
     takeCorner() {
       let taker = this.cornerTaker;
-      if (this.phase = "play", this.banner = "", !taker) return;
+      if (this.setPiece = null, this.phase = "play", this.banner = "", !taker) return;
       let team = this.teams[taker.team], b = this.ball, goalX = Math.abs(b.x - 0) < Math.abs(b.x - PITCH.w) ? 0 : PITCH.w, inw = goalX === 0 ? 1 : -1;
       b.owner = taker, taker.touchLock = 0;
       let tx = goalX + inw * (7 + Math.random() * 4), ty = CY + (Math.random() - 0.5) * 9, dx = tx - b.x, dy = ty - b.y, D = Math.hypot(dx, dy) || 1, T = clamp2(D / 18, 0.8, 1.8);
@@ -2836,7 +2864,12 @@
      *   little less accurate at the top end — a 50-yard ball should not be a
      *   certainty.
      */
-    pass(p, aim, through, power = 0.35) {
+    /** How well a player executes right now: tired legs and injuries blunt technique. */
+    formOf(p) {
+      var _a;
+      return 1 - (1 - ((_a = p.stamina) != null ? _a : 1)) * 0.3 - (p.injured ? 0.25 : 0);
+    }
+    pass(p, aim, through, power = 0.35, lob = !1) {
       let team = this.teams[p.team], reach = 14 + power * 44, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
       ax /= am, ay /= am;
       let best = null, bestScore = -1 / 0;
@@ -2854,7 +2887,12 @@
       }
       let tx = best.x, ty = best.y;
       through && (tx += team.dir * 9, ty += best.vy * 0.4);
-      let dx = tx - p.x, dy = ty - p.y, d2 = Math.hypot(dx, dy) || 1, err = (100 - p.ref.stats.passing) / 100 * (0.13 + power * 0.1) * (this.weakFoot(p) ? 1.55 : 1) * (Math.random() - 0.5) * 2, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2, speed = clamp2((d2 * 1.35 + 9) * (0.8 + power * 0.6) * this.preset.passSpeed, 14, 48);
+      let dx = tx - p.x, dy = ty - p.y, d2 = Math.hypot(dx, dy) || 1, err = (100 - p.ref.stats.passing) / 100 * (0.13 + power * 0.1) * (this.weakFoot(p) ? 1.55 : 1) * (2 - this.formOf(p)) * (Math.random() - 0.5) * 2, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2, speed = clamp2((d2 * 1.35 + 9) * (0.8 + power * 0.6) * this.preset.passSpeed, 14, 48);
+      if (lob) {
+        let T = clamp2(d2 / 17, 0.7, 1.7);
+        this.cue("lob", p), this.release(p, nx * (d2 / T), ny * (d2 / T), 0.5 * GRAV * T), this.ball.noTouch = 0.3;
+        return;
+      }
       this.release(p, nx * speed, ny * speed);
     }
     /**
@@ -2865,7 +2903,12 @@
      *           is not at anyone's feet when it is struck
      */
     shoot(p, aim, power, opts = {}) {
-      let { loft = 1, curl = 0, placed = !1 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), spread = ((1.05 - acc) * 0.3 + d2 / 230 + (1 - power) * 0.06) * (weak ? 1.5 : 1), err = (Math.random() - 0.5) * 2 * spread, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2;
+      let { loft = 1, curl = 0, placed = !1 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), spread = ((1.05 - acc) * 0.3 + d2 / 230 + (1 - power) * 0.06) * (weak ? 1.5 : 1) * (2 - this.formOf(p));
+      {
+        let angle = Math.atan2(GOAL_HALF * 2 * Math.abs(dx), d2 * d2 - GOAL_HALF * GOAL_HALF) || 0.01, foe = this.nearestTo(1 - p.team, p), close = foe && dist(p, foe) < 2 ? 0.66 : 1, xg = clamp2(0.92 * Math.exp(-d2 / 11) * Math.min(1, angle / 0.9) * close, 0.02, 0.8);
+        team.xg = (team.xg || 0) + xg, xg >= 0.25 && (team.bigChances = (team.bigChances || 0) + 1, this.cue("bigChance", p));
+      }
+      let err = (Math.random() - 0.5) * 2 * spread, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2;
       this.cue("shot", power);
       let speed = (21 + power * 17 + acc * 6) * (weak ? 0.93 : 1), rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
       if (this.release(p, nx * speed, ny * speed, rise), curl) {
@@ -2902,6 +2945,10 @@
         p.stumble = 0.35;
         return;
       }
+      if (owner.skillT > 0) {
+        p.stumble = 0.6, this.cue("skill", owner);
+        return;
+      }
       let d2 = dist(p, owner);
       if (d2 > REACH) return;
       let frac = d2 / REACH, win = (p.ref.stats.defending + 16) / (p.ref.stats.defending + owner.ref.stats.dribbling + 16) * this.preset.tackle;
@@ -2910,8 +2957,122 @@
       else {
         p.stumble = 0.45 + frac * 0.7;
         let chance = 0.21 * frac * frac;
-        this.inPenaltyArea(owner, p.team) && Math.random() < chance && this.awardPenalty(1 - p.team, p);
+        Math.random() < chance && (this.fouls[p.team] += 1, this.cue("foul", p), !owner.injured && Math.random() < 0.125 && this.injure(owner), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : this.awardFreeKick(1 - p.team, owner, p));
       }
+    }
+    /** A player is hurt: he stays on, diminished, until someone takes him off. */
+    injure(p) {
+      p.injured = !0, p.maxSpeed *= 0.62, p.stumble = Math.max(p.stumble, 0.9), this.injuries.push({ team: p.team, name: p.ref.name, id: p.ref.id, minute: this.minute() }), this.cue("injury", p);
+    }
+    /** The CPU brings an injured man off at the next dead ball, if it can. */
+    autoSubInjured(teamIdx) {
+      let team = this.teams[teamIdx];
+      if (team.isHuman || team.subsLeft <= 0) return;
+      let i = team.players.findIndex((q) => q.injured && q.role !== "GK");
+      if (i < 0) return;
+      let bench = team.bench.map((r, j) => [r, j]).filter(([r]) => r && r.position !== "GK").sort((a, b) => b[0].overall - a[0].overall);
+      if (!bench.length) return;
+      let p = team.players[i];
+      this.substitute(teamIdx, i, bench[0][1]) && (p.injured = !1, this.cue("sub", p));
+    }
+    /** A feint: a burst sideways that a lunging tackler cannot follow. Costs legs. */
+    skillMove(p, aim) {
+      if (p.skillT > 0 || p.stumble > 0 || p.stamina < 0.15) return;
+      let side = aim && Math.abs(aim.x * p.dirY - aim.y * p.dirX) > 0.2 ? Math.sign(aim.x * p.dirY - aim.y * p.dirX) : Math.random() < 0.5 ? -1 : 1, skill = p.ref.stats.dribbling / 100;
+      p.skillT = 0.28 + skill * 0.2, p.vx += p.dirY * side * (4.5 + skill * 3) + p.dirX * 1.5, p.vy += -p.dirX * side * (4.5 + skill * 3) + p.dirY * 1.5, p.stamina = Math.max(0, p.stamina - 0.04), this.cue("skill", p);
+    }
+    /* -------------------------- free kicks & throw-ins ------------------- *
+     * Fouls used to exist only inside the box, because there was nowhere else
+     * for one to go. Now a foul anywhere is a free kick with a wall, and every
+     * ball over the line is a throw-in taken by a person if a person is
+     * playing. Both share the same waiting mechanism as corners and penalties:
+     * `phaseT` is the AI's delay, or the person's time limit.                 */
+    awardFreeKick(attacking, at, offender) {
+      let atk = this.teams[attacking], def = this.teams[1 - attacking], goalX = atk.dir > 0 ? PITCH.w : 0, b = this.ball;
+      Object.assign(b, { x: clamp2(at.x, 2, PITCH.w - 2), y: clamp2(at.y, 2, PITCH.h - 2), z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null, inNet: null, curl: 0, shotBy: null });
+      let toGoal = Math.hypot(goalX - b.x, CY - b.y), shootingRange = toGoal < 32, taker = atk.players.filter((q) => q.role !== "GK").sort((x, y) => shootingRange ? y.ref.stats.shooting - x.ref.stats.shooting : dist(x, b) - dist(y, b))[0];
+      taker.x = b.x - atk.dir * 2.6, taker.y = b.y + (b.y < CY ? -0.8 : 0.8), taker.vx = taker.vy = 0, taker.touchLock = 0, offender && (offender.stumble = Math.max(offender.stumble, 0.6));
+      let wallN = toGoal < 24 ? 4 : shootingRange ? 3 : 0, wx = goalX - b.x, wy = CY - b.y, wd = Math.hypot(wx, wy) || 1;
+      def.players.filter((q) => q.role !== "GK").sort((x, y) => y.ref.stats.physical - x.ref.stats.physical).forEach((q, i) => {
+        if (q.vx = q.vy = 0, q.touchLock = 0.5, i < wallN) {
+          let across = (i - (wallN - 1) / 2) * 1.1;
+          q.x = clamp2(b.x + wx / wd * 9.15 + -wy / wd * across, 1, PITCH.w - 1), q.y = clamp2(b.y + wy / wd * 9.15 + wx / wd * across, 1, PITCH.h - 1);
+        } else if (dist(q, b) < 9.15) {
+          let ax = q.x - b.x, ay = q.y - b.y, ad = Math.hypot(ax, ay) || 1;
+          q.x = clamp2(b.x + ax / ad * 9.5, 1, PITCH.w - 1), q.y = clamp2(b.y + ay / ad * 9.5, 1, PITCH.h - 1);
+        }
+      });
+      let gk = def.players.find((q) => q.role === "GK");
+      gk && (gk.x = goalX - atk.dir * 1.2, gk.y = CY + (b.y - CY) * 0.15, gk.vx = gk.vy = 0), toGoal < 40 && atk.players.filter((q) => q !== taker && q.role !== "GK").sort((x, y) => y.ref.stats.physical + y.ref.overall - (x.ref.stats.physical + x.ref.overall)).slice(0, 3).forEach((q, i) => {
+        q.vx = q.vy = 0, q.x = clamp2(goalX - atk.dir * (8 + i * 2.5), 2, PITCH.w - 2), q.y = clamp2(CY + (i - 1) * 4.5, 2, PITCH.h - 2);
+      }), this.cue("whistle", 1), this.cue("freekick", { team: attacking, dist: Math.round(toGoal) }), this.phase = "freekick", this.banner = "FREE KICK", this.setPiece = this.beginSetPiece("freekick", attacking, taker, shootingRange ? 1.9 : 1.2), this.markStoppage("freekick");
+    }
+    /** The AI's free kick: shoot over the wall in range, otherwise deliver or play short. */
+    takeFreeKick() {
+      let sp = this.setPiece;
+      if (this.setPiece = null, this.phase = "play", this.banner = "", !sp) return;
+      let p = sp.taker, atk = this.teams[p.team], goalX = atk.dir > 0 ? PITCH.w : 0, toGoal = Math.hypot(goalX - p.x, CY - p.y);
+      if (this.ball.owner = p, p.touchLock = 0, toGoal < 30 && Math.abs(this.ball.y - CY) < 22) {
+        let side = Math.random() < 0.5 ? -1 : 1;
+        this.shoot(p, { x: atk.dir, y: side * 0.7 }, 0.78 + Math.random() * 0.2, { loft: 1.5, curl: 30, placed: !0 });
+      } else toGoal < 44 ? this.cross(p, null) : this.pass(p, { x: atk.dir, y: (Math.random() - 0.5) * 0.8 }, !1, 0.5);
+    }
+    startThrowIn(side, x, y) {
+      let b = this.ball, team = this.teams[side];
+      b.x = clamp2(x, 1, PITCH.w - 1), b.y = y < CY ? 0.3 : PITCH.h - 0.3, b.z = 0, b.vx = b.vy = b.vz = 0, b.owner = null, b.lastTouch = null, b.curl = 0, b.shotBy = null;
+      let thrower = this.nearestTo(side, b, !0);
+      thrower && (thrower.x = b.x, thrower.y = y < CY ? 0.4 : PITCH.h - 0.4, thrower.vx = thrower.vy = 0, thrower.touchLock = 0, team.players.filter((q) => q !== thrower && q.role !== "GK").sort((a, z) => dist(a, b) - dist(z, b)).slice(0, 2).forEach((q, i) => {
+        q.x = clamp2(b.x + team.dir * (i ? -6 : 7), 2, PITCH.w - 2), q.y = clamp2(b.y + (y < CY ? 1 : -1) * (5 + i * 4), 2, PITCH.h - 2), q.vx = q.vy = 0;
+      }), this.cue("throwin", side), this.phase = "throwin", this.banner = "", this.setPiece = this.beginSetPiece("throwin", side, thrower, 0.9));
+    }
+    takeThrowIn() {
+      let sp = this.setPiece;
+      if (this.setPiece = null, this.phase = "play", this.banner = "", !sp) return;
+      let p = sp.taker;
+      this.ball.owner = p, p.touchLock = 0, this.pass(p, { x: this.teams[p.team].dir, y: (CY - p.y) / PITCH.h }, !1, 0.3), this.ball.vz = 3.2, this.ball.z = 1.6;
+    }
+    /**
+     * Common set-piece bookkeeping. A person taking it gets a generous window
+     * (the AI timer becomes a deadline) and the play screen shows the taker UI;
+     * the CPU takes it when the short timer expires.
+     */
+    beginSetPiece(kind, team, taker, aiDelay) {
+      let human = this.controllers.some((c) => c.team === team);
+      if (this.phaseT = human ? kind === "throwin" ? 6 : 9 : aiDelay, human) {
+        let c = this.controllers.find((k) => k.team === team);
+        c && (c.activeIdx = this.teams[team].players.indexOf(taker));
+      }
+      return { kind, team, taker, human, aim: { x: this.teams[team].dir, y: 0 }, charge: 0, action: null };
+    }
+    /**
+     * Read a person's stick and buttons during a set piece. Returns true while
+     * the phase should keep waiting (the take happens here, on release).
+     */
+    readSetPieceInput(c, input, dt) {
+      let sp = this.setPiece, raw = input.axis(), B = this.basis, fwd = -raw.y;
+      Math.hypot(raw.x, raw.y) > 0.2 && (sp.aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd });
+      let kinds = sp.kind === "throwin" ? ["pass", "through"] : ["shoot", "pass", "cross", "through"];
+      for (let a of kinds)
+        if (input.held(a) && (sp.action = a, sp.charge = Math.min(1, sp.charge + dt / 0.8)), input.released(a))
+          return this.takeSetPiece(a, sp.aim, Math.max(0.3, sp.charge)), !0;
+      return this.charge = sp.charge, !0;
+    }
+    /** A person takes the dead ball. Also what the watch and tests call. */
+    takeSetPiece(action, aim, power = 0.6) {
+      let sp = this.setPiece;
+      if (!sp) return !1;
+      let p = sp.taker, team = this.teams[p.team], goalX = team.dir > 0 ? PITCH.w : 0;
+      this.setPiece = null, this.phase = "play", this.banner = "", this.ball.owner = p, p.touchLock = 0, this.charge = 0;
+      let a = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim : { x: team.dir, y: 0 };
+      if (sp.kind === "penalty")
+        return this.shoot(p, { x: team.dir, y: clamp2(a.y * 1.4, -1, 1) }, clamp2(power, 0.45, 1), { loft: 0.16 + power * 0.5, placed: !0 }), this.penaltyTaker = null, !0;
+      if (sp.kind === "throwin")
+        return this.pass(p, a, action === "through", clamp2(power, 0.3, 0.7)), this.ball.vz = 3.2, this.ball.z = 1.6, !0;
+      if (action === "shoot") {
+        let toGoal = Math.hypot(goalX - p.x, CY - p.y);
+        this.shoot(p, { x: team.dir, y: clamp2(a.y, -1, 1) }, power, { loft: toGoal < 30 ? 1.5 : 1, curl: 26, placed: !0 });
+      } else action === "cross" ? this.cross(p, a) : this.pass(p, a, action === "through", power);
+      return sp.kind === "corner" && (this.cornerTaker = null), !0;
     }
     /** Is `pt` inside the box that `defending` is protecting? */
     inPenaltyArea(pt, defending) {
@@ -2951,12 +3112,12 @@
           let side = n % 2 ? 1 : -1;
           p.x = spotX - atk.dir * (7 + n % 3 * 2.2), p.y = clamp2(CY + side * (5 + n % 4 * 3.4), 3, PITCH.h - 3), p.vx = p.vy = 0, p.touchLock = 0.4, n += 1;
         }
-      this.penaltyTaker = taker, this.conceded = conceded, this.phase = "penalty", this.phaseT = 1.6, this.banner = "PENALTY", this.cue("whistle", 1), this.penalties = (this.penalties || 0) + 1;
+      this.penaltyTaker = taker, this.conceded = conceded, this.phase = "penalty", this.banner = "PENALTY", this.setPiece = this.beginSetPiece("penalty", attacking, taker, 1.6), this.cue("penaltyAwarded", attacking), this.cue("whistle", 1), this.penalties = (this.penalties || 0) + 1;
     }
     /** Strike the penalty once the phase timer runs out. */
     takePenalty() {
       let p = this.penaltyTaker;
-      if (!p) {
+      if (this.setPiece = null, !p) {
         this.startPlay();
         return;
       }
@@ -2991,11 +3152,11 @@
       return best;
     }
     shapeTarget(p) {
-      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), x = clamp2(p.sx * PITCH.w + team.dir * shift, 3, PITCH.w - 3);
+      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), squeeze = weHave ? 1 : TUNE.squeeze, x = clamp2(p.sx * PITCH.w + team.dir * (shift - drop), 3, PITCH.w - 3);
       return p.role === "DEF" && (x = this.holdLine(team, x)), {
         x,
         // shift harder towards the ball's side so the block visibly slides across
-        y: clamp2(p.sy * PITCH.h + (b.y - CY) * 0.42, 3, PITCH.h - 3)
+        y: clamp2(CY + (p.sy * PITCH.h - CY) * squeeze + (b.y - CY) * 0.42, 3, PITCH.h - 3)
       };
     }
     think(p, dt) {
@@ -3010,6 +3171,18 @@
       }
       p.runT = (p.runT || Math.random() * 4) + dt;
       let jitterX = Math.sin(p.runT * 0.62 + p.num * 1.3) * 3.2, jitterY = Math.sin(p.runT * 0.83 + p.num * 2.1) * 4.4;
+      if (TUNE.counter && weHave && team.counterT > 0 && p.role !== "DEF") {
+        let lane = clamp2(p.sy * PITCH.h + (p.num % 2 ? 6 : -6), 5, PITCH.h - 5);
+        this.moveTo(p, clamp2(target.x + team.dir * 22, 4, PITCH.w - 4), lane, dt, 1.1);
+        return;
+      }
+      if (TUNE.runs && weHave && p.role === "MID" && b.owner && b.owner !== p) {
+        let finalThird = (b.x - PITCH.w / 2) * team.dir > 12;
+        if (p.runClock = (p.runClock || 0) - dt, p.runClock <= 0 && finalThird && dist(p, b.owner) < 22 && Math.random() < 0.35 * dt && (p.runClock = 4 + Math.random() * 3, p.runUntil = 1.6, p.runY = clamp2(b.owner.y + (p.y > b.owner.y ? 9 : -9), 5, PITCH.h - 5)), p.runUntil > 0) {
+          p.runUntil -= dt, this.moveTo(p, clamp2(b.owner.x + team.dir * 16, 4, PITCH.w - 4), p.runY, dt, 1.12);
+          return;
+        }
+      }
       if (weHave && p.role === "FWD") {
         let burst = Math.sin(p.runT * 0.85 + p.num) > 0.2 ? 4 : 0;
         this.moveTo(
@@ -3095,6 +3268,13 @@
         this.cross(p, null);
         return;
       }
+      if (TUNE.counter && team.counterT > 0 && toGoal > 26 && Math.random() < 2.4 * dt) {
+        let runner = team.players.find((t) => t !== p && t.role !== "GK" && (t.x - p.x) * team.dir > 12 && dist(t, p) < 42);
+        if (runner) {
+          this.pass(p, { x: runner.x - p.x, y: runner.y - p.y }, !0, 0.7);
+          return;
+        }
+      }
       if (pressure < 3.6 && Math.random() < 2.6 * dt) {
         this.pass(p, { x: team.dir, y: (Math.random() - 0.5) * 0.6 }, toGoal > 45, 0.75);
         return;
@@ -3106,6 +3286,19 @@
       let team = this.teams[p.team], b = this.ball, goalX = team.dir > 0 ? 0 : PITCH.w, inward = team.dir > 0 ? 1 : -1;
       if (b.owner === p) {
         this.drive(p, inward, 0, dt, 0.3);
+        return;
+      }
+      let loose = !b.owner && b.noTouch <= 0, dGoal = Math.hypot(b.x - goalX, b.y - CY);
+      if (TUNE.sweeper && loose && dGoal < 26 && b.z < 0.9 && !(b.vx * inward < -6)) {
+        let mine = this.nearestTo(p.team, b, !0);
+        if (mine && dist(p, b) < dist(mine, b) - 1.5) {
+          this.moveTo(p, b.x + b.vx * 0.15, b.y + b.vy * 0.15, dt, 1.12);
+          return;
+        }
+      }
+      if (loose && b.z > 1 && b.vz < 0 && dGoal < 9 && Math.abs(b.y - CY) < GOAL_HALF + 3) {
+        let tAir = b.vz < -0.1 ? Math.max(0, b.z / -b.vz) : 0.5;
+        this.moveTo(p, b.x + b.vx * tAir, b.y + b.vy * tAir, dt, 1.15);
         return;
       }
       let dx = b.x - goalX, dy = b.y - CY, d2 = Math.hypot(dx, dy) || 1, closing = b.vx * inward < -1, standOff = clamp2(d2 * 0.18, 1.6, 5.5), tx = goalX + inward * standOff, ty = CY + dy * (standOff / d2), urgency = 1.06;
@@ -3180,6 +3373,8 @@
       KeyJ: "cross",
       KeyK: "shoot",
       KeyL: "through",
+      KeyU: "lob",
+      KeyH: "skill",
       KeyQ: "switch",
       KeyE: ["switch", "curl"],
       KeyI: "curl",
@@ -3193,6 +3388,8 @@
       Numpad2: "shoot",
       Numpad3: "cross",
       Numpad5: "through",
+      Numpad6: "lob",
+      Numpad4: "skill",
       Numpad0: ["switch", "curl"],
       NumpadDecimal: "curl",
       NumpadAdd: "sprint",
@@ -3219,9 +3416,11 @@
     3: "through",
     4: "switch",
     5: ["switch", "curl"],
+    6: "skill",
     7: "sprint",
+    8: "lob",
     9: "pause"
-  }, ACTIONS = ["pass", "shoot", "cross", "through", "switch", "curl", "sprint", "pause"], Input = class {
+  }, ACTIONS = ["pass", "shoot", "cross", "through", "lob", "skill", "switch", "curl", "sprint", "pause"], Input = class {
     /**
      * @param {{pad?: number|null, keys?: 'primary'|'secondary'}} opts
      *   pad  index to bind to, or null to grab the first connected one
@@ -3861,6 +4060,235 @@
     ctx.fillStyle = isGoal && goalKit ? shade(goalKit, 1.25) : "#fff", ctx.font = "800 ".concat(Math.round(Math.min(w * 0.11, 96)), 'px "Bahnschrift", system-ui, sans-serif'), ctx.fillText(match.banner, w / 2, h / 2);
   }
 
+  // js/data/commentary.js
+  var L = {
+    kickoff: [
+      "And we are under way.",
+      "{team} get us started.",
+      "The referee blows and the ball is rolling.",
+      "Here we go — {team} kick off.",
+      "First touch of the match. Let us see what we have got.",
+      "The whistle goes. Ninety minutes of this, condensed.",
+      "Away we go at {venue}."
+    ],
+    secondHalf: [
+      "Second half. {score} the score, everything still to play for.",
+      "Back out for the second half.",
+      "We go again. {team} restart it.",
+      "Second period under way, {score}.",
+      "The sides swap ends and we restart, still {score}."
+    ],
+    pass: [],
+    // too frequent to voice
+    shot: [
+      "{player} has a go!",
+      "Struck by {player}…",
+      "{player} pulls the trigger!",
+      "Shot! {player}!",
+      "{player} lets fly from {dist} metres.",
+      "Hit early by {player}.",
+      "{player} shapes to shoot — and does.",
+      "A sight of goal for {player}.",
+      "{player} tries his luck.",
+      "Effort from {player}!"
+    ],
+    shotWide: [
+      "Wide. {player} will want that one back.",
+      "Off target from {player}.",
+      "Dragged wide by {player}.",
+      "Over the bar. {player} leans back and it climbs.",
+      "Not far away from {player}, but away it goes.",
+      "{player} skews it wide of the far post.",
+      "It flashes across the face of goal and out.",
+      "Into the stand. {player} knew as he hit it.",
+      "A yard wide. {player} holds his head.",
+      "High and wide from {player}."
+    ],
+    save: [
+      "Saved! {keeper} gets down well.",
+      "Good hands from {keeper}.",
+      "{keeper} turns it away!",
+      "Kept out by {keeper}.",
+      "What a stop from {keeper}!",
+      "{keeper} palms it clear.",
+      "Strong save. {keeper} was equal to it.",
+      "{keeper} stands tall and blocks it.",
+      "Tipped over by {keeper}!",
+      "{keeper} gathers at the second attempt.",
+      "The keeper reads it. {keeper} makes it look routine.",
+      "Fingertips from {keeper} — that was going in."
+    ],
+    post: [
+      "Off the post!",
+      "The woodwork! {team} so close.",
+      "Crossbar! It rattles the frame.",
+      "Against the upright and away.",
+      "Inches. The post saves {opp}.",
+      "The bar shakes and {team} cannot believe it."
+    ],
+    goal: [
+      "GOAL! {player} for {team}!",
+      "{player} scores! {score}!",
+      "It is in! {player} makes it {score}.",
+      "GOAL {team}! {player} finishes it.",
+      "{player}! What a finish! {score}.",
+      "That is a goal. {player}, {minute} minutes, {score}.",
+      "In the net! {player} sends the {team} end wild.",
+      "{player} buries it. {score}.",
+      "Composed by {player}. {team} lead.",
+      "The keeper had no chance. {player}, {score}.",
+      "{player}! {team} have their goal.",
+      "Clinical. {player} does not miss those."
+    ],
+    ownGoal: ["Own goal! That is unfortunate. {score}.", "It goes in off a defender. {score}.", "A dreadful deflection and it is {score}."],
+    cross: [
+      "Whipped in…",
+      "{player} delivers.",
+      "A cross from the right.",
+      "Into the box from {player}.",
+      "Floated towards the far post.",
+      "{player} swings it in.",
+      "Driven low across the six-yard box."
+    ],
+    header: ["A header!", "Met with the head!", "Up goes the header.", "Powered towards goal with the head!"],
+    bigChance: [
+      "Big chance here!",
+      "This is a real opportunity for {team}.",
+      "{player} is through!",
+      "One on one!",
+      "He has to score here.",
+      "A gilt-edged chance for {player}.",
+      "Open goal, almost.",
+      "The keeper is exposed."
+    ],
+    cornerKick: [
+      "Corner to {team}.",
+      "{team} win a corner.",
+      "A corner. Bodies into the box.",
+      "Set piece for {team} — a corner.",
+      "The flag goes up for a corner.",
+      "{team} will take this from the left.",
+      "Another corner for {team}."
+    ],
+    freekick: [
+      "Free kick to {team}, {dist} metres out.",
+      "Foul. {team} have a free kick.",
+      "A free kick in a dangerous area for {team}.",
+      "The referee awards the free kick.",
+      "{team} with a set piece {dist} metres from goal.",
+      "A wall is being built.",
+      "The ball is placed. {team} to take.",
+      "This is shooting range.",
+      "Free kick. Cross or shot from here."
+    ],
+    penaltyAwarded: [
+      "PENALTY! The referee points to the spot.",
+      "Penalty to {team}!",
+      "He gives it. A penalty for {team}.",
+      "Brought down in the box — penalty!",
+      "The referee has no doubt. Penalty.",
+      "Spot kick for {team}."
+    ],
+    throwin: ["Throw-in, {team}.", "Out for a throw.", "{team} throw.", "A throw-in near the halfway line.", "Long throw coming?"],
+    foul: [
+      "Foul by {player}.",
+      "That is a foul. {player} was late.",
+      "{player} goes through the back of him.",
+      "A cynical one from {player}.",
+      "The referee blows. {player} in the book?",
+      "Late, from {player}.",
+      "Free kick for that. {player} penalised.",
+      "A clumsy challenge from {player}.",
+      "{player} catches him. No arguments."
+    ],
+    injury: [
+      "{player} is down, and he is not getting up quickly.",
+      "That looks like a problem for {player}.",
+      "The physio is on for {player}.",
+      "{player} is struggling. He may not last.",
+      "A worry for {team} — {player} is hurt.",
+      "{player} limps back into position."
+    ],
+    sub: [
+      "A change for {team}: {player} comes off.",
+      "Substitution. {player} makes way.",
+      "{team} bring on fresh legs for {player}.",
+      "{player} is replaced.",
+      "The board goes up: {player} off."
+    ],
+    counter: [
+      "And {team} break!",
+      "A counter-attack on!",
+      "{team} are away — space to run into.",
+      "Turnover, and {team} go quickly.",
+      "They have won it and they are off.",
+      "{team} pour forward.",
+      "Numbers up for {team} on the break."
+    ],
+    skill: ["Lovely feet from {player}.", "A step-over and he is away.", "Sold him! {player} dances past.", "Quick feet by {player}.", "{player} shifts it and goes."],
+    lob: ["A chip over the top from {player}.", "Lifted over the line by {player}.", "Dinked forward.", "{player} floats one in behind."],
+    tackle: ["Won cleanly.", "A good challenge.", "Strong in the tackle.", "Dispossessed.", "He wins it back."],
+    halftime: [
+      "Half time. {score}.",
+      "The whistle goes for the interval, {score}.",
+      "That is the first half done. {score}.",
+      "Half time, and {team} will be the happier side.",
+      "Forty-five minutes gone: {score}."
+    ],
+    fulltime: [
+      "Full time! {score}.",
+      "That is it. It finishes {score}.",
+      "The final whistle. {score}.",
+      "All over. {team} take it, {score}.",
+      "The referee ends it at {score}.",
+      "Done. {score} the final score."
+    ],
+    clock: [
+      "{minute} minutes played.",
+      "We are {minute} minutes in, {score}.",
+      "Coming up to {minute} minutes.",
+      "{minute} gone. {score}.",
+      "A quarter of the way in, {score}.",
+      "Ten to go. {score}.",
+      "Into the last five, {score}.",
+      "{minute} minutes and {team} are on top."
+    ],
+    possession: [
+      "{team} are seeing a lot of the ball.",
+      "{team} dominating possession.",
+      "Patient from {team} — keeping it.",
+      "{team} have had {poss}% of the ball.",
+      "It is all {team} at the moment.",
+      "{team} are passing it around nicely."
+    ],
+    momentum: [
+      "{team} have their tails up.",
+      "The pressure is building on {opp}.",
+      "{team} are turning the screw.",
+      "This is {team}'s spell.",
+      "{opp} cannot get out of their half.",
+      "Wave after wave from {team}."
+    ],
+    weather: ["Perfect conditions for football.", "The floodlights are on and the surface looks quick.", "A good crowd in tonight."],
+    penaltyScored: ["Coolly taken. {player} scores from the spot.", "Penalty converted by {player}.", "{player} sends the keeper the wrong way."],
+    penaltyMissed: ["Saved! {keeper} keeps the penalty out!", "He has missed it! {player} puts the penalty wide.", "Off the post from the spot!"],
+    keeperClaim: ["Claimed by {keeper}.", "{keeper} comes and takes it.", "Safe hands. {keeper} gathers."],
+    late: ["Time is running out for {opp}.", "Into the closing stages, {score}.", "{team} looking to see this out.", "Stoppage time approaches."],
+    comeback: ["{team} are level! {score}.", "Back in it! {score}.", "The comeback is on for {team}."],
+    lead: ["{team} edge ahead, {score}.", "{team} take the lead.", "Advantage {team}: {score}."],
+    extend: ["{team} extend their lead, {score}.", "Two clear now for {team}.", "That should settle it. {score}."]
+  };
+  var LINE_COUNT = Object.values(L).reduce((n, a) => n + a.length, 0), last = /* @__PURE__ */ new Map();
+  function say(key, ctx = {}) {
+    let pool = L[key];
+    if (!pool || !pool.length) return "";
+    let i = Math.floor(Math.random() * pool.length);
+    return pool.length > 1 && i === last.get(key) && (i = (i + 1) % pool.length), last.set(key, i), pool[i].replace(/\{(\w+)\}/g, (_, k) => {
+      var _a;
+      return (_a = ctx[k]) != null ? _a : "";
+    });
+  }
+
   // js/watch/match.js
   var HOME_ID = WORLD.clubs[0].id, DURATION = 60, LEVELS = {
     easy: { label: "Easy", skill: 0.72, pay: 0.7 },
@@ -3869,8 +4297,23 @@
   };
   function playMatch(app2, awayId, onDone, level2 = "normal") {
     let lv = LEVELS[level2] || LEVELS.normal;
-    app2.innerHTML = '\n    <div class="w-match">\n      <canvas id="wPitch"></canvas>\n      <div class="w-hud"><span id="wClock">0\'</span><b id="wScore">0 – 0</b></div>\n      <button class="w-kick" id="wKick">KICK</button>\n    </div>';
-    let canvas = app2.querySelector("#wPitch"), ctx = canvas.getContext("2d", { alpha: !1 }), clockEl = app2.querySelector("#wClock"), scoreEl = app2.querySelector("#wScore"), match = new Match(HOME_ID, awayId, { duration: DURATION, mode: "single", human: 0, preset: "authentic", skill: lv.skill }), input = new Input({ keys: "primary" }), cam = makeCamera(), tighten = () => {
+    app2.innerHTML = '\n    <div class="w-match">\n      <canvas id="wPitch"></canvas>\n      <div class="w-hud"><span id="wClock">0\'</span><b id="wScore">0 – 0</b></div>\n      <div class="w-comm" id="wComm" hidden></div>\n      <div class="w-sp" id="wSp" hidden></div>\n      <button class="w-kick" id="wKick">KICK</button>\n    </div>';
+    let canvas = app2.querySelector("#wPitch"), ctx = canvas.getContext("2d", { alpha: !1 }), clockEl = app2.querySelector("#wClock"), scoreEl = app2.querySelector("#wScore"), commEl = app2.querySelector("#wComm"), spEl = app2.querySelector("#wSp"), commT = 0, lastComm = -9, WATCH_CUES = { goal: "goal", save: "save", post: "post", bigChance: "bigChance", cornerKick: "cornerKick", freekick: "freekick", penaltyAwarded: "penaltyAwarded", injury: "injury", shotWide: "shotWide" }, commentate = (c) => {
+      var _a, _b, _c, _d, _e;
+      let key = WATCH_CUES[c.name];
+      if (!key || c.name !== "goal" && match.t - lastComm < 2) return;
+      lastComm = match.t;
+      let t = typeof c.arg == "number" ? c.arg : (_c = (_a = c.arg) == null ? void 0 : _a.team) != null ? _c : (_b = c.arg) != null && _b.ref ? c.arg.team : 0, team = match.teams[t] || match.teams[0], gk = match.teams[1 - (team.side || 0)].players.find((q) => q.role === "GK"), line = say(key, {
+        player: (_d = c.arg) != null && _d.ref ? c.arg.ref.short : team.short,
+        team: team.short,
+        opp: match.teams[1 - team.side].short,
+        score: "".concat(match.teams[0].score, "–").concat(match.teams[1].score),
+        minute: match.minute(),
+        dist: ((_e = c.arg) == null ? void 0 : _e.dist) || "",
+        keeper: gk ? gk.ref.short : "the keeper"
+      });
+      line && (commEl.textContent = line, commEl.hidden = !1, commT = 3);
+    }, match = new Match(HOME_ID, awayId, { duration: DURATION, mode: "single", human: 0, preset: "authentic", skill: lv.skill }), input = new Input({ keys: "primary" }), cam = makeCamera(), tighten = () => {
       let b = match.ball;
       cam.x = Math.max(12, Math.min(PITCH.w - 12, b.x)), cam.y = b.y - 21, cam.z = 11.5, cam.tx = cam.x, cam.ty = b.y + 3, cam.hfov = 33;
     };
@@ -3904,6 +4347,12 @@
     kick.addEventListener("pointerdown", (e) => {
       var _a;
       e.preventDefault(), (_a = navigator.vibrate) == null || _a.call(navigator, 6);
+      let sp = match.setPiece;
+      if (sp && sp.human && sp.team === 0) {
+        let a = Math.hypot(input.axis().x, input.axis().y) > 0.2 ? { x: input.axis().x, y: -input.axis().y } : { x: 1, y: 0 }, goalX = PITCH.w, near = Math.abs(sp.taker.x - goalX) < 30, act2 = sp.kind === "penalty" || sp.kind === "freekick" && near ? "shoot" : sp.kind === "corner" ? "cross" : "pass";
+        match.takeSetPiece(act2, a, 0.7);
+        return;
+      }
       let act = shootingRange() ? "shoot" : "pass";
       input.setTouchButton(act, !0), kick.dataset.act = act, input.setTouchButton("sprint", !0);
     });
@@ -3911,12 +4360,20 @@
       input.setTouchButton("shoot", !1), input.setTouchButton("pass", !1), input.setTouchButton("sprint", !1);
     };
     kick.addEventListener("pointerup", kickUp), kick.addEventListener("pointercancel", kickUp), kick.addEventListener("pointerleave", kickUp);
-    let raf = null, last = performance.now(), ended = !1, lastScore = "0 – 0", frame = (now) => {
+    let raf = null, last2 = performance.now(), ended = !1, lastScore = "0 – 0", frame = (now) => {
       var _a;
-      let dt = Math.min(0.05, (now - last) / 1e3);
-      if (last = now, input.poll(dt), !ended) {
-        for (match.update(dt, [input]), updateCamera(cam, match, dt), tighten(), match.basis = groundBasis(cam); match.cues.length; )
-          match.cues.shift().name === "goal" && ((_a = navigator.vibrate) == null || _a.call(navigator, [16, 40, 24]));
+      let dt = Math.min(0.05, (now - last2) / 1e3);
+      if (last2 = now, input.poll(dt), !ended) {
+        for (match.update(dt, [input]), updateCamera(cam, match, dt), tighten(), match.basis = groundBasis(cam); match.cues.length; ) {
+          let c = match.cues.shift();
+          c.name === "goal" && ((_a = navigator.vibrate) == null || _a.call(navigator, [16, 40, 24])), commentate(c);
+        }
+        commT > 0 && (commT -= dt, commT <= 0 && (commEl.hidden = !0));
+        let sp = match.setPiece;
+        if (sp && sp.human && sp.team === 0) {
+          let what = sp.kind === "penalty" ? "PENALTY · KICK to shoot" : sp.kind === "corner" ? "CORNER · KICK to cross" : sp.kind === "throwin" ? "THROW · KICK to throw" : "FREE KICK · KICK to take";
+          spEl.textContent = "".concat(what, " · ").concat(Math.ceil(match.phaseT)), spEl.hidden = !1;
+        } else spEl.hidden = !0;
         match.phase === "end" && (ended = !0, finish());
       }
       draw(ctx, match, cam, size.w, size.h, "low", dt, { hideBanner: !1 }), clockEl.textContent = "".concat(match.minute(), "'");
@@ -3960,9 +4417,9 @@
       el.style.left = "".concat(8 + x * 84, "%");
     };
     place(keeper, 0.5);
-    let last = performance.now(), sweep = (now) => {
-      let dt = Math.min(0.05, (now - last) / 1e3);
-      last = now, phase === "shoot" && live2 && (markerX += dir * speed * 2 * dt, markerX >= 1 && (markerX = 1, dir = -1), markerX <= 0 && (markerX = 0, dir = 1), place(marker, markerX)), raf = requestAnimationFrame(sweep);
+    let last2 = performance.now(), sweep = (now) => {
+      let dt = Math.min(0.05, (now - last2) / 1e3);
+      last2 = now, phase === "shoot" && live2 && (markerX += dir * speed * 2 * dt, markerX >= 1 && (markerX = 1, dir = -1), markerX <= 0 && (markerX = 0, dir = 1), place(marker, markerX)), raf = requestAnimationFrame(sweep);
     };
     raf = requestAnimationFrame(sweep);
     let decided = () => {

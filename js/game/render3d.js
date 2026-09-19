@@ -96,6 +96,28 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * near-side ground and is hard-clamped to the bowl, so no framing tweak can put
  * it inside geometry again. `t` is 0..1 through the replay.
  */
+/**
+ * The celebration cut. For the goal phase the camera leaves the broadcast
+ * gantry and drops to pitch level beside the scorer, tracking him as he
+ * peels away — the shot every broadcast cuts to. Eased in over the first
+ * half second so it reads as a cut, not a teleport.
+ */
+export function celebrationCamera(cam, match, t) {
+  const hero = match.celebrant || match.ball;
+  const team = match.teams[match.goalTeam ?? 0];
+  const dir = team?.dir ?? 1;
+  const k = Math.min(1, t / 0.5);
+  const wantX = hero.x - dir * 7 + Math.sin(t * 0.5) * 1.5;
+  const wantY = hero.y + (hero.y < 34 ? 6 : -6);
+  const wantZ = 2.2 + Math.max(0, 1.5 - t * 0.6);
+  cam.x += (wantX - cam.x) * k;
+  cam.y += (wantY - cam.y) * k;
+  cam.z += (wantZ - cam.z) * k;
+  cam.tx = hero.x; cam.ty = hero.y; cam.tz = 1.1;
+  cam.hfov = 30;
+  return cam;
+}
+
 export function replayCamera(cam, ball, goalX, t) {
   const dir = goalX > PITCH.w / 2 ? 1 : -1;        // direction of the attack
   // The strike lands about 78% through the clip (3.5s of build-up, 1s of tail),

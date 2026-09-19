@@ -7,14 +7,14 @@ const DEAD = 0.22;
 // Two keyboard sets exist so couch play works even with a single pad, or none.
 const KEYSETS = {
   primary: {
-    Space: 'pass', KeyJ: 'cross', KeyK: 'shoot', KeyL: 'through',
+    Space: 'pass', KeyJ: 'cross', KeyK: 'shoot', KeyL: 'through', KeyU: 'lob', KeyH: 'skill',
     KeyQ: 'switch', KeyE: ['switch', 'curl'], KeyI: 'curl',
     ShiftLeft: 'sprint',
     Escape: 'pause', KeyP: 'pause',
   },
   secondary: {
     Numpad1: 'pass', Enter: 'pass',
-    Numpad2: 'shoot', Numpad3: 'cross', Numpad5: 'through',
+    Numpad2: 'shoot', Numpad3: 'cross', Numpad5: 'through', Numpad6: 'lob', Numpad4: 'skill',
     Numpad0: ['switch', 'curl'], NumpadDecimal: 'curl',
     NumpadAdd: 'sprint', ShiftRight: 'sprint',
     Escape: 'pause',
@@ -33,10 +33,10 @@ const MOVE_SETS = {
 // Standard gamepad mapping — on a DualSense: 0 ✕, 1 ○, 2 □, 3 △, 4 L1, 5 R1, 6 L2, 7 R2, 9 Options.
 const PAD_ACTIONS = {
   0: 'pass', 1: 'shoot', 2: 'cross', 3: 'through',
-  4: 'switch', 5: ['switch', 'curl'], 7: 'sprint', 9: 'pause',
+  4: 'switch', 5: ['switch', 'curl'], 6: 'skill', 7: 'sprint', 8: 'lob', 9: 'pause',
 };
 
-const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'switch', 'curl', 'sprint', 'pause'];
+const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'lob', 'skill', 'switch', 'curl', 'sprint', 'pause'];
 
 export class Input {
   /**

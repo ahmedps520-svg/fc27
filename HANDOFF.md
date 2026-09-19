@@ -15,6 +15,75 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Football + career round (v69) — set pieces, AI, presentation, Career V2, WL queue, reconnects
+**The balance sweep was RE-BASELINED on purpose.** Both goldens in
+`tests/golden/` were re-recorded (`node tests/sweep-check.mjs --update`) after
+the team-AI work: 12345 → goals 2.10 / shots 12.73; 777 → 2.20 / 12.75 (was
+2.45 / 12.4 and 2.42 / 12.3). Inside the targets (2–3 goals, ~11 shots). What
+changed the football: the defending block drops/narrows (`TUNE.drop 2`,
+`squeeze 0.93`), counters, off-ball runs, sweeper-keepers with distribution,
+free kicks everywhere, injuries, fatigue on technique. The bisect that found
+the numbers: with `drop 5 / squeeze 0.86` goals fell to 0.4; counters that
+fired on every possession change (not just real turnovers) cost another 0.7.
+`export const TUNE` in sim.js is the knob set; `tests/unit/setpieces.test.mjs`
+pins the defaults so a tweak is a deliberate act. Rule stays: sweep first,
+feel second.
+
+- **Set pieces** (sim.js): phases `freekick` and `throwin` join corner/penalty.
+  `beginSetPiece(kind, team, taker, aiDelay)` fills `match.setPiece` — when a
+  controller owns that team, `human: true` and `phaseT` is a 9 s (6 s throw)
+  deadline; `readSetPieceInput` reads that seat's stick/buttons each frame and
+  `takeSetPiece(action, aim, power)` fires on release. AI takes on the short
+  timer (`takeFreeKick`, `takeThrowIn`, existing `takeCorner/takePenalty`).
+  Fouls: `tackle()` → `awardFreeKick` outside the box (wall at 9.15 m, 3–4 men
+  in range), penalty inside; `fouls[]` tallied; 1-in-8 fouls injure
+  (`injure()`: maxSpeed ×0.62, `formOf()` −0.25; `autoSubInjured` at every
+  `markStoppage` for CPU sides). xG per shot on `team.xg`/`team.bigChances`.
+  New actions `lob` (through+loft) and `skill` (`skillMove`: sidestep burst,
+  tackles miss while `skillT > 0`); keys U/H, pad Select/L2, touch buttons.
+  New cues: foul, freekick, throwin, cornerKick, penaltyAwarded, injury, sub,
+  counter (rate-limited 12 s), skill, lob, shotWide, bigChance.
+- **Presentation** (play.js): `data/commentary.js` (208 lines, `say(key,
+  ctx)`), `comment()` feed on `#gmFeed` + log in Match Facts; celebration cut
+  via `render3d.celebrationCamera` during phase `goal` (not in manager cam);
+  `#gmSetPiece` prompt + touch relabel maps `SET_PIECE`/`THROW_IN`; half time
+  opens `facts` (xG, big chances, corners, fouls); `goalClips[]` →
+  `playHighlights()` chains replays; pause item `sound`; first three matches
+  show rotating control hints (`flags.hintMatches`). Tutorial has a "Skill, lob
+  and set pieces" step.
+- **Career V2** (`js/careerV2.js`, save shape `v: 3`, old v2 saves still
+  load — `car.leagueOf` absent means legacy paths): `TIER2` (3 real clubs per
+  country, squads dealt from unused real players 55–80, keeper fallback = a
+  defender labelled GK), `allClubs()`/`clubOf` (careerClub → clubOf),
+  `buildCalendar` (typed rounds `{type:'league',pairs}` / `{type:'cup',round}`,
+  cup every 5th week, bracket of the whole country), `playCupRound`,
+  `generateOffers`/`respondToOffer` (accept/counter/reject; counters can raise
+  or lose the buyer), `aiTransfers` (2–3 per window week), youth
+  (`refillYouth/trainYouth/promoteYouth` → `car.devBoost`), `scout/tickScouting`,
+  `developSquads` (`car.dev` per name, applied in `resolveEntry`),
+  `setBoardObjectives/boardReview/seasonReviewV2` (sack if objective missed and
+  patience < 0.35 and no title/promotion/cup; job offers by rep), `takeJob`,
+  press (`PRESS`, `answerPress`; `car.pressPending` after my match). The other
+  tier is not simulated weekly: `syntheticOrder` ranks it by strength at season
+  end. Crossover: `progress.pend` on title (20k + prime), promotion, cup (8k +
+  gold), season complete, academy graduate. Screens: tabs Offers/Academy/
+  Scouting/Cup/Board, review card with job offers, press card on the overview.
+- **Online**: `server/matchmaking.js` (`findPairs`: division queue widens by
+  wait; WL queue pairs by weekend wins, never across queues/weekends; unit-
+  testable). `queue` accepts `wl:{id,wins}`; pair card carries `kind:'weekend'`
+  + `wl`. Reconnect: on close mid-match the peer record stays `dropped` for
+  `RECONNECT_GRACE_MS` (45 s); opponent gets `evt dropped/resumed`; a re-auth
+  by the same account adopts the record (`peer.adopted`) and gets `rejoined`.
+  play.js: host pauses via the sync-pause with the grace as countdown, cuts to
+  3 s on resume; `closed` no longer ends the match. weekend.js has "Find an
+  opponent online" (`online.queueWeekend`).
+- **Watch**: `w-comm` one-line commentary on big cues; `w-sp` set-piece prompt;
+  KICK takes the dead ball (`takeSetPiece`) with a sensible action.
+- Perf after the round (tests/perf): cold boot 3.9 s / 622 KB / 62 requests
+  (more modules than v67's 3.3 s / 553 KB — commentary, careerV2, matchmaking
+  client bits; still a quarter of v66); sim 4.1 ms per match-second; 2D path
+  56 fps at 4× CPU throttle. GL fps still not measurable headlessly.
+
 ### Live game round (v68) — Today, events, Season Pass, Weekend League, trophies, evolve, 20 clubs
 **One hub for everything that counts: `js/progress.js`.** A match, a pack, an
 SBC, a career milestone, an evolve, a login — the screen that did it calls one

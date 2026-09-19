@@ -19,6 +19,7 @@ const zlib = require('zlib');
 const ws = require('./ws');
 const store = require('./store');
 const guard = require('./guard');
+const mm = require('./matchmaking');
 
 const ROOT = path.resolve(__dirname, '..');
 // Hosting platforms inject the port they want you on; locally an argument wins.
@@ -485,70 +486,19 @@ function pair(a, b, kind) {
     seat: host ? 0 : 1,
     you: { name: self.name, club: self.club, divIdx: self.divIdx },
     opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx },
+    wl: self.wl ? self.wl.id : null,
   });
   a.sock.send(card(a, b, true));
   b.sock.send(card(b, a, false));
   console.log(`[match ${id}] ${a.name} (host) vs ${b.name} — ${kind}`);
 }
 
-// How far apart two players' divisions may be, as a function of how long the
-// one who has waited longer has been queuing. Same division is always preferred;
-// the net widens every few seconds until it will accept anybody, so a lone
-// player in Apex Elite still gets a game rather than waiting forever.
-const WIDEN = [
-  { after: 0, span: 0 },     // same division only
-  { after: 8, span: 1 },
-  { after: 16, span: 3 },
-  { after: 25, span: 99 },   // anyone at all
-];
-
-const allowedSpan = (waitedSec) => {
-  let span = 0;
-  for (const step of WIDEN) if (waitedSec >= step.after) span = step.span;
-  return span;
-};
-
 function tryMatchmake() {
-  const now = Date.now();
-  let paired = true;
-
-  // Repeat until no further pairing is possible: one pass can free up players
-  // whose only acceptable partner was taken by an earlier pairing.
-  while (paired) {
-    paired = false;
-    // longest-waiting player gets first pick
-    const waiting = queue.filter((p) => p.sock.open)
-      .sort((x, y) => x.queuedAt - y.queuedAt);
-
-    for (const a of waiting) {
-      if (a.opponent) continue;
-      const span = allowedSpan((now - a.queuedAt) / 1000);
-
-      // Best available opponent: closest in division, and among equals the one
-      // who has been waiting longest.
-      let best = null;
-      let bestGap = Infinity;
-      for (const b of waiting) {
-        if (b === a || b.opponent) continue;
-        const gap = Math.abs(a.divIdx - b.divIdx);
-        // either player having waited long enough is enough to widen the net
-        const bSpan = allowedSpan((now - b.queuedAt) / 1000);
-        if (gap > Math.max(span, bSpan)) continue;
-        if (gap < bestGap || (gap === bestGap && b.queuedAt < best.queuedAt)) {
-          best = b;
-          bestGap = gap;
-        }
-      }
-
-      if (best) {
-        queue = queue.filter((p) => p !== a && p !== best);
-        pair(a, best, 'division');
-        paired = true;
-        break;
-      }
-    }
+  const waiting = queue.filter((p) => p.sock.open && !p.opponent).sort((x, y) => x.queuedAt - y.queuedAt);
+  for (const [a, b] of mm.findPairs(waiting)) {
+    queue = queue.filter((p) => p !== a && p !== b);
+    pair(a, b, a.wl ? 'weekend' : 'division');
   }
-
   queue = queue.filter((p) => p.sock.open && !p.opponent);
 }
 
@@ -581,8 +531,23 @@ ws.attach(server, '/ws', (sock) => {
       if (!guard.allow(`wsauth:${sock.id}`, 5, 1 / 60)) { sock.close(); return; }
       const acct = store.byToken(m.token);
       if (!acct) { sock.send({ t: 'authFail' }); sock.close(); return; }
-      // a second sign-in from elsewhere kicks the first
       const existing = peers.get(acct.name);
+      /* A reconnect. The old record is still here because its socket dropped
+       * inside a match less than a grace period ago: this socket takes over
+       * that seat — same opponent, same match id, same host role — and the
+       * opponent is told the game is back on. */
+      if (existing && existing !== peer && existing.dropped && existing.opponent) {
+        clearTimeout(existing.dropTimer);
+        existing.sock = sock;
+        existing.dropped = false;
+        peer.adopted = existing;                 // this socket now speaks for that record
+        sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size });
+        sock.send({ t: 'rejoined', matchId: existing.matchId, host: existing.isHost, seat: existing.isHost ? 0 : 1 });
+        existing.opponent.sock.send({ t: 'evt', k: 'resumed', name: existing.name });
+        console.log(`[match ${existing.matchId}] ${existing.name} reconnected`);
+        return;
+      }
+      // a second sign-in from elsewhere kicks the first
       if (existing && existing !== peer) {
         existing.sock.send({ t: 'kicked' });
         existing.sock.close();
@@ -593,8 +558,13 @@ ws.attach(server, '/ws', (sock) => {
       sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size });
       return;
     }
+    if (peer.adopted) return handle(peer.adopted, m);
     if (!peer.acct) return;
+    handle(peer, m);
+  });
 
+  function handle(peer, m) {
+    const sock = peer.sock;
     switch (m.t) {
       case 'queue': {
         leaveQueue(peer);
@@ -603,9 +573,10 @@ ws.attach(server, '/ws', (sock) => {
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
         peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
+        peer.wl = mm.cleanWL(m.wl);
         peer.queuedAt = Date.now();
         queue.push(peer);
-        sock.send({ t: 'queued', size: queue.length });
+        sock.send({ t: 'queued', size: queue.length, wl: !!peer.wl });
         tryMatchmake();
         break;
       }
@@ -718,12 +689,28 @@ ws.attach(server, '/ws', (sock) => {
       default:
         break;
     }
-  });
+  }
 
   sock.on('close', () => {
-    leaveQueue(peer);
-    endMatch(peer, 'disconnected');
-    if (peer.name && peers.get(peer.name) === peer) peers.delete(peer.name);
+    const rec = peer.adopted || peer;
+    if (rec.sock !== sock) return;              // an older socket of a reconnected peer
+    leaveQueue(rec);
+    /* Mid-match, the seat is held for a grace period rather than ended: the
+     * opponent gets a 'dropped' event and pauses; a reconnect within the
+     * window resumes, otherwise it is the walkover it always was. */
+    if (rec.opponent && rec.opponent.sock.open) {
+      rec.dropped = true;
+      rec.opponent.sock.send({ t: 'evt', k: 'dropped', name: rec.name, grace: mm.RECONNECT_GRACE_MS / 1000 });
+      rec.dropTimer = setTimeout(() => {
+        if (!rec.dropped) return;
+        endMatch(rec, 'disconnected');
+        if (rec.name && peers.get(rec.name) === rec) peers.delete(rec.name);
+      }, mm.RECONNECT_GRACE_MS);
+      rec.dropTimer.unref?.();
+      return;
+    }
+    endMatch(rec, 'disconnected');
+    if (rec.name && peers.get(rec.name) === rec) peers.delete(rec.name);
   });
 });
 
