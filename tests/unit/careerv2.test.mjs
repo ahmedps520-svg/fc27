@@ -87,7 +87,8 @@ test('AI transfers move real players between AI clubs in a window and never touc
     for (let i = 0; i < 6; i++) deals = deals.concat(v2.aiTransfers(c, 1));
     assert.ok(deals.length >= 4, `${deals.length} deals`);
     assert.equal(c.squads.mci.map((r) => r[0]).join(), mine);
-    for (const d of deals) assert.ok(c.squads[d.to].some((r) => r[0] === d.player));
+    // a player can be dealt on again within the window, so: on exactly one squad, somewhere
+    for (const d of deals) assert.equal(Object.values(c.squads).flat().filter((r) => r[0] === d.player).length, 1);
     assert.equal(v2.aiTransfers(c, 6).length, 0, 'window closed mid-season');
   });
   } finally { Math.random = realRandom; }
