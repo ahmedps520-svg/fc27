@@ -2285,7 +2285,9 @@ export function createRenderer(canvas, match, quality, models = false) {
       fragmentShader: `uniform sampler2D tDiffuse; uniform sampler2D tPrev; uniform float uDamp; varying vec2 vUv;
         void main() { vec4 a = texture2D(tDiffuse, vUv); vec4 b = texture2D(tPrev, vUv); gl_FragColor = mix(a, b, uDamp); }`,
     });
+    blend.enabled = false;             // switched on with the replay; two fullscreen passes are not free
     composer.addPass(blend);
+    afterimage.blend = blend;
     // copy the blended result into the history buffer for the next frame
     afterimage.copy = new ShaderPass({
       uniforms: { tDiffuse: { value: null } },
@@ -2294,6 +2296,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     });
     afterimage.copy.renderToScreen = false;
     afterimage.copy.needsSwap = false;
+    afterimage.copy.enabled = false;
     composer.addPass(afterimage.copy);
     composer.addPass(new OutputPass());
   }
@@ -2350,7 +2353,12 @@ export function createRenderer(canvas, match, quality, models = false) {
     setReplay(on) {
       replayMode = on ? 1 : 0;
       if (cine) cine.material.uniforms.uDofScale.value = on ? (ultra ? 1.1 : med ? 0 : 0.75) : (ultra ? 0.85 : 0);
-      if (afterimage) afterimage.damp.value = on && !med ? 0.55 : 0;
+      if (afterimage) {
+        const blur = on && !med;
+        afterimage.damp.value = blur ? 0.55 : 0;
+        afterimage.blend.enabled = blur;
+        afterimage.copy.enabled = blur;
+      }
     },
     /** A fireworks and confetti show for `seconds`. */
     fireworks(seconds = 8) { fx.show = Math.max(fx.show, seconds); fx.nextShell = 0; },

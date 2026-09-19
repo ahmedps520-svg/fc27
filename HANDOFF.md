@@ -80,12 +80,17 @@ Everything below is on the local machine only.
 - **QA bot** (`tests/qa/bot.mjs`, `npm run test:qa`, in CI): onboarding
   (skip path + guided match), Ultimate XI (gold pack, XI, division match to
   the end, ladder counted), career (manager → club → a whole season through
-  `#simWeek`/`#acceptReview`/`#renewDone`), weekend (plays if the window is
-  open, else renders), online (two contexts register via `api.register`, host
-  lobby code → join → both reach kick-off and full time), watch. 2D path by
-  default (`--gl` for WebGL); `--only a,b`. Bugs it found and fixed: none in
-  the game so far — the two false alarms were the bot's own (half-time pause
-  when winding the clock; season boundary is `acceptReview`, not `nextSeason`).
+  `#simWeek`/`#acceptReview`/`#renewDone`, job offers if sacked), weekend
+  (plays if the window is open, else renders), online (two contexts register
+  via `api.register`, host lobby code → join → both reach kick-off and full
+  time), watch. 2D path by default (`--gl` for WebGL); `--only a,b`; the last
+  uncaught error's stack is captured via `window.__lastErr`. **Bug it found
+  and fixed**: a sacked manager taking a job in another league crashed the
+  career hub (`car.table[car.clubId]` undefined → "reading 'pts'") because
+  `takeJob` never rebuilt the table/calendar for the new league — now it
+  does (careerV2.js), with a regression test. Two false alarms were the bot's
+  own (winding the clock in the first half calls half time; the season
+  boundary is `acceptReview`, not `nextSeason`).
 - **Perf**: see the report; Ultra now carries the reflection pass in rain
   (second scene render at half res) and the skyline/exterior instances.
 

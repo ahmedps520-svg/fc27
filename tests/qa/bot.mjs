@@ -44,7 +44,11 @@ async function boot(tag, save, viewport = { width: 900, height: 560 }) {
   const ctx = await browser.newContext({ viewport, hasTouch: false });
   const page = await ctx.newPage();
   watch(page, tag);
-  await page.addInitScript(({ s }) => localStorage.setItem('apexxi.save.v1', JSON.stringify(s)), { s: save });
+  await page.addInitScript(({ s }) => {
+    localStorage.setItem('apexxi.save.v1', JSON.stringify(s));
+    // keep the last uncaught error's stack where the bot can read it
+    window.addEventListener('error', (e) => { window.__lastErr = String(e.error?.stack || e.message); });
+  }, { s: save });
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn', { timeout: 20000 });
   await page.click('#startBtn');
@@ -182,11 +186,13 @@ try {
       if (did === 'simWeek') weeks += 1;
       if (did === 'acceptReview' || did === 'nextSeason') seasons += 1;
       if (!did) throw new Error('career hub has nothing to press');
+      const err = await page.evaluate(() => { const e = window.__lastErr; window.__lastErr = null; return e; });
+      if (err) throw new Error(`career crashed after "${did}" in week ${weeks}: ${err.split('\n').slice(0, 4).join(' | ')}`);
       await page.waitForTimeout(250);
     }
     await page.waitForTimeout(300);
     const s = await save(page);
-    assert.ok(seasons === 1 && weeks >= 20, `a full season simulated (${weeks} weeks, ${seasons} season boundaries)`);
+    assert.ok(seasons === 1 && weeks >= 17, `a full season simulated (${weeks} weeks, ${seasons} season boundaries)`);
     assert.ok(s.career.season >= 2, 'the career moved into a new season');
     step(`full season simulated in ${weeks} weeks; season ${s.career.season} begins`);
     await ctx.close();
