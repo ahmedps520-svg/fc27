@@ -5,6 +5,7 @@ import { installUpdate, knownBuild } from '../update.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
 import { startTutorial, tutorialSeen } from '../tutorial.js';
+import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
 
 /** Push the saved audio preferences into the engine. */
 function applyAudio() {
@@ -127,10 +128,33 @@ export function render() {
     </section>
 
     <section class="panel glass">
-      <header class="panel-head"><h2>Look</h2></header>
+      <header class="panel-head"><h2>${t('settings.access')}</h2></header>
       <div class="setting-row">
-        <div><b>Reduce motion</b></div>
+        <div><b>${t('settings.language')}</b><span>${t('settings.language.sub')}</span></div>
+        <div class="seg" id="langSeg">
+          ${Object.entries(LANGS).map(([v, l]) => `<button class="${(s.lang || 'en') === v ? 'on' : ''}" data-lang="${v}" lang="${v}">${l}</button>`).join('')}
+        </div>
+      </div>
+      <div class="setting-row">
+        <div><b>${t('settings.largeText')}</b><span>${t('settings.largeText.sub')}</span></div>
+        <button class="switch ${s.largeText ? 'on' : ''}" id="largeTgl" role="switch" aria-checked="${!!s.largeText}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>${t('settings.colorSafe')}</b><span>${t('settings.colorSafe.sub')}</span></div>
+        <button class="switch ${s.colorSafeKits ? 'on' : ''}" id="colorSafeTgl" role="switch" aria-checked="${!!s.colorSafeKits}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>${t('settings.reduceMotion')}</b></div>
         <button class="switch ${s.reduceMotion ? 'on' : ''}" id="motionTgl" role="switch"
+                aria-checked="${s.reduceMotion}"><i></i></button>
+      </div>
+    </section>
+
+    <section class="panel glass">
+      <header class="panel-head"><h2>${t('settings.look')}</h2></header>
+      <div class="setting-row" hidden>
+        <div><b>Reduce motion</b></div>
+        <button class="switch ${s.reduceMotion ? 'on' : ''}" id="motionTgl2" role="switch"
                 aria-checked="${s.reduceMotion}"><i></i></button>
       </div>
       <div class="setting-row">
@@ -234,6 +258,19 @@ export function mount(root) {
   toggle(root.querySelector('#commentaryTgl'), 'commentary');
   toggle(root.querySelector('#motionTgl'), 'reduceMotion');
   toggle(root.querySelector('#fpsTgl'), 'showFps');
+  toggle(root.querySelector('#colorSafeTgl'), 'colorSafeKits');
+  root.querySelector('#largeTgl').addEventListener('click', (e) => {
+    const next = !getState().settings.largeText;
+    update((st) => { st.settings.largeText = next; });
+    e.currentTarget.classList.toggle('on', next);
+    applyLanguage();
+  });
+  root.querySelector('#langSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (!b) return;
+    setLang(b.dataset.lang);
+    navigate('settings');          // redraw in the new language
+  });
 
   root.querySelector('#soundTgl').addEventListener('click', (e) => {
     const next = getState().settings.sound === false;

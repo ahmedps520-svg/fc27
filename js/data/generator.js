@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -295,7 +295,7 @@ function buildWorld() {
       founded: bp.founded,
       ground: bp.ground,
       roster: [],                       // dealt (Meridian) or generated (wave 3) at the end of buildWorld
-      budget: Math.round((12 - bp.tier) * (bp.wave === 3 ? 2_000_000 : 5_000_000) + (bp.wave === 3 ? 2_500_000 : 6_000_000)),
+      budget: Math.round((12 - bp.tier) * (bp.wave === 4 ? 900_000 : bp.wave === 3 ? 2_000_000 : 5_000_000) + (bp.wave === 4 ? 1_200_000 : bp.wave === 3 ? 2_500_000 : 6_000_000)),
     });
   });
 
@@ -535,7 +535,7 @@ function buildWorld() {
   const W3_SHAPE = ['GK', 'GK', 'GK', 'CB', 'CB', 'CB', 'CB', 'LB', 'LB', 'RB', 'RB', 'CDM', 'CDM',
     'CM', 'CM', 'CM', 'CAM', 'CAM', 'LM', 'RM', 'LW', 'LW', 'RW', 'RW', 'ST', 'ST', 'ST'];
   for (const club of clubs) {
-    if (!CLUB_BLUEPRINTS.find((bp) => bp.name === club.name)?.wave) continue;
+    if (CLUB_BLUEPRINTS.find((bp) => bp.name === club.name)?.wave !== 3) continue;
     const base = (club.division === 3 ? 76 : 70) - (club.tier - 1) * 1.2;
     W3_SHAPE.forEach((pos, slot) => {
       const depth = slot % 3 === 2 ? 5 : slot % 3 === 1 ? 2 : 0;
@@ -555,6 +555,33 @@ function buildWorld() {
     freeAgents.push(p.id);
   }
   nameTheWorld(w3Players, REAL_PLAYERS_WAVE3);
+
+  /* ------------------------ the fifth and sixth divisions ------------------------ *
+   * v71: sixty clubs. Same recipe as the third wave, its own stream, appended
+   * after everything above, named from the fourth list. Ratings run 66 down
+   * to the floor of 60, which is where a card stops being a footballer and
+   * starts being a project. */
+  const w4 = makeRand(WORLD_SEED ^ 0x4b4b71);
+  const w4Players = [];
+  for (const club of clubs) {
+    if (CLUB_BLUEPRINTS.find((bp) => bp.name === club.name)?.wave !== 4) continue;
+    const base = (club.division === 5 ? 68 : 65) - (club.tier - 1) * 0.7;
+    W3_SHAPE.forEach((pos, slot) => {
+      const depth = slot % 3 === 2 ? 4 : slot % 3 === 1 ? 2 : 0;
+      const p = makePlayer(w4, pos, base - depth, club.id);
+      players.push(p); w4Players.push(p);
+      club.roster.push(p.id);
+    });
+    const star = makePlayer(w4, w4.pick(['ST', 'CAM', 'LW', 'RW', 'CM']), clamp(base + 6, 60, 78), club.id);
+    players.push(star); w4Players.push(star);
+    club.roster.push(star.id);
+  }
+  for (let i = 0; i < 480; i++) {
+    const p = makePlayer(w4, w4.pick(W3_POOL), w4.around(70, 9), null);
+    players.push(p); w4Players.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(w4Players, REAL_PLAYERS_WAVE4);
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 

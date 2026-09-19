@@ -131,3 +131,18 @@ test('development: the young rise, the old fade, within bounds', () => {
   void car;
   assert.equal(careerClub('t2-premierleague-0').tier, 2);
 });
+
+test('taking a job in another league rebuilds the table and calendar for that league', async () => {
+  const { startCareer } = await import('../../js/career.js');
+  const { getState, update } = await import('../../js/state.js');
+  const v2 = await import('../../js/careerV2.js');
+  update((s) => { s.career = null; });
+  startCareer({ name: 'Qa Bot', first: 'Qa', last: 'Bot', nation: 'England', age: 40, real: false, skin: 1, hairColor: 1, suit: 0, height: 182 }, 'liv');
+  const malaga = v2.allClubs().find((c) => c.name === 'Málaga').id;
+  update((s) => { v2.bindState(() => s.club); v2.takeJob(s.career, malaga); });
+  const car = getState().career;
+  assert.equal(car.clubId, malaga);
+  assert.ok(car.table[car.clubId], 'the hub can read the new club\'s row');
+  assert.ok(Object.keys(car.table).every((id) => car.leagueOf[id] === car.leagueOf[malaga]), 'the table is the new league');
+  assert.ok(car.fixtures.length > 0);
+});

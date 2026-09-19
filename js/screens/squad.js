@@ -22,6 +22,7 @@ import { toast, refreshCoins, navigate } from '../app.js';
 import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
+import { t } from '../i18n.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -730,7 +731,7 @@ export function render() {
   const div = DIVISIONS[u.divIdx];
   const head = screenHead({
     kicker: 'Mode 02',
-    title: 'Ultimate XI',
+    title: t('squad.title'),
     sub: `${div.name} · ${u.wins}W ${u.draws}D ${u.losses}L`
        + `${u.streak >= 2 ? ` · ${u.streak} in a row` : ''}`,
     motif: 'ladder', tone: 'a',
@@ -754,9 +755,9 @@ export function render() {
 
   const tabs = head + `
     <nav class="tabs" id="uTabs">
-      ${[['club', 'Club'], ['division', 'Division'], ['online', 'Online'],
-         ['objectives', 'Objectives'], ['challenges', 'Challenges'],
-         ['store', `Store${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
+      ${[['club', t('nav.club')], ['division', t('nav.division')], ['online', t('nav.online')],
+         ['objectives', t('nav.objectives')], ['challenges', t('nav.challenges')],
+         ['store', `${t('nav.store')}${owned ? ` <i class="tab-dot">${owned}</i>` : ''}`]]
         .map(([id, label]) => `<button class="tab ${tab === id ? 'on' : ''}" data-utab="${id}">${tabIcon(id)}<span>${label}</span></button>`).join('')}
     </nav>`;
 

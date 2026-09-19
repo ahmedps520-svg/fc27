@@ -4,6 +4,8 @@ import { maybeStartTutorial, tutorialSeen } from '../tutorial.js';
 import { claimableCount, dailyStatus } from '../progress.js';
 import { activeEvent } from '../live.js';
 import { mountHero, disposeHero, heroPlayer } from '../menuHero.js';
+import { needsOnboarding, showWelcome } from '../onboarding.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'APEX XI';
 
@@ -97,44 +99,42 @@ export function render() {
       <div class="hub-rail">
         <button class="tile t-mini tone-a t-today" data-go="today">
           <span class="tile-icon">${icon('today')}</span>
-          <span class="tile-name">Today</span>
+          <span class="tile-name">${t('menu.today')}</span>
           ${claims ? `<i class="tile-badge">${claims}</i>` : ''}
           ${ev ? `<span class="tile-sub">${ev.name}</span>` : ''}
         </button>
         <button class="tile t-mini tone-c" data-go="trophies">
           <span class="tile-icon">${icon('trophies')}</span>
-          <span class="tile-name">Trophies</span>
+          <span class="tile-name">${t('menu.trophies')}</span>
         </button>
         <button class="tile t-mini tone-b" data-go="career">
           <span class="tile-icon">${icon('career')}</span>
-          <span class="tile-name">Career</span>
+          <span class="tile-name">${t('menu.career')}</span>
         </button>
         <button class="tile t-mini tone-d" data-go="settings">
           <span class="tile-icon">${icon('settings')}</span>
-          <span class="tile-name">Settings</span>
+          <span class="tile-name">${t('menu.settings')}</span>
         </button>
       </div>
       <div class="hub-main">
         <button class="tile t-club tone-a" data-go="squad">
           ${swoosh}
           <span class="tile-icon">${icon('squad')}</span>
-          <span class="tile-name">Ultimate XI</span>
-          <span class="tile-blurb">Build · rank up · rewards</span>
-          <span class="tile-cta">Open →</span>
+          <span class="tile-name">${t('menu.ultimate')}</span>
+          <span class="tile-blurb">${t('menu.ultimate.blurb')}</span>
+          <span class="tile-cta">${t('menu.open')}</span>
         </button>
         <button class="tile t-play tone-c" data-go="quick">
           ${swoosh}
           <span class="tile-icon">${icon('quick')}</span>
-          <span class="tile-name">Kick Off</span>
-          <span class="tile-blurb">Straight into a match</span>
-          <span class="tile-cta">Play →</span>
+          <span class="tile-name">${t('menu.kickoff')}</span>
+          <span class="tile-blurb">${t('menu.kickoff.blurb')}</span>
+          <span class="tile-cta">${t('menu.play')}</span>
         </button>
       </div>
     </div>
 
-    <p class="disclaimer">Player, manager and Career Mode club names are those of real
-      people and clubs, used without endorsement or affiliation; Ultimate XI clubs and all
-      competitions are fictional. Badges and portraits are drawn and are not likenesses.</p>
+    <p class="disclaimer">${t('menu.disclaimer')}</p>
     </section>`;
 }
 
@@ -161,7 +161,11 @@ export function mount(root) {
      noise to someone who has not played the game at all. The notes are marked
      seen on the way past so they do not ambush the second launch either. */
   let closeNotes = null;
-  if (!tutorialSeen()) {
+  if (needsOnboarding()) {
+    // the first launch: starter squad, the guided match, the Today hub
+    markNotesSeen();
+    closeNotes = showWelcome(root);
+  } else if (!tutorialSeen()) {
     markNotesSeen();
     maybeStartTutorial();
   } else if (notesPending()) {

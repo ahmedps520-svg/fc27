@@ -8,7 +8,7 @@ import { resolveQuality, classifyGPU } from '../../js/game/render3d.js';
 
 /* ---- stadiums ---- */
 test('every club has its own ground and the definitions are sound', () => {
-  assert.ok(STADIUMS.length >= 44);
+  assert.ok(STADIUMS.length >= 64);
   assert.equal(new Set(STADIUMS.map((s) => s.id)).size, STADIUMS.length, 'ids unique');
   for (const s of STADIUMS) {
     assert.ok(s.size >= 0 && s.size <= 1, `${s.id} size`);
@@ -16,7 +16,7 @@ test('every club has its own ground and the definitions are sound', () => {
     assert.ok(['stripes', 'checks', 'diagonal', 'rings', 'plain'].includes(s.pattern), `${s.id} pattern`);
     assert.ok(['lattice', 'mast', 'rim'].includes(s.pylons), `${s.id} pylons`);
     assert.equal(s.seats.length, 2);
-    assert.ok(s.capacity > 5000 && s.fill > 0 && s.fill <= 1);
+    assert.ok(s.capacity > 4000 && s.fill > 0 && s.fill <= 1);
   }
   const seen = new Set();
   for (const c of WORLD.clubs) {
@@ -24,7 +24,7 @@ test('every club has its own ground and the definitions are sound', () => {
     assert.equal(st.name, c.ground, `${c.name} plays at its own ground`);
     seen.add(st.id);
   }
-  assert.equal(seen.size, 40, 'forty different grounds for forty clubs');
+  assert.equal(seen.size, 60, 'sixty different grounds for sixty clubs');
   assert.equal(STADIUMS.filter((s) => s.showpiece).length, 4);
 });
 
@@ -78,7 +78,7 @@ test('promotion and relegation keep every division at ten clubs', () => {
     const divs = composition(season);
     assert.equal(divs.length, LEAGUES.length);
     for (const ids of divs) assert.equal(ids.length, 10);
-    assert.equal(new Set(divs.flat()).size, 40, 'nobody in two divisions, nobody missing');
+    assert.equal(new Set(divs.flat()).size, 60, 'nobody in two divisions, nobody missing');
   }
   // the two that finished bottom of the top flight in season 0 are in division 2 in season 1
   const table0 = divisionTable(0, 1, composition(0)[0], ROUNDS).map((r) => r.id);
@@ -99,8 +99,8 @@ test('the world state reads the calendar', () => {
   assert.ok(s5.divisions[0].table.every((r) => r.p === 5));
   const s1 = worldState(epoch + day * ROUNDS);
   assert.equal(s1.season, 2);
-  assert.equal(s1.movers.promoted.length, 6);
-  assert.equal(s1.movers.relegated.length, 6);
+  assert.equal(s1.movers.promoted.length, 10);
+  assert.equal(s1.movers.relegated.length, 10);
   assert.ok([1, 2, 3, 4].includes(liveDivisionOf('c1', epoch + day * 40)));
 });
 

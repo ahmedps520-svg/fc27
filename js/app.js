@@ -12,6 +12,7 @@ import * as Today from './screens/today.js';
 import * as Trophies from './screens/trophies.js';
 import * as Weekend from './screens/weekend.js';
 import * as World from './screens/world.js';
+import * as Stadiums from './screens/stadiums.js';
 import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
@@ -20,9 +21,11 @@ import * as net from './net/socket.js';
 import { adoptCloudSave, cloudWins } from './state.js';
 import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
+import { applyLanguage } from './i18n.js';
 
 const SCREENS = {
   world: World,
+  stadiums: Stadiums,
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
   settings: Settings, match: MatchScreen, play: Play, online: Online,
   today: Today, trophies: Trophies, weekend: Weekend,
@@ -43,7 +46,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v70';
+export const APP_VERSION = 'v71';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -56,6 +59,7 @@ let activeCleanup = null;
 
 export function applyTheme() {
   const s = getState().settings;
+  applyLanguage();
   document.documentElement.style.setProperty('--accent', GREEN.accent);
   document.documentElement.style.setProperty('--accent-deep', GREEN.deep);
   document.documentElement.style.setProperty('--accent-soft', GREEN.soft);

@@ -17,6 +17,7 @@ import { weekendWindow, currentWeekend, matchesLeft, rankFor, untilText } from '
 import * as progress from '../progress.js';
 import { DAILY } from '../progress.js';
 import { worldState } from '../world.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'Today';
 
@@ -138,17 +139,17 @@ function worldPanel() {
   const leader = top.table[0] && WORLD.clubsById[top.table[0].id];
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>The World</h2><span class="ph-sub">Season ${w.season} · Round ${w.round}/${w.rounds}</span></header>
+      <header class="panel-head"><h2>${t('today.world')}</h2><span class="ph-sub">Season ${w.season} · Round ${w.round}/${w.rounds}</span></header>
       <div class="claim-row">
         <div><b>${leader ? `${leader.name} lead the ${top.name}` : top.name}</b><span>${top.today.length} fixtures today across four divisions</span></div>
-        <button class="btn" data-go="world">Tables →</button>
+        <button class="btn" data-go="world">${t('today.tables')}</button>
       </div>
     </section>`;
 }
 
 export function render() {
   const s = getState();
-  const head = screenHead({ kicker: 'Every day', title: 'Today', sub: new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
+  const head = screenHead({ kicker: t('today.kicker'), title: t('today.title'), sub: new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
   return head + `<div class="today">${claimsPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${worldPanel()}${objectivesPanel(s)}</div>`;
 }
 

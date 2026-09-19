@@ -6,6 +6,7 @@ import { screenHead } from '../components/screenHead.js';
 import { navigate } from '../app.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { stadiumFor } from '../data/stadiums.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'Kick Off';
 
@@ -17,10 +18,10 @@ let mode = 'single';       // single | versus | coop
 let timeOf = 'auto';       // auto | day | dusk | night
 let weather = 'auto';      // auto | clear | overcast | rain
 
-const MODES = [
-  { id: 'single', label: '1 Player', sub: 'You vs CPU' },
-  { id: 'versus', label: '2P Versus', sub: 'Head to head' },
-  { id: 'coop', label: '2P Co-op', sub: 'Same team' },
+const MODES = () => [
+  { id: 'single', label: t('quick.1p'), sub: t('quick.1p.sub') },
+  { id: 'versus', label: t('quick.2p'), sub: t('quick.2p.sub') },
+  { id: 'coop', label: t('quick.coop'), sub: t('quick.coop.sub') },
 ];
 
 /** Departmental ratings, so each card reads like a real team sheet. */
@@ -132,14 +133,14 @@ function h2h(hIdx, aIdx) {
 export function render() {
   return `
     ${screenHead({
-      kicker: 'Mode 01',
-      title: 'Kick Off',
-      sub: 'Pick two clubs and play. Nothing is saved, nothing is at stake.',
+      kicker: t('quick.kicker'),
+      title: t('quick.title'),
+      sub: t('quick.sub'),
       motif: 'pitch', tone: 'c',
     })}
     <div class="teamsel">
       <div class="ts-side ts-home">
-        <span class="ts-label">HOME</span>
+        <span class="ts-label">${t('quick.home')}</span>
         <div id="tsHome">${teamCard(homeIdx, 'home')}</div>
         <span class="ts-seat" id="tsSeatH"></span>
         <div id="tsRailH">${clubRail('home', homeIdx, awayIdx)}</div>
@@ -149,49 +150,50 @@ export function render() {
         <span class="ts-vs">VS</span>
         <div id="tsH2h">${h2h(homeIdx, awayIdx)}</div>
         <div class="ts-opt">
-          <span>Mode</span>
+          <span>${t('quick.mode')}</span>
           <div class="seg col" id="modeSeg">
-            ${MODES.map((m) => `
+            ${MODES().map((m) => `
               <button class="${mode === m.id ? 'on' : ''}" data-mode="${m.id}">
                 <b>${m.label}</b><i>${m.sub}</i>
               </button>`).join('')}
           </div>
         </div>
         <div class="ts-opt">
-          <span>Length</span>
+          <span>${t('quick.length')}</span>
           <div class="seg" id="lenSeg">
             ${[[120, '2m'], [240, '4m'], [420, '7m']].map(([v, l]) =>
               `<button class="${duration === v ? 'on' : ''}" data-len="${v}">${l}</button>`).join('')}
           </div>
         </div>
         <div class="ts-opt" id="skillOpt">
-          <span>CPU</span>
+          <span>${t('quick.cpu')}</span>
           <div class="seg" id="skillSeg">
-            ${[[0.7, 'Easy'], [1, 'Pro'], [1.35, 'Elite']].map(([v, l]) =>
+            ${[[0.7, t('easy')], [1, t('pro')], [1.35, t('elite')]].map(([v, l]) =>
               `<button class="${skill === v ? 'on' : ''}" data-skill="${v}">${l}</button>`).join('')}
           </div>
         </div>
         <div class="ts-opt">
-          <span>Kick-off</span>
+          <span>${t('quick.time')}</span>
           <div class="seg" id="timeSeg">
-            ${[['auto', 'Auto'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']].map(([v, l]) =>
+            ${[['auto', t('auto')], ['day', t('day')], ['dusk', t('dusk')], ['night', t('night')]].map(([v, l]) =>
               `<button class="${timeOf === v ? 'on' : ''}" data-time="${v}">${l}</button>`).join('')}
           </div>
         </div>
         <div class="ts-opt">
-          <span>Weather</span>
+          <span>${t('quick.weather')}</span>
           <div class="seg" id="weatherSeg">
-            ${[['auto', 'Auto'], ['clear', 'Clear'], ['overcast', 'Cloud'], ['rain', 'Rain']].map(([v, l]) =>
+            ${[['auto', t('auto')], ['clear', t('clear')], ['overcast', t('cloud')], ['rain', t('rain')]].map(([v, l]) =>
               `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${l}</button>`).join('')}
           </div>
         </div>
         <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
-        <button class="btn primary big" id="kickOff">Kick Off</button>
-        <button class="btn ghost" id="worldBtn">League tables · The World →</button>
+        <button class="btn primary big" id="kickOff">${t('quick.go')}</button>
+        <button class="btn ghost" id="worldBtn">${t('quick.world')}</button>
+        <button class="btn ghost" id="stadiumsBtn">${t('quick.stadiums')}</button>
       </div>
 
       <div class="ts-side ts-away">
-        <span class="ts-label">AWAY</span>
+        <span class="ts-label">${t('quick.away')}</span>
         <div id="tsAway">${teamCard(awayIdx, 'away')}</div>
         <span class="ts-seat" id="tsSeatA"></span>
         <div id="tsRailA">${clubRail('away', awayIdx, homeIdx)}</div>
@@ -314,6 +316,7 @@ export function mount(root) {
   });
 
   q('#worldBtn').addEventListener('click', () => navigate('world'));
+  q('#stadiumsBtn').addEventListener('click', () => navigate('stadiums'));
   seatText();
   const padTimer = setInterval(seatText, 900);
   return () => { clearInterval(padTimer); window.removeEventListener('keydown', onKey); };

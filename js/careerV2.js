@@ -426,6 +426,21 @@ export function takeJob(car, clubId) {
   car.morale = 0.6;
   car.review = null;
   car.offers = [];
+  /* A new job is usually in a different league. The table and the calendar
+     were built for the old one at the season boundary, and the hub reads
+     `car.table[car.clubId]` on its first line — so rebuild both for the
+     league the new club plays in. (Found by the QA bot: a sacked manager who
+     took the Málaga job crashed the hub on "reading 'pts'".) */
+  const league = car.leagueOf?.[clubId] || clubOf(clubId)?.league;
+  if (league && car.leagueOf) {
+    const ids = leagueClubIds(car, league);
+    if (!ids.every((id) => car.table[id])) {
+      car.table = Object.fromEntries(ids.map((id) => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
+      car.fixtures = buildCalendar(car, league);
+      car.week = 1;
+    }
+    setBoardObjectives(car);
+  }
 }
 
 /* ------------------------------------------------------------------ *

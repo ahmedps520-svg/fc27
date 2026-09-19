@@ -5,14 +5,17 @@ import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import {
   draw, makeCamera, updateCamera, groundBasis, replayCamera, celebrationCamera, resolveQuality,
+  orbitCamera, walkoutCamera,
 } from '../game/render3d.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
 import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/stadiums.js';
+import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
+import { t } from '../i18n.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
@@ -23,6 +26,7 @@ import {
 } from '../net/netplay.js';
 
 export const TITLE = 'Match';
+const CY = PITCH.h / 2;
 
 /**
  * What the loading screen says while it waits.
@@ -248,11 +252,22 @@ export function mount(root, params) {
   });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
+  window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
+  // colour-safe kits: the away strip is chosen against every kind of colour vision
+  match.vision = getState().settings.colorSafeKits ? 'all' : 'normal';
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
   const celebCam = makeCamera();
   let celebT = 0;
   let chantT = 18;                       // first song a while after kick-off
+  /* The walk-out: seven seconds before kick-off with both sides lined up on
+     the halfway line, the anthem playing and the home end's tifo up, on a
+     tracking shot along the lines. Skipped online (two clocks), for guests,
+     and under reduced motion, which is also what the smoke suite runs on. */
+  let walkout = null;
+  const showCam = makeCamera();          // half-time show and photo mode
+  let showT = 0;
+  let photo = null;                      // { yaw, pitch, dist, filter } while photo mode is open
 
   /* ------------------------------ commentary ------------------------------ *
    * The voice in the gantry. Every cue the sim raises that has lines in
@@ -360,6 +375,12 @@ export function mount(root, params) {
   ];
   let hintIdx = 0;
   let hintTimer = 0;
+  /* The guided match (onboarding): the lesson plan replaces the rotating
+     hints, each step staying up until the player does the thing, and the
+     end of the match banks the first rewards and lands on Today. */
+  const guided = !!params.guided;
+  let guideIdx = 0;
+  let guideHold = 0;
   const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online;
   if (wantHints) update((st) => { st.flags.hintMatches = (st.flags.hintMatches | 0) + 1; });
 
@@ -492,6 +513,30 @@ export function mount(root, params) {
     reel = null;
   };
 
+  /** Both XIs on the halfway line, facing the near touchline, keepers at the ends. */
+  const lineUp = () => {
+    for (let t = 0; t < 2; t++) {
+      const xi = match.teams[t].players.slice(0, 11);
+      xi.forEach((p, i) => {
+        p.x = PITCH.w / 2 + (t === 0 ? -1.6 : 1.6);
+        p.y = CY + 7 - i * 1.5;
+        p.vx = 0; p.vy = 0; p.dirX = 0; p.dirY = -1;
+      });
+    }
+    match.ball.x = PITCH.w / 2; match.ball.y = CY - 12; match.ball.z = 0; match.ball.vx = 0; match.ball.vy = 0;
+  };
+  /** Photo mode's free camera: an orbit round the ball, dragged by the pointer. */
+  const photoCamera = () => {
+    const b = match.ball;
+    const r = photo.dist;
+    showCam.x = b.x + Math.cos(photo.yaw) * r;
+    showCam.y = b.y + Math.sin(photo.yaw) * r;
+    showCam.z = 1 + Math.sin(photo.pitch) * r;
+    showCam.tx = b.x; showCam.ty = b.y; showCam.tz = 1;
+    showCam.hfov = photo.fov;
+    return showCam;
+  };
+
   let replay = null;
   /* Highlights: the goal clips, one after another, over the full-time card.
    * Uses the replay machinery unchanged — each clip is a replay, and when one
@@ -527,6 +572,7 @@ export function mount(root, params) {
     };
     clip = null;
     replayTag.hidden = false;
+    gl?.setReplay(true);
     return true;
   };
 
@@ -536,6 +582,7 @@ export function mount(root, params) {
     allPlayers().forEach((p, i) => { p.celebrating = replay.celeb[i]; });
     replay = null;
     replayTag.hidden = true;
+    gl?.setReplay(false);
     if (highlightIdx >= 0) nextHighlight();
   };
 
@@ -1012,7 +1059,7 @@ export function mount(root, params) {
   const glLoad = import('../game/renderGL.js').then((m) => {
     if (!running) return;
     gl = m.createRenderer(canvas, match, quality, useModels);
-    window.__apexGL = gl;             // the perf harness reads renderer.info through this
+    window.__apexGL = gl; window.__apexMatch = match; window.__apexDbg = () => ({ walkout, phase: match.phase, minute: match.minute(), paused, loading, ended }); // the perf harness reads renderer.info through this
     resize();
     gl.ready.then(() => { assetsReady = true; });
   }).catch((err) => {
@@ -1097,6 +1144,12 @@ export function mount(root, params) {
     /* The PA welcomes the crowd as the veil lifts — the ground, the two
        sides and the gate. Once per match, and not online, where the two
        machines lift their veils at different moments. */
+    if (!online && !getState().settings.reduceMotion && !view) {
+      walkout = { t: 0, dur: 7 };
+      lineUp();
+      startAnthem(match.venue?.stadium?.name?.length || 1);
+      gl?.tifo(true);
+    } else gl?.tifo(true);
     if (match.venue?.stadium && !online) {
       const st = match.venue.stadium;
       const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
@@ -1440,7 +1493,7 @@ export function mount(root, params) {
      * the guest reads back out of snapshots. The local menu on its own never
      * stops an online match (the other player is still out there). */
     const syncActive = online ? (online.host ? syncLeft > 0 : guestSynced) : false;
-    const frozen = ((paused || loading) && !online) || syncActive;
+    const frozen = ((paused || loading || !!walkout || !!photo) && !online) || syncActive;
     sender?.tick(dt);
 
     if (input.pressed('pause') && !ended && !loading) {
@@ -1585,6 +1638,12 @@ export function mount(root, params) {
       while (match.cues.length) {
         const c = match.cues.shift();
         sfx(c.name, c.arg);
+        // the scanned models play a kick, a slide or a header for these moments
+        if (c.arg && typeof c.arg === 'object' && c.arg.ref) {
+          const act = c.name === 'shot' || c.name === 'pass' || c.name === 'cross' || c.name === 'lob' ? 'kick'
+            : c.name === 'tackle' || c.name === 'foul' ? 'tackle' : c.name === 'header' ? 'header' : null;
+          if (act) { c.arg._act = act; c.arg._actT = 0.55; }
+        }
         mgrCue(c.name);
         commentCue(c.name, c.arg);
         if (online?.host) outgoing.push([c.name, typeof c.arg === 'object' ? (c.arg?.team ?? 0) : (c.arg ?? 0)]);
@@ -1625,7 +1684,18 @@ export function mount(root, params) {
     if (feedTimer > 0) { feedTimer -= dt; if (feedTimer <= 0) feedEl?.classList.remove('flash'); }
     paintSetPiece();
     if (!loading && !ended) clockCommentary();
-    if (wantHints && !loading && !paused) {
+    if (guided && !loading && !paused && !ended) {
+      const stepDef = GUIDE_STEPS[guideIdx];
+      if (stepDef) {
+        hintsEl.hidden = false;
+        hintsEl.textContent = `${guideIdx + 1}/${GUIDE_STEPS.length} · ${t(stepDef.key)}`;
+        hintsEl.classList.add('guide');
+        guideHold -= dt;
+        let ok = false;
+        try { ok = stepDef.done(match, input); } catch { ok = false; }
+        if (ok && guideHold <= 0) { guideIdx += 1; guideHold = 1.2; sfx('coin'); }
+      } else if (hintsEl.textContent !== t('guide.done')) { hintsEl.textContent = t('guide.done'); }
+    } else if (wantHints && !loading && !paused) {
       hintTimer -= dt;
       if (hintTimer <= 0) {
         hintTimer = 7;
@@ -1637,11 +1707,27 @@ export function mount(root, params) {
      * scorer; broadcast resumes for the restart. Not during a replay (which
      * has its own) and not in a career manager cam. */
     let liveCam = cam;
-    if (match.phase === 'goal' && !replay && !reel && (!careerCtx || mgr?.camMode !== 'manager')) {
-      if (celebT === 0) { celebCam.x = cam.x; celebCam.y = cam.y; celebCam.z = cam.z; }
+    if (walkout) {
+      walkout.t += Math.min(0.25, raw);   // wall clock, so a slow device still walks out in seven seconds
+      lineUp();
+      liveCam = walkoutCamera(showCam, walkout.t, walkout.dur);
+      if (walkout.t >= walkout.dur) {
+        walkout = null;
+        match.resetPositions(0);
+        stopAnthem();
+        sfx('whistle');
+      }
+    } else if (photo) {
+      liveCam = photoCamera();
+    } else if (paused && halfTime && !careerCtx) {
+      // the half-time show: a slow orbit of the ground behind the facts
+      showT += Math.min(0.25, raw);
+      liveCam = orbitCamera(showCam, showT, 74, 24);
+    } else if (match.phase === 'goal' && !replay && !reel && (!careerCtx || mgr?.camMode !== 'manager')) {
+      if (celebT === 0) { celebCam.x = cam.x; celebCam.y = cam.y; celebCam.z = cam.z; gl?.setReplay(true); }
       celebT += dt;
       liveCam = celebrationCamera(celebCam, match, celebT);
-    } else celebT = 0;
+    } else if (celebT > 0) { celebT = 0; if (!replay) gl?.setReplay(false); }
     const shot = replay ? replay.cam : reel ? reel.cam : liveCam;
     if (gl) gl.render(match, shot, rdt);
     else if (ctx) draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
@@ -1732,14 +1818,69 @@ export function mount(root, params) {
 
   /* ---------------------------- pause menu ----------------------------- */
   const PAUSE_ITEMS = [
-    { id: 'resume', label: 'Resume Match' },
-    { id: 'team', label: 'Team Management' },
-    { id: 'subs', label: 'Substitutions' },
-    { id: 'facts', label: 'Match Facts' },
-    { id: 'controls', label: 'Controls' },
-    { id: 'sound', label: 'Sound' },
-    { id: 'leave', label: 'Leave Match' },
+    { id: 'resume', label: t('pause.resume') },
+    { id: 'team', label: t('pause.team') },
+    { id: 'subs', label: t('pause.subs') },
+    { id: 'facts', label: t('pause.facts') },
+    { id: 'controls', label: t('pause.controls') },
+    { id: 'sound', label: t('pause.sound') },
+    { id: 'photo', label: t('pause.photo') },
+    { id: 'leave', label: t('pause.leave') },
   ];
+  const PHOTO_FILTERS = [['none', 'None'], ['saturate(1.25) contrast(1.08)', 'Vivid'], ['sepia(.35) contrast(1.05) saturate(1.2)', 'Warm'], ['hue-rotate(-12deg) saturate(.9) contrast(1.1)', 'Cool'], ['grayscale(1) contrast(1.15)', 'Mono'], ['sepia(.6) contrast(.95) brightness(1.05)', 'Film']];
+  let photoBar = null;
+  function openPhoto() {
+    if (!gl) { toast('Photo mode needs the 3D renderer', 'info'); return; }
+    photo = { yaw: Math.atan2(cam.y - match.ball.y, cam.x - match.ball.x), pitch: 0.35, dist: 14, fov: 42, filter: 'none' };
+    overlay.hidden = true;
+    photoBar = document.createElement('div');
+    photoBar.className = 'photo-bar';
+    photoBar.innerHTML = `
+      <div class="photo-filters">${PHOTO_FILTERS.map(([v, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-filter="${v}">${l}</button>`).join('')}</div>
+      <div class="photo-actions"><span class="photo-hint">${t('photo.hint')}</span><button class="btn primary" data-photo="save">${t('photo.save')}</button><button class="btn ghost" data-photo="done">${t('photo.done')}</button></div>`;
+    root.appendChild(photoBar);
+    root.classList.add('photo-mode');
+    photoBar.addEventListener('click', async (e) => {
+      const f = e.target.closest('[data-filter]');
+      if (f) { photo.filter = f.dataset.filter; canvas.style.filter = photo.filter; photoBar.querySelectorAll('[data-filter]').forEach((x) => x.classList.toggle('on', x === f)); return; }
+      const a = e.target.closest('[data-photo]');
+      if (!a) return;
+      if (a.dataset.photo === 'save') {
+        const blob = await gl.snapshot(match, photoCamera(), photo.filter);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `apexxi-${match.teams[0].short}-${match.teams[1].short}-${match.minute()}.png`;
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        toast('Photo saved', 'good');
+        return;
+      }
+      closePhoto();
+    });
+    let drag = null;
+    const down = (e) => { drag = { x: e.clientX, y: e.clientY }; };
+    const move = (e) => {
+      if (!drag || !photo) return;
+      photo.yaw -= (e.clientX - drag.x) * 0.008;
+      photo.pitch = Math.max(0.03, Math.min(1.3, photo.pitch + (e.clientY - drag.y) * 0.006));
+      drag = { x: e.clientX, y: e.clientY };
+    };
+    const up = () => { drag = null; };
+    const wheel = (e) => { if (photo) { photo.dist = Math.max(3, Math.min(60, photo.dist * (e.deltaY > 0 ? 1.1 : 0.9))); e.preventDefault(); } };
+    canvas.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    canvas.addEventListener('wheel', wheel, { passive: false });
+    photo.off = () => { canvas.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); canvas.removeEventListener('wheel', wheel); };
+  }
+  function closePhoto() {
+    photo?.off?.();
+    photo = null;
+    canvas.style.filter = '';
+    photoBar?.remove(); photoBar = null;
+    root.classList.remove('photo-mode');
+    paintPause();
+    overlay.hidden = false;
+  }
   let navIdx = 1;
   let section = 'team';
   let subFrom = null;      // the shirt selected to come off, if any
@@ -1918,6 +2059,7 @@ export function mount(root, params) {
       navigate('quick');
       return;
     }
+    if (id === 'photo') { openPhoto(); return; }
     if (id === 'sound') {
       // one switch for everything the match makes: crowd, whistle, kicks, commentary cues
       update((st) => { st.settings.sound = st.settings.sound === false; });
@@ -2005,6 +2147,7 @@ export function mount(root, params) {
   }
 
   function finish() {
+    if (params.final || params.weekend || params.showpiece) gl?.fireworks(16);
     const [ph, pa] = match.possession();
     const [h, a] = match.teams;
     const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
@@ -2117,13 +2260,13 @@ export function mount(root, params) {
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
         <div class="gm-btns">
           ${mode === 'career'
-            ? '<button class="btn primary" data-o="career">Continue the season</button>'
+            ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
             : online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
-              : '<button class="btn primary" data-o="again">Rematch</button>'}
-          <button class="btn ghost" data-o="quit">Quit</button>
+              : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+          <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
         </div>
       </div>`;
   }
@@ -2146,7 +2289,7 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
-      if (o === 'quit') { exitFullscreen(); navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);
@@ -2244,7 +2387,7 @@ export function mount(root, params) {
     stopP2P();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
-    try { stopCrowd(); stopRain(); silenceAnnouncer(); } catch { /* audio teardown must not block the rest */ }
+    try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
     try { gl?.dispose(); } catch { /* GPU teardown least of all */ }
     for (const inp of inputs) { try { inp.destroy?.(); } catch { /* ditto */ } }
     // tell the hub we are gone, so the other player is not left waiting

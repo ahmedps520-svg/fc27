@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,3 +32,5 @@ jobs:
         run: npm run test:smoke
       - name: Black-patch scan (Ultra renderer, software WebGL)
         run: node tests/perf/gl-scan.mjs --frames 8
+      - name: QA bot (onboarding, Ultimate XI, career season, weekend, online 2-client, watch)
+        run: npm run test:qa
