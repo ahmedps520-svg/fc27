@@ -103,5 +103,6 @@ test('resolveEntry names a real card with a contract', () => {
   assert.deepEqual(entry.contract, { years: 2 });
   const stranger = resolveEntry(['Nobody Atall', 'CM', 'Wales'], null);
   assert.equal(stranger.overall, 74, 'an unknown name gets the default rating');
-  assert.equal(careerClub(club.id), club);
+  assert.equal(careerClub(club.id).id, club.id);
+  assert.equal(careerClub(club.id).tier, 1);
 });

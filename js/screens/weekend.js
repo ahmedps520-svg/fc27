@@ -16,6 +16,9 @@ import { rewardText } from '../data/season.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { apiURL } from '../net/config.js';
 import { WORLD } from '../data/generator.js';
+import * as net from '../net/socket.js';
+import { isSignedIn } from '../net/api.js';
+import { queueWeekend, cancelQueue } from './online.js';
 
 export const TITLE = 'Weekend League';
 
@@ -38,8 +41,12 @@ export function render() {
             <span>${tally.played}/${WL_MATCHES} played · ${tally.draws}D ${tally.losses}L · ${tally.goalsFor}–${tally.goalsAgainst}</span>
             <div class="div-pips">${Array.from({ length: WL_MATCHES }, (_, i) => `<i class="${i < tally.wins ? 'on' : i < tally.played ? 'lost' : ''}"></i>`).join('')}</div>
           </div>
-          ${w.open && left ? `<button class="btn primary big" id="wlPlay" ${squadReady ? '' : 'disabled'}>Play match ${tally.played + 1}</button>` : ''}
+          ${w.open && left ? `<div class="wl-btns">
+            <button class="btn primary big" id="wlPlay" ${squadReady ? '' : 'disabled'}>Play match ${tally.played + 1}</button>
+            <button class="btn big" id="wlOnline" ${squadReady && isSignedIn() ? '' : 'disabled'}>Find an opponent online</button>
+          </div>` : ''}
         </div>
+        <div class="wl-search" id="wlSearch" hidden><span>Searching for a weekend opponent with a similar record…</span><button class="btn ghost" id="wlCancel">Cancel</button></div>
         ${!squadReady ? '<p class="setting-note warn">Fill all eleven slots of your Ultimate XI first.</p>' : ''}
         ${!w.open ? '<p class="hint">Rewards for a finished weekend are claimed on the Today screen once the window closes.</p>' : ''}
       </section>
@@ -74,6 +81,13 @@ export function mount(root) {
       weekend: w.id,
     });
   });
+  root.querySelector('#wlOnline')?.addEventListener('click', () => {
+    const tally = getState().club.weekend || { wins: 0 };
+    if (!net.isReady()) net.connect();
+    if (!queueWeekend({ id: w.id, wins: tally.wins | 0 })) return toast('Connecting… try again in a moment', 'warn');
+    root.querySelector('#wlSearch').hidden = false;
+  });
+  root.querySelector('#wlCancel')?.addEventListener('click', () => { cancelQueue(); root.querySelector('#wlSearch').hidden = true; });
   fetch(apiURL(`/api/weekend?id=${w.id}`)).then((r) => r.json()).then((d) => {
     const el = root.querySelector('#wlRows');
     if (!el) return;

@@ -18,6 +18,71 @@
  */
 export const RELEASES = [
   {
+    version: 'v69',
+    date: '2026-09-19',
+    tag: 'Football',
+    title: 'The football, and the job',
+    lede: 'Set pieces you take yourself, smarter teams and keepers, commentary, a celebration cut, '
+        + 'highlights — and a career with a second tier, a cup, offers, an academy and a board.',
+    entries: [
+      {
+        head: 'Dead balls are yours',
+        summary: 'Corners, free kicks, penalties and throw-ins: aim with the stick, hold the button for the kick.',
+        detail: 'Fouls anywhere are free kicks now, with a wall ten yards off; a shot over it, a '
+              + 'cross or a short ball, your choice. Throw-ins are taken, not teleported. Penalties '
+              + 'let you pick a side and load the power. On a phone the buttons relabel themselves '
+              + 'for the moment. The CPU takes its own with a wall and an idea.',
+      },
+      {
+        head: 'Teams that think',
+        summary: 'Counter-attacks, off-the-ball runs, a block that drops and narrows, sweeper-keepers, distribution with intent.',
+        detail: 'Win it deep and the whole side breaks. Midfielders time runs beyond the ball. '
+              + 'Keepers come for loose balls and claim crosses, then roll it to a free full-back '
+              + 'instead of always launching it. Injuries happen — a limping player is slower and '
+              + 'less accurate, and the CPU replaces him at the next stoppage. Tired legs blunt '
+              + 'passing and shooting. Skill move (H / L2) and lob (U / Select) are new controls; '
+              + 'the tutorial and the pause menu explain them.',
+      },
+      {
+        head: 'Presentation',
+        summary: 'A commentary feed of 200+ lines, a camera cut for goals, half-time facts with expected goals, highlights, a sound switch.',
+        detail: 'The voice in the gantry reacts to shots, saves, fouls, chances, breaks and the '
+              + 'clock. Goals cut to a pitch-level camera beside the scorer. Half time opens on the '
+              + 'stat sheet — possession, shots, expected goals, big chances, corners, fouls — and '
+              + 'full time offers a highlights reel of every goal. Sound on/off lives in the pause menu.',
+      },
+      {
+        head: 'Career, second season and beyond',
+        summary: 'Second tiers with promotion and relegation, a national cup, offers for your players, AI transfers, an academy, scouting, development, a board that can sack you, press conferences.',
+        detail: 'Every country has a second division of real clubs whose squads are real players. '
+              + 'Two go down and two come up — including you. A knockout cup runs every fifth week. '
+              + 'In the windows clubs bid for your best players; you accept, counter or refuse, and '
+              + 'the other clubs trade among themselves. Three academy prospects train and can be '
+              + 'promoted; a scout reports on any league in four weeks; the young grow and the old '
+              + 'fade each summer. The board sets an objective from where your squad ranks and '
+              + 'loses patience if you fall well short — miss it and you are out, with interviews '
+              + 'elsewhere. A press question follows every match. League titles, cups, promotions '
+              + 'and graduates pay Apex and packs into Ultimate XI.',
+      },
+      {
+        head: 'Online',
+        summary: 'A Weekend League queue that pairs you by record, and reconnects that keep the match alive.',
+        detail: 'Find an opponent from the Weekend League screen and you are matched with someone '
+              + 'on a similar number of wins this weekend. Drop your connection mid-match and the '
+              + 'server holds your seat for 45 seconds while your opponent\'s game pauses; come '
+              + 'back and it resumes where it was.',
+      },
+      {
+        head: 'Balance re-baselined',
+        summary: 'The new team AI changed the football on purpose; the sweep was re-recorded and stays inside its targets.',
+        detail: 'Sixty AI-vs-AI matches on two seeds: 2.10 and 2.20 goals a match, 12.7 shots, '
+              + 'against 2.45 and 12.4 before. Blocks that drop and counter-attacks were tuned '
+              + 'until the game landed back inside 2–3 goals and about 11–13 shots. The watch shows '
+              + 'a line of commentary for the big moments and prompts you at set pieces.',
+      },
+    ],
+  },
+  {
     version: 'v68',
     date: '2026-09-19',
     tag: 'Live',

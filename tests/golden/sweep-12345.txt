@@ -1,7 +1,7 @@
 60 matches, seed 12345, authentic
-  goals        2.45        (target 2-3)
-  shots        12.42       (target ~11)
-  on target    10.32
-  conversion   19.7%
-  home poss    49.80%
-  crosses      1.72        (0.32 with a man in the box)
+  goals        2.10        (target 2-3)
+  shots        12.73       (target ~11)
+  on target    9.50
+  conversion   16.5%
+  home poss    50.45%
+  crosses      1.85        (0.45 with a man in the box)

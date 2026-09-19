@@ -16,9 +16,10 @@ import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './data/careerDb.js';
 import { getState, update } from './state.js';
 import { onCareer } from './progress.js';
+import * as v2 from './careerV2.js';
 
 export { CAREER_CLUBS, REAL_MANAGERS };
-export const careerClub = (id) => CAREER_CLUBS.find((c) => c.id === id);
+export const careerClub = (id) => v2.clubOf(id);
 export const START_COINS = 500_000_000;
 
 /* ------------------------------------------------------------------ *
@@ -59,7 +60,11 @@ function personality(name) {
 export function resolveEntry(row, contract) {
   const [name, position, nation] = row;
   const card = nameIndex().get(name);
-  const overall = CAREER_RATINGS[name] || card?.overall || 74;
+  // v2: seasonal development and an academy graduate's own rating
+  const car = getState().career;
+  const dev = (car?.dev?.[name] | 0);
+  const base = car?.devBoost?.[name] ?? (CAREER_RATINGS[name] || card?.overall || 74);
+  const overall = Math.max(40, Math.min(99, base + dev));
   const age = card?.age ?? 27;
   const value = CAREER_RATINGS[name] ? valueFor(overall, age) : (card?.value ?? valueFor(overall, age));
   return {
@@ -99,7 +104,10 @@ export const clubOverall = (clubId, squads = null) => {
 /* ------------------------------------------------------------------ *
  * Fixtures: double round robin inside the club's league, byes allowed
  * ------------------------------------------------------------------ */
-export function leagueClubs(league) { return CAREER_CLUBS.filter((c) => c.league === league); }
+export function leagueClubs(league, car = getState().career) {
+  if (car?.leagueOf) return v2.leagueClubIds(car, league).map((id) => v2.clubOf(id)).filter(Boolean);
+  return CAREER_CLUBS.filter((c) => c.league === league);
+}
 
 export function makeFixtures(league) {
   const ids = leagueClubs(league).map((c) => c.id);
@@ -129,26 +137,33 @@ export function startCareer(manager, clubId) {
   for (const c of CAREER_CLUBS) {
     squads[c.id] = CAREER_SQUADS[c.id].map((r) => [...r.slice(0, 3), contractFor(r[0])]);
   }
-  update((s) => {
-    s.career = {
-      v: 2,
-      manager,
-      clubId,
-      coins: START_COINS,
-      season: 1,
-      week: 1,
-      fixtures: makeFixtures(club.league),
-      table: Object.fromEntries(leagueClubs(club.league).map((c) =>
-        [c.id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }])),
-      squads,
-      results: [],
-      morale: 0.65,                 // team morale, carried between matches
-      shortlist: [],
-      negotiation: null,            // the in-flight transfer, if any
-      stats: { w: 0, d: 0, l: 0, seasons: 0, trophies: 0, rep: 50 },
-      history: [],
-    };
-  });
+  // the second tiers, dealt from the world's unattached real players
+  for (const [id, rows] of Object.entries(v2.tier2Squads())) squads[id] = rows.map((r) => [...r, contractFor(r[0])]);
+  const leagueOf = Object.fromEntries(v2.allClubs().map((c) => [c.id, c.league]));
+  const car = {
+    v: 3,
+    manager,
+    clubId,
+    coins: START_COINS,
+    season: 1,
+    week: 1,
+    leagueOf,
+    fixtures: [],
+    table: {},
+    squads,
+    results: [],
+    morale: 0.65,                 // team morale, carried between matches
+    shortlist: [],
+    negotiation: null,            // the in-flight transfer, if any
+    stats: { w: 0, d: 0, l: 0, seasons: 0, trophies: 0, rep: 50 },
+    history: [],
+    offers: [], transferNews: [], youth: [], scouting: null, dev: {}, devBoost: {}, board: null, review: null, pressPending: false,
+  };
+  car.fixtures = v2.buildCalendar(car, club.league);
+  car.table = Object.fromEntries(v2.leagueClubIds(car, club.league).map((id) => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
+  v2.refillYouth(car);
+  v2.setBoardObjectives(car);
+  update((s) => { s.career = car; });
   onCareer('start');
   return getState().career;
 }
@@ -156,7 +171,10 @@ export function startCareer(manager, clubId) {
 export const myFixture = (car) => {
   const round = car.fixtures[car.week - 1];
   if (!round) return null;
-  const m = round.find(([h, a]) => h === car.clubId || a === car.clubId);
+  // v3 calendars carry typed rounds; v2 saves are bare pair lists
+  if (round.type === 'cup') { const tie = v2.myCupTie(car); return tie ? { ...tie, cup: true, round: round.round } : null; }
+  const pairs = round.type === 'league' ? round.pairs : round;
+  const m = pairs.find(([h, a]) => h === car.clubId || a === car.clubId);
   return m ? { home: m[0], away: m[1], isHome: m[0] === car.clubId } : null;  // null = bye week
 };
 
@@ -177,7 +195,15 @@ export function simScore(homeId, awayId, squads) {
 export function advanceWeek(myScore) {
   update((s) => {
     const car = s.career; if (!car) return;
-    const round = car.fixtures[car.week - 1] || [];
+    v2.bindState(() => s.club);
+    const entry = car.fixtures[car.week - 1] || [];
+    if (entry.type === 'cup') {
+      v2.playCupRound(car, entry.round, myScore);
+      if (myScore) { car.pressPending = true; car.stats[myScore[0] > myScore[1] ? 'w' : myScore[0] === myScore[1] ? 'd' : 'l'] += 1; }
+      weekTick(car);
+      return;
+    }
+    const round = entry.type === 'league' ? entry.pairs : entry;
     for (const [h, a] of round) {
       const mine = h === car.clubId || a === car.clubId;
       const [hg, ag] = mine && myScore ? myScore : simScore(h, a, car.squads);
@@ -190,11 +216,24 @@ export function advanceWeek(myScore) {
         car.stats[win ? 'w' : draw ? 'd' : 'l'] += 1;
         car.stats.rep = Math.max(1, Math.min(99, car.stats.rep + (win ? 2 : draw ? 0 : -1)));
         car.morale = Math.max(0.05, Math.min(1, car.morale + (win ? 0.08 : draw ? -0.01 : -0.09)));
+        car.pressPending = true;
       }
     }
-    car.week += 1;
-    if (car.week > car.fixtures.length) endSeason(car);
+    weekTick(car);
   });
+}
+
+/** Everything a week brings beyond the fixture: windows, academy, scouts, the board. */
+function weekTick(car) {
+  if (car.leagueOf) {
+    v2.generateOffers(car, car.week);
+    v2.aiTransfers(car, car.week);
+    v2.trainYouth(car);
+    v2.tickScouting(car);
+    v2.boardReview(car, sortedCareerTable(car));
+  }
+  car.week += 1;
+  if (car.week > car.fixtures.length) endSeason(car);
 }
 
 /** Contracts tick, expiries leave, the calendar resets. */
@@ -217,11 +256,23 @@ function endSeason(car) {
     }
   }
   car.expiring = car.squads[car.clubId].filter((r) => r[3].years <= 0).map((r) => r[0]);
+  if (car.leagueOf) {
+    /* v2: the review, the tiers moving, development, a fresh board brief, new
+     * academy faces — and a calendar for whichever league I am in now. */
+    const myLeague = car.leagueOf[car.clubId];
+    const other = myLeague.endsWith(' 2') ? v2.topOf(myLeague) : v2.tier2Of(myLeague);
+    v2.seasonReviewV2(car, table, v2.syntheticOrder(car, other));
+    v2.developSquads(car);
+    v2.refillYouth(car);
+  }
   car.season += 1;
   onCareer('season');
   car.week = 1;
-  car.fixtures = makeFixtures(careerClub(car.clubId).league);
-  for (const id of Object.keys(car.table)) car.table[id] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  const league = car.leagueOf ? car.leagueOf[car.clubId] : careerClub(car.clubId).league;
+  car.fixtures = car.leagueOf ? v2.buildCalendar(car, league) : makeFixtures(league);
+  const ids = car.leagueOf ? v2.leagueClubIds(car, league) : Object.keys(car.table);
+  car.table = Object.fromEntries(ids.map((id) => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
+  if (car.leagueOf) v2.setBoardObjectives(car);
 }
 
 export function sortedCareerTable(car) {
@@ -245,8 +296,8 @@ export function askingPrice(entry, contract) {
 /** Every player on every other club, resolved, for the market screens. */
 export function marketPool(car) {
   const out = [];
-  for (const club of CAREER_CLUBS) {
-    if (club.id === car.clubId) continue;
+  for (const club of v2.allClubs()) {
+    if (club.id === car.clubId || !car.squads[club.id]) continue;
     for (const row of car.squads[club.id]) {
       out.push({ ...resolveEntry(row.slice(0, 3), row[3]), clubId: club.id, club });
     }

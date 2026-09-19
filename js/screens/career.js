@@ -20,6 +20,7 @@ import { crestSVG, flagSVG } from '../components/crest.js';
 import { faceSVG, faceOf } from '../components/face.js';
 import { navigate, toast } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
+import * as v2 from '../careerV2.js';
 
 export const TITLE = 'Career';
 
@@ -36,7 +37,7 @@ const managerFace = (name, i = 0) => faceSVG({ id: `mgr-${name}-${i}`, name }, 7
  * ------------------------------------------------------------------ */
 export function render() {
   const car = getState().career;
-  if (car?.v === 2) return hubHTML(car);
+  if (car?.v >= 2) return hubHTML(car);
   if (step === 'manager') return managerHTML();
   if (step === 'custom') return customHTML();
   if (step === 'club') return clubsHTML();
@@ -166,8 +167,10 @@ function hubHTML(car) {
   const table = sortedCareerTable(car);
   const row = car.table[car.clubId];
   const pos = table.findIndex((r) => r.id === car.clubId) + 1;
+  const offersN = (car.offers || []).filter((o) => o.state === 'open').length;
   const NAV = [['overview', 'Overview', '◉'], ['squad', 'Squad', '⬢'], ['transfers', 'Transfers', '⇄'],
-    ['fixtures', 'Fixtures', '▤'], ['club', 'Club', '⛨'], ['career', 'Career', '★']];
+    ['offers', `Offers${offersN ? ` (${offersN})` : ''}`, '✉'], ['youth', 'Academy', '❋'], ['scout', 'Scouting', '◎'],
+    ['fixtures', 'Fixtures', '▤'], ['cup', 'Cup', '🏆'], ['board', 'Board', '▦'], ['club', 'Club', '⛨'], ['career', 'Career', '★']];
   return `
     <header class="chub" style="--team:${club.colors[0]};--team2:${club.colors[1]}">
       <div class="chub-top">
@@ -195,6 +198,12 @@ function hubHTML(car) {
 }
 
 function hubBody(car) {
+  if (car.review) return reviewHTML(car);
+  if (tab === 'offers') return offersHTML(car);
+  if (tab === 'youth') return youthHTML(car);
+  if (tab === 'scout') return scoutHTML(car);
+  if (tab === 'cup') return cupHTML(car);
+  if (tab === 'board') return boardHTML(car);
   if (tab === 'squad') return squadHTML(car);
   if (tab === 'transfers') return transfersHTML(car);
   if (tab === 'fixtures') return fixturesHTML(car);
@@ -213,10 +222,13 @@ function overviewHTML(car) {
   const next = fx && {
     home: careerClub(fx.home), away: careerClub(fx.away),
   };
+  const press = car.pressPending ? pressHTML(car) : '';
+  const cupWeek = car.fixtures[car.week - 1]?.type === 'cup';
   return `
+    ${press}
     ${next ? `
     <section class="cfix" style="--th:${next.home.colors[0]};--ta:${next.away.colors[0]}">
-      <span class="cfix-kicker">Matchday · Month ${car.week * MONTHS_PER_WEEK} · ${club.league} · ${fx.isHome ? 'Home' : 'Away'}</span>
+      <span class="cfix-kicker">${fx.cup ? `Cup · ${cupRoundName(car, fx.round)}` : `Matchday · ${car.leagueOf?.[car.clubId] || club.league}`} · Month ${car.week * MONTHS_PER_WEEK} · ${fx.isHome ? 'Home' : 'Away'}</span>
       <div class="cfix-teams">
         <div class="cfix-t">${crestSVG(crestOf(next.home), next.home.short, 64)}<b>${next.home.short}</b><span>${clubOverall(next.home.id, car.squads)} OVR</span></div>
         <span class="cfix-vs">VS</span>
@@ -227,9 +239,12 @@ function overviewHTML(car) {
         <button class="btn ghost" id="simWeek">Sim result</button>
       </div>
     </section>` : `
-    <section class="panel glass"><header class="panel-head"><h2>Month ${car.week * MONTHS_PER_WEEK} — no fixture</h2></header>
-      <p class="lede">A free month. The league plays on without you.</p>
+    <section class="panel glass"><header class="panel-head"><h2>Month ${car.week * MONTHS_PER_WEEK} — ${cupWeek ? 'out of the cup' : 'no fixture'}</h2></header>
+      <p class="lede">${cupWeek ? 'The cup round goes on without you.' : 'A free month. The league plays on without you.'}</p>
       <button class="btn primary" id="simWeek">Advance</button></section>`}
+    ${(car.offers || []).some((o) => o.state === 'open') ? `<section class="panel glass ov-offer"><header class="panel-head"><h2>Offers on the table <small>${car.offers.filter((o) => o.state === 'open').length}</small></h2></header>
+      <p class="hint">${car.offers.filter((o) => o.state === 'open').map((o) => `${careerClub(o.from)?.name} want ${o.player} — ${fmtCoins(o.fee)}`).join(' · ')}</p>
+      <button class="btn" data-tab-go="offers">Answer them →</button></section>` : ''}
     <div class="ov-cols">
       <section class="panel glass">
         <header class="panel-head"><h2>Table</h2></header>
@@ -241,9 +256,129 @@ function overviewHTML(car) {
         <div class="ov-meters">
           ${meter('Team morale', car.morale)}
           ${meter('Reputation', car.stats.rep / 100)}
+          ${car.board ? meter(`Board patience · ${car.board.text}`, car.board.patience) : ''}
         </div>
       </section>
-    </div>`;
+    </div>
+    ${(car.transferNews || []).length ? `<section class="panel glass"><header class="panel-head"><h2>Transfer news</h2></header>
+      ${car.transferNews.slice(0, 5).map((d) => `<div class="rr"><span>${d.player} · ${careerClub(d.from)?.short} → ${careerClub(d.to)?.short}</span><b>${fmtCoins(d.fee)}</b></div>`).join('')}</section>` : ''}`;
+}
+
+const cupRoundName = (car, round) => {
+  const left = (car.cup?.rounds || 4) - round;
+  return left === 1 ? 'Final' : left === 2 ? 'Semi-final' : left === 3 ? 'Quarter-final' : `Round ${round + 1}`;
+};
+
+/* ------------------------------ v2 panels ------------------------------ */
+function pressHTML(car) {
+  const qi = (car.week + car.season - 1) % v2.PRESS.length;
+  const q = v2.PRESS[qi];
+  return `
+    <section class="panel glass press">
+      <header class="panel-head"><h2>Press conference</h2></header>
+      <p class="press-q">“${q.q}”</p>
+      <div class="press-a">${q.a.map(([txt], i) => `<button class="btn ghost" data-press="${qi}:${i}">${txt}</button>`).join('')}</div>
+    </section>`;
+}
+
+function offersHTML(car) {
+  const open = (car.offers || []).filter((o) => o.state === 'open');
+  const past = (car.offers || []).filter((o) => o.state !== 'open').slice(-6).reverse();
+  const win = v2.inWindow(car.week, car.fixtures.length);
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Incoming offers <small>${win ? 'window open' : 'window closed'}</small></h2></header>
+      ${open.length ? open.map((o) => `
+        <div class="offer">
+          <div><b>${o.player}</b><span>${careerClub(o.from)?.name} · expires week ${o.until}</span></div>
+          <b class="offer-fee">${fmtCoins(o.fee)}</b>
+          <div class="offer-actions">
+            <button class="btn primary" data-offer="${o.id}:accept">Accept</button>
+            <button class="btn" data-offer="${o.id}:counter">Counter</button>
+            <button class="btn ghost" data-offer="${o.id}:reject">Reject</button>
+          </div>
+        </div>`).join('') : `<p class="ov-empty">${win ? 'Nobody has bid this week. Your best players draw the interest.' : 'Offers arrive in the transfer windows: the first three weeks of the season and three at the halfway point.'}</p>`}
+      ${past.length ? `<h3 class="p-sub">Recent</h3>${past.map((o) => `<div class="rr"><span>${o.player} · ${careerClub(o.from)?.short}</span><b>${o.state}</b></div>`).join('')}` : ''}
+    </section>`;
+}
+
+function youthHTML(car) {
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Academy <small>${(car.youth || []).length} prospects</small></h2></header>
+      <p class="hint">Prospects train every week and grow toward their potential — faster when the dressing room is happy. Promote one to your squad when he is ready.</p>
+      ${(car.youth || []).map((y) => `
+        <div class="offer">
+          <div><b>${y.name}</b><span>${y.position} · ${y.nation} · ${y.age + (car.season - 1)} · ${y.weeks} weeks in</span></div>
+          <b class="offer-fee">${y.rating} <small>→ ${y.potential}</small></b>
+          <div class="offer-actions"><button class="btn ${y.rating >= y.potential - 4 ? 'primary' : ''}" data-promote="${y.name}">Promote</button></div>
+        </div>`).join('') || '<p class="ov-empty">The academy is empty until next season.</p>'}
+    </section>`;
+}
+
+function scoutHTML(car) {
+  const s = car.scouting;
+  const leagues = [...new Set(v2.allClubs().map((c) => c.league))];
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Scouting</h2></header>
+      ${s && !s.results ? `<p class="lede">The scout is in ${s.league}. Report in ${s.weeksLeft} week${s.weeksLeft === 1 ? '' : 's'}.</p>` : ''}
+      ${s?.results ? `<h3 class="p-sub">Report: ${s.league}</h3>${s.results.map((r) => `
+        <div class="offer">
+          <div><b>${r.name}</b><span>${r.position} · ${r.nation} · ${r.age} · ${careerClub(r.club)?.name}</span></div>
+          <b class="offer-fee">${r.rating} <small>→ ${Math.round(r.potential)}</small></b>
+          <div class="offer-actions"><span class="hint">${fmtCoins(r.value)}</span><button class="btn" data-shortlist="${r.name}">Shortlist</button></div>
+        </div>`).join('')}` : ''}
+      <h3 class="p-sub">Send the scout</h3>
+      <div class="scout-leagues">${leagues.map((l) => `<button class="chip ${s?.league === l && !s.results ? 'on' : ''}" data-scout="${l}">${l}</button>`).join('')}</div>
+    </section>`;
+}
+
+function cupHTML(car) {
+  const cup = car.cup;
+  if (!cup) return '<section class="panel glass"><p class="ov-empty">No cup this season.</p></section>';
+  const mine = cup.results.filter((r) => r.h === car.clubId || r.a === car.clubId);
+  const status = cup.winner ? (cup.winner === car.clubId ? 'Winners!' : `${careerClub(cup.winner)?.name} won the cup`) : cup.alive.includes(car.clubId) ? `Still in · ${cupRoundName(car, cup.results.length ? cup.results[cup.results.length - 1].round + 1 : 0)} next` : 'Out';
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>The Cup <small>${status}</small></h2></header>
+      <p class="hint">Every club in the country, one leg, a round every fifth week. Penalties settle a draw.</p>
+      ${mine.length ? mine.map((r) => `<div class="rr ${r.winner === car.clubId ? 'win' : 'loss'}"><span>${cupRoundName(car, r.round)} · ${careerClub(r.h)?.short} ${r.hg} – ${r.ag} ${careerClub(r.a)?.short}${r.pens ? ' (pens)' : ''}</span><b>${r.winner === car.clubId ? 'W' : 'L'}</b></div>`).join('') : '<p class="ov-empty">Your first tie is coming.</p>'}
+      <h3 class="p-sub">Still in</h3>
+      <p class="hint">${cup.alive.map((id) => careerClub(id)?.short).join(' · ')}</p>
+    </section>`;
+}
+
+function boardHTML(car) {
+  const b = car.board;
+  const table = sortedCareerTable(car);
+  const pos = table.findIndex((r) => r.id === car.clubId) + 1;
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>The board</h2></header>
+      ${b ? `<p class="lede">This season: <b>${b.text}</b> You are ${pos}${ordinal(pos)}.</p>
+      <div class="ov-meters">${meter('Patience', b.patience)}</div>
+      <p class="hint">Patience drops when you sit well below the objective and with careless answers to the press; it recovers with results. Below a third of it at season's end, with the objective missed, and you are gone — a cup or a promotion saves you.</p>` : ''}
+      <h3 class="p-sub">History</h3>
+      ${(car.history || []).map((h) => `<div class="rr"><span>Season ${h.season}</span><b>${h.pos}${ordinal(h.pos)} · ${h.pts} pts</b></div>`).join('') || '<p class="ov-empty">First season.</p>'}
+      <p class="hint">Trophies ${car.stats.trophies} · Cups ${car.stats.cups | 0} · Sackings ${car.stats.sackings | 0} · Sold ${car.stats.sold | 0} · Academy graduates ${car.stats.youthPromoted | 0}</p>
+    </section>`;
+}
+
+function reviewHTML(car) {
+  const r = car.review;
+  return `
+    <section class="panel glass season-end">
+      <h2>Season ${car.season - 1} review</h2>
+      <p class="season-line">${r.league}: finished <b>${r.pos}${ordinal(r.pos)}</b>${r.champion ? ' — champions!' : ''}${r.cup ? ' · Cup winners' : r.cupRound ? ` · Cup: out after ${r.cupRound} round${r.cupRound > 1 ? 's' : ''}` : ''}</p>
+      <p class="season-line">Board asked: <b>${r.objective || '—'}</b> · ${r.met ? 'Met.' : 'Missed.'}</p>
+      ${r.promoted ? '<p class="season-line"><b>Promoted!</b> Next season in the top tier.</p>' : ''}
+      ${r.relegated ? '<p class="season-line"><b>Relegated.</b> Next season in the second tier.</p>' : ''}
+      ${r.moves ? `<p class="hint">Down: ${r.moves.down.map((id) => careerClub(id)?.short).join(', ')} · Up: ${r.moves.up.map((id) => careerClub(id)?.short).join(', ')}</p>` : ''}
+      ${r.sacked ? `<p class="season-line"><b>The board have dismissed you.</b> Your reputation earns you these interviews:</p>
+        <div class="offer-actions">${r.offers.map((id) => `<button class="btn primary" data-job="${id}">${careerClub(id)?.name} <small>${careerClub(id)?.league}</small></button>`).join('')}</div>`
+        : `<button class="btn primary big" id="acceptReview">On to season ${car.season}</button>`}
+    </section>`;
 }
 
 const meter = (label, v) => `
@@ -410,16 +545,18 @@ function negotiationHTML(car) {
 function fixturesHTML(car) {
   const mine = car.results.filter((r) => r.h === car.clubId || r.a === car.clubId);
   const upcoming = car.fixtures.slice(car.week - 1).map((round, i) => {
-    const m = round.find(([h, a]) => h === car.clubId || a === car.clubId);
+    if (round.type === 'cup') return { week: car.week + i, cup: true, label: cupRoundName(car, round.round) };
+    const pairs = round.type === 'league' ? round.pairs : round;
+    const m = pairs.find(([h, a]) => h === car.clubId || a === car.clubId);
     return m ? { week: car.week + i, h: m[0], a: m[1] } : null;
-  }).filter(Boolean).slice(0, 8);
+  }).filter(Boolean).slice(0, 10);
   return `
     <div class="ov-cols">
       <section class="panel glass"><header class="panel-head"><h2>Played</h2></header>
         ${mine.length ? mine.slice().reverse().map((r) => resultRow(r, car)).join('') : '<p class="ov-empty">Nothing yet.</p>'}
       </section>
       <section class="panel glass"><header class="panel-head"><h2>Upcoming</h2></header>
-        ${upcoming.map((f) => `<div class="rr"><span>W${f.week} · ${careerClub(f.h).short} v ${careerClub(f.a).short}</span>
+        ${upcoming.map((f) => f.cup ? `<div class="rr"><span>W${f.week} · Cup · ${f.label}</span><b>🏆</b></div>` : `<div class="rr"><span>W${f.week} · ${careerClub(f.h).short} v ${careerClub(f.a).short}</span>
           <b>${f.h === car.clubId ? 'H' : 'A'}</b></div>`).join('') || '<p class="ov-empty">Season over.</p>'}
       </section>
     </div>`;
@@ -557,6 +694,48 @@ function wire(root) {
     rerender();
   });
   root.querySelector('#nextSeason')?.addEventListener('click', rerender);
+  // v2
+  root.querySelectorAll('[data-tab-go]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tabGo; rerender(); }));
+  root.querySelectorAll('[data-press]').forEach((el) => el.addEventListener('click', () => {
+    const [qi, ai] = el.dataset.press.split(':').map(Number);
+    update((s) => { if (s.career) { v2.answerPress(s.career, qi, ai); s.career.pressPending = false; } });
+    rerender();
+  }));
+  root.querySelectorAll('[data-offer]').forEach((el) => el.addEventListener('click', () => {
+    const [id, action] = el.dataset.offer.split(':');
+    let fee = 0;
+    if (action === 'counter') {
+      const o = car().offers.find((x) => x.id === id);
+      const ask = prompt(`They offer ${fmtCoins(o.fee)}. Ask for (e.g. 45m):`, '');
+      if (ask == null) return;
+      fee = parseAmount(ask);
+      if (!fee) return toast('That is not an amount', 'warn');
+    }
+    let r;
+    update((s) => { r = v2.respondToOffer(s.career, id, action, fee); });
+    toast(r.note, r.ok ? 'good' : 'warn');
+    rerender();
+  }));
+  root.querySelectorAll('[data-promote]').forEach((el) => el.addEventListener('click', () => {
+    update((s) => v2.promoteYouth(s.career, el.dataset.promote));
+    toast(`${el.dataset.promote} joins the first-team squad`, 'good');
+    rerender();
+  }));
+  root.querySelectorAll('[data-scout]').forEach((el) => el.addEventListener('click', () => {
+    update((s) => v2.scout(s.career, el.dataset.scout));
+    toast(`Scout sent to ${el.dataset.scout} — report in 4 weeks`, 'info');
+    rerender();
+  }));
+  root.querySelectorAll('[data-shortlist]').forEach((el) => el.addEventListener('click', () => {
+    update((s) => { if (!s.career.shortlist.includes(el.dataset.shortlist)) s.career.shortlist.push(el.dataset.shortlist); });
+    toast(`${el.dataset.shortlist} shortlisted — find him under Transfers`, 'good');
+  }));
+  root.querySelector('#acceptReview')?.addEventListener('click', () => { update((s) => { s.career.review = null; }); rerender(); });
+  root.querySelectorAll('[data-job]').forEach((el) => el.addEventListener('click', () => {
+    update((s) => v2.takeJob(s.career, el.dataset.job));
+    toast(`Appointed at ${careerClub(el.dataset.job)?.name}`, 'good');
+    rerender();
+  }));
 
   // transfers
   const remember = () => {

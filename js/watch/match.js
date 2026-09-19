@@ -16,6 +16,7 @@ import { Match, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import { draw, makeCamera, updateCamera, groundBasis } from '../game/render3d.js';
 import { WORLD } from '../data/generator.js';
+import { say } from '../data/commentary.js';
 
 /* The home side is the player's own club. The watch has no squad editor, so
  * the eleven is whatever that club fields — the point of Kick Off here is the
@@ -38,6 +39,8 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
     <div class="w-match">
       <canvas id="wPitch"></canvas>
       <div class="w-hud"><span id="wClock">0'</span><b id="wScore">0 – 0</b></div>
+      <div class="w-comm" id="wComm" hidden></div>
+      <div class="w-sp" id="wSp" hidden></div>
       <button class="w-kick" id="wKick">KICK</button>
     </div>`;
 
@@ -45,6 +48,30 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
   const ctx = canvas.getContext('2d', { alpha: false });
   const clockEl = app.querySelector('#wClock');
   const scoreEl = app.querySelector('#wScore');
+  /* One line of the gantry voice at a time, for the moments that matter on a
+   * 40mm screen: goals, saves, chances, set pieces. */
+  const commEl = app.querySelector('#wComm');
+  const spEl = app.querySelector('#wSp');
+  let commT = 0;
+  let lastComm = -9;
+  const WATCH_CUES = { goal: 'goal', save: 'save', post: 'post', bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded', injury: 'injury', shotWide: 'shotWide' };
+  const commentate = (c) => {
+    const key = WATCH_CUES[c.name];
+    if (!key || (c.name !== 'goal' && match.t - lastComm < 2)) return;
+    lastComm = match.t;
+    const t = typeof c.arg === 'number' ? c.arg : c.arg?.team ?? (c.arg?.ref ? c.arg.team : 0);
+    const team = match.teams[t] || match.teams[0];
+    const gk = match.teams[1 - (team.side || 0)].players.find((q) => q.role === 'GK');
+    const line = say(key, {
+      player: c.arg?.ref ? c.arg.ref.short : team.short, team: team.short, opp: match.teams[1 - team.side].short,
+      score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(), dist: c.arg?.dist || '',
+      keeper: gk ? gk.ref.short : 'the keeper',
+    });
+    if (!line) return;
+    commEl.textContent = line;
+    commEl.hidden = false;
+    commT = 3;
+  };
 
   const match = new Match(HOME_ID, awayId, { duration: DURATION, mode: 'single', human: 0, preset: 'authentic', skill: lv.skill });
   const input = new Input({ keys: 'primary' });
@@ -118,6 +145,16 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
   kick.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     navigator.vibrate?.(6);
+    const sp = match.setPiece;
+    if (sp && sp.human && sp.team === 0) {
+      // aim: the stick if it is held, else straight at goal
+      const a = Math.hypot(input.axis().x, input.axis().y) > 0.2 ? { x: input.axis().x, y: -input.axis().y } : { x: 1, y: 0 };
+      const goalX = PITCH.w;
+      const near = Math.abs(sp.taker.x - goalX) < 30;
+      const act2 = sp.kind === 'penalty' || (sp.kind === 'freekick' && near) ? 'shoot' : sp.kind === 'corner' ? 'cross' : 'pass';
+      match.takeSetPiece(act2, a, 0.7);
+      return;
+    }
     const act = shootingRange() ? 'shoot' : 'pass';
     input.setTouchButton(act, true);
     kick.dataset.act = act;
@@ -149,7 +186,17 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
       while (match.cues.length) {
         const c = match.cues.shift();
         if (c.name === 'goal') navigator.vibrate?.([16, 40, 24]);
+        commentate(c);
       }
+      if (commT > 0) { commT -= dt; if (commT <= 0) commEl.hidden = true; }
+      // a dead ball for the player: say what KICK will do, and count down
+      const sp = match.setPiece;
+      if (sp && sp.human && sp.team === 0) {
+        const what = sp.kind === 'penalty' ? 'PENALTY · KICK to shoot' : sp.kind === 'corner' ? 'CORNER · KICK to cross'
+          : sp.kind === 'throwin' ? 'THROW · KICK to throw' : 'FREE KICK · KICK to take';
+        spEl.textContent = `${what} · ${Math.ceil(match.phaseT)}`;
+        spEl.hidden = false;
+      } else spEl.hidden = true;
       if (match.phase === 'end') { ended = true; finish(); }
     }
     draw(ctx, match, cam, size.w, size.h, 'low', dt, { hideBanner: false });

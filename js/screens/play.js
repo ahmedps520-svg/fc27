@@ -4,12 +4,13 @@ import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import {
-  draw, makeCamera, updateCamera, groundBasis, replayCamera, resolveQuality,
+  draw, makeCamera, updateCamera, groundBasis, replayCamera, celebrationCamera, resolveQuality,
 } from '../game/render3d.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings } from '../audio.js';
+import { say } from '../data/commentary.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
@@ -147,8 +148,14 @@ export function render(params) {
           <button class="tbtn t-shoot" data-slot="shoot"><i class="tb-charge"></i><b>SHOOT</b></button>
           <button class="tbtn t-pass" data-slot="pass"><i class="tb-charge"></i><b>PASS</b></button>
           <button class="tbtn t-sprint" data-slot="sprint"><b>SPRINT</b></button>
+          <button class="tbtn t-skill" data-slot="skill"><b>SKILL</b></button>
+          <button class="tbtn t-lob" data-slot="lob"><b>LOB</b></button>
         </div>
       </div>
+
+      <div class="gm-feed" id="gmFeed" aria-live="polite"></div>
+      <div class="gm-setpiece" id="gmSetPiece" hidden></div>
+      <div class="gm-hints" id="gmHints" hidden></div>
 
       <div class="goal-card" id="goalCard" hidden>
         <span class="gc-word">GOAL</span>
@@ -211,6 +218,117 @@ export function mount(root, params) {
   });
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
+  const celebCam = makeCamera();
+  let celebT = 0;
+
+  /* ------------------------------ commentary ------------------------------ *
+   * The voice in the gantry. Every cue the sim raises that has lines in
+   * data/commentary.js becomes one, plus a few from the clock and the stat
+   * sheet. Two lines live on the HUD; the whole log goes to Match Facts. */
+  const feedEl = root.querySelector('#gmFeed');
+  const commentLog = [];
+  let feedTimer = 0;
+  const teamOf = (i) => match.teams[i];
+  const commentCtx = (arg) => {
+    const ctx = { score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(), venue: match.teams[0].club?.ground || 'the stadium' };
+    let t = null;
+    if (arg && typeof arg === 'object' && arg.ref) { ctx.player = arg.ref.short || arg.ref.name; t = arg.team; }
+    else if (arg && typeof arg === 'object' && typeof arg.team === 'number') { t = arg.team; ctx.dist = arg.dist; }
+    else if (typeof arg === 'number' && (arg === 0 || arg === 1)) t = arg;
+    if (t === null && match.ball.owner) t = match.ball.owner.team;
+    if (t === null) t = 0;
+    ctx.team = teamOf(t).name; ctx.opp = teamOf(1 - t).name;
+    const gk = teamOf(1 - t).players.find((q) => q.role === 'GK');
+    ctx.keeper = gk ? (gk.ref.short || gk.ref.name) : 'the keeper';
+    ctx.poss = Math.round(match.possession()[t]);
+    return ctx;
+  };
+  const comment = (key, arg, ctxExtra = {}) => {
+    const line = say(key, { ...commentCtx(arg), ...ctxExtra });
+    if (!line) return;
+    commentLog.push({ minute: match.minute(), line });
+    if (commentLog.length > 80) commentLog.shift();
+    if (!feedEl) return;
+    const recent = commentLog.slice(-2);
+    feedEl.innerHTML = recent.map((c, i) => `<span class="${i === recent.length - 1 ? 'now' : ''}"><i>${c.minute}'</i>${c.line}</span>`).join('');
+    feedEl.classList.remove('flash'); void feedEl.offsetWidth; feedEl.classList.add('flash');
+    feedTimer = 6;
+  };
+  const CUE_KEY = {
+    goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
+    bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
+    throwin: 'throwin', foul: 'foul', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+  };
+  let lastCommentAt = -9;
+  const commentCue = (name, arg) => {
+    const key = CUE_KEY[name];
+    if (!key) return;
+    // the feed is a voice, not a ticker: one line a second at most, goals always
+    if (name !== 'goal' && match.t - lastCommentAt < 1.1) return;
+    if (name === 'shot' && Math.random() < 0.5) return;        // not every effort
+    lastCommentAt = match.t;
+    if (name === 'goal') {
+      const own = !match.celebrant;
+      const before = commentCtx(match.goalTeam);
+      comment(own ? 'ownGoal' : 'goal', match.celebrant || match.goalTeam, before);
+      const [hs, as] = [match.teams[0].score, match.teams[1].score];
+      const lead = match.goalTeam === 0 ? hs - as : as - hs;
+      if (lead === 0) setTimeout(() => comment('comeback', match.goalTeam), 1600);
+      else if (lead === 1) setTimeout(() => comment('lead', match.goalTeam), 1600);
+      else if (lead >= 2) setTimeout(() => comment('extend', match.goalTeam), 1600);
+      return;
+    }
+    comment(key, arg);
+  };
+  let lastClockLine = -1;
+  const clockCommentary = () => {
+    const m = match.minute();
+    if ([15, 30, 60, 75].includes(m) && lastClockLine !== m && match.t - lastCommentAt > 4) {
+      lastClockLine = m; lastCommentAt = match.t;
+      const [ph, pa] = match.possession();
+      const t = ph >= pa ? 0 : 1;
+      if (Math.max(ph, pa) >= 64) comment('possession', t); else comment('clock', t);
+    }
+    if (m >= 85 && lastClockLine !== 85 && match.t - lastCommentAt > 4) { lastClockLine = 85; comment('late', match.teams[0].score >= match.teams[1].score ? 0 : 1); }
+  };
+
+  /* --------------------------- set-piece prompt --------------------------- */
+  const spEl = root.querySelector('#gmSetPiece');
+  let spShown = null;
+  const SP_TEXT = {
+    corner: ['Corner', 'Aim with the stick · CROSS into the box · SHORT to a team-mate'],
+    freekick: ['Free kick', 'Aim with the stick · hold SHOOT for power · CROSS or SHORT'],
+    penalty: ['Penalty', 'Pick a side with the stick · hold SHOOT — more power, more risk'],
+    throwin: ['Throw-in', 'Aim with the stick · THROW short or LONG'],
+  };
+  const paintSetPiece = () => {
+    const sp = match.setPiece;
+    const seat = match.controllers[online ? online.seat : 0];
+    const mine = sp && sp.human && seat && sp.team === seat.team;
+    if (!mine) { if (spShown) { spEl.hidden = true; spShown = null; } return; }
+    const secs = Math.ceil(match.phaseT);
+    const key = `${sp.kind}:${secs}`;
+    if (key === spShown) return;
+    spShown = key;
+    const [title, how] = SP_TEXT[sp.kind] || ['Set piece', ''];
+    spEl.hidden = false;
+    spEl.innerHTML = `<b>${title}</b><span>${how}</span><i class="sp-clock">${secs}</i>`;
+  };
+
+  /* ------------------------------- hints -------------------------------- *
+   * Three matches of rotating tips for the new controls, then never again. */
+  const hintsEl = root.querySelector('#gmHints');
+  const HINTS = [
+    'SKILL (H / L2) — a feint that beats a lunging tackle',
+    'LOB (U / Select) — chip it over the defence to a runner',
+    'Hold PASS or SHOOT for more power · CURL with E while shooting',
+    'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
+    'Pause at any stoppage for Substitutions and Team Management',
+  ];
+  let hintIdx = 0;
+  let hintTimer = 0;
+  const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online;
+  if (wantHints) update((st) => { st.flags.hintMatches = (st.flags.hintMatches | 0) + 1; });
 
   const scoreH = root.querySelector('#gmScore');
   const scoreA = root.querySelector('#gmScoreA');
@@ -303,13 +421,16 @@ export function mount(root, params) {
    * of how long anyone wheels away for.
    */
   let clip = null;
+  const goalClips = [];            // every goal's tape, for the highlights after the match
   const captureGoal = () => {
     const team = scoringTeam();
     clip = {
       frames: tape.slice(Math.max(0, tape.length - PRE_FRAMES)),
       post: 0,
       goalX: team && team.dir > 0 ? PITCH.w : 0,
+      minute: match.minute(),
     };
+    goalClips.push(clip);
   };
 
   /* ------------------------------ pause reel ------------------------------ *
@@ -337,6 +458,25 @@ export function mount(root, params) {
   };
 
   let replay = null;
+  /* Highlights: the goal clips, one after another, over the full-time card.
+   * Uses the replay machinery unchanged — each clip is a replay, and when one
+   * ends the next starts. */
+  let highlightIdx = -1;
+  const playHighlights = () => {
+    if (!goalClips.length) return;
+    highlightIdx = 0;
+    overlay.hidden = true;
+    clip = goalClips[0];
+    startReplay();
+  };
+  const nextHighlight = () => {
+    if (highlightIdx < 0) return false;
+    highlightIdx += 1;
+    if (highlightIdx >= goalClips.length) { highlightIdx = -1; overlay.hidden = false; return false; }
+    clip = goalClips[highlightIdx];
+    return startReplay();
+  };
+
   const startReplay = () => {
     if (!clip || clip.frames.length < 60) return false;
     const live = { b: [match.ball.x, match.ball.y, match.ball.z], p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]) };
@@ -360,6 +500,7 @@ export function mount(root, params) {
     allPlayers().forEach((p, i) => { p.celebrating = replay.celeb[i]; });
     replay = null;
     replayTag.hidden = true;
+    if (highlightIdx >= 0) nextHighlight();
   };
 
   /* Skipping a replay used to be a controller-only gesture — hold ◯ — which on
@@ -465,8 +606,31 @@ export function mount(root, params) {
     }));
     // try to go direct; the relay carries the match until (and unless) it works
     startP2P(online);
+    /* Reconnects. The hub holds a dropped player's seat for a grace period.
+     * Their opponent gets 'dropped' and the match pauses through the same
+     * synchronised pause a menu uses, with the grace as its countdown; a
+     * 'resumed' cuts that to three seconds. On this side, losing the socket
+     * mid-match is no longer the end of it: the socket retries on its own,
+     * re-authenticates, and the hub hands the seat back with 'rejoined'. */
+    netOffs.push(net.on('evt', (m) => {
+      if (m.k === 'dropped' && !ended) {
+        if (online.host) { requestPause(m.name || online.oppName); syncLeft = Math.max(syncLeft, m.grace || 45); }
+        showQueueBanner(`${m.name || 'Opponent'} lost connection — holding the match…`);
+        toast(`${m.name || 'Opponent'} disconnected — waiting up to ${m.grace || 45}s`, 'warn');
+      }
+      if (m.k === 'resumed' && !ended) {
+        if (online.host) syncLeft = Math.min(syncLeft || 3, 3);
+        showQueueBanner(null);
+        toast(`${m.name || 'Opponent'} is back`, 'good');
+      }
+    }));
     netOffs.push(net.on('closed', () => {
-      if (!ended) toast('Lost connection to the server', 'warn');
+      if (!ended) toast('Connection lost — reconnecting…', 'warn');
+    }));
+    netOffs.push(net.on('rejoined', (m) => {
+      if (ended) return;
+      toast('Reconnected — match resumes', 'good');
+      if (online.host) syncLeft = Math.min(syncLeft || 3, 3);
     }));
     /* Two numbers, and the second one is the honest one.
      *
@@ -961,7 +1125,16 @@ export function mount(root, params) {
     // demands, and nothing is buried in a menu.
     const IN_POSSESSION = {
       pass: ['pass', 'PASS'], through: ['through', 'THROUGH'], cross: ['cross', 'CROSS'],
-      shoot: ['shoot', 'SHOOT'], sprint: ['sprint', 'SPRINT'],
+      shoot: ['shoot', 'SHOOT'], sprint: ['sprint', 'SPRINT'], skill: ['skill', 'SKILL'], lob: ['lob', 'LOB'],
+    };
+    // a dead ball: the same thumbs, but the labels say what the kick will be
+    const SET_PIECE = {
+      pass: ['pass', 'SHORT'], through: ['through', 'DRIVEN'], cross: ['cross', 'CROSS'],
+      shoot: ['shoot', 'SHOOT'], sprint: [null, ''], skill: [null, ''], lob: [null, ''],
+    };
+    const THROW_IN = {
+      pass: ['pass', 'THROW'], through: ['through', 'LONG'], cross: [null, ''],
+      shoot: [null, ''], sprint: [null, ''], skill: [null, ''], lob: [null, ''],
     };
     /* One tackle button, not two. There used to be a TACKLE slot and a
      * separately-bound SLIDE slot for the same underlying action with a boolean
@@ -976,7 +1149,7 @@ export function mount(root, params) {
      * takes the same path rather than a parallel one that could drift from it. */
     const DEFENDING = {
       pass: ['pass', 'TACKLE'], through: ['switch', 'SWITCH'], cross: [null, ''],
-      shoot: [null, ''], sprint: ['sprint', 'SPRINT'],
+      shoot: [null, ''], sprint: ['sprint', 'SPRINT'], skill: [null, ''], lob: [null, ''],
     };
 
     const buttons = [...root.querySelectorAll('.tbtn')].map((el) => {
@@ -1028,10 +1201,13 @@ export function mount(root, params) {
        * the charge rings below filled with the host's power, not yours. Same
        * expression the input loop and the scoreboard already use. */
       const seat = match.controllers[online ? online.seat : 0];
-      const mine = !!match.ball.owner && seat && match.ball.owner.team === seat.team;
+      const sp = match.setPiece;
+      const dead = sp && sp.human && seat && sp.team === seat.team ? sp.kind : null;
+      const mine = dead ? `sp:${dead}` : (!!match.ball.owner && seat && match.ball.owner.team === seat.team);
       if (mine !== attacking) {
         attacking = mine;
-        for (const b of buttons) b.set(mine ? IN_POSSESSION : DEFENDING);
+        const map = dead === 'throwin' ? THROW_IN : dead ? SET_PIECE : mine ? IN_POSSESSION : DEFENDING;
+        for (const b of buttons) b.set(map);
       }
       // the shot charges while held, so the button shows how much power is on it
       if (charge) charge.style.setProperty('--charge', `${Math.round((seat?.charge || 0) * 100)}%`);
@@ -1364,7 +1540,8 @@ export function mount(root, params) {
         const c = match.cues.shift();
         sfx(c.name, c.arg);
         mgrCue(c.name);
-        if (online?.host) outgoing.push([c.name, c.arg ?? 0]);
+        commentCue(c.name, c.arg);
+        if (online?.host) outgoing.push([c.name, typeof c.arg === 'object' ? (c.arg?.team ?? 0) : (c.arg ?? 0)]);
       }
 
       if (online?.host) pendingCues.push(...outgoing);
@@ -1393,7 +1570,27 @@ export function mount(root, params) {
     }
 
     const rdt = frozen && !reel ? 0 : dt;
-    const shot = replay ? replay.cam : reel ? reel.cam : cam;
+    if (feedTimer > 0) { feedTimer -= dt; if (feedTimer <= 0) feedEl?.classList.remove('flash'); }
+    paintSetPiece();
+    if (!loading && !ended) clockCommentary();
+    if (wantHints && !loading && !paused) {
+      hintTimer -= dt;
+      if (hintTimer <= 0) {
+        hintTimer = 7;
+        if (hintIdx < HINTS.length) { hintsEl.hidden = false; hintsEl.textContent = HINTS[hintIdx++]; }
+        else hintsEl.hidden = true;
+      }
+    }
+    /* The celebration cut: the goal phase gets its own camera beside the
+     * scorer; broadcast resumes for the restart. Not during a replay (which
+     * has its own) and not in a career manager cam. */
+    let liveCam = cam;
+    if (match.phase === 'goal' && !replay && !reel && (!careerCtx || mgr?.camMode !== 'manager')) {
+      if (celebT === 0) { celebCam.x = cam.x; celebCam.y = cam.y; celebCam.z = cam.z; }
+      celebT += dt;
+      liveCam = celebrationCamera(celebCam, match, celebT);
+    } else celebT = 0;
+    const shot = replay ? replay.cam : reel ? reel.cam : liveCam;
     if (gl) gl.render(match, shot, rdt);
     else if (ctx) draw(ctx, match, shot, vw, vh, quality, rdt, { hideBanner: paused || loading });
 
@@ -1435,8 +1632,8 @@ export function mount(root, params) {
         showTalk();
       } else {
         halfTime = true;
-        section = 'subs';
-        navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'subs');
+        section = 'facts';
+        navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'facts');
         setPaused(true);
       }
     }
@@ -1486,6 +1683,7 @@ export function mount(root, params) {
     { id: 'subs', label: 'Substitutions' },
     { id: 'facts', label: 'Match Facts' },
     { id: 'controls', label: 'Controls' },
+    { id: 'sound', label: 'Sound' },
     { id: 'leave', label: 'Leave Match' },
   ];
   let navIdx = 1;
@@ -1588,6 +1786,10 @@ export function mount(root, params) {
         ['Possession', `${ph}%`, `${pa}%`],
         ['Shots', h.shots, a.shots],
         ['On target', h.onTarget, a.onTarget],
+        ['Expected goals', (h.xg || 0).toFixed(2), (a.xg || 0).toFixed(2)],
+        ['Big chances', h.bigChances || 0, a.bigChances || 0],
+        ['Corners', h.cornerCount || 0, a.cornerCount || 0],
+        ['Fouls', match.fouls?.[0] || 0, match.fouls?.[1] || 0],
         ['Goals', h.score, a.score],
       ];
       const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
@@ -1599,15 +1801,18 @@ export function mount(root, params) {
         </div>
         ${goals.length
           ? `<ul class="gm-goals">${goals.map(([t, s]) => `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>`
-          : '<p class="p-note">No goals yet.</p>'}`;
+          : '<p class="p-note">No goals yet.</p>'}
+        ${commentLog.length ? `<h3 class="p-sub">Commentary</h3><ul class="p-log">${commentLog.slice(-12).reverse().map((c) => `<li><i>${c.minute}'</i>${c.line}</li>`).join('')}</ul>` : ''}`;
     }
     if (id === 'controls') {
       return `
         <h3>Controls</h3>
         <div class="ctrl-grid compact">
           ${[['✕', 'Pass'], ['◯', 'Shoot — hold for power'], ['◯+R1', 'Curl it up'],
-             ['□', 'Cross'], ['△', 'Through ball'], ['✕ / □ / △ / ◯', 'Tackle, off the ball'],
-             ['L1/R1', 'Switch to nearest'], ['R2', 'Sprint'], ['Options', 'Pause']]
+             ['□', 'Cross'], ['△', 'Through ball'], ['L2 / H', 'Skill move — feint past a tackle'],
+             ['Select / U', 'Lob over the defence'], ['✕ / □ / △ / ◯', 'Tackle, off the ball'],
+             ['L1/R1', 'Switch to nearest'], ['R2', 'Sprint'], ['Options', 'Pause'],
+             ['Stick + button', 'Set pieces: aim, then pick the kick']]
             .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
         </div>`;
     }
@@ -1640,7 +1845,7 @@ export function mount(root, params) {
         <nav class="pause-nav">
           ${PAUSE_ITEMS.map((it, i) => `
             <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
-                    data-nav="${i}">${it.id === 'resume'
+                    data-nav="${i}">${it.id === 'sound' ? `Sound: ${getState().settings.sound === false ? 'Off' : 'On'}` : it.id === 'resume'
                       ? (halfTime ? 'Start Second Half'
                         : (online && (online.host ? syncLeft > 0 : guestSynced)) ? 'Resuming soon…' : it.label)
                       : it.label}</button>`).join('')}
@@ -1657,6 +1862,15 @@ export function mount(root, params) {
       exitFullscreen();
       if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
       navigate('quick');
+      return;
+    }
+    if (id === 'sound') {
+      // one switch for everything the match makes: crowd, whistle, kicks, commentary cues
+      update((st) => { st.settings.sound = st.settings.sound === false; });
+      const a = getState().settings;
+      setAudioSettings({ enabled: a.sound !== false, music: a.musicVol ?? 0.5, sfx: a.sfxVol ?? 0.9 });
+      if (a.sound === false) stopCrowd(); else startCrowd();
+      paintPause();
       return;
     }
     section = id;
@@ -1798,6 +2012,7 @@ export function mount(root, params) {
     if (prog.tiers) toast(`Season Pass: tier up! +${prog.tiers}`, 'good');
     refreshCoins();
 
+    comment('fulltime', h.score >= a.score ? 0 : 1);
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
@@ -1816,8 +2031,11 @@ export function mount(root, params) {
           `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>` : ''}
         <div class="gm-stats">
           <div><b>${ph}%</b><span>Possession</span><b>${pa}%</b></div>
-          <div><b>${h.shots}</b><span>Shots</span><b>${a.shots}</b></div>
+          <div><b>${h.shots}</b><span>Shots (${h.onTarget} on)</span><b>${a.shots}</b></div>
+          <div><b>${(h.xg || 0).toFixed(2)}</b><span>Expected goals</span><b>${(a.xg || 0).toFixed(2)}</b></div>
+          <div><b>${h.bigChances || 0}</b><span>Big chances</span><b>${a.bigChances || 0}</b></div>
         </div>
+        ${goalClips.length ? `<button class="btn ghost" data-o="highlights">▶ Highlights · ${goalClips.length} goal${goalClips.length > 1 ? 's' : ''}</button>` : ''}
         ${div ? `
           <div class="div-result ${div.promoted ? 'up' : div.relegated ? 'down' : ''}">
             <span class="dr-kicker">${div.promoted ? 'Promoted' : div.relegated ? 'Relegated' : 'Apex Division'}</span>
@@ -1873,6 +2091,7 @@ export function mount(root, params) {
       }
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
+      if (o === 'highlights') { playHighlights(); return; }
       if (o === 'quit') { exitFullscreen(); navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
