@@ -61,8 +61,14 @@ async function playToEnd(page, { seconds = 6 } = {}) {
   await page.waitForTimeout(seconds * 1000);
   const minute = await page.evaluate(() => window.__apexMatch?.minute());
   assert.ok(minute >= 0, 'the match is running');
-  await page.evaluate(() => { const m = window.__apexMatch; m.t = m.duration - 0.6; });
-  await page.waitForSelector('[data-o="quit"], [data-o="again"], [data-o="uxi"], [data-o="career"]', { timeout: 90000 });
+  // wind the clock to the last second — in the second half, or the sim would call half time first
+  await page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
+  try {
+    await page.waitForSelector('[data-o="quit"], [data-o="again"], [data-o="uxi"], [data-o="career"]', { timeout: 90000 });
+  } catch (e) {
+    const st = await page.evaluate(() => { const m = window.__apexMatch; return { phase: m?.phase, t: m?.t, half: m?.half, dur: m?.duration, btns: [...document.querySelectorAll('[data-o]')].map((b) => b.dataset.o), overlay: document.getElementById('gmOverlay')?.hidden, screen: document.querySelector('#gmRoot') ? 'play' : document.body.className }; });
+    throw new Error(`no end card: ${JSON.stringify(st)}`);
+  }
   return page.evaluate(() => `${window.__apexMatch.teams[0].score}–${window.__apexMatch.teams[1].score}`);
 }
 
@@ -229,12 +235,13 @@ try {
     await B.page.waitForSelector('#gmCanvas', { timeout: 30000 });
     await A.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
     await B.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
-    await A.page.waitForTimeout(6000);
+    // the host's sim starts once the guest has synced; give it up to half a minute
+    await A.page.waitForFunction(() => (window.__apexMatch?.minute() || 0) > 0, null, { timeout: 30000 }).catch(() => {});
     const [ma, mb] = await Promise.all([A.page.evaluate(() => window.__apexMatch?.minute()), B.page.evaluate(() => window.__apexMatch?.minute())]);
     assert.ok(ma > 0, `host clock running (${ma})`);
     assert.ok(mb >= 0, `guest sees the match (${mb})`);
     step(`two clients in one match: host ${ma}', guest ${mb}'`);
-    await A.page.evaluate(() => { const m = window.__apexMatch; m.t = m.duration - 0.6; });
+    await A.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
     await A.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     await B.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     step('both clients reached full time');
