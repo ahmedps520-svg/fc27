@@ -713,6 +713,7 @@ export function mount(root, params) {
     showQueueBanner(pq.name);
   };
   let oppGone = null;
+  let spectators = 0;      // host: how many are watching through the hub
   let rtt = null;          // this client to the server
   let peerRtt = null;      // this client to the opponent and back — what you feel
   let lastPeerPing = 0;
@@ -778,6 +779,11 @@ export function mount(root, params) {
     }));
     netOffs.push(net.on('closed', () => {
       if (!ended) toast('Connection lost — reconnecting…', 'warn');
+    }));
+    netOffs.push(net.on('spectators', (m) => {
+      const n = m.n | 0;
+      if (online.host && n > spectators) toast(`${n} watching`, 'info');
+      spectators = n;
     }));
     netOffs.push(net.on('rejoined', (m) => {
       if (ended) return;
@@ -1773,6 +1779,9 @@ export function mount(root, params) {
         if (pq && syncLeft <= 0) snap.pq = pq.name;
         if (syncLeft > 0) snap.pz = [pq ? pq.name : '', Math.ceil(syncLeft * 10)];
         sendMatch(snap);
+        // watchers only ever see what goes through the hub: a match running
+        // browser-to-browser has to copy its picture up for them as well
+        if (spectators > 0 && p2pActive()) net.send(snap);
       }
     }
 

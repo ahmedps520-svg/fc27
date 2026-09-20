@@ -247,11 +247,41 @@ try {
     assert.ok(ma > 0, `host clock running (${ma})`);
     assert.ok(mb >= 0, `guest sees the match (${mb})`);
     step(`two clients in one match: host ${ma}', guest ${mb}'`);
+
+    /* A third client watches. Spectating is the guest path with everything
+     * outbound switched off: it must get the host's picture, never send
+     * input, and never report a result. An emote from the host reaches it. */
+    const C = await mk('watchC');
+    // the match id is on the host's play params, not the DOM: the server's live list has it
+    const live = await A.page.evaluate(async () => (await (await fetch('/api/live')).json()).rows);
+    assert.ok(live.length >= 1, `a live match is listed (${JSON.stringify(live)})`);
+    await C.page.evaluate(async (id) => {
+      const net = await import('/js/net/socket.js');
+      window.__qaSnaps = 0; net.on('snap', () => { window.__qaSnaps += 1; });
+      net.send({ t: 'spectate', matchId: id });
+    }, live[0].matchId);
+    await C.page.waitForSelector('#gmCanvas', { timeout: 30000 });
+    await C.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
+    await C.page.waitForFunction(() => /Spectating/.test(document.getElementById('gmNet')?.textContent || ''), null, { timeout: 30000 });
+    // headless guests run behind the host by design (the clock is the host's), so count the picture arriving instead
+    await C.page.waitForFunction(() => window.__qaSnaps > 20, null, { timeout: 30000 });
+    const snaps = await C.page.evaluate(() => window.__qaSnaps);
+    assert.equal(await C.page.evaluate(() => document.getElementById('gmEmoteBtn')?.hidden), true, 'spectators have no emote bar');
+    step(`spectator joined: ${snaps} snapshots received, Spectating badge up`);
+    await click(A.page, '#gmEmoteBtn');
+    await click(A.page, '[data-emote="gg"]');
+    await B.page.waitForFunction(() => /Good game/.test(document.body.textContent || ''), null, { timeout: 8000 });
+    await C.page.waitForFunction(() => /Good game/.test(document.body.textContent || ''), null, { timeout: 8000 });
+    step('an emote from the host reached the guest and the spectator');
+
     await A.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
     await A.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     await B.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     step('both clients reached full time');
-    await A.ctx.close(); await B.ctx.close();
+    await C.page.waitForSelector('[data-o="quit"]', { timeout: 90000 });
+    assert.ok(/spectating|Match ended/i.test(await C.page.evaluate(() => document.querySelector('.gm-ft')?.textContent || '')), 'spectator card says so');
+    step('the spectator reached full time too');
+    await A.ctx.close(); await B.ctx.close(); await C.ctx.close();
   });
 
   await flow('watch', async () => {

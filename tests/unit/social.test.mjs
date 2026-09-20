@@ -125,6 +125,7 @@ test('guilds, friends, invites, spectating and emotes', async () => {
     assert.equal(sp.guest.name, names[1]);
     assert.equal(sp.host.squad.length, 11);
     assert.equal((await get(url, '/api/live')).rows[0].spectators, 1);
+    assert.equal((await a.wait('spectators')).n, 1, 'the host is told someone is watching');
 
     // the host's picture reaches the guest and the spectator; the guest's input reaches only the host
     a.send({ t: 'snap', f: 1, b: [0, 0, 0] });

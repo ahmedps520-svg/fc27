@@ -510,8 +510,16 @@ function endMatch(peer, reason) {
   }
 }
 function unspectate(peer) {
-  if (peer.watching?.spectators) peer.watching.spectators.delete(peer);
+  const host = peer.watching;
+  if (host?.spectators) { host.spectators.delete(peer); tellSpectators(host); }
   peer.watching = null;
+}
+/* The host is told how many are watching. It matters: a match that has gone
+ * browser-to-browser sends nothing through here, and the host has to start
+ * copying its picture up again for the watchers (see the snapshot send in
+ * play.js). */
+function tellSpectators(host) {
+  if (host.sock.open) host.sock.send({ t: 'spectators', n: host.spectators ? host.spectators.size : 0 });
 }
 const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
@@ -750,6 +758,7 @@ ws.attach(server, '/ws', (sock) => {
         host.spectators = host.spectators || new Set();
         if (host.spectators.size >= 8) { sock.send({ t: 'spectateFail', error: 'That match is full of spectators.' }); break; }
         host.spectators.add(peer);
+        tellSpectators(host);
         peer.watching = host;
         sock.send({ t: 'spectating', matchId: id, host: { name: host.name, club: host.club, squad: host.squad }, guest: { name: host.opponent.name, club: host.opponent.club, squad: host.opponent.squad } });
         console.log(`[match ${id}] ${peer.name} is watching`);
