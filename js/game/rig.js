@@ -106,7 +106,10 @@ function ovalSegment(mesh, ax, ay, az, bx, by, bz, halfW, halfD, facing, unitH) 
   mesh.scale.z = halfW;
 }
 
-export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build) {
+const EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 });
+const MOUTH_MAT = new THREE.MeshStandardMaterial({ color: 0x5a1e22, roughness: 0.7 });
+
+export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build, { face = true } = {}) {
   const grp = new THREE.Group();
   const mat = (c, rough = 0.72) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.02 });
   // kit fabric catches the floodlights a little; skin and turf-worn socks do not
@@ -143,11 +146,12 @@ export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build) 
     hair: add(JOINT_GEO, hair),
     // a face: two eyes and a mouth, so a close-up is a person and a
     // celebration can shout — the mouth scales open while `celebrating`
-    eyeL: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 })),
-    eyeR: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 })),
-    mouth: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x5a1e22, roughness: 0.7 })),
+    eyeL: add(JOINT_GEO, EYE_MAT),
+    eyeR: add(JOINT_GEO, EYE_MAT),
+    mouth: add(JOINT_GEO, MOUTH_MAT),
   };
-  for (const k of ['eyeL', 'eyeR', 'mouth']) parts[k].castShadow = false;
+  // three more draw calls a player; Medium and below keep the plain head
+  for (const k of ['eyeL', 'eyeR', 'mouth']) { parts[k].castShadow = false; parts[k].visible = face; }
   return { grp, parts, build };
 }
 

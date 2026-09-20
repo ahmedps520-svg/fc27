@@ -15,6 +15,108 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Round 6 (v72) — Stadium Builder, a hundred clubs, World Tournament, graphics, social
+**Sweep byte-identical.** First 3092 cards pinned unchanged (generator test).
+90 unit tests, sweep, smoke, QA bot (now with a spectator and an emote) all green.
+
+- **World** (`data/pools.js`, `data/generator.js`, `world.js`): wave 5 = 40
+  blueprints with an explicit `division` (1–8; `DIV_BASE` budgets), stream
+  `WORLD_SEED ^ 0x5a5a72`, 28+1 cards a club + 1400 free agents named from
+  `REAL_PLAYERS_WAVE5` (4141; `tools/real-players-wave5.json`). `LEAGUES` has
+  eight (Highland, Lowland added); division sizes 12,12,12,12,13,13,13,13 —
+  odd divisions get a bye per round (`roundRobin`), `ROUNDS = 26`. Totals:
+  100 clubs, 5612 players, 2526 free agents. `clubWorldCup(season, played)`
+  (CWC_DAYS 20/22/24, eight entrants); `worldTournamentDraw(edition)` (32 of
+  the 51 nations, four pots, eight groups) and `worldTournament(edition)`
+  (groups → R16 → final), every fourth season (`WT_EVERY`).
+- **Playable World Tournament** (`js/tournament.js`): `club.tournament`
+  state `{edition, nation, groups, stage, fixtures, otherGames, knockout,
+  bracket, out, champion}`; `start(nation)`, `nextMatch()`, `groupTable()`,
+  `onResult(scored, conceded)` (25,000 apex + a special pack for the title),
+  `matchParams()` plays at the wonders (`showpiece: 'wonder'`). World screen
+  tab 9; play.js prints the `tourney` line on the end card and quits back to
+  `world` tab 9.
+- **Economy** (`js/economy.js`): `kindOf(p)` = position group × rating band;
+  `supplyIndex(kind)` from world want-vs-have (damped, 0.6–1.8);
+  `demandIndex(kind)` from `club.market.{buy,sell}` tallies with a 12-hour
+  half-life (decays on read); `price(p)`, `trade(p, side)`, `report()`. Wired
+  into pack duplicate value, squad sells, pack opens, and career asking prices.
+- **Stadiums** (`data/stadiums.js`): 40 more club defs (112 total), eight
+  wonders (`wonder: true`, some `retractable`; `WONDERS`), `nationalStadium()`
+  for national XIs; `stadiumFor(club, { showpiece: 'wonder' })`.
+- **Stadium Builder** (`js/builder.js`, `screens/builder.js`): a design is
+  `{suffix, capacity 5k–100k, tiers 1–3, bowl, roof, pylons, pattern, seats[2],
+  facade, facadeStyle, landscape, lettering}`; `normalise`, `toDef(design,
+  {clubName, short, capacity, fill})` → a stadium def with `lettering`,
+  `landscape`, `facadeStyle`, `custom: true`; `encode`/`decode` share codes
+  (`SB1-XXXX×6`, base31 without lookalikes, checksum; **no text in the code**
+  — the receiver's own club name goes in the seats). State
+  `club.stadium = { design, saved[≤8] }`. The screen rebuilds the real
+  renderer on every change (debounced 260 ms; Ultra/cinema capped to High for
+  rebuild speed) on a wide orbit. Entry points: Stadiums showcase ("Design
+  your own"), the Ultimate XI identity editor, the Career Club tab.
+  **Venue**: `play.js venueOf` uses the design for Ultimate XI home matches
+  (`params.ultimate`, not online) and Career home fixtures, where capacity is
+  the expansion level. **Career**: `GROUND_LEVELS` 15k→100k in eight steps,
+  `expansionOffer(car, pos)` — the board pays when `pos <= board.finish` and
+  patience ≥ 0.55, else the club pays from coins; one expansion a season
+  (`car.ground = {level, income, expandedSeason}`); `bankGate(car)` on every
+  home league match = capacity × fill × `TICKET` (42), `groundFill` 0.74 +
+  0.03/level. Club tab "The ground" panel. Tests `tests/unit/builder.test.mjs`.
+- **Renderer** (`renderGL.js`): `lightingFor` returns `grade` (lift/gamma/
+  gain/saturation/temperature per time-of-day → `cine.setGrade`), `haze`
+  (three additive planes at night), `godrays` (radial-blur ShaderPass toward
+  the projected sun on clear dusk, High+); `cinema` tier (Ultra + 2.5–3×
+  ratio, DOF, stronger god rays; Settings "Ultra+", desktop only); crowd arms
+  InstancedMesh at Ultra (`apexCrowdArms`); trample canvas as `turfMat.bumpMap`
+  (High+); `bootFx` dust/splash particles; **weather turns**: `atmo.change =
+  {minute, to}` set by `venueOf` for ~25 % of matches (seeded) → `weatherStep`
+  lerps `rainLevel` over 30 s (rain mesh, turf roughness/envMap, fog);
+  wonders: giant screens (canvas score/clock), LED ribbon, retractable roof
+  slabs (close when `rainLevel > 0.3`), pyro at kick-off and goals; faces on
+  the simple rig (`eyeL/eyeR/mouth`, mouth opens on celebrate); **builder
+  support**: `tiers` up to 3 (`SPLITS`, `GAP_D/GAP_Z` totals), seat lettering
+  mosaic on the far top tier + a lit name sign under the far roof, landscapes
+  (city towers; coast = sea plane + lighthouse + towers on one side; mountains
+  = 14 cones on a 520–720 m ring; desert = dunes + palms), facade styles
+  (glass/brick/mesh change the shell material). Replay afterimage passes are
+  off unless `setReplay(true)`.
+- **WebGPU** (`js/game/gpu.js`, `js/vendor/three.webgpu.js` r170, 1.68 MB,
+  lazy, not precached — release SKIP list): `pickRenderer()` → 'webgpu' when
+  `navigator.gpu` gives an adapter and `settings.renderer !== 'webgl'`; the
+  **menu hero** uses it (`menuHero.js startWebGPU`, `canvas.dataset.api`);
+  the match renderer stays WebGL2 (its custom GLSL passes would need a TSL
+  port — that is the next graphics job). Settings: Renderer seg auto/WebGL.
+- **Social** (`server/store.js`, `server/server.js`, `screens/online.js`):
+  `db.guilds`; routes `/api/guild` (GET view; POST create/join/leave/claim),
+  `/api/guild/board`, `/api/friends` (GET; POST add/remove), `/api/live`.
+  `GUILD_OBJECTIVES` wins 15 / goals 40 / matches 30 per `weekId()`, tallied
+  in `recordResult` from validated host results (both sides count when both
+  are members); `claimGuildObjective` → `{reward: {pack, apex, title}}` which
+  the client `pend`s. WS: `invite {to}` (friends only; the lobby code is all
+  that travels), `spectate {matchId}` (≤8 per match; host's `snap`/`evt`
+  copied, nothing a spectator sends is relayed), `unspectate`, `emote {id}`
+  (`EMOTE_IDS`, rate-limited; to the opponent and spectators), and
+  `spectators {n}` to the host. **Client**: Guild and Friends cards, Live
+  list, invite toast with Join, `spectating` → play with `online.spectate`
+  (no sender, no P2P, no pause requests, no result, "Spectating" badge, "Back
+  online"); emote button in the HUD (`js/data/emotes.js`, 8 ids, EN/AR text —
+  the only thing players can say to each other); **clip export**: "Save
+  highlights as a clip" records `canvas.captureStream(30)` with MediaRecorder
+  through the highlights reel and downloads a WebM. **Bug found by the QA
+  bot**: a match that had gone browser-to-browser sent no snapshots through
+  the hub, so spectators saw nothing — the host now copies snapshots up while
+  `spectators > 0 && p2pActive()`. Tests `tests/unit/social.test.mjs` (real
+  server, three sockets). i18n is untouched for the new screens (English).
+- **Watch**: `.w-venue` thumbnail + ground name on the match card; guild
+  objectives on the Club glance (`store.guild()`, 60 s cache); bundle rebuilt.
+- **Perf**: gl-scan dusk + night clean (0 black pixels). __FPS__
+- Not done / next: match renderer on WebGPU (TSL port of the turf/crowd/cine
+  passes); per-seat crowd is still the instanced sway + arms (no individual
+  seated→standing animation); the builder's designs are per save, not per
+  career club; guild chat is deliberately absent (emotes only) and stays so;
+  spectators of a `direct` match cost the host one extra upload stream.
+
 ### Round 5 (v71) — scale, spectacle, polish, QA bot, Arabic, onboarding
 **Sweep byte-identical.** First 2052 cards pinned unchanged (generator test).
 

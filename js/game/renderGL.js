@@ -2180,7 +2180,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         base, shorts,
         new THREE.Color(look.skin), new THREE.Color(look.hair),
         base.clone().multiplyScalar(0.8),
-        buildFor(p.ref, p.role));
+        buildFor(p.ref, p.role), { face: !lo && !med });
       /* The number and the name on the back — on every tier but Ultra Low,
          where a texture per shirt is twenty-two textures too many. */
       if (!potato) {

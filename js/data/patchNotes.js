@@ -18,6 +18,55 @@
  */
 export const RELEASES = [
   {
+    version: 'v72',
+    date: '2026-09-20',
+    tag: 'Your ground',
+    title: 'The Stadium Builder, a hundred clubs, the World Tournament',
+    lede: 'Design your own stadium and grow it in Career. A hundred clubs across eight divisions with 5,612 real-name players, '
+        + 'a World Tournament and a Club World Cup, eight wonder stadiums for the finals, a transfer market with real prices, '
+        + 'guilds and friends, spectating, emotes, replay clips, and a graphics push from colour grading to an Ultra+ tier.',
+    entries: [
+      {
+        head: 'Stadium Builder',
+        summary: 'Design your home ground: bowl, up to three tiers, up to 100,000 seats, roof, floodlights, colours, pitch pattern, your name in the seats, the facade, and a city, desert, coast or mountain setting. Save designs, share them by code, and in Career let the board build it bigger.',
+        detail: 'The builder shows the ground in 3D as you change it, in daylight, at dusk or at night, '
+              + 'and it becomes your home in Ultimate XI. A share code carries the shape and the colours '
+              + 'only — whoever loads it sees their own club\'s name in the seats. In Career the ground '
+              + 'starts at 15,000 and grows one expansion a season: the board pays in full while the '
+              + 'club is on its target, the club pays otherwise, and every home match pays a gate that '
+              + 'grows with the bowl.',
+      },
+      {
+        head: 'A hundred clubs, thirty-two nations',
+        summary: 'Eight divisions and 100 clubs, 5,612 real-name players, every club with its own ground, 32 national teams in a World Tournament with groups and knockouts you can play through, a Club World Cup, and eight wonder stadiums for the finals.',
+        detail: 'The Highland and Lowland Leagues join below Grassroots, and forty more clubs spread across '
+              + 'every division. The World Tournament is drawn every fourth season from four pots into eight '
+              + 'groups; pick a nation and play it from the group stage to the final, at the wonders — grounds '
+              + 'with giant screens, LED ribbons, roofs that close when it rains and pyrotechnics at kick-off. '
+              + 'The transfer market now prices players by supply and demand: what the world lacks costs '
+              + 'more, and what everyone is buying climbs.',
+      },
+      {
+        head: 'Graphics',
+        summary: 'Colour grading for every time of day, god rays at dusk and haze under the floodlights, weather that turns mid-match, turf that takes boot marks, dust and rain splashes, faces that celebrate, a crowd with arms at Ultra, and an Ultra+ cinematic tier for desktops.',
+        detail: 'A quarter of matches see the weather change during play — rain arriving, or a wet first '
+              + 'half clearing — and the pitch, the sky and the wonder roofs respond. The menu hero renders '
+              + 'through WebGPU where the browser has it, with WebGL2 otherwise; the match itself stays on '
+              + 'WebGL2 for now. Medium is unchanged so phones keep their frame rate.',
+      },
+      {
+        head: 'Together',
+        summary: 'Guilds with weekly objectives and a guild board, a friends list with invites to your lobby, spectator mode for live matches, emotes in online games, and highlights saved as a WebM clip.',
+        detail: 'Found a guild or join one by code; wins, goals and matches from everyone count toward '
+              + 'the same three weekly objectives, and each member claims the pack. Friends who are online '
+              + 'can be invited straight into your lobby, and any live match can be watched — spectators '
+              + 'see the host\'s picture and can never touch the game. Everything one player can say to '
+              + 'another is one of eight emotes, shown in your language; there is no free-text chat, by '
+              + 'design. The watch shows the ground and your guild\'s objectives.',
+      },
+    ],
+  },
+  {
     version: 'v71',
     date: '2026-09-19',
     tag: 'Spectacle',
