@@ -18,6 +18,37 @@
  */
 export const RELEASES = [
   {
+    version: 'v74',
+    date: '2026-09-20',
+    tag: 'Fixes',
+    title: 'Four tiers, phones sorted, your ground everywhere',
+    lede: 'Graphics are Low, Medium, High and Ultra on a desktop or tablet, Performance and Fidelity on a phone. '
+        + 'The iPhone camera shows the whole pitch again, your designed stadium is your home in Kick Off too, '
+        + 'the rotate-your-device wall is gone, and the touchline manager is never a white ghost.',
+    entries: [
+      {
+        head: 'Graphics tiers',
+        summary: 'Desktops and tablets: Auto, Low, Medium, High, Ultra. Phones: Performance or Fidelity. The old Ultra is gone and Ultra+ is now Ultra.',
+        detail: 'A save on the old Ultra is on the new Ultra. Performance is Medium, the tier tuned for a phone\'s '
+              + 'frame rate; Fidelity is everything the desktop Ultra does and will work a phone hard. The FPS '
+              + 'counter shows only the frame rate now.',
+      },
+      {
+        head: 'Phones',
+        summary: 'A phone in landscape is wider than a television, and the camera was zooming in to fit; it now keeps the same vertical view and shows more of the pitch. Every screen works in portrait and the rotate-your-device wall is gone.',
+        detail: 'The Stadium Builder previews at Low on a phone: rebuilding the ground on every slider tick at High '
+              + 'emptied an iPhone\'s graphics memory and Safari reloaded the page, which is what \'the game '
+              + 'restarted\' was.',
+      },
+      {
+        head: 'Your ground, your manager',
+        summary: 'A stadium you designed is your home in Kick Off as well as Ultimate XI and Career. A manager model whose textures failed to load never stands on the touchline as a white figure; the suit figure stands in.',
+        detail: 'The white manager was the model without its textures, which the site\'s security policy was '
+              + 'refusing until v73; v74 also makes sure it can never show untextured.',
+      },
+    ],
+  },
+  {
     version: 'v73',
     date: '2026-09-20',
     tag: 'Feel',

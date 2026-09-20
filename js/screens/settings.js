@@ -7,6 +7,12 @@ import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../au
 import { startTutorial, tutorialSeen } from '../tutorial.js';
 import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
 import { describeRenderer } from '../game/gpu.js';
+import { deviceClass } from '../game/render3d.js';
+
+/* The developer unlock: every tier on every device, for this session. */
+const DEV_KEY = 'apexxi.devUnlock';
+const devUnlocked = () => { try { return sessionStorage.getItem(DEV_KEY) === '1'; } catch { return false; } };
+const DEV_CODE = '549999';
 
 /** Push the saved audio preferences into the engine. */
 function applyAudio() {
@@ -20,7 +26,7 @@ function applyAudio() {
 
 export const TITLE = 'Settings';
 
-const QUALITY_NOTE = (q) => (q === 'min'
+const QUALITY_NOTE = (q) => (q === 'ultra' ? QUALITY_NOTE('cinema') : q === 'min'
   ? '<b>Ultra Low:</b> everything turned down at once — sub-native resolution, no shadows, no lighting passes, flat turf, a sparse crowd and the light player figures. It looks like a highlights reel from 2004 and runs on nearly anything.'
   : q === 'cinema'
   ? '<b>Ultra+ (cinematic):</b> everything Ultra does at three times native resolution, with god rays, depth of field on every shot, the waving crowd and the wet-pitch reflections. For a desktop with a real GPU; a phone will not hold it.'
@@ -30,6 +36,13 @@ const QUALITY_NOTE = (q) => (q === 'min'
   ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
+
+/* What the seg highlights for a saved value: the old names map onto the new tiers, and a phone's Auto is Performance. */
+function qualityShown(q) {
+  const v = q === 'ultra' ? 'cinema' : q === 'min' ? 'low' : (q || 'auto');
+  if (deviceClass() === 'phone' && !devUnlocked()) return v === 'cinema' ? 'cinema' : 'medium';
+  return v;
+}
 
 export function render() {
   const s = getState().settings;
@@ -158,10 +171,12 @@ export function render() {
                 aria-checked="${s.reduceMotion}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>3D detail</b><span>Ships on Ultra. Auto reads the GPU and picks Low, Medium or High.</span></div>
+        <div><b>3D detail</b><span>${deviceClass() === 'phone' && !devUnlocked() ? 'Performance keeps a phone at its frame rate; Fidelity is everything the desktop Ultra does.' : 'Auto reads the GPU and picks Low, Medium or High. Ultra is for a desktop with a real GPU.'}</span></div>
         <div class="seg" id="qualitySeg">
-          ${[['auto', 'Auto'], ['min', 'Ultra Low'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['ultra', 'Ultra'], ['cinema', 'Ultra+']].map(([v, l]) =>
-            `<button class="${(s.quality || 'auto') === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
+          ${(deviceClass() === 'phone' && !devUnlocked()
+            ? [['medium', 'Performance'], ['cinema', 'Fidelity']]
+            : [['auto', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['cinema', 'Ultra']]).map(([v, l]) =>
+            `<button class="${qualityShown(s.quality) === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <p class="setting-note ${s.quality === 'ultra' ? 'warn' : ''}" id="qualityNote">
@@ -214,7 +229,8 @@ export function render() {
         with the game. Ultimate XI clubs and all competitions are fictional. Ratings,
         stats and values are invented and are not a claim about anyone's ability; badges
         and portraits are drawn rather than photographed — they are not likenesses.</p>
-    </section>`;
+    </section>
+    <button class="dev-dot" id="devDot" aria-label="Developer">·</button>`;
 }
 
 export function mount(root) {
@@ -304,8 +320,34 @@ export function mount(root) {
     update((s) => { s.settings.quality = q; });
     root.querySelectorAll('[data-quality]').forEach((x) => x.classList.toggle('on', x === b));
     const note = root.querySelector('#qualityNote');
-    note.classList.toggle('warn', q === 'ultra');
+    note.classList.toggle('warn', q === 'cinema');
     note.innerHTML = QUALITY_NOTE(q);
+  });
+
+  /* Developer unlock. A dot in the corner of the last panel; the code opens
+     every tier on every device until the tab is closed. */
+  root.querySelector('#devDot')?.addEventListener('click', () => {
+    if (devUnlocked()) { try { sessionStorage.removeItem(DEV_KEY); } catch { /* ignore */ } toast('Developer options locked'); navigate('settings'); return; }
+    const box = document.createElement('div');
+    box.className = 'pair-overlay';
+    box.innerHTML = `
+      <div class="pair-card glass">
+        <span class="pair-kicker">Developer</span>
+        <input id="devCode" type="password" inputmode="numeric" maxlength="6" placeholder="Code" autocomplete="off" style="font-size:22px;text-align:center;letter-spacing:.3em;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:inherit">
+        <span class="pair-note">Unlocks every graphics tier on this device for this session.</span>
+        <div style="display:flex;gap:8px"><button class="btn primary" id="devGo">Unlock</button><button class="btn ghost" id="devNo">Cancel</button></div>
+      </div>`;
+    document.body.appendChild(box);
+    const close = () => box.remove();
+    box.querySelector('#devNo').addEventListener('click', close);
+    box.addEventListener('click', (ev) => { if (ev.target === box) close(); });
+    const go = () => {
+      if (box.querySelector('#devCode').value === DEV_CODE) { try { sessionStorage.setItem(DEV_KEY, '1'); } catch { /* ignore */ } close(); toast('Developer options unlocked for this session', 'good'); navigate('settings'); }
+      else { box.querySelector('#devCode').value = ''; toast('Wrong code', 'warn'); }
+    };
+    box.querySelector('#devGo').addEventListener('click', go);
+    box.querySelector('#devCode').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); });
+    box.querySelector('#devCode').focus();
   });
 
   /* The accent picker used to live here, with a listener that wrote

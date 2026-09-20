@@ -48,7 +48,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v73';
+export const APP_VERSION = 'v74';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -367,23 +367,8 @@ api.resume().then((d) => {
 }).catch(() => { /* offline — the game is fully playable without the server */ });
 
 /* ----------------------------- mobile / PWA ----------------------------- */
-// Ask phones to turn sideways — the pitch is a landscape view.
-const rotateHint = document.getElementById('rotateHint');
-/* The hint used to be a wall: on an iPhone held upright it covered every
-   button on the menu with no way past it. Now it can be dismissed for the
-   session (the menus and the hubs work in portrait; a match is still better
-   sideways), and it never covers a match that is already running. */
-let portraitOk = false;
-const checkOrientation = () => {
-  const phone = window.matchMedia('(pointer: coarse)').matches;
-  const portrait = window.innerHeight > window.innerWidth;
-  const short = Math.min(window.innerWidth, window.innerHeight) < 500;
-  rotateHint.hidden = portraitOk || !(phone && portrait && short);
-};
-document.getElementById('rotateAnyway')?.addEventListener('click', () => { portraitOk = true; checkOrientation(); });
-checkOrientation();
-window.addEventListener('resize', checkOrientation);
-window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 250));
+// The rotate-your-device wall is gone (v74): every screen works in portrait, and a
+// match simply uses the width it has.
 
 // Safari fires a synthetic double-tap zoom that steals taps from the touch stick.
 document.addEventListener('gesturestart', (e) => e.preventDefault());

@@ -96,9 +96,12 @@ function venueOf(params) {
   const car = params.career ? getState().career : null;
   // the career club has its own design (v73); Ultimate XI has yours
   const design = car ? (car.ground?.design || null) : getState().club.stadium?.design;
-  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
+  // yours whenever you are the home side and nothing else claims the venue: Ultimate XI, a
+  // Career home game, or a Kick Off match with you on the home team (v74)
+  const humanHome = params.mode !== 'career' && !params.online && (params.human ?? 0) === 0;
+  const mine = !showpiece && design && !params.venueId && (params.ultimate || (params.career?.isHome && sq?.name) || (!params.career && humanHome));
   const stadium = mine
-    ? builderDef(design, { clubName: sq?.name || home?.name, short: sq?.short || home?.short,
+    ? builderDef(design, { clubName: sq?.name || (car ? home?.name : (getState().club.identity?.name || 'Ultimate XI')), short: sq?.short || (car ? home?.short : (getState().club.identity?.short || 'XI')),
       capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
     : stadiumFor(home, { showpiece });
   const day = Math.floor(Date.now() / 86_400_000);
@@ -1532,10 +1535,7 @@ export function mount(root, params) {
     if (showFps) {
       // Each counter names its own fault, so one photo of the badge says which
       // of the three it is — see the note on the detector above.
-      fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`
-        + (blackish ? ` · ${blackish} draw` : '')
-        + (progHits ? ` · ${progHits} prog` : '')
-        + (texHits ? ` · ${texHits} tex` : '');
+      fpsEl.textContent = `${Math.round((fpsFrames * 1000) / span)} FPS`;
     }
     fpsFrames = 0;
     fpsSince = now;

@@ -900,8 +900,27 @@ function drawBanner(ctx, match, w, h, kits) {
  * @param {{gpu?:string, touch?:boolean, small?:boolean, cores?:number, memory?:number}} [env]
  *        overrides for tests; read from the browser when absent
  */
+/**
+ * Phone, tablet or desktop — what the settings screen offers depends on it.
+ * A phone is a touch device whose shorter screen side is under 600 CSS px;
+ * a tablet is any other touch device.
+ */
+export function deviceClass() {
+  if (typeof window === 'undefined') return 'desktop';
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  if (!touch) return 'desktop';
+  const short = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
+  return short < 600 ? 'phone' : 'tablet';
+}
+
 export function resolveQuality(setting, env = null) {
-  if (['high', 'low', 'ultra', 'min', 'medium', 'cinema'].includes(setting)) return setting;
+  // v74: the old Ultra is gone from the menus and Ultra+ is called Ultra; a
+  // save that still says 'ultra' means the top tier, 'min' means Low
+  if (setting === 'ultra') setting = 'cinema';
+  if (setting === 'min') setting = 'low';
+  if (['high', 'low', 'medium', 'cinema'].includes(setting)) return setting;
+  // Auto on a phone is Performance (Medium), the one tier tuned for it
+  if (!env && deviceClass() === 'phone') return 'medium';
   const e = env || readEnv();
   const gpu = classifyGPU(e.gpu || '');
   const weak = (e.cores || 8) <= 2 || (e.memory || 8) <= 2;

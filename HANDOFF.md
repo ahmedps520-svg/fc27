@@ -15,6 +15,41 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v74 — tiers, phones, the ground in Kick Off
+- **Tiers** (`render3d.js`, `settings.js`): the menu offers Auto / Low /
+  Medium / High / Ultra on desktop and tablet; internally Ultra is the
+  `cinema` tier (the old `ultra` is gone from menus; `resolveQuality` maps
+  a saved `'ultra'` → `'cinema'` and `'min'` → `'low'`; Auto on a weak
+  device can still land on the internal `min`). `deviceClass()` = phone
+  (touch, shorter screen side < 600 CSS px) / tablet / desktop. A phone
+  sees Performance (`medium`) and Fidelity (`cinema`) only, and Auto on a
+  phone is Medium. **Developer unlock**: the faint dot under the last
+  Settings panel (`#devDot`) asks for a code; `549999` sets
+  `sessionStorage['apexxi.devUnlock']` and every tier appears until the
+  tab closes; clicking the dot again locks it. The code is in
+  `settings.js` (`DEV_CODE`) — it is a convenience gate, not security.
+- **Camera**: `camera.fov = hfov / min(max(1, aspect), 16/9) * 1.45` in
+  both renderers — on a 19.5:9 phone the vertical field used to shrink to
+  32° (a zoom); it now stays at the 16:9 value and shows more of the sides.
+- **Rotate hint** removed (index.html, app.js, `portraitOk`). Every screen
+  works in portrait.
+- **Venue** (`play.js venueOf`): the designed ground is used for Ultimate
+  XI, Career home games and any offline Kick Off with the human on the home
+  side (`humanHome`), unless `params.venueId` claims the venue; named after
+  the player's identity when no custom squad is home.
+- **Builder on phones**: preview at `low` (a rebuild per change at High
+  exhausted iOS GPU memory → Safari reloaded the page = "the game
+  restarts").
+- **Manager**: a GLB whose materials have no map and a white colour is
+  dropped and the suit rig stands in (the white figure reported was the
+  model with its textures refused by the pre-v73 CSP).
+- **FPS readout**: just the number; the draw/prog/tex fingerprints stay in
+  the console.
+- Verified headlessly (`tests/tmp/v74-check.mjs`): phone tiers, wrong and
+  right code, desktop tiers, the Kick Off venue name, the FPS text, the
+  iPhone match framing; `mgr-check.mjs` renders a career match with the
+  textured manager model.
+
 ### Round 7 (v73) — gameplay feel, SBC, packs, cards, phone fixes
 **Sweep re-baselined on purpose** (`tests/golden/sweep-*.txt`, `node
 tests/sweep-check.mjs --update`): the user asked for the ball to climb and
