@@ -13,6 +13,7 @@ import { DIVISIONS } from '../state.js';
 import { navigate, toast, refreshCoins } from '../app.js';
 import { sfx } from '../audio.js';
 import { clubIdentity } from './squad.js';
+import { t } from '../i18n.js';
 
 export const TITLE = 'Account';
 
@@ -112,22 +113,21 @@ export function onlineView() {
 
     <div class="ol-grid">
       <section class="ol-card glass" id="olGuild">
-        <span class="ol-kicker">Guild</span>
-        <h3>Your guild</h3>
-        <p class="ol-empty">Loading…</p>
+        <span class="ol-kicker">${t('social.guild')}</span>
+        <h3>${t('social.yourGuild')}</h3>
+        <p class="ol-empty">…</p>
       </section>
 
       <section class="ol-card glass" id="olFriends">
-        <span class="ol-kicker">Friends</span>
-        <h3>Friends</h3>
-        <p class="ol-empty">Loading…</p>
+        <span class="ol-kicker">${t('social.friends')}</span>
+        <h3>${t('social.friends')}</h3>
+        <p class="ol-empty">…</p>
       </section>
     </div>
 
     <section class="ol-board glass">
-      <h3>Live now</h3>
-      <p class="ol-sub">Watch a match that is being played right now. Spectators see the
-         host's view and can never touch the game.</p>
+      <h3>${t('social.live')}</h3>
+      <p class="ol-sub">${t('social.live.sub')}</p>
       <div id="olLive" class="ol-rows"><p class="ol-empty">Loading…</p></div>
     </section>
 
@@ -281,7 +281,7 @@ export function mountOnline(root, { rerender }) {
     const rows = (board?.rows || []).slice(0, 8).map((r) => `
       <div class="ol-row ${v.guild && r.code === v.guild.code ? 'me' : ''}">
         <i>${r.rank}</i><b>${esc(r.name)} <small>[${esc(r.tag)}]</small></b>
-        <span>${r.members} members</span><span>${r.wins}W · ${r.goals} goals</span>
+        <span>${r.members} ${t('social.members')}</span><span>${r.wins}W · ${r.goals} goals</span>
         <span class="ol-gd"></span><em>${r.points}</em>
       </div>`).join('');
     guildEl.innerHTML = v.guild ? `
@@ -289,20 +289,20 @@ export function mountOnline(root, { rerender }) {
       <h3>${esc(v.guild.name)} <small>[${esc(v.guild.tag)}]</small></h3>
       <p>Code <b class="gd-code">${esc(v.guild.code)}</b> — share it to invite. ${v.rank ? `Rank <b>#${v.rank}</b> of ${v.guilds} this week.` : ''}</p>
       <div class="gd-members">${v.guild.members.map((m) => `<span class="${m.online ? 'on' : ''}"><i></i>${esc(m.name)} <em>${m.points}</em></span>`).join('')}</div>
-      <span class="ol-kicker">Weekly objectives</span>
+      <span class="ol-kicker">${t('social.objectives')}</span>
       <ul class="gd-objs">${objs}</ul>
-      <span class="ol-kicker">Guild board</span>
+      <span class="ol-kicker">${t('social.board')}</span>
       <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>
-      <button class="btn ghost sm" id="gdLeave">Leave guild</button>` : `
+      <button class="btn ghost sm" id="gdLeave">${t('social.leave')}</button>` : `
       <span class="ol-kicker">Guild</span>
-      <h3>Join a guild</h3>
+      <h3>${t('social.joinGuild')}</h3>
       <p>Play together: the wins, goals and matches of everyone in a guild count toward the
          same weekly objectives, and each member claims the reward.</p>
       <div class="ol-lobby">
-        <div class="ol-join"><input id="gdName" maxlength="20" placeholder="New guild name" aria-label="Guild name"><button class="btn ghost" id="gdCreate">Create</button></div>
-        <div class="ol-join"><input id="gdCode" maxlength="5" placeholder="CODE" aria-label="Guild code"><button class="btn ghost" id="gdJoin">Join</button></div>
+        <div class="ol-join"><input id="gdName" maxlength="20" placeholder="New guild name" aria-label="Guild name"><button class="btn ghost" id="gdCreate">${t('social.create')}</button></div>
+        <div class="ol-join"><input id="gdCode" maxlength="5" placeholder="CODE" aria-label="Guild code"><button class="btn ghost" id="gdJoin">${t('social.join')}</button></div>
       </div>
-      <span class="ol-kicker">Guild board · this week</span>
+      <span class="ol-kicker">${t('social.board')}</span>
       <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>`;
   };
   const loadGuild = async () => {
@@ -345,14 +345,14 @@ export function mountOnline(root, { rerender }) {
     if (!friendsEl?.isConnected) return;
     const hosting = !codeOut.hidden;
     friendsEl.innerHTML = `
-      <span class="ol-kicker">Friends</span>
-      <h3>Friends</h3>
-      <div class="ol-join"><input id="frName" maxlength="16" placeholder="Player name" aria-label="Friend's player name"><button class="btn ghost" id="frAdd">Add</button></div>
+      <span class="ol-kicker">${t('social.friends')}</span>
+      <h3>${t('social.friends')}</h3>
+      <div class="ol-join"><input id="frName" maxlength="16" placeholder="Player name" aria-label="Friend's player name"><button class="btn ghost" id="frAdd">${t('social.add')}</button></div>
       <div class="fr-list">${rows.length ? rows.map((r) => `
         <div class="fr-row ${r.online ? 'on' : ''}">
           <i></i><b>${esc(r.name)}</b>${r.guild ? `<small>[${esc(r.guild)}]</small>` : ''}<span>${r.points} pts</span>
-          ${r.online && hosting ? `<button class="btn primary sm" data-invite="${esc(r.name)}">Invite</button>` : ''}
-          ${r.inMatch ? `<button class="btn ghost sm" data-watch="${r.inMatch}">Watch</button>` : ''}
+          ${r.online && hosting ? `<button class="btn primary sm" data-invite="${esc(r.name)}">${t('social.invite')}</button>` : ''}
+          ${r.inMatch ? `<button class="btn ghost sm" data-watch="${r.inMatch}">${t('social.watch')}</button>` : ''}
           <button class="icon-btn sm" data-remove="${esc(r.name)}" title="Remove">✕</button>
         </div>`).join('') : '<p class="ol-empty">Add friends by their player name. Invites to your lobby and a Watch button appear when they are online.</p>'}</div>`;
   };
@@ -378,7 +378,7 @@ export function mountOnline(root, { rerender }) {
       } else if (b.dataset.watch) {
         if (!net.isReady()) return toast('Not connected to the server', 'warn');
         net.send({ t: 'spectate', matchId: +b.dataset.watch });
-        showSearch('Joining as a spectator…', 'Waiting for the host\'s picture');
+        showSearch(t('social.spectating'), '');
         return;
       } else return;
       loadFriends();
@@ -395,8 +395,8 @@ export function mountOnline(root, { rerender }) {
         <div class="ol-row">
           <i>▶</i><b>${esc(r.host)} v ${esc(r.guest)}</b>
           <span>${r.spectators} watching</span><span></span><span class="ol-gd"></span>
-          <em><button class="btn ghost sm" data-watch="${r.matchId}">Watch</button></em>
-        </div>`).join('') : '<p class="ol-empty">Nobody is playing right now.</p>';
+          <em><button class="btn ghost sm" data-watch="${r.matchId}">${t('social.watch')}</button></em>
+        </div>`).join('') : `<p class="ol-empty">${t('social.nobody')}</p>`;
     } catch { if (liveEl?.isConnected) liveEl.innerHTML = '<p class="ol-empty">Live list unavailable.</p>'; }
   };
   loadLive();
@@ -406,7 +406,7 @@ export function mountOnline(root, { rerender }) {
     if (!b) return;
     if (!net.isReady()) return toast('Not connected to the server', 'warn');
     net.send({ t: 'spectate', matchId: +b.dataset.watch });
-    showSearch('Joining as a spectator…', 'Waiting for the host\'s picture');
+    showSearch(t('social.spectating'), '');
   });
 
   /* --- actions --- */

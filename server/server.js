@@ -390,7 +390,8 @@ const SECURITY_HEADERS = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "media-src 'self' data: blob:",
-    "connect-src 'self' ws: wss:",
+    // blob: because the scanned player models hand their textures to fetch() as blob URLs
+    "connect-src 'self' ws: wss: blob:",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

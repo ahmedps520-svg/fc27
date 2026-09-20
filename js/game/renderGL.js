@@ -1888,8 +1888,10 @@ export function createRenderer(canvas, match, quality, models = false) {
     uWave: { value: -1 },        // -1: no wave running
     uJump: { value: 0 },
     uExcite: { value: 0.3 },
+    uSide: { value: 0.5 },       // who scored: 0 home, 1 away — the other end sits on its hands
   };
   let waveT = -1;                // seconds into the current wave, -1 idle
+  let wasGoal = false; const prevScore = [0, 0];
   let waveNext = 25 + rand() * 30;
   let jumpT = 0;
   // Ultra Low keeps *a* crowd — an empty bowl reads as broken, not as fast —
@@ -2074,40 +2076,59 @@ export function createRenderer(canvas, match, quality, models = false) {
      * match screen asks for one (`uWave` is where it is, 0..1 along the walk
      * round the bowl); a goal lifts everybody (`uJump`). Cost: nothing that a
      * static crowd did not already cost. */
-    const mat = () => {
+    /* v73: every seat its own person. `aCrowd` is (phase, place round the
+       bowl, section): section 1 is the home end, 0 the away corner, 0.5 the
+       neutral seats. A goal is celebrated by the end that scored — each
+       person rising on their own beat (`stagger`), half the seated standing
+       up, the other end sitting still — and heads turn on their own slow
+       phase the whole match, which is what makes a stand look inhabited
+       rather than swaying like wheat. All of it is vertex math on the two
+       instanced meshes; nothing is uploaded per frame. */
+    const mat = (isHead = false) => {
       const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
       m.onBeforeCompile = (sh) => {
         sh.uniforms.uTime = crowdU.uTime;
         sh.uniforms.uWave = crowdU.uWave;
         sh.uniforms.uJump = crowdU.uJump;
         sh.uniforms.uExcite = crowdU.uExcite;
+        sh.uniforms.uSide = crowdU.uSide;
         sh.vertexShader = sh.vertexShader
           .replace('#include <common>', `#include <common>
-            uniform float uTime; uniform float uWave; uniform float uJump; uniform float uExcite;
-            attribute vec2 aCrowd;`)
+            uniform float uTime; uniform float uWave; uniform float uJump; uniform float uExcite; uniform float uSide;
+            attribute vec3 aCrowd;`)
           .replace('#include <begin_vertex>', `#include <begin_vertex>
             {
               float ph = aCrowd.x * 6.2831;
+              float w = mix(aCrowd.z, 1.0 - aCrowd.z, uSide);          // does this seat care who scored
               float sway = sin(uTime * 1.6 + ph) * (0.012 + uExcite * 0.03);
               float d = abs(aCrowd.y - uWave);
               d = min(d, 1.0 - d);
               float wave = uWave < 0.0 ? 0.0 : max(0.0, 1.0 - d * 14.0);
-              float jump = uJump * (0.55 + 0.45 * sin(uTime * 9.0 + ph));
-              float lift = wave * 0.5 + jump * 0.32;
-              transformed.x += sway;
+              float stagger = smoothstep(aCrowd.x * 0.5, aCrowd.x * 0.5 + 0.25, uJump);
+              float jump = uJump * w * stagger * (0.55 + 0.45 * sin(uTime * 9.0 + ph * 1.7));
+              float stand = stagger * w * 0.22 * (1.0 - step(0.55, aCrowd.x));   // half the seated get up
+              float lift = wave * 0.5 + jump * 0.32 + stand;
+              float fidget = sin(uTime * 0.7 + ph * 3.0) * 0.006;
+              transformed.x += sway + fidget;
               transformed.z += lift * (0.3 + 0.7 * step(0.0, transformed.z));
+              ${isHead ? `
+              // heads turn to follow play, each on its own slow clock
+              float turn = sin(uTime * 0.45 + ph * 2.3) * 0.28 * (0.6 + uExcite * 0.8);
+              float cs = cos(turn), sn = sin(turn);
+              transformed.xy = vec2(transformed.x * cs - transformed.y * sn, transformed.x * sn + transformed.y * cs);` : ''}
             }`);
       };
-      m.customProgramCacheKey = () => 'apexCrowdAnim';
+      m.customProgramCacheKey = () => (isHead ? 'apexCrowdHead' : 'apexCrowdAnim');
       return m;
     };
-    const bodies = new THREE.InstancedMesh(bodyGeo, mat(), taken.length);
-    const heads = new THREE.InstancedMesh(headGeo, mat(), taken.length);
+    const bodies = new THREE.InstancedMesh(bodyGeo, mat(false), taken.length);
+    const heads = new THREE.InstancedMesh(headGeo, mat(true), taken.length);
     bodies.castShadow = false;      // a stand casting shadows onto itself is invisible and not free
     heads.castShadow = false;
-    const crowdAttr = new Float32Array(taken.length * 2);
-    taken.forEach((s, i) => { crowdAttr[i * 2] = rand(); crowdAttr[i * 2 + 1] = s.along || 0; });
-    const crowdBuf = new THREE.InstancedBufferAttribute(crowdAttr, 2);
+    const crowdAttr = new Float32Array(taken.length * 3);
+    const sectionOf = (along) => (along > 0.42 && along < 0.58) || along < 0.32 ? 1 : (along > 0.64 && along < 0.71) ? 0 : 0.5;
+    taken.forEach((s, i) => { crowdAttr[i * 3] = rand(); crowdAttr[i * 3 + 1] = s.along || 0; crowdAttr[i * 3 + 2] = sectionOf(s.along || 0); });
+    const crowdBuf = new THREE.InstancedBufferAttribute(crowdAttr, 3);
     bodyGeo.setAttribute('aCrowd', crowdBuf);
     headGeo.setAttribute('aCrowd', crowdBuf);
 
@@ -2139,16 +2160,17 @@ export function createRenderer(canvas, match, quality, models = false) {
       const armGeo = mergeBoxes([box(0.08, 0.08, 0.34, -0.2, 0.02, 0.62), box(0.08, 0.08, 0.34, 0.2, 0.02, 0.62)]);
       const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
       armMat.onBeforeCompile = (sh) => {
-        sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uWave = crowdU.uWave; sh.uniforms.uJump = crowdU.uJump; sh.uniforms.uExcite = crowdU.uExcite;
+        sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uWave = crowdU.uWave; sh.uniforms.uJump = crowdU.uJump; sh.uniforms.uExcite = crowdU.uExcite; sh.uniforms.uSide = crowdU.uSide;
         sh.vertexShader = sh.vertexShader
           .replace('#include <common>', `#include <common>
-            uniform float uTime; uniform float uWave; uniform float uJump; uniform float uExcite; attribute vec2 aCrowd;`)
+            uniform float uTime; uniform float uWave; uniform float uJump; uniform float uExcite; uniform float uSide; attribute vec3 aCrowd;`)
           .replace('#include <begin_vertex>', `#include <begin_vertex>
             {
               float ph = aCrowd.x * 6.2831;
+              float w = mix(aCrowd.z, 1.0 - aCrowd.z, uSide);
               float d = abs(aCrowd.y - uWave); d = min(d, 1.0 - d);
               float wave = uWave < 0.0 ? 0.0 : max(0.0, 1.0 - d * 14.0);
-              float up = clamp(uJump * 1.3 + wave + uExcite * 0.4, 0.0, 1.0);
+              float up = clamp(uJump * 1.3 * w + wave + uExcite * 0.4, 0.0, 1.0);
               float sway = sin(uTime * 3.2 + ph) * 0.12 * up;
               // hinge at the elbow height: the hand end swings, the elbow stays
               float hand = smoothstep(0.5, 0.8, position.z);
@@ -2160,15 +2182,16 @@ export function createRenderer(canvas, match, quality, models = false) {
       armMat.customProgramCacheKey = () => 'apexCrowdArms';
       const armed = taken.filter((_, i) => i % 3 === 0);
       const arms = new THREE.InstancedMesh(armGeo, armMat, armed.length);
-      const armAttr = new Float32Array(armed.length * 2);
+      const armAttr = new Float32Array(armed.length * 3);
+      const indexOf = new Map(taken.map((s, i) => [s, i]));
       armed.forEach((s, i) => {
-        const j = taken.indexOf(s);
+        const j = indexOf.get(s);
         bodies.getMatrixAt(j, dummy.matrix);
         arms.setMatrixAt(i, dummy.matrix);
         arms.setColorAt(i, skinTone.setHex(SKINS[(rand() * SKINS.length) | 0]));
-        armAttr[i * 2] = crowdAttr[j * 2]; armAttr[i * 2 + 1] = crowdAttr[j * 2 + 1];
+        armAttr[i * 3] = crowdAttr[j * 3]; armAttr[i * 3 + 1] = crowdAttr[j * 3 + 1]; armAttr[i * 3 + 2] = crowdAttr[j * 3 + 2];
       });
-      armGeo.setAttribute('aCrowd', new THREE.InstancedBufferAttribute(armAttr, 2));
+      armGeo.setAttribute('aCrowd', new THREE.InstancedBufferAttribute(armAttr, 3));
       arms.instanceMatrix.needsUpdate = true;
       arms.castShadow = false;
       scene.add(arms);
@@ -2790,6 +2813,10 @@ export function createRenderer(canvas, match, quality, models = false) {
         const step = Math.min(dt || 0, 0.1);
         crowdU.uTime.value += step;
         const goal = m.phase === 'goal';
+        // who scored: the end that did celebrates, the other sits on its hands
+        if (goal && !wasGoal) crowdU.uSide.value = m.teams[0].score > prevScore[0] ? 0 : m.teams[1].score > prevScore[1] ? 1 : 0.5;
+        if (!goal) { prevScore[0] = m.teams[0].score; prevScore[1] = m.teams[1].score; }
+        wasGoal = goal;
         jumpT = goal ? Math.min(1, jumpT + step * 2.2) : Math.max(0, jumpT - step * 0.8);
         crowdU.uJump.value = jumpT;
         crowdU.uExcite.value += (((m.excitement ?? 0.3) + (goal ? 0.6 : 0)) - crowdU.uExcite.value) * Math.min(1, step * 2);

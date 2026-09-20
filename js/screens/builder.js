@@ -20,27 +20,42 @@ import { Match } from '../game/sim.js';
 import { makeCamera, orbitCamera, resolveQuality } from '../game/render3d.js';
 import { screenHead } from '../components/screenHead.js';
 import { clubIdentity } from './squad.js';
+import { careerClub } from '../career.js';
 import { sfx } from '../audio.js';
+import { t } from '../i18n.js';
 import * as B from '../builder.js';
 
 export const TITLE = 'Stadium Builder';
 
 let design = null;          // the one being edited (not yet saved)
 let time = 'dusk';
+let target = 'club';        // 'club' = Ultimate XI, 'career' = the career club's ground (v73: one design each)
 
-const me = () => clubIdentity();
-const current = () => design || (design = B.normalise(getState().club.stadium?.design || B.defaultDesign(me().crest.colors), me().crest.colors));
+/* Who the ground is for. The Ultimate XI club has its identity; the career
+   club has a name and colours of its own, and its design lives on the career
+   slice so a new career starts from the club's real colours, not yours. */
+const careerClubInfo = () => {
+  const car = getState().career;
+  if (!car) return null;
+  const c = careerClub(car.clubId);
+  return c ? { name: c.name, short: c.short, colors: c.crest?.colors || c.colors || ['#41d3ff', '#0b1020'] } : null;
+};
+const me = () => (target === 'career' && careerClubInfo()) || { ...clubIdentity(), colors: clubIdentity().crest.colors };
+const savedDesign = () => (target === 'career' ? getState().career?.ground?.design : getState().club.stadium?.design);
+const current = () => design || (design = B.normalise(savedDesign() || B.defaultDesign(me().colors), me().colors));
 const seg = (key, list, val, labels) => `<div class="seg bld-seg" data-key="${key}">${list.map((v) => `<button class="${String(val) === String(v) ? 'on' : ''}" data-val="${v}">${labels ? labels[v] : v}</button>`).join('')}</div>`;
 
-export function render() {
+export function render(params = {}) {
+  if (params.target && params.target !== target) { target = params.target === 'career' && careerClubInfo() ? 'career' : 'club'; design = null; }
   const d = current();
   const id = me();
   const st = B.toDef(d, { clubName: id.name, short: id.short });
   const saved = getState().club.stadium?.saved || [];
-  const home = getState().club.stadium?.design;
+  const home = savedDesign();
   const isHome = home && B.encode(home) === B.encode(d);
+  const career = careerClubInfo();
   return `
-    ${screenHead({ kicker: 'Stadium Builder', title: 'Design your ground', sub: 'Shape the bowl, pick the roof and the lights, colour the seats, choose what lies beyond the stands. It becomes your home in Ultimate XI, and the board grows it in Career.', motif: 'pitch', tone: 'c' })}
+    ${screenHead({ kicker: t('builder.kicker'), title: t('builder.title'), sub: t('builder.sub'), motif: 'pitch', tone: 'c' })}
     <div class="builder">
       <div class="showcase-view bld-view">
         <canvas id="bldCanvas"></canvas>
@@ -48,55 +63,59 @@ export function render() {
           <b id="bldName">${st.name}</b>
           <span id="bldFacts">${st.capacity.toLocaleString()} · ${d.tiers} tier${d.tiers > 1 ? 's' : ''} · ${B.LABELS.roof[d.roof].toLowerCase()} · ${B.LABELS.landscape[d.landscape].toLowerCase()}</span>
         </div>
-        <p class="showcase-note" id="bldNote">Building the ground…</p>
+        <p class="showcase-note" id="bldNote">${t('builder.building')}</p>
         <div class="seg bld-time">${['day', 'dusk', 'night'].map((v) => `<button class="${time === v ? 'on' : ''}" data-time="${v}">${TIME_LABEL[v]}</button>`).join('')}</div>
       </div>
 
       <div class="bld-panel glass">
-        <label class="bld-row"><span>Name</span>
+        ${career ? `<div class="bld-row"><span>${t('builder.for')}</span><div class="seg bld-target">
+          <button class="${target === 'club' ? 'on' : ''}" data-target="club">${clubIdentity().name}</button>
+          <button class="${target === 'career' ? 'on' : ''}" data-target="career">${career.name} · Career</button>
+        </div></div>` : ''}
+        <label class="bld-row"><span>${t('builder.name')}</span>
           <span class="bld-name"><b>${id.name}</b>
             <select id="bldSuffix">${B.SUFFIXES.map((s, i) => `<option value="${i}" ${i === d.suffix ? 'selected' : ''}>${s}</option>`).join('')}</select>
           </span>
         </label>
-        <label class="bld-row"><span>Capacity <b id="bldCapOut">${d.capacity.toLocaleString()}</b></span>
+        <label class="bld-row"><span>${t('builder.capacity')} <b id="bldCapOut">${d.capacity.toLocaleString()}</b></span>
           <input type="range" id="bldCap" min="${B.CAP_MIN}" max="${B.CAP_MAX}" step="${B.CAP_STEP}" value="${d.capacity}">
         </label>
-        <div class="bld-row"><span>Tiers</span>${seg('tiers', B.TIERS, d.tiers)}</div>
-        <div class="bld-row"><span>Corners</span>${seg('bowl', B.BOWLS, d.bowl, B.LABELS.bowl)}</div>
-        <div class="bld-row"><span>Roof</span>${seg('roof', B.ROOFS, d.roof, B.LABELS.roof)}</div>
-        <div class="bld-row"><span>Floodlights</span>${seg('pylons', B.PYLONS, d.pylons, B.LABELS.pylons)}</div>
-        <div class="bld-row"><span>Pitch</span>${seg('pattern', B.PATTERNS, d.pattern, B.LABELS.pattern)}</div>
-        <div class="bld-row"><span>Colours</span>
+        <div class="bld-row"><span>${t('builder.tiers')}</span>${seg('tiers', B.TIERS, d.tiers)}</div>
+        <div class="bld-row"><span>${t('builder.corners')}</span>${seg('bowl', B.BOWLS, d.bowl, B.LABELS.bowl)}</div>
+        <div class="bld-row"><span>${t('builder.roof')}</span>${seg('roof', B.ROOFS, d.roof, B.LABELS.roof)}</div>
+        <div class="bld-row"><span>${t('builder.lights')}</span>${seg('pylons', B.PYLONS, d.pylons, B.LABELS.pylons)}</div>
+        <div class="bld-row"><span>${t('builder.pitch')}</span>${seg('pattern', B.PATTERNS, d.pattern, B.LABELS.pattern)}</div>
+        <div class="bld-row"><span>${t('builder.colours')}</span>
           <span class="bld-colours">
-            <label>Seats <input type="color" data-colour="seats0" value="${d.seats[0]}"></label>
-            <label>Seats <input type="color" data-colour="seats1" value="${d.seats[1]}"></label>
-            <label>Facade <input type="color" data-colour="facade" value="${d.facade}"></label>
-            <button class="btn ghost sm" id="bldClubColours">Club colours</button>
+            <label>${t('builder.seats')} <input type="color" data-colour="seats0" value="${d.seats[0]}"></label>
+            <label>${t('builder.seats')} <input type="color" data-colour="seats1" value="${d.seats[1]}"></label>
+            <label>${t('builder.facadeColour')} <input type="color" data-colour="facade" value="${d.facade}"></label>
+            <button class="btn ghost sm" id="bldClubColours">${t('builder.clubColours')}</button>
           </span>
         </div>
-        <div class="bld-row"><span>Facade</span>${seg('facadeStyle', B.FACADES, d.facadeStyle, B.LABELS.facade)}</div>
-        <div class="bld-row"><span>Landscape</span>${seg('landscape', B.LANDSCAPES, d.landscape, B.LABELS.landscape)}</div>
-        <label class="bld-row bld-check"><span>Name in the seats</span><input type="checkbox" id="bldLetters" ${d.lettering ? 'checked' : ''}> <em>${id.name.toUpperCase().slice(0, 14)} picked out in the far stand</em></label>
+        <div class="bld-row"><span>${t('builder.facade')}</span>${seg('facadeStyle', B.FACADES, d.facadeStyle, B.LABELS.facade)}</div>
+        <div class="bld-row"><span>${t('builder.landscape')}</span>${seg('landscape', B.LANDSCAPES, d.landscape, B.LABELS.landscape)}</div>
+        <label class="bld-row bld-check"><span>${t('builder.lettering')}</span><input type="checkbox" id="bldLetters" ${d.lettering ? 'checked' : ''}> <em>${id.name.toUpperCase().slice(0, 14)} ${t('builder.lettering.sub')}</em></label>
 
         <div class="bld-actions">
-          <button class="btn primary" id="bldUse" ${isHome ? 'disabled' : ''}>${isHome ? 'This is your ground' : 'Use as my ground'}</button>
-          <button class="btn ghost" id="bldSave" ${saved.length >= 8 ? 'disabled' : ''}>Save design${saved.length >= 8 ? ' (8 of 8)' : ''}</button>
-          <button class="btn ghost" id="bldShare">Share code</button>
-          <button class="btn ghost" id="bldReset">Start again</button>
+          <button class="btn primary" id="bldUse" ${isHome ? 'disabled' : ''}>${isHome ? t('builder.isHome') : t('builder.use')}</button>
+          <button class="btn ghost" id="bldSave" ${saved.length >= 8 ? 'disabled' : ''}>${t('builder.save')}${saved.length >= 8 ? ' (8/8)' : ''}</button>
+          <button class="btn ghost" id="bldShare">${t('builder.share')}</button>
+          <button class="btn ghost" id="bldReset">${t('builder.reset')}</button>
         </div>
         <p class="bld-code" id="bldCode" hidden></p>
         <div class="bld-load">
           <input id="bldIn" placeholder="SB1-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="40" aria-label="Share code" spellcheck="false">
-          <button class="btn ghost sm" id="bldLoad">Load code</button>
+          <button class="btn ghost sm" id="bldLoad">${t('builder.load')}</button>
         </div>
         ${saved.length ? `
-          <span class="ol-kicker">Saved designs</span>
+          <span class="ol-kicker">${t('builder.saved')}</span>
           <div class="bld-saved">${saved.map((s, i) => `
             <div class="bld-savedrow" style="--a:${s.design.seats[0]};--b:${s.design.seats[1]}">
               <i></i><b>${B.groundName(s.design, id.name)}</b><span>${s.design.capacity.toLocaleString()} · ${s.design.tiers}t · ${B.LABELS.landscape[s.design.landscape]}</span>
-              <button class="btn ghost sm" data-load="${i}">Open</button><button class="icon-btn sm" data-del="${i}" title="Delete">✕</button>
+              <button class="btn ghost sm" data-load="${i}">${t('builder.open')}</button><button class="icon-btn sm" data-del="${i}" title="Delete">✕</button>
             </div>`).join('')}</div>` : ''}
-        <p class="hint">A share code carries the shape and the colours only. Whoever loads it sees their own club's name in the seats.</p>
+        <p class="hint">${t('builder.hint')}</p>
       </div>
     </div>`;
 }
@@ -135,9 +154,9 @@ export function mount(root) {
     root.querySelector('#bldFacts').textContent = `${st.capacity.toLocaleString()} · ${d.tiers} tier${d.tiers > 1 ? 's' : ''} · ${B.LABELS.roof[d.roof].toLowerCase()} · ${B.LABELS.landscape[d.landscape].toLowerCase()}`;
     root.querySelector('#bldCapOut').textContent = d.capacity.toLocaleString();
     const useBtn = root.querySelector('#bldUse');
-    const homeD = getState().club.stadium?.design;
+    const homeD = savedDesign();
     const isHome = homeD && B.encode(homeD) === B.encode(d);
-    useBtn.disabled = !!isHome; useBtn.textContent = isHome ? 'This is your ground' : 'Use as my ground';
+    useBtn.disabled = !!isHome; useBtn.textContent = isHome ? t('builder.isHome') : t('builder.use');
   };
   const change = (fn) => { fn(current()); paintFacts(); scheduleBuild(); };
 
@@ -180,15 +199,19 @@ export function mount(root) {
     if (k === 'seats0') d.seats = [v, d.seats[1]]; else if (k === 'seats1') d.seats = [d.seats[0], v]; else d.facade = v;
   })));
   root.querySelector('#bldClubColours').addEventListener('click', () => {
-    const c = me().crest.colors;
+    const c = me().colors;
     change((d) => { d.seats = [c[0], c[1]]; });
     root.querySelector('[data-colour="seats0"]').value = c[0]; root.querySelector('[data-colour="seats1"]').value = c[1];
   });
   root.querySelector('#bldLetters').addEventListener('change', (e) => change((d) => { d.lettering = e.target.checked; }));
 
+  root.querySelectorAll('[data-target]').forEach((b) => b.addEventListener('click', () => { target = b.dataset.target; design = null; navigate('builder'); }));
   root.querySelector('#bldUse').addEventListener('click', () => {
     const d = B.normalise(current());
-    update((s) => { s.club.stadium = { ...(s.club.stadium || { saved: [] }), design: d }; });
+    update((s) => {
+      if (target === 'career' && s.career) s.career.ground = { ...(s.career.ground || { level: 0, income: 0, expandedSeason: 0 }), design: d };
+      else s.club.stadium = { ...(s.club.stadium || { saved: [] }), design: d };
+    });
     sfx('confirm');
     toast(`${B.groundName(d, me().name)} is your home ground`, 'good');
     paintFacts();
@@ -209,14 +232,14 @@ export function mount(root) {
     try { await navigator.clipboard.writeText(code); toast('Code copied', 'good'); } catch { /* no clipboard: it is on screen */ }
   });
   root.querySelector('#bldLoad').addEventListener('click', () => {
-    const d = B.decode(root.querySelector('#bldIn').value, me().crest.colors);
+    const d = B.decode(root.querySelector('#bldIn').value, me().colors);
     if (!d) return toast('That is not a stadium code', 'warn');
     design = d;
     sfx('confirm');
     toast('Design loaded — save it or make it your ground', 'good');
     navigate('builder');
   });
-  root.querySelector('#bldReset').addEventListener('click', () => { design = B.defaultDesign(me().crest.colors); navigate('builder'); });
+  root.querySelector('#bldReset').addEventListener('click', () => { design = B.defaultDesign(me().colors); navigate('builder'); });
   root.querySelectorAll('[data-load]').forEach((b) => b.addEventListener('click', () => {
     const s = (getState().club.stadium?.saved || [])[+b.dataset.load];
     if (!s) return;

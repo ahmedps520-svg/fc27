@@ -93,9 +93,10 @@ function venueOf(params) {
      home fixture of yours: an Ultimate XI match, or a Career home game —
      where the bowl is only as big as the board has paid for. Finals and
      online matches are still played at the arenas. */
-  const design = getState().club.stadium?.design;
-  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
   const car = params.career ? getState().career : null;
+  // the career club has its own design (v73); Ultimate XI has yours
+  const design = car ? (car.ground?.design || null) : getState().club.stadium?.design;
+  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
   const stadium = mine
     ? builderDef(design, { clubName: sq?.name || home?.name, short: sq?.short || home?.short,
       capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })

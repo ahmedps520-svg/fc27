@@ -591,7 +591,7 @@ function stadiumHTML(car) {
   const pos = sortedCareerTable(car).findIndex((r) => r.id === car.clubId) + 1;
   const o = expansionOffer(car, pos);
   const g = groundOf(car);
-  const design = getState().club.stadium?.design;
+  const design = car.ground?.design;
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>The ground</h2><span class="tag">Level ${groundLevel(car) + 1} of ${GROUND_LEVELS.length}</span></header>
@@ -727,7 +727,7 @@ function wire(root) {
   root.querySelector('#nextSeason')?.addEventListener('click', rerender);
   // v2
   root.querySelectorAll('[data-tab-go]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tabGo; rerender(); }));
-  root.querySelector('#groundDesign')?.addEventListener('click', () => navigate('builder'));
+  root.querySelector('#groundDesign')?.addEventListener('click', () => navigate('builder', { target: 'career' }));
   root.querySelector('#groundExpand')?.addEventListener('click', () => {
     let r = null;
     update((s) => { const c = s.career; if (!c) return; const pos = sortedCareerTable(c).findIndex((x) => x.id === c.clubId) + 1; r = expand(c, pos); });
