@@ -268,8 +268,11 @@ export function mount(root, params) {
   // Scanned players are a 14 MB download, so they are never forced on the
   // low-detail path — a machine that asked for Low did so for a reason. Medium
   // (a phone, usually) gets them only when Realistic was chosen on purpose.
-  const useModels = getState().settings.models !== 'simple' && quality !== 'low' && quality !== 'min'
-    && (quality !== 'medium' || getState().settings.models === 'realistic');
+  /* The scanned models on High and above. Measured on Medium they are 2.5M
+     triangles and 200 textures against the figures' 660k — a phone on
+     Medium lost half its frame rate — so Medium, Low and Ultra Low draw
+     the built-in figures. This is the tier deciding, not an option. */
+  const useModels = quality === 'high' || quality === 'ultra' || quality === 'cinema';
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,

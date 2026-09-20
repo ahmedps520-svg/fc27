@@ -25,7 +25,7 @@ const QUALITY_NOTE = (q) => (q === 'min'
   : q === 'cinema'
   ? '<b>Ultra+ (cinematic):</b> everything Ultra does at three times native resolution, with god rays, depth of field on every shot, the waving crowd and the wet-pitch reflections. For a desktop with a real GPU; a phone will not hold it.'
   : q === 'medium'
-  ? '<b>Medium:</b> the lighting passes, the floodlight beams, rain and a moving crowd at a native pixel ratio and a lighter shadow map — what a recent phone is dealt on Auto. Scanned player models on every tier from Medium up.'
+  ? '<b>Medium:</b> the lighting passes, the floodlight beams, rain and a moving crowd at a native pixel ratio and a lighter shadow map — what a recent phone is dealt on Auto. The built-in player figures; the scanned models come in at High.'
   : q === 'ultra' || !q
   ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');

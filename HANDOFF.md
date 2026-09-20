@@ -45,8 +45,10 @@ peaks 3.25 m, finesse 3.4 m, chip 2.96 m over 1.2 s.
   `sectionCol`); `uSide` = who scored (set on the goal phase from the score
   change); each seat rises on its own `stagger`, half the seated stand up
   (`aCrowd.x < 0.55`), the other end sits still; heads turn on a slow
-  phase (`apexCrowdHead` program). `useModels` is `quality !== 'low' &&
-  !== 'min'` — the Light figures option is gone (settings row and
+  phase (`apexCrowdHead` program). `useModels` is High/Ultra/cinema only — Medium with the
+  scanned models measured 2.5M tris / 202 textures and p95 1493 ms against
+  the figures' 660k / 983 ms, so the tier keeps the figures; the Light
+  figures *option* is gone (settings row and
   `MODEL_NOTE` removed; `loadState` migrates `models: 'simple'`).
 - **CSP bug**: `connect-src` lacked `blob:`, so GLTFLoader's texture
   fetches were refused (16 console errors per match in the headless run;
