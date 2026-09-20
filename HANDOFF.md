@@ -15,6 +15,102 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### Round 7 (v73) — gameplay feel, SBC, packs, cards, phone fixes
+**Sweep re-baselined on purpose** (`tests/golden/sweep-*.txt`, `node
+tests/sweep-check.mjs --update`): the user asked for the ball to climb and
+bend and for skill moves, which changes every AI shot. Before → after on
+seed 12345: goals 2.10 → 2.13, shots 12.73 → 12.37, on target 9.50 → 9.58,
+conversion 16.5 % → 17.3 %, crosses 1.85 → 2.48. The first calibration
+(curl `k = curl·sp/20`, curled loft 1.35) sank goals to 1.73 and put a
+finesse shot 8 m in the air; the shipped values are `k = curl·sp/58`, decay
+`0.5^dt`, human curl 46 with loft 0.9 and +1.2 lift, AI curl 30 on 40 % of
+shots from range. Probe (`tests/tmp/physics-probe.mjs`): full-power shot
+peaks 3.25 m, finesse 3.4 m, chip 2.96 m over 1.2 s.
+
+- **Sim** (`game/sim.js`): `shoot()` takes `chip` (speed 13–19, rise
+  7.5–10.5); lift `(1.3 + 8.2·power)·loft`; air drag 0.9985/frame;
+  dribble push `0.8 + 0.26·speed`; `skillMove(p, aim)` picks feint /
+  stepover / roulette / nutmeg from the stick direction and a defender
+  within 2.2 m ahead, fails on `rand > 0.5 + 0.5·dribbling` (heavy touch,
+  stumble), sets `skillKind`, `spinT` (renderer spins the figure — rig.js
+  `grp.rotation.z`, playerModel.js `root.rotation.y`) and `burst`
+  (applied when its timer runs out). AI chips when the keeper is off his
+  line (`gkOut`). Input: shoot + `lob` held = chip; shoot + `curl` held =
+  finesse.
+- **Renderer**: rim light (behind the far stand, 1.1 at night) + fill
+  (camera side, 0.42) for the figures; rig materials `envMapIntensity
+  0.55`; wet pitch `uWet` 0.34 → 0.16, cap 0.28 → 0.13, wet roughness 0.74
+  → 0.8, envMap 0.6 → 0.45. **Crowd**: `aCrowd` is now vec3 (phase, along,
+  section: 1 home end / 0 away corner / 0.5 neutral — same ranges as
+  `sectionCol`); `uSide` = who scored (set on the goal phase from the score
+  change); each seat rises on its own `stagger`, half the seated stand up
+  (`aCrowd.x < 0.55`), the other end sits still; heads turn on a slow
+  phase (`apexCrowdHead` program). `useModels` is `quality !== 'low' &&
+  !== 'min'` — the Light figures option is gone (settings row and
+  `MODEL_NOTE` removed; `loadState` migrates `models: 'simple'`).
+- **CSP bug**: `connect-src` lacked `blob:`, so GLTFLoader's texture
+  fetches were refused (16 console errors per match in the headless run;
+  on the live site the scanned models may have fallen back). Fixed in
+  `server/server.js`. gl-scan/gfx runs are clean after it.
+- **Phones**: rotate hint has "Continue in portrait" (`portraitOk`, per
+  session); `.gm-hud`, `.gm-emotes`, `.gm-queue`, `.photo-bar`, `.tpad`
+  respect `env(safe-area-inset-*)`; `.gm:fullscreen` uses `100dvh`.
+  **Photo mode**: `.photo-exit` (fixed, top-right, z 60 — the canvas
+  intercepted clicks below 40), Esc/Backspace and the pause input close
+  it; `closePhoto` is idempotent. Verified headlessly on an iPhone-sized
+  page (`tests/tmp/phone-check.mjs`).
+- **SBC** (`data/challenges.js`): `group` field + `GROUPS` (starter /
+  standard / legend), `groupOf`, `sizeOf(c)` (the size requirement or 11)
+  — the tray, the cap and the button read it; twelve quick SBCs (2–7
+  cards, repeatable), sixteen legend SBCs paying `SBC_LEGENDS_2`
+  (generator.js, stream `WORLD_SEED ^ 0x5bc6`, appended after wave 6 so
+  every existing id is untouched — `sbcCards` is 28). Zidane, Maldini,
+  Buffon, Cafu and Roberto Carlos were already Icons, so Totti, Cannavaro,
+  van der Sar, Thuram and Zanetti stand in. i18n `nav.challenges` = "SBC".
+- **Packs** (`data/packs.js`): `filterOf` takes `maxAge` and
+  `nationOfWeek` (`nationOfWeek()` rotates 12 nations weekly; the shelf
+  shows which); nine packs added (fodder, youth, defence, midfield,
+  premier, nations, mega 12, wonder); `samplePulls(pack, n, day)` — three
+  deterministic cards a pack could hand you, shown under every pack, in
+  the event shelf and on Today.
+- **Wave 6** (`tools/real-players-wave6.json`, 700 kept after an
+  accent-insensitive dedupe — 'Kylian Mbappe' vs 'Kylian Mbappé' had
+  slipped through the exact-match dedupe): 700 free agents on
+  `WORLD_SEED ^ 0x6c6c73`. World: 6328 players, 3286 free agents; first
+  5612 pinned (generator test).
+- **Cards where there was text**: `playerCard` size `showcase` (six-stat
+  row `.pc-row`), `cardStrip(players, {size, cls, boost})`,
+  `components/packArt.js` (`packArt(idOrPack, {size: xs|sm|md, label})`
+  reusing the store's `.sp-art`). Used on Today (event featured card +
+  pack pulls, objectives), SBC list (legend as a card + pack art), store
+  ("Could pull"), weekend ranks, world tables ("stars of the division")
+  and nation XIs.
+- **Builder**: designs per target — `target` 'club' (`club.stadium.design`)
+  or 'career' (`career.ground.design`, career club colours/name);
+  `navigate('builder', { target: 'career' })` from the Club tab; play.js
+  reads the career design for career fixtures. Bug fixed: a local `t`
+  (orbit clock) shadowed the i18n `t` and crashed on any change.
+- **i18n**: builder and social panel strings (EN/AR, ~50 keys).
+- **WebGPU match renderer (beta)** (`game/renderGPU.js`): r170
+  WebGPURenderer, `createRenderer` is async; pitch canvas with markings,
+  goals, bowl from the def (tiers/roof/seats/facade), static instanced
+  crowd + empty seats, capsule figures with leg swing and the roulette
+  lean, ball, hemisphere/sun/rim/spot lights with shadows, fog, ACES. No
+  grading/god rays/haze/reflection/trample/tifo/wonders/scanned models —
+  the GLSL passes still need a node-material port. Opt-in:
+  `settings.renderer === 'webgpu'` (Settings seg "WebGPU (beta)"); on a
+  browser without WebGPU it runs on the renderer's WebGL2 backend, which
+  is how it is verified headlessly (`tests/tmp/gpu-match.mjs`). Known:
+  the night look is too bright (exposure/hemisphere not yet matched).
+- **Verification**: 90 unit tests, sweep (re-baselined), smoke, QA bot,
+  headless screenshots of Today/SBC/store/weekend/world/nation/builder,
+  iPhone portrait + photo mode, WebGPU match. __FPS__
+- Not done / next: WebGPU parity (node-material ports of the turf, crowd
+  and cinematic passes; night exposure); per-club designs in Career are one
+  per career, not per club changed by `takeJob`; i18n for career prose;
+  the watch has no SBC view; the Season Pass tier tiles still name packs
+  as text.
+
 ### Round 6 (v72) — Stadium Builder, a hundred clubs, World Tournament, graphics, social
 **Sweep byte-identical.** First 3092 cards pinned unchanged (generator test).
 90 unit tests, sweep, smoke, QA bot (now with a spectator and an emote) all green.
