@@ -127,13 +127,13 @@ function lightingFor(atmo) {
   const dull = weather === 'overcast' || rain;
   if (time === 'day') {
     return dull
-      ? { hemi: [0xaab6c8, 0x36493c, 1.45 * (rain ? 0.9 : 1)], sun: [0xdde4ee, 1.25, [-30, -50, 120]], fog: [rain ? 0x6f7887 : 0x8e98a6, rain ? 0.0046 : 0.003], flood: 0.45, beams: 0, exposure: 1.02, bg: rain ? 0x5f6a78 : 0x7d8796 }
-      : { hemi: [0xbfd8ff, 0x3a5a3a, 1.6], sun: [0xfff2dc, 2.6, [-30, -45, 120]], fog: [0xbfd4ee, 0.0018], flood: 0, beams: 0, exposure: 1.0, bg: 0x9fc3ee };
+      ? { grade: { gain: [0.96, 0.98, 1.02], saturation: 0.85, temperature: -0.25 }, hemi: [0xaab6c8, 0x36493c, 1.45 * (rain ? 0.9 : 1)], sun: [0xdde4ee, 1.25, [-30, -50, 120]], fog: [rain ? 0x6f7887 : 0x8e98a6, rain ? 0.0046 : 0.003], flood: 0.45, beams: 0, exposure: 1.02, bg: rain ? 0x5f6a78 : 0x7d8796 }
+      : { grade: { gain: [1.02, 1.0, 0.98], saturation: 1.08, temperature: 0.12 }, hemi: [0xbfd8ff, 0x3a5a3a, 1.6], sun: [0xfff2dc, 2.6, [-30, -45, 120]], fog: [0xbfd4ee, 0.0018], flood: 0, beams: 0, exposure: 1.0, bg: 0x9fc3ee };
   }
   if (time === 'dusk') {
-    return { hemi: [dull ? 0xb08a90 : 0xf0a070, 0x2a3324, 1.3], sun: [dull ? 0xd0a090 : 0xffa860, dull ? 0.9 : 1.8, [-120, -30, 30]], fog: [rain ? 0x3a3038 : 0x4a2f3a, rain ? 0.0045 : 0.0028], flood: 0.8, beams: 0.5, exposure: 1.08, bg: 0x5a3a4a };
+    return { grade: { lift: [0.01, 0, 0], gain: [1.06, 0.98, 0.9], saturation: 1.12, temperature: 0.45 }, godrays: !dull, hemi: [dull ? 0xb08a90 : 0xf0a070, 0x2a3324, 1.3], sun: [dull ? 0xd0a090 : 0xffa860, dull ? 0.9 : 1.8, [-120, -30, 30]], fog: [rain ? 0x3a3038 : 0x4a2f3a, rain ? 0.0045 : 0.0028], flood: 0.8, beams: 0.5, exposure: 1.08, bg: 0x5a3a4a };
   }
-  return { hemi: [0x9fc0ff, 0x1c3324, 1.35 * (rain ? 0.92 : 1)], sun: [0xdfe8ff, 0.85, [-46, -30, 88]], fog: [rain ? 0x0a1018 : 0x070d18, rain ? 0.0062 : 0.0042], flood: 1, beams: 1, exposure: 1.14, bg: 0x070d18 };
+  return { grade: { lift: [0, 0, 0.012], gamma: [1, 1, 0.97], gain: [0.98, 1.0, 1.06], saturation: 1.04, temperature: -0.3 }, haze: true, hemi: [0x9fc0ff, 0x1c3324, 1.35 * (rain ? 0.92 : 1)], sun: [0xdfe8ff, 0.85, [-46, -30, 88]], fog: [rain ? 0x0a1018 : 0x070d18, rain ? 0.0062 : 0.0042], flood: 1, beams: 1, exposure: 1.14, bg: 0x070d18 };
 }
 const HAIRS = [0x1c1614, 0x3a2618, 0x7a542a, 0x141212, 0x5a422c];
 const CROWD_COLS = [
@@ -885,7 +885,8 @@ function safeRatio(renderer, want, { w, h }) {
 export function createRenderer(canvas, match, quality, models = false) {
   // 'ultra' is the deliberately expensive tier: it supersamples above the native
   // pixel ratio, quadruples the shadow map, and fills the stands out properly.
-  const ultra = quality === 'ultra';
+  const cinema = quality === 'cinema';
+  const ultra = quality === 'ultra' || cinema;     // cinema is Ultra with everything on
   /* 'medium' (v70) sits between Low and High: the post passes and the beams
    * stay, at fewer samples and a native pixel ratio, with a lighter crowd and
    * a smaller shadow map. It is what a modern phone is dealt automatically. */
@@ -919,6 +920,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   const dpr = window.devicePixelRatio || 1;
   const wantRatio = potato
     ? Math.min(0.8, dpr)                     // sub-native and stretched: the potato win
+    : cinema
+      ? Math.min(3, Math.max(2.5, dpr))      // Ultra+: three times native where the budget allows
     : ultra
       ? Math.min(3, Math.max(2, dpr))        // render above native, then downsample
       : Math.min(quality === 'low' ? 1.25 : med ? 1.5 : 2, dpr);
@@ -1035,6 +1038,41 @@ export function createRenderer(canvas, match, quality, models = false) {
    * scuff painted into the colour map — paler, browner, a little torn — so
    * the second half is played on a pitch that shows the first. The upload
    * is one canvas texture every thirty seconds, which nothing notices. */
+  /* ------------------------- grass under the boots -------------------------
+   * A small canvas (one texel per 25 cm) that every boot and the ball print
+   * into each frame, fading back over a few seconds, used as the turf's bump
+   * map: the grass lies down where the play just was and stands back up.
+   * Costs a 420x272 canvas upload a frame on High and above — about the
+   * price of one small texture — and nothing on Low. */
+  const trample = !lo ? document.createElement('canvas') : null;
+  let trampleTex = null;
+  let trampleCtx = null;
+  if (trample) {
+    trample.width = 420; trample.height = 272;
+    trampleCtx = trample.getContext('2d');
+    trampleCtx.fillStyle = '#808080'; trampleCtx.fillRect(0, 0, trample.width, trample.height);
+    trampleTex = new THREE.CanvasTexture(trample);
+    turfMat.bumpMap = trampleTex;
+    turfMat.bumpScale = wet ? 0.035 : 0.025;
+    turfMat.needsUpdate = true;
+  }
+  const trampleStep = (m, dt) => {
+    if (!trampleCtx) return;
+    const g = trampleCtx;
+    // fade back towards flat
+    g.globalAlpha = Math.min(0.5, (dt || 0) * 1.6);
+    g.fillStyle = '#808080'; g.fillRect(0, 0, trample.width, trample.height);
+    g.globalAlpha = 1;
+    const S = trample.width / PITCH.w;
+    for (let t = 0; t < 2; t++) for (const p of m.teams[t].players) {
+      if (Math.hypot(p.vx || 0, p.vy || 0) < 0.8) continue;
+      g.fillStyle = 'rgba(70,70,70,.55)';
+      g.beginPath(); g.ellipse(p.x * S, p.y * S, 1.6, 1.0, Math.atan2(p.dirY || 0, p.dirX || 1), 0, 7); g.fill();
+    }
+    if ((m.ball.z || 0) < 0.3) { g.fillStyle = 'rgba(60,60,60,.5)'; g.beginPath(); g.arc(m.ball.x * S, m.ball.y * S, 1.1, 0, 7); g.fill(); }
+    trampleTex.needsUpdate = true;
+  };
+
   const wearGrid = new Float32Array(21 * 14);
   let wearClock = 0;
   const wearCanvas = turfMap.image;
@@ -1462,6 +1500,91 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
   let tifoT = -1;                    // seconds the tifo has been up; -1 = down
 
+  /* ------------------------------ the wonders ------------------------------
+   * The eight landmark grounds carry what the others do not: two giant
+   * screens over the ends showing the score and the clock (a canvas
+   * redrawn every second), an LED ribbon round the tier balcony scrolling
+   * the two clubs' colours, a roof that closes over the first minute when
+   * it rains (or opens when it clears), and pyrotechnics at kick-off. */
+  const WONDER = !!match.venue?.stadium?.wonder;
+  const screens = [];
+  let ribbonTex = null;
+  let roofSlabs = null;
+  let roofClosed = 0;                 // 0 open .. 1 closed
+  let screenClock = 0;
+  if (WONDER && !potato) {
+    const mk = () => {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 192;
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      return { c, g: c.getContext('2d'), tex };
+    };
+    for (const end of [0, 1]) {
+      const sc = mk();
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(26, 9.75),
+        new THREE.MeshStandardMaterial({ map: sc.tex, emissive: 0xffffff, emissiveMap: sc.tex, emissiveIntensity: 1.2, roughness: 0.6 }));
+      const x = end === 0 ? -MARGIN - SD * 0.5 - TIER_GAP.d : PITCH.w + MARGIN + SD * 0.5 + TIER_GAP.d;
+      mesh.position.set(x, CY, SBZ + TIER_GAP.z + 7);
+      mesh.rotation.set(Math.PI / 2, end === 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+      // a dark frame behind it
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(27.5, 11, 0.8), new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 0.6, metalness: 0.4 }));
+      frame.position.copy(mesh.position); frame.rotation.copy(mesh.rotation); frame.position.x += end === 0 ? -0.5 : 0.5;
+      scene.add(frame, mesh);
+      screens.push(sc);
+    }
+    // the ribbon: a thin emissive band at the balcony on the three banks, scrolling
+    {
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 32;
+      const g = c.getContext('2d');
+      const [a, b] = match.teams.map((t) => t.colors[0]);
+      for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? a : b; g.fillRect(i * 64, 0, 64, 32); }
+      g.fillStyle = 'rgba(255,255,255,.85)'; g.font = '700 20px system-ui, sans-serif'; g.textBaseline = 'middle';
+      for (let i = 0; i < 4; i++) g.fillText(`${match.teams[0].name.toUpperCase()}  ·  ${match.teams[1].name.toUpperCase()}   `, i * 256 + 8, 16);
+      ribbonTex = new THREE.CanvasTexture(c); ribbonTex.colorSpace = THREE.SRGBColorSpace; ribbonTex.wrapS = THREE.RepeatWrapping;
+      const ribMat = new THREE.MeshStandardMaterial({ map: ribbonTex, emissive: 0xffffff, emissiveMap: ribbonTex, emissiveIntensity: 0.9, roughness: 0.6 });
+      const at = terraceAt(TIER_SPLIT);
+      for (const bk of banks) {
+        const rib = new THREE.Mesh(new THREE.PlaneGeometry(bk.len, 0.9), ribMat.clone());
+        rib.material.map = ribbonTex; rib.material.emissiveMap = ribbonTex;
+        rib.material.map.repeat.set(bk.len / 40, 1);
+        const g2 = new THREE.Group(); g2.position.set(bk.cx, bk.cy, 0); g2.rotation.z = bk.rot;
+        rib.position.set(0, at.depth - MARGIN + TIER_GAP.d - 0.62, at.z + TIER_GAP.z + 0.3);
+        rib.rotation.x = Math.PI / 2;
+        g2.add(rib); scene.add(g2);
+      }
+    }
+    // a retractable roof: two slabs that meet over the centre when closed
+    if (match.venue.stadium.retractable) {
+      const slabMat = new THREE.MeshStandardMaterial({ color: 0xcfd6e2, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.85 });
+      const w = PITCH.w + MARGIN * 2 + 30; const d = (PITCH.h + MARGIN * 2 + 30) / 2;
+      roofSlabs = [0, 1].map((i) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, 0.6), slabMat);
+        m.position.set(PITCH.w / 2, i === 0 ? CY - d / 2 : CY + d / 2, RZ2 + 6);
+        m.userData.home = m.position.y;
+        m.userData.open = i === 0 ? CY - d * 1.5 : CY + d * 1.5;
+        scene.add(m);
+        return m;
+      });
+      roofClosed = atmo.weather === 'rain' ? 1 : 0;
+    }
+  }
+  const paintScreens = (m) => {
+    for (const sc of screens) {
+      const { g, c, tex } = sc;
+      g.fillStyle = '#05070e'; g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '800 96px "Bahnschrift", "Arial Black", system-ui, sans-serif';
+      g.fillText(`${m.teams[0].score}  -  ${m.teams[1].score}`, c.width / 2, 78);
+      g.font = '700 34px system-ui, sans-serif';
+      g.fillStyle = '#9fe6b3';
+      g.fillText(`${m.teams[0].short}   ${m.minute()}'   ${m.teams[1].short}`, c.width / 2, 150);
+      g.fillStyle = match.teams[0].colors[0]; g.fillRect(0, 0, 18, c.height);
+      g.fillStyle = match.teams[1].colors[0]; g.fillRect(c.width - 18, 0, 18, c.height);
+      tex.needsUpdate = true;
+    }
+  };
+  if (screens.length) paintScreens(match);
+  let pyroDone = false;
+
   // floodlight pylons at the corners: emissive panels plus real light
   const lampMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, emissive: 0xfff4d8, emissiveIntensity: 3.4, roughness: 0.3,
@@ -1596,6 +1719,20 @@ export function createRenderer(canvas, match, quality, models = false) {
       beam.translateY(-beamLen / 2);
       beam.renderOrder = 2;
       scene.add(beam);
+    }
+  }
+
+  /* Night haze: a stack of three faint additive planes over the pitch, lit
+     by the floodlights' colour, that the beams read *through* — the air a
+     stadium at night has, rather than the vacuum a scene has. Cheap: three
+     transparent quads. */
+  if (LIGHT.haze && !lo) {
+    const hazeMat = new THREE.MeshBasicMaterial({ color: 0x2a3550, transparent: true, opacity: atmo.weather === 'rain' ? 0.09 : 0.055, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (let i = 0; i < 3; i++) {
+      const hz = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.w + 80, PITCH.h + 80), hazeMat);
+      hz.position.set(PITCH.w / 2, CY, 6 + i * 9);
+      hz.renderOrder = 1;
+      scene.add(hz);
     }
   }
 
@@ -1847,6 +1984,50 @@ export function createRenderer(canvas, match, quality, models = false) {
     bodies.instanceMatrix.needsUpdate = true;
     heads.instanceMatrix.needsUpdate = true;
     scene.add(bodies, heads);
+
+    /* Ultra: arms. A third instanced mesh — two raised forearms — on a third
+       of the crowd, waving on their own phase and thrown up on a goal. The
+       same crowd uniforms drive it, with an extra term so the arms swing
+       further than the body sways; at Ultra the stand is thirty thousand
+       individually moving people, not a texture. */
+    if (ultra) {
+      const armGeo = mergeBoxes([box(0.08, 0.08, 0.34, -0.2, 0.02, 0.62), box(0.08, 0.08, 0.34, 0.2, 0.02, 0.62)]);
+      const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+      armMat.onBeforeCompile = (sh) => {
+        sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uWave = crowdU.uWave; sh.uniforms.uJump = crowdU.uJump; sh.uniforms.uExcite = crowdU.uExcite;
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', `#include <common>
+            uniform float uTime; uniform float uWave; uniform float uJump; uniform float uExcite; attribute vec2 aCrowd;`)
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+            {
+              float ph = aCrowd.x * 6.2831;
+              float d = abs(aCrowd.y - uWave); d = min(d, 1.0 - d);
+              float wave = uWave < 0.0 ? 0.0 : max(0.0, 1.0 - d * 14.0);
+              float up = clamp(uJump * 1.3 + wave + uExcite * 0.4, 0.0, 1.0);
+              float sway = sin(uTime * 3.2 + ph) * 0.12 * up;
+              // hinge at the elbow height: the hand end swings, the elbow stays
+              float hand = smoothstep(0.5, 0.8, position.z);
+              transformed.x += sway * hand;
+              transformed.z += (up * 0.3 + uJump * 0.32) * hand + uJump * 0.32 * (1.0 - hand);
+              transformed.z -= (1.0 - up) * 0.25 * hand;   // arms down when nothing is happening
+            }`);
+      };
+      armMat.customProgramCacheKey = () => 'apexCrowdArms';
+      const armed = taken.filter((_, i) => i % 3 === 0);
+      const arms = new THREE.InstancedMesh(armGeo, armMat, armed.length);
+      const armAttr = new Float32Array(armed.length * 2);
+      armed.forEach((s, i) => {
+        const j = taken.indexOf(s);
+        bodies.getMatrixAt(j, dummy.matrix);
+        arms.setMatrixAt(i, dummy.matrix);
+        arms.setColorAt(i, skinTone.setHex(SKINS[(rand() * SKINS.length) | 0]));
+        armAttr[i * 2] = crowdAttr[j * 2]; armAttr[i * 2 + 1] = crowdAttr[j * 2 + 1];
+      });
+      armGeo.setAttribute('aCrowd', new THREE.InstancedBufferAttribute(armAttr, 2));
+      arms.instanceMatrix.needsUpdate = true;
+      arms.castShadow = false;
+      scene.add(arms);
+    }
   }
 
   // players
@@ -2094,7 +2275,16 @@ export function createRenderer(canvas, match, quality, models = false) {
    * has no rain; the wet pitch and the grey sky carry the weather there. */
   let rainMesh = null;
   const rainU = { uTime: { value: 0 }, uCentre: { value: new THREE.Vector3(PITCH.w / 2, CY, 0) } };
-  if (atmo.weather === 'rain' && !potato) {
+  /* The weather can turn. `match.venue.atmo.change` (set by the match
+     screen from the fixture's seed) names a minute and a target — rain
+     arriving over a dry second half, or clearing — and the renderer lerps
+     the rain's density, the turf's wet sheen and the fog over half a minute
+     of match time. The sky and the lights stay: a shower does not change the
+     hour. The rain mesh is always built when a change is possible. */
+  const weatherChange = atmo.change || null;
+  const rainPossible = atmo.weather === 'rain' || weatherChange?.to === 'rain';
+  let rainLevel = atmo.weather === 'rain' ? 1 : 0;      // 0..1 how hard it is raining now
+  if (rainPossible && !potato) {
     const N = ultra ? 7000 : quality === 'low' ? 1200 : med ? 2600 : 4200;
     const pos = new Float32Array(N * 2 * 3);
     const seed = new Float32Array(N * 2);
@@ -2111,7 +2301,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     geo.setAttribute('aSpeed', new THREE.BufferAttribute(seed, 1));
     rainMesh = new THREE.LineSegments(geo, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      uniforms: { ...rainU, uAlpha: { value: 0.09 + atmo.intensity * 0.14 } },
+      uniforms: { ...rainU, uAlpha: { value: (0.09 + atmo.intensity * 0.14) * rainLevel } },
       vertexShader: `
         uniform float uTime; uniform vec3 uCentre; attribute float aSpeed; varying float vA;
         void main() {
@@ -2130,8 +2320,22 @@ export function createRenderer(canvas, match, quality, models = false) {
     }));
     rainMesh.frustumCulled = false;
     rainMesh.renderOrder = 3;
+    rainMesh.visible = rainLevel > 0;
     scene.add(rainMesh);
   }
+  const dryRough = 0.9; const wetRough = 0.74;
+  const dryEnv = 0.35; const wetEnv = 0.6;
+  const weatherStep = (m, dt) => {
+    if (!weatherChange) return;
+    const minute = m.minute?.() ?? 0;
+    const target = minute >= weatherChange.minute ? (weatherChange.to === 'rain' ? 1 : 0) : (atmo.weather === 'rain' ? 1 : 0);
+    if (Math.abs(target - rainLevel) < 0.001) return;
+    rainLevel += Math.sign(target - rainLevel) * Math.min(Math.abs(target - rainLevel), (dt || 0) / 30);
+    if (rainMesh) { rainMesh.visible = rainLevel > 0.01; rainMesh.material.uniforms.uAlpha.value = (0.09 + atmo.intensity * 0.14) * rainLevel; }
+    turfMat.roughness = dryRough + (wetRough - dryRough) * rainLevel;
+    turfMat.envMapIntensity = dryEnv + (wetEnv - dryEnv) * rainLevel;
+    if (scene.fog) scene.fog.density = LIGHT.fog[1] * (1 + rainLevel * 0.4);
+  };
 
   /* ------------------------- fireworks and confetti -------------------------
    * For finals and trophies. One Points cloud for the shells and their
@@ -2201,9 +2405,9 @@ export function createRenderer(canvas, match, quality, models = false) {
       const k = fx.kind[i];
       fx.life[i] -= dt * (k === 3 ? 0.35 : 1);
       if (k === 2 && fx.life[i] <= 0.15) { fxBurst(fx.pos[i * 3], fx.pos[i * 3 + 1], fx.pos[i * 3 + 2]); fx.life[i] = 0; fx.alive--; continue; }
-      const drag = k === 3 ? 0.9 : 0.985;
+      const drag = k === 3 ? 0.9 : k === 4 ? 0.9 : 0.985;
       fx.vel[i * 3] *= drag; fx.vel[i * 3 + 1] *= drag;
-      fx.vel[i * 3 + 2] = k === 3 ? -1.4 + Math.sin(fx.life[i] * 7 + i) * 0.6 : fx.vel[i * 3 + 2] * drag - 9.8 * dt * (k === 1 ? 0.6 : 0.2);
+      fx.vel[i * 3 + 2] = k === 3 ? -1.4 + Math.sin(fx.life[i] * 7 + i) * 0.6 : fx.vel[i * 3 + 2] * drag - 9.8 * dt * (k === 1 ? 0.6 : k === 4 ? 0.9 : 0.2);
       if (k === 3) { fx.vel[i * 3] += Math.sin(fx.life[i] * 5 + i) * 0.4 * dt; }
       fx.pos[i * 3] += fx.vel[i * 3] * dt; fx.pos[i * 3 + 1] += fx.vel[i * 3 + 1] * dt; fx.pos[i * 3 + 2] += fx.vel[i * 3 + 2] * dt;
       if (fx.pos[i * 3 + 2] < 0.05) { fx.life[i] = 0; fx.alive--; continue; }
@@ -2215,6 +2419,23 @@ export function createRenderer(canvas, match, quality, models = false) {
       fxPoints.geometry.attributes.position.needsUpdate = true;
       fxPoints.geometry.attributes.color.needsUpdate = true;
       fxPoints.geometry.attributes.aLife.needsUpdate = true;
+    }
+  };
+
+  /* ------------------------- dust and splash ----------------------------
+   * Sprinting boots kick up dust on a dry pitch and splash on a wet one; the
+   * ball throws a spray when it lands in the rain. The same pool as the
+   * fireworks (kind 4), so it costs nothing extra to draw. */
+  const bootFx = (m, dt) => {
+    if (!FX_N || potato || lo) return;
+    for (let t = 0; t < 2; t++) for (const p of m.teams[t].players) {
+      const sp = Math.hypot(p.vx || 0, p.vy || 0);
+      if (sp < 5.2 || Math.random() > dt * 9) continue;
+      const c = wet ? [0.75, 0.82, 0.92] : [0.62, 0.56, 0.42];
+      fxSpawn(p.x - (p.dirX || 0) * 0.3, p.y - (p.dirY || 0) * 0.3, 0.05, (Math.random() - 0.5) * 0.8 - (p.dirX || 0) * 1.2, (Math.random() - 0.5) * 0.8 - (p.dirY || 0) * 1.2, 0.6 + Math.random() * (wet ? 1.4 : 0.8), c[0], c[1], c[2], wet ? 0.35 : 0.6, 4);
+    }
+    if (wet && (m.ball.z || 0) < 0.25 && Math.hypot(m.ball.vx || 0, m.ball.vy || 0) > 4 && Math.random() < dt * 20) {
+      for (let k = 0; k < 3; k++) fxSpawn(m.ball.x, m.ball.y, 0.1, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1 + Math.random() * 1.5, 0.8, 0.86, 0.95, 0.35, 4);
     }
   };
 
@@ -2236,6 +2457,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   let composer = null;
   let cine = null;
   let afterimage = null;
+  let godrays = null;
   if (!lo) {
     composer = new EffectComposer(renderer);
 
@@ -2263,7 +2485,30 @@ export function createRenderer(canvas, match, quality, models = false) {
       vignette: 0.5,
       aberration: ultra ? 0.7 : 0.4,
     });
+    cine.setGrade(LIGHT.grade || {});
     composer.addPass(cine);
+
+    /* God rays at dusk: the low sun behind the far stand throws shafts
+       through the roof structure. A screen-space radial blur of the bright
+       pixels towards the sun's projected position, added back at low
+       strength — the classic technique, one pass, only when the sun is low
+       and in frame. Not on Medium. */
+    if (LIGHT.godrays && !med) {
+      godrays = new ShaderPass({
+        uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.2) }, uStrength: { value: 0 }, uDecay: { value: 0.96 } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uSun; uniform float uStrength; uniform float uDecay; varying vec2 vUv;
+          void main() {
+            vec4 base = texture2D(tDiffuse, vUv);
+            if (uStrength <= 0.0) { gl_FragColor = base; return; }
+            vec2 d = (vUv - uSun) / 40.0;
+            vec2 uv = vUv; float w = 1.0; vec3 acc = vec3(0.0);
+            for (int i = 0; i < 40; i++) { uv -= d; vec3 c = texture2D(tDiffuse, uv).rgb; float l = dot(c, vec3(0.3, 0.59, 0.11)); acc += c * smoothstep(0.75, 1.4, l) * w; w *= uDecay; }
+            gl_FragColor = vec4(base.rgb + acc * uStrength / 12.0, 1.0);
+          }`,
+      });
+      composer.addPass(godrays);
+    }
 
     // High threshold on purpose: only the floodlights and LED boards should
     // bloom. Lower and the lit turf itself hazes over.
@@ -2431,6 +2676,29 @@ export function createRenderer(canvas, match, quality, models = false) {
         if (wearClock > 30) { wearClock = 0; paintWear(); }
       }
       fxStep(Math.min(dt || 0, 0.05));
+      bootFx(m, Math.min(dt || 0, 0.05));
+      if (WONDER) {
+        screenClock += dt || 0;
+        if (screenClock > 1) { screenClock = 0; paintScreens(m); }
+        if (ribbonTex) ribbonTex.offset.x -= (dt || 0) * 0.06;
+        if (roofSlabs) {
+          const want = rainLevel > 0.3 ? 1 : 0;
+          roofClosed += (want - roofClosed) * Math.min(1, (dt || 0) * 0.08);
+          for (const sl of roofSlabs) sl.position.y = sl.userData.open + (sl.userData.home - sl.userData.open) * roofClosed;
+        }
+        if (!pyroDone && m.phase === 'play') { pyroDone = true; fx.show = Math.max(fx.show, 4); fx.nextShell = 0; }
+        if (m.phase === 'goal' && fx.show < 1) { fx.show = 3; }
+      }
+      if (!lo && m.phase !== 'end') trampleStep(m, dt);
+      weatherStep(m, dt);
+      if (godrays) {
+        // the sun's place on screen: project the low sun; strength fades as it leaves the frame
+        _v.set(cam.tx + SUN_OFF[0] * 3, cam.ty + SUN_OFF[1] * 3, SUN_OFF[2] * 3).project(camera);
+        const sx = _v.x * 0.5 + 0.5; const sy = _v.y * 0.5 + 0.5;
+        const inFrame = _v.z < 1 && sx > -0.3 && sx < 1.3 && sy > -0.3 && sy < 1.3;
+        godrays.uniforms.uSun.value.set(sx, sy);
+        godrays.uniforms.uStrength.value += ((inFrame ? (cinema ? 0.55 : 0.4) : 0) - godrays.uniforms.uStrength.value) * Math.min(1, (dt || 0) * 2);
+      }
       // cloth: each shirt knows how fast its player is moving
       if (!lo && !med) {
         for (const [p, rig] of rigs) if (rig.cloth) rig.cloth.value = Math.min(1, Math.hypot(p.vx || 0, p.vy || 0) / 7);

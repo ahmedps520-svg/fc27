@@ -267,6 +267,42 @@ async function api(req, res, route) {
     return json(res, 200, { rows: store.leaderboard(25) });
   }
 
+  /* ---- social: guilds, friends, live matches ----
+   * All behind a token. Nothing here carries free text between players: a
+   * guild name is the only string a player writes, it is validated to
+   * letters, numbers and spaces, and it is shown to their own guild. */
+  if (route === '/api/guild') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (req.method === 'GET') return json(res, 200, store.guildView(acct, new Set(peers.keys())));
+    const body = await readBody(req);
+    const r = body.action === 'create' ? store.createGuild(acct, body.name)
+      : body.action === 'join' ? store.joinGuild(acct, body.code)
+      : body.action === 'leave' ? store.leaveGuild(acct)
+      : body.action === 'claim' ? store.claimGuildObjective(acct, body.id)
+      : { error: 'Unknown action.' };
+    if (r.error) return json(res, 400, r);
+    return json(res, 200, { ...r, view: store.guildView(acct, new Set(peers.keys())) });
+  }
+  if (route === '/api/guild/board') {
+    return json(res, 200, { week: store.weekId(), rows: store.guildBoard(25) });
+  }
+  if (route === '/api/friends') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    const live = (name) => { const p = peers.get(name); return p ? { online: true, hosting: p.room || null, matchId: p.matchId || null } : null; };
+    if (req.method === 'GET') return json(res, 200, { rows: store.friendsView(acct, live) });
+    const body = await readBody(req);
+    const r = body.action === 'add' ? store.addFriend(acct, body.name) : body.action === 'remove' ? store.removeFriend(acct, body.name) : { error: 'Unknown action.' };
+    if (r.error) return json(res, 400, r);
+    return json(res, 200, { rows: store.friendsView(acct, live) });
+  }
+  if (route === '/api/live') {
+    const rows = [];
+    for (const p of peers.values()) if (p.isHost && p.opponent && p.matchId) rows.push({ matchId: p.matchId, host: p.name, guest: p.opponent.name, spectators: p.spectators ? p.spectators.size : 0 });
+    return json(res, 200, { rows: rows.slice(0, 50) });
+  }
+
   // Somewhere to look when accounts go missing: says where they are being
   // stored and whether that storage survives a restart.
   if (route === '/api/health') {
@@ -460,6 +496,7 @@ function leaveQueue(peer) {
 
 function endMatch(peer, reason) {
   const other = peer.opponent;
+  const host = peer.isHost ? peer : other;
   peer.opponent = null;
   peer.matchId = null;
   if (other) {
@@ -467,7 +504,16 @@ function endMatch(peer, reason) {
     other.matchId = null;
     other.sock.send({ t: 'oppLeft', reason });
   }
+  if (host?.spectators) {
+    for (const sp of host.spectators) { sp.watching = null; if (sp.sock.open) sp.sock.send({ t: 'oppLeft', reason: 'ended' }); }
+    host.spectators = null;
+  }
 }
+function unspectate(peer) {
+  if (peer.watching?.spectators) peer.watching.spectators.delete(peer);
+  peer.watching = null;
+}
+const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
 function pair(a, b, kind) {
   const id = matchSeq++;
@@ -631,6 +677,8 @@ ws.attach(server, '/ws', (sock) => {
           break;
         }
         peer.opponent.sock.send(m);
+        // the host's picture goes to whoever is watching too
+        if (peer.isHost && peer.spectators && m.t !== 'in') for (const sp of peer.spectators) if (sp.sock.open) sp.sock.send(m);
         break;
       }
 
@@ -678,6 +726,49 @@ ws.attach(server, '/ws', (sock) => {
         break;
       }
 
+      /* ---- social ----
+       * invite: the host of a lobby sends its code to a friend by name — the
+       * only thing that crosses is the four-letter code. spectate: attach to
+       * a live match by id; the host's snapshots are copied to spectators and
+       * nothing a spectator sends is ever relayed to the players. emote: an
+       * id from the fixed list, to the opponent and the spectators. */
+      case 'invite': {
+        if (!peer.room) break;
+        const to = peers.get(String(m.to || ''));
+        if (!to || !to.sock.open) { sock.send({ t: 'inviteFail', error: 'That player is not online.' }); break; }
+        if (!(peer.acct.friends || []).includes(to.name) && !(to.acct?.friends || []).includes(peer.name)) { sock.send({ t: 'inviteFail', error: 'Invites go to friends.' }); break; }
+        to.sock.send({ t: 'invited', from: peer.name, code: peer.room });
+        sock.send({ t: 'inviteSent', to: to.name });
+        break;
+      }
+      case 'spectate': {
+        const id = m.matchId | 0;
+        let host = null;
+        for (const p of peers.values()) if (p.isHost && p.matchId === id && p.opponent) { host = p; break; }
+        if (!host) { sock.send({ t: 'spectateFail', error: 'That match is over.' }); break; }
+        unspectate(peer);
+        host.spectators = host.spectators || new Set();
+        if (host.spectators.size >= 8) { sock.send({ t: 'spectateFail', error: 'That match is full of spectators.' }); break; }
+        host.spectators.add(peer);
+        peer.watching = host;
+        sock.send({ t: 'spectating', matchId: id, host: { name: host.name, club: host.club, squad: host.squad }, guest: { name: host.opponent.name, club: host.opponent.club, squad: host.opponent.squad } });
+        console.log(`[match ${id}] ${peer.name} is watching`);
+        break;
+      }
+      case 'unspectate':
+        unspectate(peer);
+        break;
+      case 'emote': {
+        const id = String(m.id || '');
+        if (!EMOTE_IDS.has(id)) break;
+        if (!guard.allow(`emote:${peer.name}`, 6, 0.5)) break;      // six in the bank, one every two seconds
+        const out = { t: 'emote', id, from: peer.name };
+        if (peer.opponent && peer.opponent.matchId === peer.matchId) peer.opponent.sock.send(out);
+        const host = peer.isHost ? peer : peer.opponent;
+        for (const sp of host?.spectators || []) if (sp.sock.open) sp.sock.send(out);
+        break;
+      }
+
       case 'leave':
         endMatch(peer, 'left');
         break;
@@ -694,6 +785,7 @@ ws.attach(server, '/ws', (sock) => {
   sock.on('close', () => {
     const rec = peer.adopted || peer;
     if (rec.sock !== sock) return;              // an older socket of a reconnected peer
+    unspectate(rec);
     leaveQueue(rec);
     /* Mid-match, the seat is held for a grace period rather than ended: the
      * opponent gets a 'dropped' event and pauses; a reconnect within the

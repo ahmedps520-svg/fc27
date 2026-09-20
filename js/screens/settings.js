@@ -6,6 +6,7 @@ import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
 import { startTutorial, tutorialSeen } from '../tutorial.js';
 import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
+import { describeRenderer } from '../game/gpu.js';
 
 /** Push the saved audio preferences into the engine. */
 function applyAudio() {
@@ -21,6 +22,8 @@ export const TITLE = 'Settings';
 
 const QUALITY_NOTE = (q) => (q === 'min'
   ? '<b>Ultra Low:</b> everything turned down at once — sub-native resolution, no shadows, no lighting passes, flat turf, a sparse crowd and the light player figures. It looks like a highlights reel from 2004 and runs on nearly anything.'
+  : q === 'cinema'
+  ? '<b>Ultra+ (cinematic):</b> everything Ultra does at three times native resolution, with god rays, depth of field on every shot, the waving crowd and the wet-pitch reflections. For a desktop with a real GPU; a phone will not hold it.'
   : q === 'medium'
   ? '<b>Medium:</b> the lighting passes, the floodlight beams, rain and a moving crowd at a native pixel ratio and a lighter shadow map — what a recent phone is dealt on Auto. Realistic player models are opt-in here.'
   : q === 'ultra' || !q
@@ -160,13 +163,19 @@ export function render() {
       <div class="setting-row">
         <div><b>3D detail</b><span>Ships on Ultra. Auto reads the GPU and picks Low, Medium or High.</span></div>
         <div class="seg" id="qualitySeg">
-          ${[['auto', 'Auto'], ['min', 'Ultra Low'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['ultra', 'Ultra']].map(([v, l]) =>
+          ${[['auto', 'Auto'], ['min', 'Ultra Low'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['ultra', 'Ultra'], ['cinema', 'Ultra+']].map(([v, l]) =>
             `<button class="${(s.quality || 'auto') === v ? 'on' : ''}" data-quality="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <p class="setting-note ${s.quality === 'ultra' ? 'warn' : ''}" id="qualityNote">
         ${QUALITY_NOTE(s.quality)}
       </p>
+      <div class="setting-row">
+        <div><b>Renderer</b><span id="rendererNote">${describeRenderer()}</span></div>
+        <div class="seg" id="rendererSeg">
+          ${[['auto', 'Auto'], ['webgl', 'WebGL2']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
+        </div>
+      </div>
       <div class="setting-row">
         <div><b>Player models</b><span>Realistic is a scanned mesh — a one-off download.</span></div>
         <div class="seg" id="modelSeg">
@@ -264,6 +273,13 @@ export function mount(root) {
     update((st) => { st.settings.largeText = next; });
     e.currentTarget.classList.toggle('on', next);
     applyLanguage();
+  });
+  root.querySelector('#rendererSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-renderer]');
+    if (!b) return;
+    update((st) => { st.settings.renderer = b.dataset.renderer; });
+    root.querySelectorAll('[data-renderer]').forEach((x) => x.classList.toggle('on', x === b));
+    root.querySelector('#rendererNote').textContent = describeRenderer();
   });
   root.querySelector('#langSeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-lang]');

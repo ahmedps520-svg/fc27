@@ -141,7 +141,13 @@ export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build) 
     neck: add(LIMB_GEO, skin),
     head: add(JOINT_GEO, skin),
     hair: add(JOINT_GEO, hair),
+    // a face: two eyes and a mouth, so a close-up is a person and a
+    // celebration can shout — the mouth scales open while `celebrating`
+    eyeL: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 })),
+    eyeR: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 })),
+    mouth: add(JOINT_GEO, new THREE.MeshStandardMaterial({ color: 0x5a1e22, roughness: 0.7 })),
   };
+  for (const k of ['eyeL', 'eyeR', 'mouth']) parts[k].castShadow = false;
   return { grp, parts, build };
 }
 
@@ -267,6 +273,20 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   parts.hair.rotation.set(0, 0, face);
   parts.hair.scale.set(0.101, 0.095, 0.104);
   parts.hair.visible = fine;
+  /* The face sits on the front of the head: the eyes a little above centre,
+     the mouth below, all along the facing direction. Shouting on a
+     celebration: the mouth opens (scales tall) on the hop's rhythm. */
+  const fx = Math.cos(face); const fy = Math.sin(face);
+  const lx = -fy; const ly = fx;                         // across the face
+  const hx = wx(lean * 1.7 - 0.012, 0); const hy = wy(lean * 1.7 - 0.012, 0);
+  parts.eyeL.position.set(hx + fx * 0.085 + lx * 0.034, hy + fy * 0.085 + ly * 0.034, hz + 0.02);
+  parts.eyeR.position.set(hx + fx * 0.085 - lx * 0.034, hy + fy * 0.085 - ly * 0.034, hz + 0.02);
+  parts.eyeL.scale.set(0.012, 0.012, 0.012); parts.eyeR.scale.set(0.012, 0.012, 0.012);
+  const shout = cheer ? 0.5 + Math.abs(Math.sin(celebT * 6.5)) * 0.5 : 0;
+  parts.mouth.position.set(hx + fx * 0.09, hy + fy * 0.09, hz - 0.035);
+  parts.mouth.rotation.set(0, 0, face);
+  parts.mouth.scale.set(0.012, 0.022, 0.006 + shout * 0.02);
+  parts.eyeL.visible = fine; parts.eyeR.visible = fine; parts.mouth.visible = fine;
 }
 
 /**

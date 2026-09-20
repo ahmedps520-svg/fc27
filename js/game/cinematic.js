@@ -55,6 +55,7 @@ uniform float uFocus;        // distance to the focal plane, world units
 uniform float uGrain;
 uniform float uVignette;
 uniform float uAberration;
+uniform vec3 uLift; uniform vec3 uGamma; uniform vec3 uGain; uniform float uSaturation; uniform float uTemperature;
 uniform float uDebug;      // 1 = show the linear depth the shader is reading
 
 varying vec2 vUv;
@@ -220,6 +221,17 @@ void main() {
 
   col *= ao;
 
+  /* The grade: lift / gamma / gain per channel, then saturation and a colour
+     temperature shift. Set per time of day by the renderer (lightingFor) —
+     a cold blue night, a warm gold dusk, a clean neutral day — and it is
+     what makes the three read as different light rather than the same
+     scene with the lamps moved. HDR-safe: applied before the tone map, on
+     linear values, so highlights roll off through ACES as they should. */
+  col = pow(max(col * uGain + uLift, vec3(0.0)), uGamma);
+  float lumaG = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(lumaG), col, uSaturation);
+  col *= vec3(1.0 + uTemperature * 0.12, 1.0, 1.0 - uTemperature * 0.12);
+
   // Vignette: a soft darkening, multiplied not subtracted, so it never crushes
   // the corners to black.
   float v = 1.0 - uVignette * dot(vUv - 0.5, vUv - 0.5) * 1.9;
@@ -281,6 +293,11 @@ export class CinematicPass extends Pass {
         uGrain: { value: opts.grain ?? 0.035 },
         uVignette: { value: opts.vignette ?? 0.5 },
         uAberration: { value: opts.aberration ?? 0.6 },
+        uLift: { value: new THREE.Vector3(0, 0, 0) },
+        uGamma: { value: new THREE.Vector3(1, 1, 1) },
+        uGain: { value: new THREE.Vector3(1, 1, 1) },
+        uSaturation: { value: 1 },
+        uTemperature: { value: 0 },
         uDebug: { value: opts.debug ? 1 : 0 },
       },
       vertexShader: VERT,
@@ -289,6 +306,13 @@ export class CinematicPass extends Pass {
       depthWrite: false,
     });
     this.fsQuad = new FullScreenQuad(this.material);
+  }
+
+  /** The colour grade: lift/gamma/gain as [r,g,b], saturation, temperature -1..1 (cold..warm). */
+  setGrade({ lift = [0, 0, 0], gamma = [1, 1, 1], gain = [1, 1, 1], saturation = 1, temperature = 0 } = {}) {
+    const u = this.material.uniforms;
+    u.uLift.value.set(...lift); u.uGamma.value.set(...gamma); u.uGain.value.set(...gain);
+    u.uSaturation.value = saturation; u.uTemperature.value = temperature;
   }
 
   /** Where the lens is focused, in world units from the camera. */

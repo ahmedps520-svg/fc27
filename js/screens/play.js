@@ -12,7 +12,7 @@ import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
-import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/stadiums.js';
+import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { t } from '../i18n.js';
@@ -91,6 +91,15 @@ function venueOf(params) {
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
   const atmo = atmosphereFor(seed, params.atmo || {});
+  /* A quarter of matches see the weather turn: rain arriving in a clear
+     second half, or a wet first half clearing. Decided by the seed, so the
+     same fixture on the same day turns the same way; never when the
+     conditions were chosen by hand. */
+  if (params.atmoChange) atmo.change = params.atmoChange;
+  else if (!params.atmo?.weather) {
+    const h = hashStr(`turn|${seed}`);
+    if ((h & 0xff) < 64) atmo.change = { minute: 30 + ((h >>> 8) % 45), to: atmo.weather === 'rain' ? 'clear' : 'rain' };
+  }
   return { stadium, atmo, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}` };
 }
 
