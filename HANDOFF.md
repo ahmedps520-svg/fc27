@@ -15,6 +15,42 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v75 — Kick Off by country
+- **`data/countries.js`**: `COUNTRIES` (56, strongest first: Spain … India;
+  `rank` 1-based), each with real clubs `{id: 'kc-<country>-<short>', name,
+  short, colors, shape, country}`; `INTERNATIONAL` pseudo-country =
+  `internationalTeams()` (every `nations()` XI, 67). `clubSquad(club)` deals
+  a country once and caches: career-curated squads (`squadOf(careerId)`)
+  for clubs whose name matches a `CAREER_CLUBS` entry, topped up by position
+  from the country's pool then free agents (the PSG career file has no
+  keeper); every other club gets the country's players (excluding
+  Icons/Stars/SBC) dealt round-robin by position group (needs GK 2 / DF 6 /
+  MF 6 / FW 4), thin countries borrow the free agents nearest 60 overall,
+  and the dealt clubs are **scaled on copies** to `target = 85 - 0.52·rank
+  - 1.5·clubIndex` (k clamped 0.72–1.12) so the list runs Spain 84 → India
+  56. `clubSheet` (ATT/MID/DEF/OVR, stars `(ovr-56)/6`, talisman),
+  `matchSquad` (the custom squad the match takes; crest = solid in club
+  colours). No player appears at two clubs of one country.
+- **Wave 7** (`tools/real-players-wave7.json`, 85 kept after the
+  accent-insensitive dedupe): free agents on `WORLD_SEED ^ 0x7d7d75`
+  rated `around(64, 7)`, nation from the list. World 6413 players.
+- **Kick Off screen** (`quickmatch.js`): `pick.home/away = {country, idx}`;
+  country row (◀ flag select ▶), team card with ◀ ▶, a rail of the
+  country's badges, h2h; Randomise picks a country and a team per side;
+  the two sides cannot be the same team; the match is launched with
+  `homeSquad/awaySquad` custom squads (world ids only anchor the pitch).
+  `.teamsel` aligns `start` (a 67-flag International rail used to push its
+  card up).
+- Tests: `tests/unit/countries.test.mjs` (≥50 countries, order, unique ids,
+  every club 11 real names with a keeper and no duplicates within a
+  country, ratings downhill, International has France/Spain/Saudi
+  Arabia). Headless: `tests/tmp/kickoff-check.mjs` (select, cycle, India
+  v England national team to kick-off, phone layout).
+- Not done: real ground names per club (the venue is dealt by rating and
+  colours as for any custom squad); the World screen's fictional 100-club
+  pyramid is unchanged and still what Career V1 fixtures and the sweep run
+  on.
+
 ### v74 — tiers, phones, the ground in Kick Off
 - **Tiers** (`render3d.js`, `settings.js`): the menu offers Auto / Low /
   Medium / High / Ultra on desktop and tablet; internally Ultra is the

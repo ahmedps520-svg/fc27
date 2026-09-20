@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, REAL_PLAYERS_WAVE7, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -644,6 +644,17 @@ function buildWorld() {
     freeAgents.push(p.id);
   }
   nameTheWorld(w6Players, REAL_PLAYERS_WAVE6);
+  // v75: the seventh wave — the countries the pool was thin on (India, China,
+  // Slovakia, Romania, Paraguay, Peru, Hungary, Ireland, Iraq), so Kick Off
+  // by country can field them. Rated like a lower league.
+  const w7 = makeRand(WORLD_SEED ^ 0x7d7d75);
+  const w7Players = [];
+  for (let i = 0; i < REAL_PLAYERS_WAVE7.length; i++) {
+    const p = makePlayer(w7, REAL_PLAYERS_WAVE7[i][3], w7.around(64, 7), null);
+    players.push(p); w7Players.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(w7Players, REAL_PLAYERS_WAVE7);
   const sbc2 = makeRand(WORLD_SEED ^ 0x5bc6);
   for (const [name, short, nation, pos, overall, age] of SBC_LEGENDS_2) {
     const p = makePlayer(sbc2, pos, overall, null);

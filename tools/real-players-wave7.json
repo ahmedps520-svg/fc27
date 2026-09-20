@@ -1,0 +1,792 @@
+[
+[
+"Gurpreet Singh Sandhu",
+"India",
+"GK"
+],
+[
+"Amrinder Singh",
+"India",
+"GK"
+],
+[
+"Vishal Kaith",
+"India",
+"GK"
+],
+[
+"Prabhsukhan Singh Gill",
+"India",
+"GK"
+],
+[
+"Sandesh Jhingan",
+"India",
+"CB"
+],
+[
+"Anwar Ali",
+"India",
+"CB"
+],
+[
+"Mehtab Singh",
+"India",
+"CB"
+],
+[
+"Rahul Bheke",
+"India",
+"CB"
+],
+[
+"Chinglensana Singh",
+"India",
+"CB"
+],
+[
+"Pritam Kotal",
+"India",
+"CB"
+],
+[
+"Subhasish Bose",
+"India",
+"LB"
+],
+[
+"Akash Mishra",
+"India",
+"LB"
+],
+[
+"Jay Gupta",
+"India",
+"LB"
+],
+[
+"Nikhil Poojary",
+"India",
+"RB"
+],
+[
+"Asish Rai",
+"India",
+"RB"
+],
+[
+"Jeakson Singh",
+"India",
+"CDM"
+],
+[
+"Suresh Singh Wangjam",
+"India",
+"CDM"
+],
+[
+"Apuia",
+"India",
+"CDM"
+],
+[
+"Glan Martins",
+"India",
+"CDM"
+],
+[
+"Rowllin Borges",
+"India",
+"CDM"
+],
+[
+"Anirudh Thapa",
+"India",
+"CM"
+],
+[
+"Brandon Fernandes",
+"India",
+"CM"
+],
+[
+"Sahal Abdul Samad",
+"India",
+"CM"
+],
+[
+"Lalengmawia",
+"India",
+"CM"
+],
+[
+"Naorem Mahesh Singh",
+"India",
+"CAM"
+],
+[
+"Vikram Partap Singh",
+"India",
+"CAM"
+],
+[
+"Lallianzuala Chhangte",
+"India",
+"LW"
+],
+[
+"Ashique Kuruniyan",
+"India",
+"LW"
+],
+[
+"Liston Colaco",
+"India",
+"LW"
+],
+[
+"Udanta Singh",
+"India",
+"RW"
+],
+[
+"Nandhakumar Sekar",
+"India",
+"RW"
+],
+[
+"Sunil Chhetri",
+"India",
+"ST"
+],
+[
+"Manvir Singh",
+"India",
+"ST"
+],
+[
+"Rahim Ali",
+"India",
+"ST"
+],
+[
+"Ishan Pandita",
+"India",
+"ST"
+],
+[
+"Sivasakthi Narayanan",
+"India",
+"ST"
+],
+[
+"Parthib Gogoi",
+"India",
+"ST"
+],
+[
+"Yan Junling",
+"China",
+"GK"
+],
+[
+"Wang Dalei",
+"China",
+"GK"
+],
+[
+"Liu Dianzuo",
+"China",
+"GK"
+],
+[
+"Zhang Linpeng",
+"China",
+"CB"
+],
+[
+"Jiang Guangtai",
+"China",
+"CB"
+],
+[
+"Zhu Chenjie",
+"China",
+"CB"
+],
+[
+"Han Pengfei",
+"China",
+"CB"
+],
+[
+"Wei Zhen",
+"China",
+"CB"
+],
+[
+"Li Lei",
+"China",
+"LB"
+],
+[
+"Liu Yang",
+"China",
+"LB"
+],
+[
+"Yang Zexiang",
+"China",
+"LB"
+],
+[
+"Wang Shenchao",
+"China",
+"RB"
+],
+[
+"Deng Hanwen",
+"China",
+"RB"
+],
+[
+"Gao Zhunyi",
+"China",
+"RB"
+],
+[
+"Wu Xi",
+"China",
+"CDM"
+],
+[
+"Li Ke",
+"China",
+"CDM"
+],
+[
+"Xu Xin",
+"China",
+"CDM"
+],
+[
+"Wang Shangyuan",
+"China",
+"CM"
+],
+[
+"Dai Wai-tsun",
+"China",
+"CM"
+],
+[
+"Wang Haijian",
+"China",
+"CM"
+],
+[
+"Xie Wenneng",
+"China",
+"CM"
+],
+[
+"Fernandinho Silva",
+"China",
+"CAM"
+],
+[
+"Alan Douglas",
+"China",
+"CAM"
+],
+[
+"Wei Shihao",
+"China",
+"LW"
+],
+[
+"Lin Liangming",
+"China",
+"LW"
+],
+[
+"Wu Lei",
+"China",
+"LW"
+],
+[
+"Zhang Yuning",
+"China",
+"RW"
+],
+[
+"Liu Binbin",
+"China",
+"RW"
+],
+[
+"Tan Long",
+"China",
+"RW"
+],
+[
+"Ai Kesen",
+"China",
+"ST"
+],
+[
+"Fang Hao",
+"China",
+"ST"
+],
+[
+"Martin Dubravka",
+"Slovakia",
+"GK"
+],
+[
+"Marek Rodak",
+"Slovakia",
+"GK"
+],
+[
+"Dominik Takac",
+"Slovakia",
+"GK"
+],
+[
+"Milan Skriniar",
+"Slovakia",
+"CB"
+],
+[
+"Denis Vavro",
+"Slovakia",
+"CB"
+],
+[
+"Adam Obert",
+"Slovakia",
+"CB"
+],
+[
+"Norbert Gyomber",
+"Slovakia",
+"CB"
+],
+[
+"David Hancko",
+"Slovakia",
+"LB"
+],
+[
+"Lukas Haraslin",
+"Slovakia",
+"LB"
+],
+[
+"Peter Pekarik",
+"Slovakia",
+"RB"
+],
+[
+"Tomas Suslov",
+"Slovakia",
+"RB"
+],
+[
+"Stanislav Lobotka",
+"Slovakia",
+"CM"
+],
+[
+"Juraj Kucka",
+"Slovakia",
+"CM"
+],
+[
+"Ondrej Duda",
+"Slovakia",
+"CM"
+],
+[
+"Laszlo Benes",
+"Slovakia",
+"CM"
+],
+[
+"Patrik Hrosovsky",
+"Slovakia",
+"CM"
+],
+[
+"Robert Bozenik",
+"Slovakia",
+"ST"
+],
+[
+"Ivan Schranz",
+"Slovakia",
+"ST"
+],
+[
+"David Strelec",
+"Slovakia",
+"ST"
+],
+[
+"David Duris",
+"Slovakia",
+"ST"
+],
+[
+"Stefan Tarnovanu",
+"Romania",
+"GK"
+],
+[
+"Catalin Cabuz",
+"Romania",
+"GK"
+],
+[
+"Adrian Rus",
+"Romania",
+"CB"
+],
+[
+"Virgil Ghita",
+"Romania",
+"CB"
+],
+[
+"Alin Tosca",
+"Romania",
+"CB"
+],
+[
+"Darius Olaru",
+"Romania",
+"CM"
+],
+[
+"Adrian Sut",
+"Romania",
+"CM"
+],
+[
+"Alexandru Cicaldau",
+"Romania",
+"CM"
+],
+[
+"Tudor Baluta",
+"Romania",
+"CM"
+],
+[
+"Mihai Roman",
+"Romania",
+"CM"
+],
+[
+"Louis Munteanu",
+"Romania",
+"ST"
+],
+[
+"Andrei Ivan",
+"Romania",
+"ST"
+],
+[
+"Daniel Paraschiv",
+"Romania",
+"ST"
+],
+[
+"Gatito Fernandez",
+"Paraguay",
+"GK"
+],
+[
+"Alfredo Aguilar",
+"Paraguay",
+"GK"
+],
+[
+"Bruno Valdez",
+"Paraguay",
+"CB"
+],
+[
+"Gustavo Velazquez",
+"Paraguay",
+"CB"
+],
+[
+"Juan Escobar",
+"Paraguay",
+"CB"
+],
+[
+"Hernesto Caballero",
+"Paraguay",
+"CM"
+],
+[
+"Marcelo Perez",
+"Paraguay",
+"CM"
+],
+[
+"Cesar Ramirez",
+"Paraguay",
+"CM"
+],
+[
+"Angel Romero",
+"Paraguay",
+"ST"
+],
+[
+"Oscar Romero",
+"Paraguay",
+"ST"
+],
+[
+"Alejandro Romero Gamarra",
+"Paraguay",
+"ST"
+],
+[
+"Gabriel Avalos",
+"Paraguay",
+"ST"
+],
+[
+"Jose Carvallo",
+"Peru",
+"GK"
+],
+[
+"Angel Cayetano",
+"Peru",
+"GK"
+],
+[
+"Anderson Santamaria",
+"Peru",
+"CB"
+],
+[
+"Luis Abram",
+"Peru",
+"CB"
+],
+[
+"Aldo Corzo",
+"Peru",
+"CB"
+],
+[
+"Jesus Castillo",
+"Peru",
+"CM"
+],
+[
+"Horacio Calcaterra",
+"Peru",
+"CM"
+],
+[
+"Martin Tavara",
+"Peru",
+"CM"
+],
+[
+"Raul Ruidiaz",
+"Peru",
+"ST"
+],
+[
+"Alex Valera",
+"Peru",
+"ST"
+],
+[
+"Jose Rivera",
+"Peru",
+"ST"
+],
+[
+"Piero Quispe",
+"Peru",
+"ST"
+],
+[
+"Adam Bogdan",
+"Hungary",
+"GK"
+],
+[
+"Peter Szappanos",
+"Hungary",
+"GK"
+],
+[
+"Adam Lang",
+"Hungary",
+"CB"
+],
+[
+"Botond Balogh",
+"Hungary",
+"CB"
+],
+[
+"Attila Mocsi",
+"Hungary",
+"CB"
+],
+[
+"Zsolt Nagy",
+"Hungary",
+"CM"
+],
+[
+"Balint Vecsei",
+"Hungary",
+"CM"
+],
+[
+"Laszlo Kleinheisler",
+"Hungary",
+"CM"
+],
+[
+"Bendeguz Bolla",
+"Hungary",
+"CM"
+],
+[
+"Zsolt Kalmar",
+"Hungary",
+"ST"
+],
+[
+"Krisztian Nemeth",
+"Hungary",
+"ST"
+],
+[
+"Adam Szalai",
+"Hungary",
+"ST"
+],
+[
+"Max O'Leary",
+"Ireland",
+"GK"
+],
+[
+"Brian Maher",
+"Ireland",
+"GK"
+],
+[
+"Liam Scales",
+"Ireland",
+"CB"
+],
+[
+"Jake O'Brien",
+"Ireland",
+"CB"
+],
+[
+"Sam Curtis",
+"Ireland",
+"CB"
+],
+[
+"Alan Browne",
+"Ireland",
+"CM"
+],
+[
+"Conor Hourihane",
+"Ireland",
+"CM"
+],
+[
+"Jeff Hendrick",
+"Ireland",
+"CM"
+],
+[
+"Finn Azaz",
+"Ireland",
+"CM"
+],
+[
+"Sammie Szmodics",
+"Ireland",
+"ST"
+],
+[
+"Aaron Connolly",
+"Ireland",
+"ST"
+],
+[
+"Jonathan Afolabi",
+"Ireland",
+"ST"
+],
+[
+"Mikey Johnston",
+"Ireland",
+"ST"
+],
+[
+"Hussein Hasan",
+"Iraq",
+"GK"
+],
+[
+"Saad Natiq",
+"Iraq",
+"CB"
+],
+[
+"Mustafa Nadhim",
+"Iraq",
+"CB"
+],
+[
+"Safaa Hadi",
+"Iraq",
+"CM"
+],
+[
+"Kevin Yakob",
+"Iraq",
+"CM"
+],
+[
+"Amir Al-Ammari",
+"Iraq",
+"CM"
+],
+[
+"Alaa Abbas",
+"Iraq",
+"ST"
+],
+[
+"Mohammed Dawood",
+"Iraq",
+"ST"
+]
+]

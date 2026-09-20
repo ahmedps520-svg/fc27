@@ -1567,7 +1567,7 @@ body.in-game #screen {
   grid-template-rows: 1fr auto; gap: 18px;
   /* centred, not pinned to the top: the old layout left the bottom two thirds
      of a tablet screen empty */
-  align-items: center;
+  align-items: start;      /* the sides start level; an International rail of 67 flags used to push its card up */
   min-height: calc(100dvh - 130px);
 }
 .ts-side { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -4337,3 +4337,9 @@ html.large-text .tile-name { font-size: 27px; }
 /* the developer dot: there, not advertised */
 .dev-dot { display: block; margin: 18px auto 0; width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent; color: rgba(255,255,255,.18); font-size: 22px; line-height: 1; cursor: pointer; }
 .dev-dot:hover { color: var(--text-dim); }
+
+/* ------------------------- Kick Off by country ------------------------- */
+.ts-country { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.ts-country .ts-flag { display: inline-flex; flex: none; }
+.ts-select { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: inherit; font: inherit; font-weight: 700; }
+.ts-rail { flex-wrap: wrap; }

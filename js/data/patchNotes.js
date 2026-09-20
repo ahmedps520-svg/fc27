@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v75',
+    date: '2026-09-20',
+    tag: 'Kick Off',
+    title: 'Pick a country, then a club',
+    lede: 'Kick Off is sorted by country now: fifty-six of them from Spain down to India, each with its real clubs and '
+        + 'real footballers, plus International for the national teams.',
+    entries: [
+      {
+        head: 'Kick Off by country',
+        summary: 'Choose a country (strongest first, Spain to India) and then a club within it — Real Madrid, Bayern, Flamengo, Al Hilal, Mohun Bagan and 170 more — or International for France, Spain, Saudi Arabia and every other national XI.',
+        detail: 'Every club fields eleven real footballers of its country. The six countries Manager Career curates use those '
+              + 'curated squads for the clubs they share; every other club is dealt the best players of its nationality, so the '
+              + 'names and the flag are right even where a squad is an approximation of who plays there this season. Badges '
+              + 'are drawn in each club\'s colours by the game\'s own crest generator. Strength runs downhill with the '
+              + 'list: a Spanish club is a five-star side, an Indian one a one-star side.',
+      },
+      {
+        head: 'More players',
+        summary: 'Eighty-five more real-name players for the countries the pool was thin on: India, China, Slovakia, Romania, Paraguay, Peru, Hungary, Ireland and Iraq.',
+        detail: 'World: 6,413 players.',
+      },
+    ],
+  },
+  {
     version: 'v74',
     date: '2026-09-20',
     tag: 'Fixes',

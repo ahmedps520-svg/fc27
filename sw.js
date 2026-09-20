@@ -75,6 +75,7 @@ const ASSETS = [
   './js/economy.js',
   './js/builder.js',
   './js/data/emotes.js',
+  './js/data/countries.js',
   './js/onboarding.js',
   './js/kits.js',
   './js/i18n.js',
