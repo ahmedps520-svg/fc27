@@ -225,7 +225,8 @@ export async function createRenderer(canvas, match, quality = 'high', _models = 
     render(m, cam, dt) {
       camera.position.set(cam.x, cam.y, cam.z);
       camera.lookAt(cam.tx, cam.ty, cam.tz);
-      camera.fov = cam.hfov / Math.max(1, camera.aspect) * 1.45;
+      // a phone in landscape is wider than 16:9; keep the 16:9 vertical field and show more of the sides, rather than zooming in
+      camera.fov = cam.hfov / Math.min(Math.max(1, camera.aspect), 16 / 9) * 1.45;
       camera.updateProjectionMatrix();
       for (const f of figures) {
         const p = f.p;

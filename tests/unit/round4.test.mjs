@@ -129,7 +129,10 @@ test('GPU names classify and Auto lands on a sensible tier', () => {
   assert.equal(resolveQuality('auto', { ...phone, gpu: '' }), 'low');
   assert.equal(resolveQuality('auto', { touch: false, small: false, cores: 12, memory: 16, gpu: 'NVIDIA GeForce GTX 1660' }), 'high');
   assert.equal(resolveQuality('auto', { touch: false, small: false, cores: 2, memory: 2, gpu: 'Mali-400' }), 'min');
-  assert.equal(resolveQuality('ultra', {}), 'ultra');
+  // v74: the old Ultra is the top tier now called Ultra (internally 'cinema'); Ultra Low left the menus and reads as Low
+  assert.equal(resolveQuality('ultra', {}), 'cinema');
+  assert.equal(resolveQuality('cinema', {}), 'cinema');
+  assert.equal(resolveQuality('min', {}), 'low');
   assert.equal(resolveQuality('medium', {}), 'medium');
 });
 

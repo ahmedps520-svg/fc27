@@ -2297,6 +2297,10 @@ export function createRenderer(canvas, match, quality, models = false) {
        * real world height measured, and the correction applied — twice, since
        * the first fix changes what the second measures. Ends at 1.85m of
        * manager whatever the file thought a metre was. */
+      // a model whose textures did not arrive is a white ghost (v73's CSP bug): keep the suit rig instead
+      let textured = true;
+      gltf.scene.traverse((n) => { if (n.isMesh) { const ms = Array.isArray(n.material) ? n.material : [n.material]; if (ms.some((mm) => mm && !mm.map && mm.color && mm.color.getHex() === 0xffffff)) textured = false; } });
+      if (!textured) return;
       const holder = new THREE.Group();
       gltf.scene.rotation.x = Math.PI / 2;              // y-up asset, z-up world
       gltf.scene.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; } });
@@ -2794,7 +2798,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     render(m, cam, dt) {
       camera.position.set(cam.x, cam.y, cam.z);
       camera.lookAt(cam.tx, cam.ty, cam.tz);
-      camera.fov = cam.hfov / Math.max(1, camera.aspect) * 1.45;
+      // a phone in landscape is wider than 16:9; keep the 16:9 vertical field and show more of the sides, rather than zooming in
+      camera.fov = cam.hfov / Math.min(Math.max(1, camera.aspect), 16 / 9) * 1.45;
       camera.updateProjectionMatrix();
       if (atmo.time === 'night') {
         sun.position.set(cam.x - 46, cam.y - 20, 88);

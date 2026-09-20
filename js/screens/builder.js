@@ -17,7 +17,7 @@ import { getState, update } from '../state.js';
 import { WORLD } from '../data/generator.js';
 import { atmosphereFor, TIME_LABEL } from '../data/stadiums.js';
 import { Match } from '../game/sim.js';
-import { makeCamera, orbitCamera, resolveQuality } from '../game/render3d.js';
+import { makeCamera, orbitCamera, resolveQuality, deviceClass } from '../game/render3d.js';
 import { screenHead } from '../components/screenHead.js';
 import { clubIdentity } from './squad.js';
 import { careerClub } from '../career.js';
@@ -130,7 +130,8 @@ export function mount(root) {
   const match = new Match(home.id, away.id, { duration: 60, human: null });
   // the builder is a workshop, not a benchmark: Ultra rebuilds are slow and this is rebuilt on every change
   const q = resolveQuality(getState().settings.quality);
-  const quality = q === 'ultra' || q === 'cinema' ? 'high' : q;
+  // a phone rebuilds this scene on every slider tick; at High that emptied an iPhone's GPU memory and Safari reloaded the page
+  const quality = deviceClass() === 'phone' ? 'low' : q === 'ultra' || q === 'cinema' ? 'high' : q;
   let mod = null;
 
   const size = () => { const w = canvas.clientWidth || 640; const h = canvas.clientHeight || 360; gl?.resize(w, h); };

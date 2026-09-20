@@ -4334,3 +4334,6 @@ html.large-text .tile-name { font-size: 27px; }
 .obj.has-art .pack-art { grid-row: 1 / 3; }
 /* photo mode: nothing over the picture but the filters and the way out */
 .gm.photo-mode .gm-hud, .gm.photo-mode .gm-emotes, .gm.photo-mode .gm-queue, .gm.photo-mode .mgr-hud { visibility: hidden; }
+/* the developer dot: there, not advertised */
+.dev-dot { display: block; margin: 18px auto 0; width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent; color: rgba(255,255,255,.18); font-size: 22px; line-height: 1; cursor: pointer; }
+.dev-dot:hover { color: var(--text-dim); }
