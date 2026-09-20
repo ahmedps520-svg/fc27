@@ -4,6 +4,7 @@ SRC='tools/real-players-source.json'
 EXTRA='tools/real-players-extra.json'   # curated second wave, see REAL_PLAYERS_EXTRA
 WAVE3='tools/real-players-wave3.json'   # third wave (v70): the two lower divisions and a wider free pool
 WAVE4='tools/real-players-wave4.json'   # fourth wave (v71): divisions five and six
+WAVE5='tools/real-players-wave5.json'   # fifth wave (v72): the hundred-club world
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -50,6 +51,9 @@ COLORS = {
  'Tanzania':['#1eb53a','#00a3dd'], 'Togo':['#006a4e','#ffce00'],
  # fourth wave
  'Qatar':['#8a1538','#ffffff'], 'Iraq':['#ce1126','#007a3d'], 'United Arab Emirates':['#00732f','#ff0000'],
+ # fifth wave
+ 'Bolivia':['#d52b1e','#007934'], 'Cape Verde':['#003893','#cf2027'], 'Zambia':['#198a00','#ef7d00'], 'Jordan':['#007a3d','#ce1126'],
+ 'China':['#de2910','#ffde00'], 'India':['#ff9933','#138808'],
 }
 
 PARTICLES = {'de','del','della','di','da','dos','das','van','von','le','la','el','al','ben','mac','mc',"o'",'ter','ten'}
@@ -96,7 +100,15 @@ for p in wave4:
     w4seen.add(p['name']); kept.append(p)
 wave4 = kept
 random.Random(71).shuffle(wave4)
-missing = sorted({p['country'] for p in pack + extra + wave3 + wave4} - set(COLORS))
+seen5 = seen4 | set(w4seen)
+wave5 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE5))]
+w5seen = set(); kept = []
+for p in wave5:
+    if p['name'] in seen5 or p['name'] in w5seen: continue
+    w5seen.add(p['name']); kept.append(p)
+wave5 = kept
+random.Random(72).shuffle(wave5)
+missing = sorted({p['country'] for p in pack + extra + wave3 + wave4 + wave5} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
@@ -109,6 +121,7 @@ rows = emit(pack)
 extra_rows = emit(extra)
 wave3_rows = emit(wave3)
 wave4_rows = emit(wave4)
+wave5_rows = emit(wave5)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -168,9 +181,17 @@ export const REAL_PLAYERS_WAVE4 = [
 {wave4_rows},
 ];
 
+/**
+ * The fifth wave: {len(wave5)} more (tools/real-players-wave5.json), for the
+ * forty clubs and the wider pool of the hundred-club world (v72). Same rules.
+ */
+export const REAL_PLAYERS_WAVE5 = [
+{wave5_rows},
+];
+
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */
 export const NATION_COLORS = {{
 {cols},
 }};
 ''')
-print('wrote', OUT, len(pack), '+', len(extra), '+', len(wave3), '+', len(wave4), 'players,', len(COLORS), 'countries')
+print('wrote', OUT, len(pack), '+', len(extra), '+', len(wave3), '+', len(wave4), '+', len(wave5), 'players,', len(COLORS), 'countries')

@@ -45,10 +45,13 @@ function pickFor(date) {
     h = (h * 1103515245 + 12345) >>> 0;
     const i = h % list.length;
     const o = list.splice(i, 1)[0];
-    if (out.some((x) => x.ev === o.ev)) continue;      // three different things, not two ways to count goals
-    out.push(o.id);
+    // three different things, not two ways to count goals. (This compared
+    // `ev` against the id strings already picked, so it never matched, and
+    // the day the hash dealt two goal objectives the watch showed them both.)
+    if (out.some((x) => x.ev === o.ev)) continue;
+    out.push(o);
   }
-  return out;
+  return out.map((o) => o.id);
 }
 
 /**

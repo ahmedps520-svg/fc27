@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -291,11 +291,11 @@ function buildWorld() {
       tier: bp.tier,
       crest: { shape: bp.crest, colors: bp.colors, pattern: bp.pattern, device: bp.device },
       league: bp.league,
-      division: LEAGUES.indexOf(bp.league) + 1,
+      division: bp.division || LEAGUES.indexOf(bp.league) + 1,
       founded: bp.founded,
       ground: bp.ground,
       roster: [],                       // dealt (Meridian) or generated (wave 3) at the end of buildWorld
-      budget: Math.round((12 - bp.tier) * (bp.wave === 4 ? 900_000 : bp.wave === 3 ? 2_000_000 : 5_000_000) + (bp.wave === 4 ? 1_200_000 : bp.wave === 3 ? 2_500_000 : 6_000_000)),
+      budget: Math.round((14 - bp.tier) * (bp.wave === 5 ? [0, 5_000_000, 3_500_000, 2_000_000, 1_500_000, 900_000, 700_000, 500_000, 400_000][bp.division] : bp.wave === 4 ? 900_000 : bp.wave === 3 ? 2_000_000 : 5_000_000) + (bp.wave === 4 || bp.wave === 5 ? 1_200_000 : bp.wave === 3 ? 2_500_000 : 6_000_000)),
     });
   });
 
@@ -471,7 +471,7 @@ function buildWorld() {
    * tier one of the new league is the strongest and the depth is even. It is
    * deterministic and consumes no random numbers, which is how the original
    * fixture list above and both balance sweeps stay byte-identical.        */
-  const newClubs = clubs.filter((c) => c.league === 'Meridian League');
+  const newClubs = clubs.filter((c) => c.league === 'Meridian League' && !CLUB_BLUEPRINTS.find((bp) => bp.name === c.name)?.wave);
   if (newClubs.length) {
     const dealable = freeAgents.map((id) => players.find((p) => p.id === id))
       .filter((p) => p && p.rarity !== 'icon' && p.rarity !== 'star' && p.overall < 88 && !p.sbc);
@@ -582,6 +582,35 @@ function buildWorld() {
     freeAgents.push(p.id);
   }
   nameTheWorld(w4Players, REAL_PLAYERS_WAVE4);
+
+  /* --------------------------- the hundred-club world --------------------------- *
+   * v72: forty more clubs, two joining each of the first six divisions and
+   * thirteen each in the seventh and eighth. Rated for the division they
+   * join — a new top-flight club is an 82, a Lowland one a 60 — on their own
+   * stream, appended after everything, named from the fifth wave. A wider
+   * free pool as well: 1,400 more names in packs. */
+  const w5 = makeRand(WORLD_SEED ^ 0x5a5a72);
+  const w5Players = [];
+  const DIV_BASE = [0, 82, 79, 75, 71, 68, 65, 63, 61];
+  for (const club of clubs) {
+    if (CLUB_BLUEPRINTS.find((bp) => bp.name === club.name)?.wave !== 5) continue;
+    const base = DIV_BASE[club.division] - (club.tier - 1) * 0.35;
+    W3_SHAPE.forEach((pos, slot) => {
+      const depth = slot % 3 === 2 ? 4 : slot % 3 === 1 ? 2 : 0;
+      const p = makePlayer(w5, pos, base - depth, club.id);
+      players.push(p); w5Players.push(p);
+      club.roster.push(p.id);
+    });
+    const star = makePlayer(w5, w5.pick(['ST', 'CAM', 'LW', 'RW', 'CM']), clamp(base + 6, 60, 88), club.id);
+    players.push(star); w5Players.push(star);
+    club.roster.push(star.id);
+  }
+  for (let i = 0; i < 1400; i++) {
+    const p = makePlayer(w5, w5.pick(W3_POOL), w5.around(71, 10), null);
+    players.push(p); w5Players.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(w5Players, REAL_PLAYERS_WAVE5);
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 
