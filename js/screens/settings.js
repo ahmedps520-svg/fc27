@@ -170,7 +170,7 @@ export function render() {
       <div class="setting-row">
         <div><b>Renderer</b><span id="rendererNote">${describeRenderer()}</span></div>
         <div class="seg" id="rendererSeg">
-          ${[['auto', 'Auto'], ['webgl', 'WebGL2']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
+          ${[['auto', 'Auto'], ['webgl', 'WebGL2'], ['webgpu', 'WebGPU (beta)']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="setting-row">

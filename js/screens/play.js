@@ -1158,9 +1158,12 @@ export function mount(root, params) {
    * inside that. `running` guards the callback because a player can leave the
    * screen before the module lands, and a renderer created into a dead canvas
    * is a leaked GL context. */
-  const glLoad = import('../game/renderGL.js').then((m) => {
+  // v73: the WebGPU renderer (beta) is opt-in from Settings; Auto keeps WebGL2 for matches
+  const wantGPU = getState().settings.renderer === 'webgpu';
+  const glLoad = (wantGPU ? import('../game/renderGPU.js') : import('../game/renderGL.js')).then(async (m) => {
     if (!running) return;
-    gl = m.createRenderer(canvas, match, quality, useModels);
+    gl = await m.createRenderer(canvas, match, quality, useModels);
+    if (!running) { try { gl.dispose(); } catch { /* torn down while the GPU device was coming up */ } gl = null; return; }
     window.__apexGL = gl; window.__apexMatch = match; window.__apexDbg = () => ({ walkout, phase: match.phase, minute: match.minute(), paused, loading, ended }); // the perf harness reads renderer.info through this
     resize();
     gl.ready.then(() => { assetsReady = true; });

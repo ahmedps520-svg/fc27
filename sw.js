@@ -69,6 +69,7 @@ const ASSETS = [
   './js/live.js',
   './js/weekend.js',
   './js/game/gpu.js',
+  './js/game/renderGPU.js',
   './js/tournament.js',
   './js/economy.js',
   './js/builder.js',

@@ -33,7 +33,9 @@ export const loadWebGPU = () => import('../vendor/three.webgpu.js');
 
 /** What the settings screen shows. */
 export function describeRenderer() {
-  if (typeof navigator === 'undefined' || !navigator.gpu) return 'WebGL2 (this browser has no WebGPU)';
   const want = getState().settings.renderer || 'auto';
+  const has = typeof navigator !== 'undefined' && !!navigator.gpu;
+  if (want === 'webgpu') return `Matches on the WebGPU renderer (beta: the core scene only, none of the WebGL2 effects yet)${has ? '' : ' — this browser has no WebGPU, so it runs on that renderer\'s WebGL2 backend'}`;
+  if (!has) return 'WebGL2 (this browser has no WebGPU)';
   return want === 'webgl' ? 'WebGL2 (WebGPU turned off)' : 'WebGPU for the menu and showcase figure · WebGL2 for the match';
 }
