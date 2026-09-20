@@ -17,6 +17,7 @@ import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './da
 import { getState, update } from './state.js';
 import { onCareer } from './progress.js';
 import * as v2 from './careerV2.js';
+import { supplyIndex, demandIndex, kindOf } from './economy.js';
 
 export { CAREER_CLUBS, REAL_MANAGERS };
 export const careerClub = (id) => v2.clubOf(id);
@@ -290,7 +291,9 @@ export function askingPrice(entry, contract) {
   const years = contract?.years ?? 2;
   const contractMod = years <= 1 ? 0.55 : years === 2 ? 0.9 : 1.1 + (years - 3) * 0.08;
   const formMod = 1 + (entry.form || 0) * 0.05;
-  return round3(entry.value * contractMod * formMod * 1.18);      // clubs open high
+  // the world market: scarce kinds cost more, and a kind being bought up climbs
+  const marketMod = entry.position && entry.overall ? (supplyIndex()[kindOf(entry)] || 1) * demandIndex(kindOf(entry)) : 1;
+  return round3(entry.value * contractMod * formMod * marketMod * 1.18);      // clubs open high
 }
 
 /** Every player on every other club, resolved, for the market screens. */

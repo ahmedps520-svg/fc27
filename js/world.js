@@ -291,7 +291,7 @@ export function nationSquad(nation) {
   const n = nations().find((x) => x.nation === nation);
   if (!n) return null;
   return {
-    id: `nat-${nation}`, name: nation, short: n.short, colors: n.colors, rating: n.rating,
+    id: `nat-${nation}`, name: nation, short: n.short, colors: n.colors, rating: n.rating, national: true,
     crest: { shape: 'circle', pattern: 'halves', device: 'star', colors: n.colors },
     xi: n.xi, bench: n.bench,
   };

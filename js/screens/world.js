@@ -6,7 +6,9 @@ import { navigate } from '../app.js';
 import { WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { screenHead } from '../components/screenHead.js';
-import { worldState, continentalCup, calendar, nations, nationsCup, nationSquad, CUP_ROUNDS } from '../world.js';
+import { worldState, continentalCup, clubWorldCup, calendar, nations, nationsCup, nationSquad, CUP_ROUNDS, worldTournament, WT_EVERY } from '../world.js';
+import * as tourney from '../tournament.js';
+import { getState } from '../state.js';
 import { flagSVG } from '../components/crest.js';
 import { stadiumFor } from '../data/stadiums.js';
 import { enterFullscreen } from '../fullscreen.js';
@@ -41,10 +43,11 @@ function tableHTML(div) {
 }
 
 function fixturesHTML(div, state) {
+  if (div.resting) return `<section class="panel glass"><header class="panel-head"><h2>${t('world.today')}</h2></header><p class="wzone">Season over for this division — ${state.rounds - state.round + 1} day${state.rounds - state.round ? 's' : ''} until the new season.</p></section>`;
   if (!div.today.length) return '';
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>${t('world.today')}</h2><span class="ph-sub">Round ${state.round} of ${state.rounds}</span></header>
+      <header class="panel-head"><h2>${t('world.today')}</h2><span class="ph-sub">Round ${div.round} of ${div.rounds}</span></header>
       <div class="wfix">
         ${div.today.map(([h, a]) => {
           const hc = WORLD.clubsById[h];
@@ -153,11 +156,66 @@ function nationDetailHTML(nation) {
     </section>`;
 }
 
+function cwcHTML() {
+  const { season, played } = calendar();
+  const cup = clubWorldCup(season, played);
+  const nameOf = (id) => WORLD.clubsById[id].short;
+  const crestOf = (id) => crestSVG(WORLD.clubsById[id].crest, WORLD.clubsById[id].short, 22);
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Club World Cup</h2><span class="ph-sub">Season ${season + 1} · days 21, 23 and 25 at the wonders</span></header>
+      <p class="wzone">Last season's champions of the top four divisions, the Continental Cup winner and the next best of the top flight.${cup.winner ? ` <b>Champions: ${WORLD.clubsById[cup.winner].name}.</b>` : ''}</p>
+      ${cup.rounds.map((r) => `
+        <h3 class="wround">${r.name}${r.today ? ' · <em>today</em>' : r.done ? '' : ` · day ${r.day + 1}`}</h3>
+        <div class="wfix">${r.ties.map((t) => tieRow(t, nameOf, crestOf, (x) => `data-play="${x.home}|${x.away}" data-final="1"`)).join('')}</div>`).join('')}
+    </section>`;
+}
+
+function tournamentHTML() {
+  const t = tourney.current();
+  const all = nations();
+  const flag = (n) => flagSVG(all.find((x) => x.nation === n)?.colors || ['#fff', '#222'], 18);
+  if (!t) {
+    const { season } = calendar();
+    const edition = Math.floor(season / WT_EVERY);
+    const sim = worldTournament(edition);
+    return `
+      <section class="panel glass">
+        <header class="panel-head"><h2>World Tournament</h2><span class="ph-sub">32 nations · 8 groups · knockouts</span></header>
+        <p class="wzone">Take a nation through the draw: three group games, then the round of 16, quarter-finals, semi-finals and the final at the wonders. Every other result is decided by the world.</p>
+        <div class="wfix" style="margin-top:10px">
+          <div class="wfix-row"><span>Your nation</span>
+            <select id="wtNation">${sim.teams.map((n) => `<option value="${n.nation}" ${n.nation === 'Saudi Arabia' ? 'selected' : ''}>${n.nation} (${n.rating})</option>`).join('')}</select>
+            <span></span><span></span><button class="btn small primary" id="wtStart">Enter</button></div>
+        </div>
+        <h3 class="wround">The world's edition ${edition + 1} — champions: ${sim.winner}</h3>
+        <div class="wgroups">${sim.groups.map((g, i) => `<div class="wgroup"><b>Group ${String.fromCharCode(65 + i)}</b>${g.table.map((r) => `<span>${flag(r.id)} ${r.id} <i>${r.pts}</i></span>`).join('')}</div>`).join('')}</div>
+      </section>`;
+  }
+  const table = tourney.groupTable(t);
+  const next = tourney.nextMatch();
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>${flag(t.nation)} ${t.nation}</h2><span class="ph-sub">World Tournament · ${t.stage === 'group' ? 'Group ' + String.fromCharCode(65 + t.groupIndex) : t.stage === 'done' ? (t.champion ? 'Champions!' : 'Out') : t.stage.toUpperCase()}</span></header>
+      <table class="wtable"><thead><tr><th>#</th><th class="club">Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+        <tbody>${table.map((r, i) => `<tr class="${i < 2 ? 'up' : ''} ${r.id === t.nation ? 'mine' : ''}"><td>${i + 1}</td><td class="club"><span class="wclub">${flag(r.id)}<b>${r.id}</b></span></td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>`).join('')}</tbody></table>
+      <h3 class="wround">Your matches</h3>
+      <div class="wfix">
+        ${[...t.fixtures, ...t.knockout].map((m) => `<div class="wfix-row"><span class="wclub">${flag(m.home)}<b>${m.home}</b></span><span class="wfix-v">${m.played ? `${m.gh}–${m.ga}` : 'v'}</span><span class="wclub">${flag(m.away)}<b>${m.away}</b></span><span class="wfix-ground">${m.stage ? m.stage.toUpperCase() : 'Group'}</span><span></span></div>`).join('')}
+      </div>
+      <div class="showcase-opts" style="margin-top:12px">
+        ${next ? `<button class="btn primary" id="wtPlay">Play: ${next.home} v ${next.away}</button>` : ''}
+        <button class="btn ghost" id="wtQuit">${t.stage === 'done' ? 'Finish' : 'Withdraw'}</button>
+      </div>
+    </section>`;
+}
+
 export function render(params = {}) {
   const state = worldState();
   if (params.nation) tab = 8;
+  if (params.tab !== undefined) tab = params.tab;
   const div = state.divisions[tab] || state.divisions[0];
-  const body = tab === 6 ? cupHTML() : tab === 7 ? nationsHTML() : tab === 8 ? nationDetailHTML(params.nation || viewNation) : `
+  const body = tab === 6 ? cupHTML() + cwcHTML() : tab === 7 ? nationsHTML() : tab === 8 ? nationDetailHTML(params.nation || viewNation) : tab === 9 ? tournamentHTML() : `
     <section class="panel glass">
       <header class="panel-head"><h2>${div.name}</h2><span class="ph-sub">Division ${div.division}</span></header>
       ${tableHTML(div)}
@@ -166,7 +224,7 @@ export function render(params = {}) {
     ${moversHTML(state)}`;
   return `
     ${screenHead({
-      kicker: t('world.kicker'),
+      kicker: 'A hundred clubs · eight divisions',
       title: t('world.title'),
       sub: `Season ${state.season} · Round ${state.round} of ${state.rounds} · a round a day, two up and two down`,
       motif: 'ladder', tone: 'b',
@@ -174,7 +232,8 @@ export function render(params = {}) {
     <div class="seg wtabs" id="wtabs">
       ${state.divisions.map((d, i) => `<button class="${i === tab ? 'on' : ''}" data-tab="${i}"><b>${d.division}</b><i>${d.name}</i></button>`).join('')}
       <button class="${tab === 6 ? 'on' : ''}" data-tab="6"><b>★</b><i>${t('world.cup')}</i></button>
-      <button class="${tab >= 7 ? 'on' : ''}" data-tab="7"><b>⚑</b><i>${t('world.nations')}</i></button>
+      <button class="${tab === 7 || tab === 8 ? 'on' : ''}" data-tab="7"><b>⚑</b><i>${t('world.nations')}</i></button>
+      <button class="${tab === 9 ? 'on' : ''}" data-tab="9"><b>🌍</b><i>World Tournament</i></button>
     </div>
     ${body}`;
 }
@@ -205,4 +264,15 @@ export function mount(root) {
   root.querySelectorAll('[data-nation-play]').forEach((b) => b.addEventListener('click', () => {
     playNations(b.dataset.nationPlay, root.querySelector('#natOpp')?.value);
   }));
+  root.querySelector('#wtStart')?.addEventListener('click', () => {
+    tourney.start(root.querySelector('#wtNation').value);
+    navigate('world', { tab: 9 });
+  });
+  root.querySelector('#wtQuit')?.addEventListener('click', () => { tourney.quit(); navigate('world', { tab: 9 }); });
+  root.querySelector('#wtPlay')?.addEventListener('click', () => {
+    const p = tourney.matchParams();
+    if (!p) return;
+    enterFullscreen();
+    navigate('play', { homeId: WORLD.clubs[0].id, awayId: WORLD.clubs[1].id, ...p });
+  });
 }

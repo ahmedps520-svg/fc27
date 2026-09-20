@@ -23,6 +23,7 @@ import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
 import { t } from '../i18n.js';
+import { trade, kindOf } from '../economy.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -1194,6 +1195,7 @@ export function mount(root) {
       for (const id of ids) {
         const pack = findPack(id);
         const pulls = openPack(pack, seen, needGK);
+        for (const x of pulls) trade(x.p, 'buy');           // the market notices what packs deal
         if (pulls.some((x) => x.p.position === 'GK')) needGK = false;
         drawn.push(...pulls);
         opened.push([pack, pulls]);
@@ -1418,6 +1420,9 @@ export function mount(root) {
         if (at === -1) return;
         s.club.collection.splice(at, 1);
         s.club.lineup = s.club.lineup.map((id) => (id === p.id ? null : id));
+        // the market notices a sale
+        const m = s.club.market || (s.club.market = { at: Date.now(), buy: {}, sell: {} });
+        m.sell[kindOf(p)] = (m.sell[kindOf(p)] || 0) + 1;
         s.club.bench = (s.club.bench || []).map((id) => (id === p.id ? null : id));
         paid = Math.round(p.value / 25_000);
         s.club.apex += paid;

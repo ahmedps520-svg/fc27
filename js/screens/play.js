@@ -16,6 +16,7 @@ import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/st
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { t } from '../i18n.js';
+import * as tournament from '../tournament.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
@@ -2200,6 +2201,8 @@ export function mount(root, params) {
      * season XP, the week's event, the weekend tally — goes through one call. */
     const myScore = online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score;
     const theirScore = online ? theirs : a.score;
+    let tourney = null;
+    if (params.tournament) tourney = tournament.onResult(myScore, theirScore);
     const prog = progress.onMatch({
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
       scored: myScore, conceded: theirScore, online: !!online,
@@ -2266,6 +2269,7 @@ export function mount(root, params) {
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
               : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+          ${tourney ? `<p class="season-line tourney-line">${tourney.champion ? `🏆 World Tournament champions!` : tourney.out ? 'Out of the World Tournament.' : tourney.advanced ? `Through to the next round: ${tourney.stage === 'r16' ? 'Round of 16' : tourney.stage === 'qf' ? 'Quarter-finals' : tourney.stage === 'sf' ? 'Semi-finals' : tourney.stage === 'final' ? 'the Final' : 'the knockouts'}.` : 'Group stage continues.'}</p>` : ''}
           <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
         </div>
       </div>`;
@@ -2289,7 +2293,7 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
-      if (o === 'quit') { exitFullscreen(); if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);

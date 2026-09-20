@@ -4176,3 +4176,12 @@ html.large-text .tile-name { font-size: 27px; }
 .onboard-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 #gmHints.guide { background: color-mix(in srgb, var(--accent) 22%, rgba(6,10,20,.85)); border-color: var(--accent); font-weight: 700; }
 @media (max-width: 640px) { .onboard-card { grid-template-columns: 1fr; } .onboard-hero { display: none; } }
+
+/* ---- v72: world tournament ---- */
+.wgroups { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-top: 6px; }
+.wgroup { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+.wgroup b { margin-bottom: 3px; color: var(--accent); }
+.wgroup span { display: flex; align-items: center; gap: 6px; }
+.wgroup span i { margin-left: auto; font-style: normal; font-family: var(--font-num); }
+.wtable tr.mine td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+#wtNation { background: rgba(255,255,255,.06); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
