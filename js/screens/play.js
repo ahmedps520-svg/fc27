@@ -93,9 +93,10 @@ function venueOf(params) {
      home fixture of yours: an Ultimate XI match, or a Career home game —
      where the bowl is only as big as the board has paid for. Finals and
      online matches are still played at the arenas. */
-  const design = getState().club.stadium?.design;
-  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
   const car = params.career ? getState().career : null;
+  // the career club has its own design (v73); Ultimate XI has yours
+  const design = car ? (car.ground?.design || null) : getState().club.stadium?.design;
+  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
   const stadium = mine
     ? builderDef(design, { clubName: sq?.name || home?.name, short: sq?.short || home?.short,
       capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
@@ -267,8 +268,11 @@ export function mount(root, params) {
   // Scanned players are a 14 MB download, so they are never forced on the
   // low-detail path — a machine that asked for Low did so for a reason. Medium
   // (a phone, usually) gets them only when Realistic was chosen on purpose.
-  const useModels = getState().settings.models !== 'simple' && quality !== 'low' && quality !== 'min'
-    && (quality !== 'medium' || getState().settings.models === 'realistic');
+  /* The scanned models on High and above. Measured on Medium they are 2.5M
+     triangles and 200 textures against the figures' 660k — a phone on
+     Medium lost half its frame rate — so Medium, Low and Ultra Low draw
+     the built-in figures. This is the tier deciding, not an option. */
+  const useModels = quality === 'high' || quality === 'ultra' || quality === 'cinema';
 
   const match = new Match(params.homeId, params.awayId, {
     duration: params.duration || 240,
@@ -1157,9 +1161,12 @@ export function mount(root, params) {
    * inside that. `running` guards the callback because a player can leave the
    * screen before the module lands, and a renderer created into a dead canvas
    * is a leaked GL context. */
-  const glLoad = import('../game/renderGL.js').then((m) => {
+  // v73: the WebGPU renderer (beta) is opt-in from Settings; Auto keeps WebGL2 for matches
+  const wantGPU = getState().settings.renderer === 'webgpu';
+  const glLoad = (wantGPU ? import('../game/renderGPU.js') : import('../game/renderGL.js')).then(async (m) => {
     if (!running) return;
-    gl = m.createRenderer(canvas, match, quality, useModels);
+    gl = await m.createRenderer(canvas, match, quality, useModels);
+    if (!running) { try { gl.dispose(); } catch { /* torn down while the GPU device was coming up */ } gl = null; return; }
     window.__apexGL = gl; window.__apexMatch = match; window.__apexDbg = () => ({ walkout, phase: match.phase, minute: match.minute(), paused, loading, ended }); // the perf harness reads renderer.info through this
     resize();
     gl.ready.then(() => { assetsReady = true; });
@@ -1597,7 +1604,8 @@ export function mount(root, params) {
     const frozen = ((paused || loading || !!walkout || !!photo) && !online) || syncActive;
     sender?.tick(dt);
 
-    if (input.pressed('pause') && !ended && !loading) {
+    if (photo && input.pressed('pause')) closePhoto();
+    else if (input.pressed('pause') && !ended && !loading) {
       if (careerCtx && halfTime && !talkEl.hidden) { /* the talk is modal */ }
       else if (!online) setPaused(!paused);
       else if (!syncActive) {
@@ -1944,6 +1952,18 @@ export function mount(root, params) {
       <div class="photo-filters">${PHOTO_FILTERS.map(([v, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-filter="${v}">${l}</button>`).join('')}</div>
       <div class="photo-actions"><span class="photo-hint">${t('photo.hint')}</span><button class="btn primary" data-photo="save">${t('photo.save')}</button><button class="btn ghost" data-photo="done">${t('photo.done')}</button></div>`;
     root.appendChild(photoBar);
+    /* The way out, in the corner where every phone puts its close button —
+       the bar at the bottom sat under the home indicator on iPhones and
+       people were stuck in photo mode. Esc and the pause button close it too. */
+    const photoExit = document.createElement('button');
+    photoExit.className = 'icon-btn photo-exit';
+    photoExit.setAttribute('aria-label', t('photo.done'));
+    photoExit.textContent = '✕';
+    photoExit.addEventListener('click', () => closePhoto());
+    root.appendChild(photoExit);
+    const photoKey = (e) => { if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); closePhoto(); } };
+    window.addEventListener('keydown', photoKey);
+    photo.exitEl = photoExit; photo.keyOff = () => window.removeEventListener('keydown', photoKey);
     root.classList.add('photo-mode');
     photoBar.addEventListener('click', async (e) => {
       const f = e.target.closest('[data-filter]');
@@ -1978,7 +1998,10 @@ export function mount(root, params) {
     photo.off = () => { canvas.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); canvas.removeEventListener('wheel', wheel); };
   }
   function closePhoto() {
-    photo?.off?.();
+    if (!photo) return;
+    photo.off?.();
+    photo.keyOff?.();
+    photo.exitEl?.remove();
     photo = null;
     canvas.style.filter = '';
     photoBar?.remove(); photoBar = null;

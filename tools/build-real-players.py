@@ -5,6 +5,7 @@ EXTRA='tools/real-players-extra.json'   # curated second wave, see REAL_PLAYERS_
 WAVE3='tools/real-players-wave3.json'   # third wave (v70): the two lower divisions and a wider free pool
 WAVE4='tools/real-players-wave4.json'   # fourth wave (v71): divisions five and six
 WAVE5='tools/real-players-wave5.json'   # fifth wave (v72): the hundred-club world
+WAVE6='tools/real-players-wave6.json'   # sixth wave (v73): more free agents and the new legends
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -82,6 +83,10 @@ LEGENDS = {
  'Thierry Henry','Ronaldinho','Andrés Iniesta','Andres Iniesta','Andrea Pirlo','Steven Gerrard',
  'Sergio Agüero','Sergio Aguero','Didier Drogba','Iker Casillas','Wayne Rooney','Frank Lampard',
  'Philipp Lahm','Carles Puyol',
+ # sixth wave (v73)
+ 'Francesco Totti','Fabio Cannavaro','Michael Ballack','Ruud van Nistelrooy','Ronaldo Nazário','Ronaldo Nazario',
+ 'Xavi','Lilian Thuram','Javier Zanetti','Edwin van der Sar','Alessandro Nesta','Patrick Vieira',"Samuel Eto'o",
+ 'Kaká','Kaka','Rivaldo','Fernando Torres','David Villa',
 }
 seen3 = seen | {p['name'] for p in extra} | LEGENDS
 wave3 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE3))]
@@ -108,7 +113,18 @@ for p in wave5:
     w5seen.add(p['name']); kept.append(p)
 wave5 = kept
 random.Random(72).shuffle(wave5)
-missing = sorted({p['country'] for p in pack + extra + wave3 + wave4 + wave5} - set(COLORS))
+seen6 = seen5 | set(w5seen)
+wave6 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE6))]
+import unicodedata
+def plain(n): return ''.join(ch for ch in unicodedata.normalize('NFD', n) if unicodedata.category(ch) != 'Mn').lower()
+seen6p = {plain(n) for n in seen6}
+w6seen = set(); kept = []
+for p in wave6:
+    if plain(p['name']) in seen6p or plain(p['name']) in w6seen: continue
+    w6seen.add(plain(p['name'])); kept.append(p)
+wave6 = kept
+random.Random(73).shuffle(wave6)
+missing = sorted({p['country'] for p in pack + extra + wave3 + wave4 + wave5 + wave6} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
@@ -122,6 +138,7 @@ extra_rows = emit(extra)
 wave3_rows = emit(wave3)
 wave4_rows = emit(wave4)
 wave5_rows = emit(wave5)
+wave6_rows = emit(wave6)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -187,6 +204,11 @@ export const REAL_PLAYERS_WAVE4 = [
  */
 export const REAL_PLAYERS_WAVE5 = [
 {wave5_rows},
+];
+
+/** Sixth wave (v73): more free agents for the packs. */
+export const REAL_PLAYERS_WAVE6 = [
+{wave6_rows},
 ];
 
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */

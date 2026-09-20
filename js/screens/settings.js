@@ -25,14 +25,11 @@ const QUALITY_NOTE = (q) => (q === 'min'
   : q === 'cinema'
   ? '<b>Ultra+ (cinematic):</b> everything Ultra does at three times native resolution, with god rays, depth of field on every shot, the waving crowd and the wet-pitch reflections. For a desktop with a real GPU; a phone will not hold it.'
   : q === 'medium'
-  ? '<b>Medium:</b> the lighting passes, the floodlight beams, rain and a moving crowd at a native pixel ratio and a lighter shadow map — what a recent phone is dealt on Auto. Realistic player models are opt-in here.'
+  ? '<b>Medium:</b> the lighting passes, the floodlight beams, rain and a moving crowd at a native pixel ratio and a lighter shadow map — what a recent phone is dealt on Auto. The built-in player figures; the scanned models come in at High.'
   : q === 'ultra' || !q
   ? '<b>Ultra:</b> ambient occlusion, depth of field that follows the ball, volumetric floodlights, above-native resolution, 4K shadows and a full terrace of seats. It will work your GPU hard — turn on Show FPS below and drop to High if it stutters.'
   : '<b>High</b> keeps the occlusion, the floodlight beams and the lens grade, and skips the depth of field and the supersampling. Ultra adds all of it back.');
 
-const MODEL_NOTE = (m) => (m === 'simple'
-  ? 'Light figures are built in code — no download, and they run on anything.'
-  : '<b>Realistic:</b> a scanned, motion-captured footballer, downloaded once and cached. Twenty-two of them is real work for a phone; switch to Light if the frame rate drops.');
 
 export function render() {
   const s = getState().settings;
@@ -173,19 +170,9 @@ export function render() {
       <div class="setting-row">
         <div><b>Renderer</b><span id="rendererNote">${describeRenderer()}</span></div>
         <div class="seg" id="rendererSeg">
-          ${[['auto', 'Auto'], ['webgl', 'WebGL2']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
+          ${[['auto', 'Auto'], ['webgl', 'WebGL2'], ['webgpu', 'WebGPU (beta)']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
         </div>
       </div>
-      <div class="setting-row">
-        <div><b>Player models</b><span>Realistic is a scanned mesh — a one-off download.</span></div>
-        <div class="seg" id="modelSeg">
-          ${[['realistic', 'Realistic'], ['simple', 'Light']].map(([v, l]) =>
-            `<button class="${(s.models || 'realistic') === v ? 'on' : ''}" data-models="${v}">${l}</button>`).join('')}
-        </div>
-      </div>
-      <p class="setting-note ${s.models === 'simple' ? '' : 'warn'}" id="modelNote">
-        ${MODEL_NOTE(s.models)}
-      </p>
       <div class="setting-row">
         <div><b>Show FPS</b><span>Live frame counter in the corner during a match.</span></div>
         <button class="switch ${s.showFps ? 'on' : ''}" id="fpsTgl" role="switch"
@@ -319,17 +306,6 @@ export function mount(root) {
     const note = root.querySelector('#qualityNote');
     note.classList.toggle('warn', q === 'ultra');
     note.innerHTML = QUALITY_NOTE(q);
-  });
-
-  root.querySelector('#modelSeg').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-models]');
-    if (!b) return;
-    const m = b.dataset.models;
-    update((s) => { s.settings.models = m; });
-    root.querySelectorAll('[data-models]').forEach((x) => x.classList.toggle('on', x === b));
-    const note = root.querySelector('#modelNote');
-    note.classList.toggle('warn', m !== 'simple');
-    note.innerHTML = MODEL_NOTE(m);
   });
 
   /* The accent picker used to live here, with a listener that wrote

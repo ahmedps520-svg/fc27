@@ -18,6 +18,54 @@
  */
 export const RELEASES = [
   {
+    version: 'v73',
+    date: '2026-09-20',
+    tag: 'Feel',
+    title: 'The ball in the air, SBC, cards everywhere',
+    lede: 'Shots climb and bend, chips float over the keeper, four skill moves on one button. Squad Building Challenges become SBC with '
+        + 'twelve quick ones and sixteen new legends, nine new packs, 700 more players, and cards where there was text. '
+        + 'Players are lit properly, the wet pitch is grass again, photo mode has a way out, and iPhones can see their buttons.',
+    entries: [
+      {
+        head: 'Gameplay',
+        summary: 'A full-power strike rises to head height and beyond, curl bends twice as far, hold the lob button with a shot to chip the keeper, and the skill button does four tricks: feint, stepovers, roulette and nutmeg. The AI bends and chips too.',
+        detail: 'The ball was glued to the floor and barely bent. Lift on a strike nearly doubled, the Magnus '
+              + 'curl was retuned so a finesse shot swerves a yard or two on its way in, and a chipped ball is '
+              + 'slow, high and dipping. Skill moves are picked by where the stick points: sideways feints, '
+              + 'forward stepovers with a burst, backward a roulette with the ball glued to the foot, and a '
+              + 'defender in the way gets nutmegged. Every trick can fail on a heavy touch for a player who is '
+              + 'not a dribbler. The balance sweep was re-run deliberately: goals per match went from 2.10 to 2.13.',
+      },
+      {
+        head: 'SBC',
+        summary: 'Squad Building Challenges are now SBC: twelve quick ones that take two to seven cards, sixteen new legend challenges with sixteen new legend cards, and every legend shown as the card you win.',
+        detail: 'The quick SBCs are the sink for the bronzes and silvers every pack drops and can be repeated all '
+              + 'day. The legends include Totti, Cannavaro, van der Sar, Thuram, Zanetti, Xavi, Kaká, Nesta, Vieira, '
+              + 'Eto\'o, Rivaldo, Ballack, Torres, Villa, van Nistelrooy and Ronaldo Nazário. SBC Fodder is a new '
+              + '1,500 pack of six bodies made for them.',
+      },
+      {
+        head: 'More to pull',
+        summary: 'Nine new packs — SBC Fodder, Youth Academy, Back Four, Engine Room, Premier Pick, Nations Week, Mega, Limited: Wonder — and 700 more real-name free agents. Every pack on the shelf shows three cards it could hand you.',
+        detail: 'Nations Week rotates through twelve countries a week at a time. Youth Academy is 21-and-under only, '
+              + 'Back Four and Engine Room are by position, Premier Pick is the top division, Mega is a dozen cards '
+              + 'in one reveal and Wonder guarantees a Star with an 84 floor.',
+      },
+      {
+        head: 'Cards, not text',
+        summary: 'The Wall Week and every event show the featured card and three cards from the pack; objectives, weekend ranks and Season rewards show the pack; a nation\'s XI and the stars of each division are cards.',
+        detail: 'Wherever a name or a pack was a line of text, it is now the thing itself.',
+      },
+      {
+        head: 'Looks and fixes',
+        summary: 'A rim light and a fill light on the players, a wet pitch that is grass rather than marble, the Light figures option removed (scanned models from Medium up), the crowd rises end by end on a goal, photo mode has a close button, the rotate hint can be dismissed, and the HUD keeps clear of the iPhone notch.',
+        detail: 'Also fixed: the scanned player models\' textures were being refused by the site\'s security policy, '
+              + 'so on the live site players could fall back to the plain figures — they load now. A WebGPU match '
+              + 'renderer is available as a beta from Settings; it draws the core scene only and Auto keeps WebGL2.',
+      },
+    ],
+  },
+  {
     version: 'v72',
     date: '2026-09-20',
     tag: 'Your ground',

@@ -132,7 +132,7 @@ const STEPS = [
     chapter: 'Ultimate XI', icon: 'flag', screen: 'squad', target: '#uTabs',
     title: 'Six tabs',
     body: `<b>Club</b> is your team. <b>Apex Division</b> is the ladder.
-           <b>Objectives</b> and <b>Challenges</b> are things to chase.
+           <b>Objectives</b> and <b>SBC</b> are things to chase.
            <b>Store</b> is where packs are bought. We will take them in order.`,
   },
 
@@ -208,7 +208,7 @@ const STEPS = [
 
   /* ---- 8. challenges ---- */
   {
-    chapter: 'Challenges', icon: 'trophy', screen: 'squad', tab: 'challenges', target: '.sbc-list',
+    chapter: 'SBC', icon: 'trophy', screen: 'squad', tab: 'challenges', target: '.sbc-list',
     title: 'Trade cards for better ones',
     body: `Squad-building challenges ask for a set of cards — a rating, a
            nation, a position — and hand back something better. It is what

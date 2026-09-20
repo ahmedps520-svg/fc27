@@ -50,6 +50,18 @@ export function radarSVG(stats, size = 150) {
     </svg>`;
 }
 
+/** The six stats in one row — the way a card reads when it is the picture, not the sheet. */
+function statRow(stats) {
+  return `<div class="pc-row">${STATS.map(([key, label]) => `<span><i>${label}</i><b>${stats[key]}</b></span>`).join('')}</div>`;
+}
+
+/** A row of cards, for every place that used to be a line of names. */
+export function cardStrip(players, { size = 'mini', cls = '', boost = 0 } = {}) {
+  const list = (players || []).filter(Boolean);
+  if (!list.length) return '';
+  return `<div class="card-strip strip-${size} ${cls}">${list.map((p) => playerCard(boost ? { ...p, overall: p.overall + boost } : p, { size })).join('')}</div>`;
+}
+
 function statBars(stats) {
   return `<div class="pc-stats">${STATS.map(([key, label]) => `
     <div class="pc-stat">
@@ -90,10 +102,10 @@ export function playerCard(p, opts = {}) {
           ${flagSVG(p.nationColors, size === 'full' ? 26 : 20)}
         </div>
       </header>
-      <div class="pc-portrait">${faceSVG(p, size === 'full' ? 96 : size === 'mini' ? 52 : 66, r.color)}</div>
+      <div class="pc-portrait">${faceSVG(p, size === 'full' ? 96 : size === 'mini' ? 52 : size === 'showcase' ? 110 : 66, r.color)}</div>
       <div class="pc-name">${p.name}</div>
       ${size === 'full' ? `<div class="pc-radar-wrap">${radarSVG(p.stats, 168)}</div>` : ''}
-      ${size === 'mini' ? '' : statBars(p.stats)}
+      ${size === 'mini' ? '' : size === 'showcase' ? statRow(p.stats) : statBars(p.stats)}
       <footer class="pc-foot">
         <span class="pc-club">${club ? club.name : 'Free Agent'}</span>
         <span class="pc-meta">${p.nation} · ${p.age}y · ${p.foot === 'L' ? 'Left' : 'Right'} foot</span>

@@ -111,7 +111,7 @@ const MOUTH_MAT = new THREE.MeshStandardMaterial({ color: 0x5a1e22, roughness: 0
 
 export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build, { face = true } = {}) {
   const grp = new THREE.Group();
-  const mat = (c, rough = 0.72) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.02 });
+  const mat = (c, rough = 0.72) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.02, envMapIntensity: 0.55 });
   // kit fabric catches the floodlights a little; skin and turf-worn socks do not
   const kit = mat(kitCol, 0.62);
   const shorts = mat(shortCol, 0.66);
@@ -175,7 +175,8 @@ export function buildFor(ref, role) {
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
   if (p.diveT > 0) { poseDive(rig, p, fine); return; }
-  rig.grp.rotation.set(0, 0, 0);
+  // the roulette: the whole figure turns once through the move (sim.js skillMove)
+  rig.grp.rotation.set(0, 0, p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0);
   const b = rig.build || { height: 1, girth: 1, shoulders: 1 };
   const H = b.height;
   const G = b.girth;
