@@ -1597,7 +1597,8 @@ export function mount(root, params) {
     const frozen = ((paused || loading || !!walkout || !!photo) && !online) || syncActive;
     sender?.tick(dt);
 
-    if (input.pressed('pause') && !ended && !loading) {
+    if (photo && input.pressed('pause')) closePhoto();
+    else if (input.pressed('pause') && !ended && !loading) {
       if (careerCtx && halfTime && !talkEl.hidden) { /* the talk is modal */ }
       else if (!online) setPaused(!paused);
       else if (!syncActive) {

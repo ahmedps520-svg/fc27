@@ -202,6 +202,8 @@ export function loadState() {
   } catch {
     state = defaults();
   }
+  // the Light figures option is gone (v73): every save gets the scanned models
+  if (state.settings.models === 'simple') state.settings.models = 'realistic';
   // A save from an older world could reference ids that no longer exist.
   if (!Array.isArray(state.club.packs)) state.club.packs = [];
   if (!Array.isArray(state.club.bench)) state.club.bench = Array(5).fill(null);

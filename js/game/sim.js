@@ -507,6 +507,11 @@ export class Match {
         p.stumble = Math.max(0, p.stumble - dt);
         p.slide = Math.max(0, p.slide - dt);
         p.skillT = Math.max(0, (p.skillT || 0) - dt);
+        if (p.spinT > 0) p.spinT = Math.max(0, p.spinT - dt);
+        if (p.burst) {
+          p.burst.t -= dt;
+          if (p.burst.t <= 0) { p.vx += p.burst.vx; p.vy += p.burst.vy; p.burst = null; }
+        }
         if (this.isControlled(p)) continue;
         this.think(p, dt);
       }
@@ -591,7 +596,7 @@ export class Match {
     team.bench[benchIdx] = p.ref;      // the man coming off takes the seat
     p.ref = incoming;
     Object.assign(p, attributesOf(incoming));
-    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.diveT = 0; p.injured = false; p.skillT = 0;
+    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.diveT = 0; p.injured = false; p.skillT = 0; p.spinT = 0; p.burst = null; p.skillKind = null;
     team.subsLeft -= 1;
     this.cue('whistle');
     return true;
@@ -746,11 +751,14 @@ export class Match {
       if (input.pressed('skill')) this.skillMove(p, aim);
       if (input.held('shoot')) c.charge = Math.min(1, c.charge + dt / 0.85);
       if (input.released('shoot')) {
-        // R1 held with the shot whips it up and bends it
+        // R1 held with the shot whips it up and bends it; the lob button held
+        // with it chips the keeper — a soft, high, dipping ball
         const curled = input.held('curl');
+        const chip = input.held('lob');
         this.shoot(p, aim, Math.max(0.28, c.charge), {
-          loft: curled ? 1.35 : 1,
-          curl: curled ? 34 : 0,
+          loft: chip ? 2.6 : curled ? 0.9 : 1,
+          curl: curled ? 46 : 0,
+          chip,
         });
         c.charge = 0;
       }
@@ -905,7 +913,7 @@ export class Match {
       if (o.touchT <= 0 && speed > 1.2) {
         const foe = this.nearestTo(1 - o.team, o);
         const tight = foe && dist(o, foe) < 4 ? 0.75 : 1;
-        const push = (0.7 + speed * 0.18) * (1.3 - skill * 0.4);
+        const push = (0.8 + speed * 0.26) * (1.3 - skill * 0.4);
         b.vx += o.dirX * push;
         b.vy += o.dirY * push;
         o.touchT = (0.3 + Math.random() * 0.16) * tight * (1.25 - skill * 0.33);
@@ -921,13 +929,13 @@ export class Match {
     if (b.curl) {
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > 1.5) {
-        const k = (b.curl * sp) / 26;
+        const k = (b.curl * sp) / 58;
         const vx0 = b.vx;
         const vy0 = b.vy;
         b.vx += (-vy0 / sp) * k * dt;
         b.vy += (vx0 / sp) * k * dt;
       }
-      b.curl *= Math.pow(0.55, dt);
+      b.curl *= Math.pow(0.5, dt);
       if (b.z <= 0) b.curl = 0;
     }
 
@@ -940,7 +948,7 @@ export class Match {
       if (b.vz < -1.2) { b.vz = -b.vz * 0.42; b.vx *= 0.8; b.vy *= 0.8; }
       else b.vz = 0;
     }
-    const damp = Math.pow(b.z > 0.4 ? 0.998 : 0.986, dt * 60);   // less drag through the air
+    const damp = Math.pow(b.z > 0.4 ? 0.9985 : 0.986, dt * 60);   // less drag through the air
     b.vx *= damp; b.vy *= damp;
     if (b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5) { b.vx = 0; b.vy = 0; }
 
@@ -1489,7 +1497,7 @@ export class Match {
    *           is not at anyone's feet when it is struck
    */
   shoot(p, aim, power, opts = {}) {
-    const { loft = 1, curl = 0, placed = false } = opts;
+    const { loft = 1, curl = 0, placed = false, chip = false } = opts;
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
     const dx = goalX - p.x;
@@ -1518,11 +1526,19 @@ export class Match {
     const ny = (dx * s + dy * c) / d;
 
     this.cue('shot', power);
-    const speed = (21 + power * 17 + acc * 6) * (weak ? 0.93 : 1);
-    // Longer hold = harder and higher. Overcook it close in and it clears the bar.
-    const rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
+    /* Longer hold = harder and higher. A full-power strike now climbs to
+       about three metres at its peak (it was under two, and read as a ball
+       that never left the floor); overcook it close in and it clears the bar.
+       A chip is slow and steep: over the keeper, dropping under the bar. */
+    const speed = chip
+      ? (13 + power * 6) * (weak ? 0.93 : 1)
+      : (22 + power * 19 + acc * 6) * (weak ? 0.93 : 1);
+    const rise = chip
+      ? 7.5 + power * 3
+      : (1.3 + power * 8.2) * loft + (curl ? 1.2 : 0);
 
     this.release(p, nx * speed, ny * speed, rise);
+    if (chip) this.cue('lob', p);
 
     if (curl) {
       // bend away from the aim side, defaulting to whipping it back towards goal
@@ -1640,16 +1656,67 @@ export class Match {
     if (this.substitute(teamIdx, i, bench[0][1])) { p.injured = false; this.cue('sub', p); }
   }
 
-  /** A feint: a burst sideways that a lunging tackler cannot follow. Costs legs. */
+  /**
+   * Skill moves. One button, four tricks, chosen by where the stick points
+   * relative to the way the player faces:
+   *   sideways  — the feint: a burst across a lunging tackler
+   *   forward   — stepovers: the ball stands still for a beat, then a burst
+   *   backward  — the roulette: a spin with the ball glued to the foot
+   *   a defender within two metres ahead — the nutmeg: through the legs
+   * Every one costs legs, keeps the tackler off for its duration
+   * (`skillT`, see tackle), and can fail: a heavy touch that runs away from a
+   * player who is not a dribbler. `skillKind` and `spinT` are for the
+   * renderer, which turns the roulette into a spin.
+   */
   skillMove(p, aim) {
     if (p.skillT > 0 || p.stumble > 0 || p.stamina < 0.15) return;
-    const side = aim && Math.abs(aim.x * p.dirY - aim.y * p.dirX) > 0.2
-      ? Math.sign(aim.x * p.dirY - aim.y * p.dirX) : (Math.random() < 0.5 ? -1 : 1);
     const skill = p.ref.stats.dribbling / 100;
-    p.skillT = 0.28 + skill * 0.2;
-    p.vx += p.dirY * side * (4.5 + skill * 3) + p.dirX * 1.5;
-    p.vy += -p.dirX * side * (4.5 + skill * 3) + p.dirY * 1.5;
+    const b = this.ball;
+    const hasBall = b.owner === p;
+    const lateral = aim ? aim.x * p.dirY - aim.y * p.dirX : 0;
+    const along = aim ? aim.x * p.dirX + aim.y * p.dirY : 0;
+    const foe = this.nearestTo(1 - p.team, p);
+    const foeAhead = foe && dist(p, foe) < 2.2 && ((foe.x - p.x) * p.dirX + (foe.y - p.y) * p.dirY) > 0.8;
+    let kind = 'feint';
+    if (hasBall && foeAhead && Math.abs(lateral) < 0.5) kind = 'nutmeg';
+    else if (aim && Math.abs(lateral) > 0.35) kind = 'feint';
+    else if (aim && along < -0.4) kind = 'roulette';
+    else if (aim && along > 0.4) kind = 'stepover';
+    p.skillKind = kind;
     p.stamina = Math.max(0, p.stamina - 0.04);
+    // the trick fails on a heavy touch: rarely for a real dribbler, often for a centre-half
+    const fail = hasBall && Math.random() > 0.5 + skill * 0.5;
+    if (fail) {
+      p.skillT = 0.2;
+      p.stumble = 0.35;
+      this.release(p, p.dirX * 6, p.dirY * 6);
+      this.cue('skill', p);
+      return;
+    }
+    if (kind === 'feint') {
+      const side = Math.abs(lateral) > 0.2 ? Math.sign(lateral) : (Math.random() < 0.5 ? -1 : 1);
+      p.skillT = 0.28 + skill * 0.2;
+      p.vx += p.dirY * side * (4.5 + skill * 3) + p.dirX * 1.5;
+      p.vy += -p.dirX * side * (4.5 + skill * 3) + p.dirY * 1.5;
+    } else if (kind === 'stepover') {
+      // the ball waits; the burst comes at the end of the dance
+      p.skillT = 0.34 + skill * 0.16;
+      p.vx *= 0.35; p.vy *= 0.35;
+      p.burst = { t: p.skillT, vx: p.dirX * (6 + skill * 4), vy: p.dirY * (6 + skill * 4) };
+    } else if (kind === 'roulette') {
+      p.skillT = 0.55 + skill * 0.15;
+      p.spinT = p.skillT;
+      p.vx = p.vx * 0.5 + p.dirX * 2.5; p.vy = p.vy * 0.5 + p.dirY * 2.5;
+      if (hasBall) { b.noTouch = 0; }
+    } else if (kind === 'nutmeg') {
+      p.skillT = 0.3 + skill * 0.1;
+      // through the legs and away: the ball goes past, the player goes round
+      this.release(p, p.dirX * (9 + skill * 4), p.dirY * (9 + skill * 4));
+      b.noTouch = 0.05;
+      b.owner = null;
+      foe.stumble = Math.max(foe.stumble, 0.45);
+      p.burst = { t: 0.05, vx: p.dirX * (7 + skill * 4) + p.dirY * 2.2, vy: p.dirY * (7 + skill * 4) - p.dirX * 2.2 };
+    }
     this.cue('skill', p);
   }
 
@@ -2109,9 +2176,13 @@ export class Match {
       if (Math.random() < (1.7 - toGoal / 26) * this.aiSkillFor(p.team) * dt) {
         // CPU keeps most efforts down, but bends the odd one from range
         const far = toGoal > 17;
+        const gk = this.teams[1 - p.team].players.find((q) => q.role === 'GK');
+        const gkOut = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9;
+        const chip = gkOut && Math.random() < 0.35 * this.aiSkillFor(p.team);
         this.shoot(p, null, 0.55 + Math.random() * 0.45, {
-          loft: 0.32 + Math.random() * 0.3,
-          curl: far && Math.random() < 0.3 ? 26 : 0,
+          loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
+          curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
+          chip,
         });
         return;
       }

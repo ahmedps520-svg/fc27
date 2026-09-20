@@ -979,6 +979,17 @@ export function createRenderer(canvas, match, quality, models = false) {
   sun.position.set(SUN_OFF[0], SUN_OFF[1], SUN_OFF[2]);
   sun.target.position.set(PITCH.w / 2, CY, 0);
   scene.add(sun, sun.target);
+  /* Light on the people. The sun and the hemisphere light the ground well
+     and left the figures flat: a rim light from behind the far stand
+     separates a player from the turf, and a soft fill from the camera side
+     lifts the shadowed half of a face and a shirt. Neither casts shadows. */
+  const rim = new THREE.DirectionalLight(0xdfe9ff, LIGHT.flood > 0 ? 1.1 : 0.55);
+  rim.position.set(PITCH.w / 2, PITCH.h + 70, 38);
+  rim.target.position.set(PITCH.w / 2, CY, 1);
+  const fill = new THREE.DirectionalLight(0xfff1dc, LIGHT.flood > 0 ? 0.42 : 0.28);
+  fill.position.set(PITCH.w / 2, -60, 30);
+  fill.target.position.set(PITCH.w / 2, CY, 1);
+  scene.add(rim, rim.target, fill, fill.target);
   if (renderer.shadowMap.enabled) {
     sun.castShadow = true;
     /* 2048 at the top, not 4096. The shadow camera covers 160x140 world units,
@@ -1019,9 +1030,9 @@ export function createRenderer(canvas, match, quality, models = false) {
     /* Wet grass is the exception: rain leaves a film that mirrors the
        floodlights, and that sheen is most of what says "raining" once the
        drops themselves are too fine to see. */
-    roughness: wet ? 0.74 : 0.9,
+    roughness: wet ? 0.8 : 0.9,
     metalness: wet ? 0.03 : 0.02,
-    envMapIntensity: wet ? 0.6 : 0.35,
+    envMapIntensity: wet ? 0.45 : 0.35,
   });
   /* Blade detail and the mow's gloss, on everything but the low path — this is
      the difference between grass and a green rectangle with lines on it. The
@@ -1121,7 +1132,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     mirrorCam.up.set(0, 0, 1);
     const uRefl = { value: rt.texture };
     const uReflMat = { value: new THREE.Matrix4() };
-    const uWet = { value: 0.34 };
+    const uWet = { value: 0.16 };          // wet grass, not marble: a hint of the lights, never a mirror
     turfMat.onBeforeCompile = (sh) => {
       sh.uniforms.uRefl = uRefl; sh.uniforms.uReflMat = uReflMat; sh.uniforms.uWet = uWet;
       sh.vertexShader = sh.vertexShader
@@ -1136,7 +1147,7 @@ export function createRenderer(canvas, match, quality, models = false) {
             vec2 ruv = vReflUv.xy / vReflUv.w;
             if (ruv.x > 0.0 && ruv.x < 1.0 && ruv.y > 0.0 && ruv.y < 1.0) {
               vec3 refl = texture2D(uRefl, ruv).rgb;
-              gl_FragColor.rgb = mix(gl_FragColor.rgb, refl, clamp(fres * uWet, 0.0, 0.28));
+              gl_FragColor.rgb = mix(gl_FragColor.rgb, refl, clamp(fres * uWet, 0.0, 0.13));
             }
           }`);
     };
@@ -2457,8 +2468,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     rainMesh.visible = rainLevel > 0;
     scene.add(rainMesh);
   }
-  const dryRough = 0.9; const wetRough = 0.74;
-  const dryEnv = 0.35; const wetEnv = 0.6;
+  const dryRough = 0.9; const wetRough = 0.8;
+  const dryEnv = 0.35; const wetEnv = 0.45;
   const weatherStep = (m, dt) => {
     if (!weatherChange) return;
     const minute = m.minute?.() ?? 0;

@@ -369,12 +369,18 @@ api.resume().then((d) => {
 /* ----------------------------- mobile / PWA ----------------------------- */
 // Ask phones to turn sideways — the pitch is a landscape view.
 const rotateHint = document.getElementById('rotateHint');
+/* The hint used to be a wall: on an iPhone held upright it covered every
+   button on the menu with no way past it. Now it can be dismissed for the
+   session (the menus and the hubs work in portrait; a match is still better
+   sideways), and it never covers a match that is already running. */
+let portraitOk = false;
 const checkOrientation = () => {
   const phone = window.matchMedia('(pointer: coarse)').matches;
   const portrait = window.innerHeight > window.innerWidth;
   const short = Math.min(window.innerWidth, window.innerHeight) < 500;
-  rotateHint.hidden = !(phone && portrait && short);
+  rotateHint.hidden = portraitOk || !(phone && portrait && short);
 };
+document.getElementById('rotateAnyway')?.addEventListener('click', () => { portraitOk = true; checkOrientation(); });
 checkOrientation();
 window.addEventListener('resize', checkOrientation);
 window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 250));

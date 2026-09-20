@@ -342,7 +342,11 @@ export function poseRig(rig, p, dt) {
 
   if (p._actT > 0) p._actT -= dt;
   // a sprint leans into the run: the same clip, faster, with the body tipped forward
-  if (rig.root) rig.root.rotation.x = want === 'run' ? -Math.min(0.14, Math.max(0, speed - 4.5) * 0.05) : 0;
+  if (rig.root) {
+    rig.root.rotation.x = want === 'run' ? -Math.min(0.14, Math.max(0, speed - 4.5) * 0.05) : 0;
+    // the roulette: one full turn through the move (sim.js skillMove)
+    rig.root.rotation.y = p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
+  }
 
   if (want !== rig.current) {
     const next = rig.actions[want] || rig.actions.idle;
