@@ -123,7 +123,7 @@ export function render(params = {}) {
 export function mount(root) {
   const canvas = root.querySelector('#bldCanvas');
   const note = root.querySelector('#bldNote');
-  let gl = null; let raf = 0; let alive = true; let t = 0; let last = performance.now();
+  let gl = null; let raf = 0; let alive = true; let clock = 0; let last = performance.now();
   let building = false; let dirty = false; let buildTimer = 0;
   const cam = makeCamera();
   const home = WORLD.clubs[0]; const away = WORLD.clubs[1];
@@ -167,11 +167,11 @@ export function mount(root) {
     const frame = (now) => {
       if (!alive) return;
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now; clock += dt;
       const d = current();
       const s = B.sizeFor(d.capacity);
       // high and wide enough to take in the whole bowl, the roof and what lies beyond it
-      orbitCamera(cam, t, 56 + s * 44, 26 + s * 30 + (d.tiers - 1) * 4, 0.1);
+      orbitCamera(cam, clock, 56 + s * 44, 26 + s * 30 + (d.tiers - 1) * 4, 0.1);
       cam.tz = 8 + s * 6; cam.hfov = 60;
       if (gl && !building) gl.render(match, cam, dt);
     };
