@@ -8936,6 +8936,249 @@
   var WORLD = buildWorld(), getPlayer = (id) => WORLD.playersById[id], getClub = (id) => id ? WORLD.clubsById[id] : null;
   var rosterOf = (clubId) => WORLD.clubsById[clubId].roster.map(getPlayer);
 
+  // js/data/objectives.js
+  var L = (id, metric, text, need, apex, pack, extra = {}) => ({ id, metric, text, need, apex, pack, ...extra }), LADDER = [
+    /* Array order is the order the ladder is climbed. Ids are only save keys, so
+       the l25-l32 rungs added later sit where they belong on the difficulty
+       curve rather than at the end — an id out of sequence here is deliberate,
+       and renumbering the originals would strand every save that has claimed
+       them. */
+    // ---- getting started: small asks, small change -------------------------
+    L("l01", "played", "Play 2 Apex Division matches", 2, 800, "silver"),
+    L("l02", "win", "Win an Apex Division match", 1, 1e3, "silver"),
+    L("l03", "goal", "Score 5 goals in the division", 5, 1200, "silver"),
+    L("l25", "played", "Play 5 Apex Division matches", 5, 1300, "keeper"),
+    L("l04", "clean", "Keep a clean sheet", 1, 1400, "gold"),
+    L("l05", "win", "Win 3 Apex Division matches", 3, 1800, "gold"),
+    L("l06", "goal", "Score 10 goals in the division", 10, 2200, "gold"),
+    L("l26", "clean", "Keep 2 clean sheets", 2, 2500, "dip"),
+    // ---- finding your level ------------------------------------------------
+    L("l07", "streak", "Win 3 in a row", 3, 2800, "gold"),
+    L("l08", "clean", "Keep 3 clean sheets", 3, 3400, "gold"),
+    L("l09", "bigwin", "Win a match by 3 goals or more", 1, 4e3, "gold"),
+    L("l27", "played", "Play 15 Apex Division matches", 15, 4400, "builder"),
+    L("l10", "rank", "Reach Division 7", 1, 4800, "prime", { rank: 3 }),
+    L("l11", "win", "Win 8 Apex Division matches", 8, 5600, "prime"),
+    L("l12", "control", "Win with 60% of the ball", 1, 6500, "prime"),
+    L("l28", "bigwin", "Win 2 matches by 3 goals or more", 2, 7200, "builder"),
+    // ---- the grind ---------------------------------------------------------
+    L("l13", "goal", "Score 30 goals in the division", 30, 8e3, "prime"),
+    L("l14", "streak", "Win 5 in a row", 5, 9500, "prime"),
+    L("l29", "clean", "Keep 5 clean sheets", 5, 1e4, "prime"),
+    L("l15", "rank", "Reach Division 5", 1, 11e3, "stars", { rank: 5 }),
+    L("l16", "clean", "Keep 8 clean sheets", 8, 13e3, "stars"),
+    L("l30", "streak", "Win 4 in a row twice over", 4, 14e3, "stars"),
+    L("l17", "bigwin", "Win 4 matches by 3 goals or more", 4, 15e3, "stars"),
+    L("l18", "win", "Win 20 Apex Division matches", 20, 18e3, "stars"),
+    L("l31", "goal", "Score 50 goals in the division", 50, 2e4, "stars"),
+    // ---- the deep end: the only objectives that pay Ultimate ----------------
+    L("l19", "rank", "Reach Division 3", 1, 22e3, "stars", { rank: 7, ultimate: 3 }),
+    L("l20", "streak", "Win 7 in a row", 7, 26e3, "limited", { ultimate: 4 }),
+    L("l21", "goal", "Score 75 goals in the division", 75, 3e4, "limited", { ultimate: 5 }),
+    L("l32", "rank", "Reach Division 2", 1, 33e3, "limited", { rank: 8, ultimate: 6 }),
+    L("l22", "rank", "Reach Division 1", 1, 36e3, "limited", { rank: 9, ultimate: 8 }),
+    L("l23", "win", "Win 40 Apex Division matches", 40, 44e3, "legend", { ultimate: 10 }),
+    L("l24", "rank", "Reach Apex Elite", 1, 6e4, "legend", { rank: 10, ultimate: 20 })
+  ], ULTIMATE_RUNGS = LADDER.filter((e) => e.ultimate).length;
+  function slotFrom(entry) {
+    return { ...entry, done: 0 };
+  }
+  function dealSlate(claimed = [], keep = []) {
+    let held = new Set(keep.map((o) => o.id)), done = new Set(claimed), out = keep.slice();
+    for (let e of LADDER) {
+      if (out.length >= 7) break;
+      done.has(e.id) || held.has(e.id) || out.push(slotFrom(e));
+    }
+    return out;
+  }
+
+  // js/net/api.js
+  var TOKEN_KEY = "apexxi.token";
+  var token = null;
+  try {
+    token = localStorage.getItem(TOKEN_KEY);
+  } catch {
+  }
+
+  // js/state.js
+  var START_APEX = 5e3, RESET_TAG = "econ-2curr-1", defaults = () => ({
+    settings: {
+      simSpeed: "normal",
+      // instant | fast | normal
+      commentary: !0,
+      reduceMotion: !1,
+      // Everything ships at the top setting. A phone that cannot hold it says so
+      // in the frame rate, and the one-time prompt after the first full match
+      // offers to turn it down — better than starting everyone on "safe" and
+      // having nobody ever find out what the game actually looks like.
+      quality: "ultra",
+      // auto | low | high | ultra   (3D detail in a match)
+      models: "realistic",
+      // realistic | simple          (scanned mesh vs built-in figures)
+      showFps: !1,
+      // live frame counter in the match HUD
+      graphicsAsked: !1,
+      // the post-match "keep these graphics?" prompt fires once, ever
+      tutorialDone: !1,
+      // the guided tour runs itself once, then lives in Settings
+      sound: !0,
+      musicVol: 0.5,
+      sfxVol: 0.9
+    },
+    club: {
+      // Squad Builder progress
+      // Two balances. Apex is the one you earn and spend. Ultimate is the
+      // premium currency: it is displayed, it is never granted, and nothing
+      // costs it yet — it is here so the save format and the HUD already know
+      // about it when it does become obtainable.
+      apex: START_APEX,
+      ultimate: 0,
+      collection: [],
+      // player ids pulled from packs
+      formation: "4-3-3",
+      lineup: Array(11).fill(null),
+      // Five seats. Stamina without a bench is a punishment with no answer to it.
+      bench: Array(5).fill(null),
+      packsOpened: 0,
+      // A starting bundle, because the first thing the game asks for is eleven
+      // players in the right positions and one pack cannot cover that. Only new
+      // saves get these: an existing save brings its own `packs` through the
+      // merge in loadState.
+      packs: ["gold", "silver", "silver", "bronze"],
+      freeAt: 0,
+      // when the next free bronze unlocks; 0 = now
+      challengesDone: [],
+      // one-off SBCs already claimed
+      /* v68 progression. All optional in old saves — loadState's merge fills
+       * them from here, and progress.js tolerates their absence anyway. */
+      stats: {},
+      // lifetime counters achievements read (progress.js)
+      achievements: {},
+      // id -> { at, claimed }
+      season: null,
+      // { id, xp, claimed: [tier...] } for the current Season Pass
+      weekend: null,
+      // this weekend's tally (weekend.js)
+      weekendPending: null,
+      // a finished weekend whose reward is still unclaimed
+      daily: null,
+      // login calendar { last, streak, best, claimedOn }
+      pending: [],
+      // rewards waiting on the Today hub
+      upgrades: {},
+      // card id -> evolve level
+      dupes: {},
+      // card id -> duplicate pulls banked as evolve material
+      events: {},
+      // event week key -> { done, claimed }
+      watchStats: { packs: 0, wins: 0 },
+      /* The Stadium Builder (builder.js): the design that is your home ground, and up to eight kept ones. */
+      stadium: { design: null, saved: [] },
+      /* The club you actually take onto the pitch.
+       *
+       * Ultimate XI used to be called "Ultimate XI" in a fixed cyan, on every
+       * save, for everybody — the one mode built entirely out of your choices had
+       * no identity of its own. The shape here is exactly what `crestSVG` already
+       * consumes and exactly what `makeTeam`'s custom-squad path already accepts,
+       * so this is a stored preference rather than a new system: the badge draws
+       * itself and the two colours are what the kit shader tints from. */
+      identity: {
+        name: "Ultimate XI",
+        short: "UXI",
+        crest: { shape: "shield", pattern: "solid", device: "star", colors: ["#41d3ff", "#0b1020"] }
+      }
+    },
+    flags: {
+      // one-off UI state that has to outlive a reload
+      apology: !1,
+      // show the "we reset your club" card once
+      // which build's release notes this device has already been shown. Compared
+      // against the newest entry in data/patchNotes.js, so a new release
+      // announces itself exactly once and an existing one never does.
+      notesSeen: null
+    },
+    meta: { reset: RESET_TAG },
+    // which wipe this save has already been through
+    career: null,
+    // set once a career is started
+    ultimate: freshUltimate()
+    // Ultimate XI progression
+  });
+  function freshUltimate() {
+    return {
+      divIdx: 0,
+      // index into DIVISIONS, 0 = Division 10
+      progress: 0,
+      // wins banked toward the next division
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      streak: 0,
+      bestStreak: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      objectives: freshObjectives(),
+      /* Which rungs of the ladder have been finished, and when the finished slots
+         get refilled. Kept separately from the slate so the counter can read
+         "6/24 done" — progress through the whole ladder, not through the seven
+         currently on screen. */
+      objClaimed: [],
+      objRefresh: Date.now() + 216e5,
+      packsOwed: 0
+    };
+  }
+  function freshObjectives() {
+    return dealSlate([]);
+  }
+  var LADDER_SIZE = LADDER.length;
+  var state = defaults();
+  var getState = () => state;
+
+  // js/economy.js
+  var GROUPS = { GK: "GK", CB: "DEF", LB: "DEF", RB: "DEF", CDM: "MID", CM: "MID", CAM: "MID", LM: "MID", RM: "MID", LW: "WNG", RW: "WNG", ST: "ST" }, BANDS = [[0, 69, "bronze"], [70, 78, "silver"], [79, 85, "gold"], [86, 89, "elite"], [90, 99, "legend"]], bandOf = (overall) => {
+    var _a;
+    return ((_a = BANDS.find(([lo, hi]) => overall >= lo && overall <= hi)) == null ? void 0 : _a[2]) || "bronze";
+  }, kindOf = (p) => "".concat(GROUPS[p.position] || "MID", ":").concat(bandOf(p.overall)), WANT_PER_CLUB = { GK: 2, DEF: 6, MID: 6, WNG: 4, ST: 3 }, supplyCache = null;
+  function supplyIndex() {
+    if (supplyCache) return supplyCache;
+    let have = {};
+    for (let p of WORLD.players) {
+      if (p.rarity === "icon" || p.sbc) continue;
+      let k = kindOf(p);
+      have[k] = (have[k] || 0) + 1;
+    }
+    let want = {};
+    for (let c of WORLD.clubs) {
+      let rating = WORLD.clubsById[c.id].roster.slice(0, 11).map((id) => {
+        var _a;
+        return ((_a = WORLD.playersById[id]) == null ? void 0 : _a.overall) || 70;
+      }), avg = rating.reduce((a, b) => a + b, 0) / Math.max(1, rating.length);
+      for (let [g, n] of Object.entries(WANT_PER_CLUB)) {
+        let own = bandOf(Math.round(avg)), up = bandOf(Math.min(99, Math.round(avg) + 8));
+        want["".concat(g, ":").concat(own)] = (want["".concat(g, ":").concat(own)] || 0) + n * 0.67, want["".concat(g, ":").concat(up)] = (want["".concat(g, ":").concat(up)] || 0) + n * 0.33;
+      }
+    }
+    let out = {};
+    for (let k of /* @__PURE__ */ new Set([...Object.keys(have), ...Object.keys(want)])) {
+      let ratio = (want[k] || 1) / Math.max(1, have[k] || 1);
+      out[k] = Math.max(0.6, Math.min(1.8, Math.pow(ratio, 0.35)));
+    }
+    return supplyCache = out, out;
+  }
+  var HALF_LIFE_MS = 12 * 36e5;
+  function demandIndex(kind, s = getState(), now = Date.now()) {
+    var _a, _b, _c;
+    let m = (_a = s.club) == null ? void 0 : _a.market;
+    if (!m) return 1;
+    let k = Math.pow(0.5, Math.max(0, now - (m.at || now)) / HALF_LIFE_MS), buy2 = (((_b = m.buy) == null ? void 0 : _b[kind]) || 0) * k, sell = (((_c = m.sell) == null ? void 0 : _c[kind]) || 0) * k;
+    return Math.max(0.7, Math.min(1.5, 1 + (buy2 - sell) * 0.04));
+  }
+  function price(p, s = getState()) {
+    let k = kindOf(p), base = p.value || 0;
+    return Math.round(base * (supplyIndex()[k] || 1) * demandIndex(k, s) / 1e3) * 1e3;
+  }
+
   // js/data/packs.js
   var PACKS = [
     { id: "bronze", cat: "free", name: "Bronze", cost: 0, size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0 }, note: "4 cards" },
@@ -9165,7 +9408,7 @@
     }
     return pulls;
   }
-  var dupValue = (p) => Math.round(p.value / 25e3);
+  var dupValue = (p) => Math.max(50, Math.round(price(p) / 25e3));
 
   // js/game/sim.js
   var PITCH = { w: 105, h: 68 }, GOAL_HALF = 5.5, CY = PITCH.h / 2, BOX_W = 16.5, BOX_HALF = 20, PRESETS = {
@@ -11223,8 +11466,177 @@
     ctx.fillStyle = isGoal && goalKit ? shade(goalKit, 1.25) : "#fff", ctx.font = "800 ".concat(Math.round(Math.min(w * 0.11, 96)), 'px "Bahnschrift", system-ui, sans-serif'), ctx.fillText(match.banner, w / 2, h / 2);
   }
 
+  // js/data/stadiums.js
+  var STADIUMS = [
+    // ---- Apex Premier Division ----
+    { id: "forge", name: "The Forge", capacity: 62e3, size: 0.92, tiers: 2, roof: "ring", bowl: !0, seats: ["#c81e3c", "#1a1c22"], facade: "#1b1f2b", pattern: "stripes", pylons: "rim", fill: 0.93 },
+    { id: "helios", name: "Helios Park", capacity: 48e3, size: 0.78, tiers: 2, roof: "cantilever", bowl: !0, seats: ["#f2b705", "#12263f"], facade: "#1d2a44", pattern: "checks", pylons: "mast", fill: 0.86 },
+    { id: "blackmoor", name: "Blackmoor", capacity: 41e3, size: 0.7, tiers: 2, roof: "cantilever", bowl: !1, seats: ["#8a3ad6", "#0f0f1a"], facade: "#151428", pattern: "diagonal", pylons: "lattice", fill: 0.82 },
+    { id: "verano", name: "Estadio Verano", capacity: 44e3, size: 0.74, tiers: 2, roof: "ring", bowl: !0, seats: ["#2ec4b6", "#0b132b"], facade: "#10203a", pattern: "rings", pylons: "rim", fill: 0.84 },
+    { id: "kestrel", name: "Kestrel Park", capacity: 33e3, size: 0.58, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#ff7f11", "#2f3640"], facade: "#262b36", pattern: "stripes", pylons: "lattice", fill: 0.8 },
+    { id: "bramble", name: "Bramble Lane", capacity: 29e3, size: 0.52, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#4f9d3a", "#d4af37"], facade: "#22301c", pattern: "checks", pylons: "lattice", fill: 0.78 },
+    { id: "marisol", name: "Puerto Marisol", capacity: 36e3, size: 0.62, tiers: 2, roof: "cantilever", bowl: !0, seats: ["#ff5c8a", "#13315c"], facade: "#152742", pattern: "diagonal", pylons: "mast", fill: 0.79 },
+    { id: "nordlys", name: "Nordlys Arena", capacity: 3e4, size: 0.55, tiers: 1, roof: "dome", bowl: !0, seats: ["#41d3ff", "#2b2d6e"], facade: "#1b1c48", pattern: "plain", pylons: "rim", fill: 0.88 },
+    { id: "rampart", name: "The Rampart", capacity: 24e3, size: 0.44, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#6c8ea4", "#c9d6df"], facade: "#2b3a48", pattern: "stripes", pylons: "lattice", fill: 0.74 },
+    { id: "cumbre", name: "Cumbre Stadium", capacity: 27e3, size: 0.49, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#ff2e88", "#150d1f"], facade: "#1c1226", pattern: "rings", pylons: "lattice", fill: 0.72 },
+    // ---- Meridian League ----
+    { id: "lantern", name: "The Lantern", capacity: 38e3, size: 0.66, tiers: 2, roof: "ring", bowl: !0, seats: ["#00b4d8", "#03203c"], facade: "#0a2540", pattern: "stripes", pylons: "rim", fill: 0.81 },
+    { id: "cliffside", name: "Cliffside Park", capacity: 31e3, size: 0.56, tiers: 2, roof: "cantilever", bowl: !1, seats: ["#d62828", "#f1f1f1"], facade: "#3a1c1c", pattern: "checks", pylons: "lattice", fill: 0.83 },
+    { id: "grove", name: "Grove Road", capacity: 22e3, size: 0.4, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#2a9d8f", "#1b1b1e"], facade: "#1c2a28", pattern: "stripes", pylons: "lattice", fill: 0.76 },
+    { id: "marsh", name: "Marsh Lane", capacity: 18e3, size: 0.33, tiers: 1, roof: "none", bowl: !1, seats: ["#e9c46a", "#264653"], facade: "#2a3a40", pattern: "plain", pylons: "lattice", fill: 0.7 },
+    { id: "vireo", name: "Estadio Vireo", capacity: 26e3, size: 0.47, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#8ac926", "#101820"], facade: "#18231a", pattern: "diagonal", pylons: "mast", fill: 0.73 },
+    { id: "weir", name: "The Weir", capacity: 2e4, size: 0.37, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#a2d2ff", "#1d3557"], facade: "#1d2f4a", pattern: "stripes", pylons: "lattice", fill: 0.71 },
+    { id: "kiln", name: "Kiln Field", capacity: 16e3, size: 0.3, tiers: 1, roof: "none", bowl: !1, seats: ["#f77f00", "#3d0c02"], facade: "#3a1a10", pattern: "checks", pylons: "lattice", fill: 0.77 },
+    { id: "wick", name: "Wick Green", capacity: 15e3, size: 0.28, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#adb5bd", "#212529"], facade: "#2b2f36", pattern: "stripes", pylons: "lattice", fill: 0.66 },
+    { id: "lumen", name: "Lumen Dome", capacity: 34e3, size: 0.6, tiers: 2, roof: "dome", bowl: !0, seats: ["#ffd166", "#5a189a"], facade: "#2a0d4a", pattern: "rings", pylons: "rim", fill: 0.85 },
+    { id: "nova", name: "Campo Nova", capacity: 19e3, size: 0.35, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#ef476f", "#073b4c"], facade: "#0e2a38", pattern: "diagonal", pylons: "mast", fill: 0.69 },
+    // ---- Vanguard League ----
+    { id: "steelworks", name: "Steelworks Park", capacity: 21e3, size: 0.38, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#8d99ae", "#2b2d42"], facade: "#2b2d42", pattern: "stripes", pylons: "lattice", fill: 0.74 },
+    { id: "corvina", name: "Corvina Field", capacity: 14e3, size: 0.26, tiers: 1, roof: "none", bowl: !1, seats: ["#1b263b", "#e0e1dd"], facade: "#1b263b", pattern: "plain", pylons: "lattice", fill: 0.68 },
+    { id: "riverside", name: "Riverside", capacity: 17e3, size: 0.31, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#48cae4", "#023e8a"], facade: "#0b2a55", pattern: "checks", pylons: "lattice", fill: 0.72 },
+    { id: "acorn", name: "The Acorn", capacity: 12e3, size: 0.22, tiers: 1, roof: "none", bowl: !1, seats: ["#6a994e", "#386641"], facade: "#2a3f22", pattern: "stripes", pylons: "lattice", fill: 0.7 },
+    { id: "harbour", name: "Harbour Ground", capacity: 15500, size: 0.28, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#0077b6", "#caf0f8"], facade: "#0f3a5a", pattern: "diagonal", pylons: "mast", fill: 0.66 },
+    { id: "summit", name: "Summit Road", capacity: 11e3, size: 0.2, tiers: 1, roof: "none", bowl: !1, seats: ["#2d6a4f", "#d8f3dc"], facade: "#24402f", pattern: "plain", pylons: "lattice", fill: 0.64 },
+    { id: "shaw", name: "Shaw Lane", capacity: 13e3, size: 0.24, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#212529", "#ffd60a"], facade: "#26282c", pattern: "stripes", pylons: "lattice", fill: 0.71 },
+    { id: "cross", name: "Cross Park", capacity: 10500, size: 0.19, tiers: 1, roof: "none", bowl: !1, seats: ["#ff9f1c", "#011627"], facade: "#152030", pattern: "checks", pylons: "lattice", fill: 0.6 },
+    { id: "windmere", name: "Estadio Windmere", capacity: 16500, size: 0.3, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#c77dff", "#10002b"], facade: "#1e0a3a", pattern: "rings", pylons: "mast", fill: 0.62 },
+    { id: "quarry", name: "The Quarry", capacity: 9e3, size: 0.16, tiers: 1, roof: "none", bowl: !1, seats: ["#bc6c25", "#283618"], facade: "#33301e", pattern: "plain", pylons: "lattice", fill: 0.65 },
+    // ---- Foundation League ----
+    { id: "meadow", name: "Meadow Lane", capacity: 12500, size: 0.23, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#7b2cbf", "#e0aaff"], facade: "#2a1046", pattern: "stripes", pylons: "lattice", fill: 0.66 },
+    { id: "bridge", name: "Bridge Street", capacity: 9500, size: 0.17, tiers: 1, roof: "none", bowl: !1, seats: ["#9a031e", "#fb8b24"], facade: "#3a1010", pattern: "checks", pylons: "lattice", fill: 0.69 },
+    { id: "stonefield", name: "Stonefield", capacity: 11500, size: 0.21, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#adb5bd", "#343a40"], facade: "#343a40", pattern: "plain", pylons: "lattice", fill: 0.58 },
+    { id: "vale", name: "Vale Park", capacity: 8500, size: 0.15, tiers: 1, roof: "none", bowl: !1, seats: ["#00afb9", "#f07167"], facade: "#1d3d44", pattern: "diagonal", pylons: "lattice", fill: 0.63 },
+    { id: "heath", name: "Heath Road", capacity: 1e4, size: 0.18, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#e63946", "#f1faee"], facade: "#3a1a20", pattern: "stripes", pylons: "lattice", fill: 0.67 },
+    { id: "fen", name: "Fen Lane", capacity: 7500, size: 0.13, tiers: 1, roof: "none", bowl: !1, seats: ["#f4a261", "#264653"], facade: "#263a40", pattern: "plain", pylons: "lattice", fill: 0.6 },
+    { id: "dunmore", name: "Dunmore Park", capacity: 9800, size: 0.18, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#40916c", "#ffffff"], facade: "#1e3a2a", pattern: "checks", pylons: "lattice", fill: 0.72 },
+    { id: "lakeside", name: "Lakeside Arena", capacity: 13500, size: 0.25, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#dee2e6", "#4361ee"], facade: "#1a2a6a", pattern: "rings", pylons: "mast", fill: 0.59 },
+    { id: "gate", name: "Gate Ground", capacity: 8e3, size: 0.14, tiers: 1, roof: "none", bowl: !1, seats: ["#ffb703", "#023047"], facade: "#0c2a40", pattern: "stripes", pylons: "lattice", fill: 0.61 },
+    { id: "colliery", name: "Colliery Row", capacity: 7e3, size: 0.12, tiers: 1, roof: "none", bowl: !1, seats: ["#3d405b", "#f2cc8f"], facade: "#33344a", pattern: "plain", pylons: "lattice", fill: 0.7 },
+    // ---- Pioneer League ----
+    { id: "bridgepark", name: "Bridge Park", capacity: 9e3, size: 0.16, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#1d4ed8", "#f8fafc"], facade: "#1e2a5a", pattern: "stripes", pylons: "lattice", fill: 0.68 },
+    { id: "combe", name: "Combe Lane", capacity: 7200, size: 0.12, tiers: 1, roof: "none", bowl: !1, seats: ["#16a34a", "#052e16"], facade: "#14301c", pattern: "plain", pylons: "lattice", fill: 0.64 },
+    { id: "mudflats", name: "The Mudflats", capacity: 6500, size: 0.11, tiers: 1, roof: "none", bowl: !1, seats: ["#0ea5e9", "#0c1a2a"], facade: "#0c1a2a", pattern: "checks", pylons: "lattice", fill: 0.7 },
+    { id: "mere", name: "Mere Road", capacity: 8100, size: 0.14, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#a21caf", "#fdf4ff"], facade: "#3b0f3f", pattern: "diagonal", pylons: "lattice", fill: 0.62 },
+    { id: "fallow", name: "Fallow Ground", capacity: 5800, size: 0.1, tiers: 1, roof: "none", bowl: !1, seats: ["#ca8a04", "#1c1917"], facade: "#2a2418", pattern: "plain", pylons: "lattice", fill: 0.66 },
+    { id: "ironwood", name: "Ironwood Park", capacity: 7700, size: 0.13, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#57534e", "#f97316"], facade: "#2c2a28", pattern: "stripes", pylons: "lattice", fill: 0.71 },
+    { id: "brookfield", name: "Brook Field", capacity: 6200, size: 0.11, tiers: 1, roof: "none", bowl: !1, seats: ["#f43f5e", "#fff1f2"], facade: "#3a1a22", pattern: "checks", pylons: "lattice", fill: 0.6 },
+    { id: "heathpark", name: "Heath Park", capacity: 5400, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#65a30d", "#1a2e05"], facade: "#1a2e05", pattern: "plain", pylons: "lattice", fill: 0.63 },
+    { id: "moorgate", name: "Estadio Moorgate", capacity: 8800, size: 0.15, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#7c3aed", "#faf5ff"], facade: "#2a1548", pattern: "rings", pylons: "mast", fill: 0.58 },
+    { id: "paddock", name: "The Paddock", capacity: 4900, size: 0.08, tiers: 1, roof: "none", bowl: !1, seats: ["#b45309", "#fef3c7"], facade: "#3a2a12", pattern: "plain", pylons: "lattice", fill: 0.67 },
+    // ---- Grassroots League ----
+    { id: "riverton", name: "Riverton Ground", capacity: 7e3, size: 0.12, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#0369a1", "#e0f2fe"], facade: "#0c2a40", pattern: "stripes", pylons: "lattice", fill: 0.66 },
+    { id: "hollow", name: "Hollow Lane", capacity: 5600, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#334155", "#cbd5e1"], facade: "#242c3a", pattern: "plain", pylons: "lattice", fill: 0.6 },
+    { id: "barrow", name: "Barrow Park", capacity: 6300, size: 0.11, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#dc2626", "#fef2f2"], facade: "#3a1414", pattern: "checks", pylons: "lattice", fill: 0.69 },
+    { id: "copper", name: "Copper Row", capacity: 5100, size: 0.08, tiers: 1, roof: "none", bowl: !1, seats: ["#d97706", "#292524"], facade: "#2a2018", pattern: "plain", pylons: "lattice", fill: 0.65 },
+    { id: "thistle", name: "Thistle Lane", capacity: 6e3, size: 0.1, tiers: 1, roof: "none", bowl: !1, seats: ["#7e22ce", "#fde68a"], facade: "#2c1444", pattern: "diagonal", pylons: "lattice", fill: 0.61 },
+    { id: "acre", name: "Acre Field", capacity: 4700, size: 0.07, tiers: 1, roof: "none", bowl: !1, seats: ["#15803d", "#dcfce7"], facade: "#143220", pattern: "plain", pylons: "lattice", fill: 0.62 },
+    { id: "saltire", name: "Saltire Park", capacity: 6800, size: 0.12, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#1e3a8a", "#ffffff"], facade: "#1a2a5a", pattern: "stripes", pylons: "lattice", fill: 0.7 },
+    { id: "brookside", name: "Brookside Arena", capacity: 7400, size: 0.13, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#0f766e", "#ccfbf1"], facade: "#0f3a34", pattern: "rings", pylons: "mast", fill: 0.57 },
+    { id: "cinder", name: "Cinder Ground", capacity: 5300, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#f59e0b", "#1c1917"], facade: "#2c2418", pattern: "checks", pylons: "lattice", fill: 0.64 },
+    { id: "hawkrow", name: "Hawk Row", capacity: 4500, size: 0.07, tiers: 1, roof: "none", bowl: !1, seats: ["#1f2937", "#fbbf24"], facade: "#1f2937", pattern: "plain", pylons: "lattice", fill: 0.68 },
+    // ---- v72: the forty clubs of the hundred-club world ----
+    { id: "vantage-arena", name: "Vantage Arena", capacity: 78e3, size: 0.8, tiers: 2, roof: "ring", bowl: !0, seats: ["#0f172a", "#38bdf8"], facade: "#0f172a", pattern: "plain", pylons: "rim", fill: 0.84 },
+    { id: "harbourside", name: "The Harbourside", capacity: 76200, size: 0.78, tiers: 2, roof: "ring", bowl: !0, seats: ["#7f1d1d", "#fde68a"], facade: "#7f1d1d", pattern: "checks", pylons: "rim", fill: 0.83 },
+    { id: "ridgeway-park", name: "Ridgeway Park", capacity: 62700, size: 0.63, tiers: 2, roof: "cantilever", bowl: !0, seats: ["#065f46", "#a7f3d0"], facade: "#065f46", pattern: "checks", pylons: "mast", fill: 0.79 },
+    { id: "stellar-dome", name: "Stellar Dome", capacity: 60900, size: 0.61, tiers: 2, roof: "cantilever", bowl: !0, seats: ["#312e81", "#c7d2fe"], facade: "#312e81", pattern: "rings", pylons: "mast", fill: 0.78 },
+    { id: "haven-road", name: "Haven Road", capacity: 49200, size: 0.48, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#1d4ed8", "#fef3c7"], facade: "#1d4ed8", pattern: "checks", pylons: "mast", fill: 0.74 },
+    { id: "penny-lane", name: "Penny Lane", capacity: 45600, size: 0.44, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#78350f", "#fde68a"], facade: "#78350f", pattern: "stripes", pylons: "lattice", fill: 0.73 },
+    { id: "holloway-ground", name: "Holloway Ground", capacity: 39300, size: 0.37, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#4c1d95", "#f5f3ff"], facade: "#4c1d95", pattern: "rings", pylons: "lattice", fill: 0.71 },
+    { id: "dune-park", name: "Dune Park", capacity: 35700, size: 0.33, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#b45309", "#fff7ed"], facade: "#b45309", pattern: "diagonal", pylons: "lattice", fill: 0.7 },
+    { id: "lakeshore-stadium", name: "Lakeshore Stadium", capacity: 32100, size: 0.29, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#0e7490", "#ecfeff"], facade: "#0e7490", pattern: "diagonal", pylons: "lattice", fill: 0.69 },
+    { id: "cliff-road", name: "Cliff Road", capacity: 28500, size: 0.25, tiers: 1, roof: "none", bowl: !1, seats: ["#166534", "#dcfce7"], facade: "#166534", pattern: "checks", pylons: "lattice", fill: 0.67 },
+    { id: "kings-field", name: "Kings Field", capacity: 25800, size: 0.22, tiers: 1, roof: "none", bowl: !1, seats: ["#1e3a8a", "#fbbf24"], facade: "#1e3a8a", pattern: "plain", pylons: "lattice", fill: 0.67 },
+    { id: "norbury-park", name: "Norbury Park", capacity: 25800, size: 0.22, tiers: 1, roof: "none", bowl: !1, seats: ["#9f1239", "#fecdd3"], facade: "#9f1239", pattern: "plain", pylons: "lattice", fill: 0.67 },
+    { id: "moor", name: "The Moor", capacity: 22200, size: 0.18, tiers: 1, roof: "none", bowl: !1, seats: ["#0f766e", "#99f6e4"], facade: "#0f766e", pattern: "rings", pylons: "lattice", fill: 0.65 },
+    { id: "brook-lane", name: "Brook Lane", capacity: 19500, size: 0.15, tiers: 1, roof: "none", bowl: !1, seats: ["#b91c1c", "#fee2e2"], facade: "#b91c1c", pattern: "checks", pylons: "lattice", fill: 0.65 },
+    { id: "vale-ground", name: "Vale Ground", capacity: 21300, size: 0.17, tiers: 1, roof: "none", bowl: !1, seats: ["#15803d", "#f0fdf4"], facade: "#15803d", pattern: "rings", pylons: "lattice", fill: 0.65 },
+    { id: "bramford-road", name: "Bramford Road", capacity: 20400, size: 0.16, tiers: 1, roof: "none", bowl: !1, seats: ["#1e40af", "#dbeafe"], facade: "#1e40af", pattern: "plain", pylons: "lattice", fill: 0.65 },
+    { id: "crest-park", name: "Crest Park", capacity: 19500, size: 0.15, tiers: 1, roof: "none", bowl: !1, seats: ["#7c2d12", "#fed7aa"], facade: "#7c2d12", pattern: "stripes", pylons: "lattice", fill: 0.65 },
+    { id: "elm-lane", name: "Elm Lane", capacity: 18600, size: 0.14, tiers: 1, roof: "none", bowl: !1, seats: ["#3f6212", "#ecfccb"], facade: "#3f6212", pattern: "checks", pylons: "lattice", fill: 0.64 },
+    { id: "hollow-field", name: "Hollow Field", capacity: 17700, size: 0.13, tiers: 1, roof: "none", bowl: !1, seats: ["#c2410c", "#ffedd5"], facade: "#c2410c", pattern: "diagonal", pylons: "lattice", fill: 0.64 },
+    { id: "glen-road", name: "Glen Road", capacity: 16800, size: 0.12, tiers: 1, roof: "none", bowl: !1, seats: ["#0c4a6e", "#e0f2fe"], facade: "#0c4a6e", pattern: "rings", pylons: "lattice", fill: 0.64 },
+    { id: "green-lane", name: "Green Lane", capacity: 15900, size: 0.11, tiers: 1, roof: "none", bowl: !1, seats: ["#166534", "#bbf7d0"], facade: "#166534", pattern: "plain", pylons: "lattice", fill: 0.63 },
+    { id: "hurst-row", name: "Hurst Row", capacity: 15e3, size: 0.1, tiers: 1, roof: "none", bowl: !1, seats: ["#292524", "#f5f5f4"], facade: "#292524", pattern: "stripes", pylons: "lattice", fill: 0.63 },
+    { id: "juniper-park", name: "Juniper Park", capacity: 14100, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#5b21b6", "#ede9fe"], facade: "#5b21b6", pattern: "checks", pylons: "lattice", fill: 0.63 },
+    { id: "kettle-ground", name: "Kettle Ground", capacity: 13200, size: 0.08, tiers: 1, roof: "none", bowl: !1, seats: ["#0369a1", "#f0f9ff"], facade: "#0369a1", pattern: "diagonal", pylons: "lattice", fill: 0.62 },
+    { id: "langford-road", name: "Langford Road", capacity: 12300, size: 0.07, tiers: 1, roof: "none", bowl: !1, seats: ["#be123c", "#ffe4e6"], facade: "#be123c", pattern: "rings", pylons: "lattice", fill: 0.62 },
+    { id: "heath-lane", name: "Heath Lane", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#4d7c0f", "#f7fee7"], facade: "#4d7c0f", pattern: "plain", pylons: "lattice", fill: 0.62 },
+    { id: "nettle-park", name: "Nettle Park", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#1f2937", "#fbbf24"], facade: "#1f2937", pattern: "stripes", pylons: "lattice", fill: 0.62 },
+    { id: "oakridge-ground", name: "Oakridge Ground", capacity: 16800, size: 0.12, tiers: 1, roof: "none", bowl: !1, seats: ["#14532d", "#dcfce7"], facade: "#14532d", pattern: "plain", pylons: "lattice", fill: 0.64 },
+    { id: "pember-lane", name: "Pember Lane", capacity: 15900, size: 0.11, tiers: 1, roof: "none", bowl: !1, seats: ["#7f1d1d", "#fecaca"], facade: "#7f1d1d", pattern: "stripes", pylons: "lattice", fill: 0.63 },
+    { id: "quarry-vale", name: "The Vale", capacity: 15e3, size: 0.1, tiers: 1, roof: "none", bowl: !1, seats: ["#44403c", "#e7e5e4"], facade: "#44403c", pattern: "checks", pylons: "lattice", fill: 0.63 },
+    { id: "rosemont-park", name: "Rosemont Park", capacity: 14100, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#be185d", "#fce7f3"], facade: "#be185d", pattern: "diagonal", pylons: "lattice", fill: 0.63 },
+    { id: "dale-road", name: "Dale Road", capacity: 13200, size: 0.08, tiers: 1, roof: "none", bowl: !1, seats: ["#075985", "#e0f2fe"], facade: "#075985", pattern: "rings", pylons: "lattice", fill: 0.62 },
+    { id: "thorn-park", name: "Thorn Park", capacity: 12300, size: 0.07, tiers: 1, roof: "none", bowl: !1, seats: ["#3730a3", "#e0e7ff"], facade: "#3730a3", pattern: "plain", pylons: "lattice", fill: 0.62 },
+    { id: "underhill", name: "Underhill", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#9a3412", "#ffedd5"], facade: "#9a3412", pattern: "stripes", pylons: "lattice", fill: 0.62 },
+    { id: "royal-field", name: "Royal Field", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#6d28d9", "#f5f3ff"], facade: "#6d28d9", pattern: "checks", pylons: "lattice", fill: 0.62 },
+    { id: "westbrook-lane", name: "Westbrook Lane", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#0d9488", "#ccfbf1"], facade: "#0d9488", pattern: "diagonal", pylons: "lattice", fill: 0.62 },
+    { id: "yew-lane", name: "Yew Lane", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#365314", "#ecfccb"], facade: "#365314", pattern: "rings", pylons: "lattice", fill: 0.62 },
+    { id: "zealand-ground", name: "Zealand Ground", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#1e3a8a", "#dbeafe"], facade: "#1e3a8a", pattern: "plain", pylons: "lattice", fill: 0.62 },
+    { id: "amber-park", name: "Amber Park", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#d97706", "#fffbeb"], facade: "#d97706", pattern: "stripes", pylons: "lattice", fill: 0.62 },
+    { id: "fen-road", name: "Fen Road", capacity: 11400, size: 0.06, tiers: 1, roof: "none", bowl: !1, seats: ["#111827", "#f9fafb"], facade: "#111827", pattern: "checks", pylons: "lattice", fill: 0.62 },
+    // ---- the eight wonders (v72): finals, and the arenas the world plays in ----
+    // `wonder` grounds carry a retractable roof, giant screens over both ends,
+    // an LED ribbon round the tier and pyrotechnics at kick-off and goals.
+    { id: "crown", name: "The Crown", capacity: 1e5, size: 1, tiers: 2, roof: "arch", bowl: !0, seats: ["#f8fafc", "#0f172a"], facade: "#0b1020", pattern: "checks", pylons: "rim", fill: 0.98, showpiece: !0, wonder: !0, retractable: !0 },
+    { id: "aurora-dome", name: "Aurora Dome", capacity: 88e3, size: 0.98, tiers: 2, roof: "dome", bowl: !0, seats: ["#22d3ee", "#0e1a2b"], facade: "#0a2030", pattern: "rings", pylons: "rim", fill: 0.97, showpiece: !0, wonder: !0, retractable: !0 },
+    { id: "colosseo", name: "Colosseo Nova", capacity: 92e3, size: 0.99, tiers: 2, roof: "ring", bowl: !0, seats: ["#fbbf24", "#1c1917"], facade: "#2a2418", pattern: "diagonal", pylons: "rim", fill: 0.97, showpiece: !0, wonder: !0 },
+    { id: "oasis", name: "Oasis Stadium", capacity: 84e3, size: 0.97, tiers: 2, roof: "dome", bowl: !0, seats: ["#34d399", "#052e16"], facade: "#0f2a1a", pattern: "stripes", pylons: "rim", fill: 0.96, showpiece: !0, wonder: !0, retractable: !0 },
+    { id: "harbour-arena", name: "Harbour Arena", capacity: 8e4, size: 0.96, tiers: 2, roof: "arch", bowl: !0, seats: ["#60a5fa", "#0c1a3a"], facade: "#0a1a3a", pattern: "checks", pylons: "rim", fill: 0.96, showpiece: !0, wonder: !0 },
+    { id: "summit-bowl", name: "Summit Bowl", capacity: 78e3, size: 0.95, tiers: 2, roof: "ring", bowl: !0, seats: ["#e2e8f0", "#1e293b"], facade: "#1a2233", pattern: "rings", pylons: "rim", fill: 0.95, showpiece: !0, wonder: !0 },
+    { id: "lantern-dome", name: "The Great Lantern", capacity: 86e3, size: 0.98, tiers: 2, roof: "dome", bowl: !0, seats: ["#f472b6", "#1e0a2b"], facade: "#2a0a3a", pattern: "diagonal", pylons: "rim", fill: 0.97, showpiece: !0, wonder: !0, retractable: !0 },
+    { id: "meridian-prime", name: "Meridian Prime", capacity: 95e3, size: 1, tiers: 2, roof: "arch", bowl: !0, seats: ["#a78bfa", "#0b0a1e"], facade: "#100a2a", pattern: "stripes", pylons: "rim", fill: 0.98, showpiece: !0, wonder: !0 },
+    // ---- showpiece arenas: finals, the Weekend League, cup ties ----
+    { id: "apex-arena", name: "Apex Arena", capacity: 9e4, size: 1, tiers: 2, roof: "arch", bowl: !0, seats: ["#f0f4ff", "#0a0d16"], facade: "#0e1220", pattern: "checks", pylons: "rim", fill: 0.97, showpiece: !0 },
+    { id: "meridian", name: "Meridian Dome", capacity: 72e3, size: 0.96, tiers: 2, roof: "dome", bowl: !0, seats: ["#7af7ff", "#08111c"], facade: "#0b1a2c", pattern: "rings", pylons: "rim", fill: 0.95, showpiece: !0 },
+    { id: "continental", name: "Continental Bowl", capacity: 8e4, size: 0.98, tiers: 2, roof: "ring", bowl: !0, seats: ["#ffd166", "#2b2d42"], facade: "#1a1c30", pattern: "diagonal", pylons: "rim", fill: 0.96, showpiece: !0 },
+    { id: "national", name: "The National Stadium", capacity: 84e3, size: 0.99, tiers: 2, roof: "arch", bowl: !0, seats: ["#c8102e", "#f5f5f5"], facade: "#221a1e", pattern: "stripes", pylons: "rim", fill: 0.97, showpiece: !0 }
+  ], STADIUM_BY_ID = Object.fromEntries(STADIUMS.map((s) => [s.id, s])), BY_NAME = Object.fromEntries(STADIUMS.map((s) => [s.name, s]));
+  function hashStr(s) {
+    let h = 2166136261;
+    for (let i = 0; i < String(s).length; i++)
+      h ^= String(s).charCodeAt(i), h = Math.imul(h, 16777619);
+    return h >>> 0;
+  }
+  function stadiumFor(club, { showpiece = !1 } = {}) {
+    if (showpiece) {
+      let pick = STADIUMS.filter((s) => showpiece === "wonder" ? s.wonder : s.showpiece);
+      return pick[hashStr((club == null ? void 0 : club.id) || (club == null ? void 0 : club.name) || "final") % pick.length];
+    }
+    if (club != null && club.national) return nationalStadium(club.name, club.rating || 75, club.colors);
+    if (!club) return STADIUM_BY_ID.forge;
+    let named = club.ground && BY_NAME[club.ground];
+    if (named) return named;
+    let level2 = Number.isFinite(club.level) ? club.level : 0.7, pool = STADIUMS.filter((s) => !s.showpiece && Math.abs(s.size - level2) < 0.22), base = (pool.length ? pool : STADIUMS.filter((s) => !s.showpiece))[hashStr(club.id || club.name) % (pool.length || STADIUMS.length)];
+    return {
+      ...base,
+      id: "".concat(base.id, ":").concat(club.id || club.name),
+      name: club.ground || base.name,
+      seats: Array.isArray(club.colors) && club.colors.length === 2 ? [club.colors[0], club.colors[1]] : base.seats
+    };
+  }
+  var WONDERS = STADIUMS.filter((s) => s.wonder);
+  function nationalStadium(nation, rating = 75, colors = ["#ffffff", "#222222"]) {
+    let h = hashStr("nat|".concat(nation)), size = Math.max(0.45, Math.min(0.98, 0.45 + (rating - 68) / 40)), roofs = ["ring", "arch", "dome", "cantilever"], pats = ["stripes", "checks", "diagonal", "rings"];
+    return {
+      id: "nat-".concat(nation.toLowerCase().replace(/[^a-z]+/g, "-")),
+      name: "".concat(nation, " National Stadium"),
+      capacity: Math.round((3e4 + size * 6e4) / 1e3) * 1e3,
+      size,
+      tiers: size > 0.6 ? 2 : 1,
+      roof: roofs[h % 4],
+      bowl: size > 0.55,
+      seats: [colors[0], colors[1]],
+      facade: colors[1],
+      pattern: pats[(h >>> 4) % 4],
+      pylons: size > 0.7 ? "rim" : "mast",
+      fill: 0.85 + size * 0.12,
+      national: !0
+    };
+  }
+
   // js/data/commentary.js
-  var L = {
+  var L2 = {
     kickoff: [
       "And we are under way.",
       "{team} get us started.",
@@ -11441,9 +11853,9 @@
     lead: ["{team} edge ahead, {score}.", "{team} take the lead.", "Advantage {team}: {score}."],
     extend: ["{team} extend their lead, {score}.", "Two clear now for {team}.", "That should settle it. {score}."]
   };
-  var LINE_COUNT = Object.values(L).reduce((n, a) => n + a.length, 0), last = /* @__PURE__ */ new Map();
+  var LINE_COUNT = Object.values(L2).reduce((n, a) => n + a.length, 0), last = /* @__PURE__ */ new Map();
   function say(key, ctx = {}) {
-    let pool = L[key];
+    let pool = L2[key];
     if (!pool || !pool.length) return "";
     let i = Math.floor(Math.random() * pool.length);
     return pool.length > 1 && i === last.get(key) && (i = (i + 1) % pool.length), last.set(key, i), pool[i].replace(/\{(\w+)\}/g, (_, k) => {
@@ -11458,9 +11870,16 @@
     normal: { label: "Normal", skill: 1, pay: 1 },
     hard: { label: "Hard", skill: 1.3, pay: 2 }
   };
+  function drawThumb(canvas, st) {
+    if (!canvas || !st) return;
+    let g = canvas.getContext("2d"), W = canvas.width, H = canvas.height;
+    g.fillStyle = "#0b1220", g.fillRect(0, 0, W, H);
+    let h = 4 + Math.round(st.size * 10), [a, b] = st.seats || ["#1c3f6e", "#14335c"];
+    g.fillStyle = b, g.fillRect(8, 2, W - 16, h), g.fillRect(2, 2, 6, H - 4), g.fillRect(W - 8, 2, 6, H - 4), g.fillStyle = a, g.fillRect(8, 2, W - 16, 2), g.fillRect(2, 2, 6, 2), g.fillRect(W - 8, 2, 6, 2), st.bowl && (g.fillStyle = b, g.beginPath(), g.arc(8, 2 + h, h, Math.PI, Math.PI * 1.5), g.lineTo(8, 2), g.fill(), g.beginPath(), g.arc(W - 8, 2 + h, h, Math.PI * 1.5, Math.PI * 2), g.lineTo(W - 8, 2), g.fill()), st.roof && st.roof !== "none" && (g.fillStyle = "#e5e7eb", g.fillRect(8, 1, W - 16, 1)), g.fillStyle = "#2e8845", g.fillRect(9, 3 + h, W - 18, H - 5 - h), g.strokeStyle = "rgba(255,255,255,.6)", g.lineWidth = 1, g.strokeRect(10.5, 4.5 + h, W - 21, H - 8 - h);
+  }
   function playMatch(app2, awayId, onDone, level2 = "normal") {
-    let lv = LEVELS[level2] || LEVELS.normal;
-    app2.innerHTML = '\n    <div class="w-match">\n      <canvas id="wPitch"></canvas>\n      <div class="w-hud"><span id="wClock">0\'</span><b id="wScore">0 – 0</b></div>\n      <div class="w-comm" id="wComm" hidden></div>\n      <div class="w-sp" id="wSp" hidden></div>\n      <button class="w-kick" id="wKick">KICK</button>\n    </div>';
+    let lv = LEVELS[level2] || LEVELS.normal, homeClub = WORLD.clubs[0], awayClub = WORLD.clubsById[awayId] || WORLD.clubs[1], ground = stadiumFor(awayClub);
+    app2.innerHTML = '\n    <div class="w-match">\n      <canvas id="wPitch"></canvas>\n      <div class="w-venue"><canvas id="wThumb" width="64" height="22"></canvas><span>'.concat(ground.name, '</span></div>\n      <div class="w-hud"><span id="wClock">0\'</span><b id="wScore">0 – 0</b></div>\n      <div class="w-comm" id="wComm" hidden></div>\n      <div class="w-sp" id="wSp" hidden></div>\n      <button class="w-kick" id="wKick">KICK</button>\n    </div>'), drawThumb(app2.querySelector("#wThumb"), ground);
     let canvas = app2.querySelector("#wPitch"), ctx = canvas.getContext("2d", { alpha: !1 }), clockEl = app2.querySelector("#wClock"), scoreEl = app2.querySelector("#wScore"), commEl = app2.querySelector("#wComm"), spEl = app2.querySelector("#wSp"), commT = 0, lastComm = -9, WATCH_CUES = { goal: "goal", save: "save", post: "post", bigChance: "bigChance", cornerKick: "cornerKick", freekick: "freekick", penaltyAwarded: "penaltyAwarded", injury: "injury", shotWide: "shotWide" }, commentate = (c) => {
       var _a, _b, _c, _d, _e;
       let key = WATCH_CUES[c.name];
@@ -11867,8 +12286,8 @@
   }
 
   // js/watch/store.js
-  var KEY2 = "apexxi.watch.v1", START_APEX = 5e3, state = null, token = null, profile = null, solo = !1, lastSync = 0, blank = () => ({
-    club: { apex: START_APEX, collection: [], packs: ["bronze"], freeAt: 0, packsOpened: 0 }
+  var KEY2 = "apexxi.watch.v1", START_APEX2 = 5e3, state2 = null, token2 = null, profile = null, solo = !1, lastSync = 0, blank = () => ({
+    club: { apex: START_APEX2, collection: [], packs: ["bronze"], freeAt: 0, packsOpened: 0 }
   }), readLocal = () => {
     try {
       return JSON.parse(localStorage.getItem(KEY2)) || null;
@@ -11877,13 +12296,13 @@
     }
   }, writeLocal = () => {
     try {
-      localStorage.setItem(KEY2, JSON.stringify({ state, token, profile, solo }));
+      localStorage.setItem(KEY2, JSON.stringify({ state: state2, token: token2, profile, solo }));
     } catch {
     }
-  }, save = () => state || blank(), ready = () => !!(token || solo), name = () => (profile == null ? void 0 : profile.name) || "", syncLabel = () => solo ? "this watch" : lastSync ? "just now" : "phone account";
+  }, save = () => state2 || blank(), ready = () => !!(token2 || solo), name = () => (profile == null ? void 0 : profile.name) || "", syncLabel = () => solo ? "this watch" : lastSync ? "just now" : "phone account";
   async function boot() {
     let stored = readLocal();
-    stored ? (state = stored.state || blank(), token = stored.token || null, profile = stored.profile || null, solo = !!stored.solo) : state = blank(), token && await pull();
+    stored ? (state2 = stored.state || blank(), token2 = stored.token || null, profile = stored.profile || null, solo = !!stored.solo) : state2 = blank(), token2 && await pull();
   }
   async function pair(code) {
     var _a;
@@ -11893,42 +12312,42 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       }), body = await res.json();
-      return res.ok ? (token = body.token, profile = body.profile, solo = !1, (_a = body.save) != null && _a.club && (state = { club: { ...blank().club, ...body.save.club } }), writeLocal(), { ok: !0 }) : { error: body.error || "Pairing failed." };
+      return res.ok ? (token2 = body.token, profile = body.profile, solo = !1, (_a = body.save) != null && _a.club && (state2 = { club: { ...blank().club, ...body.save.club } }), writeLocal(), { ok: !0 }) : { error: body.error || "Pairing failed." };
     } catch {
       return { error: "No connection to the game." };
     }
   }
   function goSolo() {
-    solo = !0, state = state || blank(), writeLocal();
+    solo = !0, state2 = state2 || blank(), writeLocal();
   }
   async function pull() {
     var _a;
     try {
-      let res = await fetch("./api/save", { headers: { Authorization: "Bearer ".concat(token) } });
+      let res = await fetch("./api/save", { headers: { Authorization: "Bearer ".concat(token2) } });
       if (!res.ok) {
-        res.status === 401 && (token = null, writeLocal());
+        res.status === 401 && (token2 = null, writeLocal());
         return;
       }
       let body = await res.json();
-      (_a = body.save) != null && _a.club && (state = { ...body.save, club: { ...blank().club, ...body.save.club } }, lastSync = Date.now(), writeLocal());
+      (_a = body.save) != null && _a.club && (state2 = { ...body.save, club: { ...blank().club, ...body.save.club } }, lastSync = Date.now(), writeLocal());
     } catch {
     }
   }
   var pushT = null;
   function push() {
-    writeLocal(), token && (clearTimeout(pushT), pushT = setTimeout(async () => {
+    writeLocal(), token2 && (clearTimeout(pushT), pushT = setTimeout(async () => {
       try {
         await fetch("./api/save", {
           method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer ".concat(token) },
-          body: JSON.stringify({ save: state })
+          headers: { "Content-Type": "application/json", Authorization: "Bearer ".concat(token2) },
+          body: JSON.stringify({ save: state2 })
         }), lastSync = Date.now();
       } catch {
       }
     }, 1200));
   }
   function stat(key) {
-    state.club.watchStats || (state.club.watchStats = { packs: 0, wins: 0 }), state.club.watchStats[key] = (state.club.watchStats[key] | 0) + 1, push();
+    state2.club.watchStats || (state2.club.watchStats = { packs: 0, wins: 0 }), state2.club.watchStats[key] = (state2.club.watchStats[key] | 0) + 1, push();
   }
   var DAILY = [
     { apex: 300 },
@@ -11940,29 +12359,42 @@
     { pack: "gold", apex: 1e3 }
   ], today2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   function dailyStatus() {
-    let t = today2(), y = new Date(Date.now() - 864e5).toISOString().slice(0, 10), d2 = state.club.daily || (state.club.daily = { last: null, streak: 0, best: 0, claimedOn: null });
+    let t = today2(), y = new Date(Date.now() - 864e5).toISOString().slice(0, 10), d2 = state2.club.daily || (state2.club.daily = { last: null, streak: 0, best: 0, claimedOn: null });
     d2.last !== t && (d2.streak = d2.last === y ? d2.streak + 1 : 1, d2.last = t, d2.best = Math.max(d2.best | 0, d2.streak), push());
     let day2 = (d2.streak - 1) % 7 + 1;
     return { day: day2, streak: d2.streak, claimable: d2.claimedOn !== t, reward: DAILY[day2 - 1] };
   }
   function claimDaily() {
     let st = dailyStatus();
-    return st.claimable ? (state.club.daily.claimedOn = today2(), st.reward.apex && (state.club.apex = (state.club.apex || 0) + st.reward.apex), st.reward.pack && (state.club.packs = state.club.packs || []).push(st.reward.pack), state.club.season || (state.club.season = { id: null, xp: 0, claimed: [] }), state.club.season.xp = (state.club.season.xp | 0) + 50, push(), st.reward) : null;
+    return st.claimable ? (state2.club.daily.claimedOn = today2(), st.reward.apex && (state2.club.apex = (state2.club.apex || 0) + st.reward.apex), st.reward.pack && (state2.club.packs = state2.club.packs || []).push(st.reward.pack), state2.club.season || (state2.club.season = { id: null, xp: 0, claimed: [] }), state2.club.season.xp = (state2.club.season.xp | 0) + 50, push(), st.reward) : null;
   }
   function earn(apex) {
-    state.club.apex = Math.max(0, (state.club.apex || 0) + apex), push();
+    state2.club.apex = Math.max(0, (state2.club.apex || 0) + apex), push();
   }
   function buy(pack) {
-    state.club.apex = Math.max(0, (state.club.apex || 0) - pack.cost), pack.cost === 0 && (state.club.freeAt = Date.now() + FREE_MS), push();
+    state2.club.apex = Math.max(0, (state2.club.apex || 0) - pack.cost), pack.cost === 0 && (state2.club.freeAt = Date.now() + FREE_MS), push();
   }
   function consume(packId) {
-    let i = (state.club.packs || []).indexOf(packId);
-    i >= 0 && state.club.packs.splice(i, 1), push();
+    let i = (state2.club.packs || []).indexOf(packId);
+    i >= 0 && state2.club.packs.splice(i, 1), push();
   }
   function addCards(drawn) {
-    let coll = new Set(state.club.collection || []);
+    let coll = new Set(state2.club.collection || []);
     for (let { p, dup } of drawn) dup || coll.add(p.id);
-    state.club.collection = [...coll], state.club.packsOpened = (state.club.packsOpened || 0) + 1, state.club.watchStats || (state.club.watchStats = { packs: 0, wins: 0 }), state.club.watchStats.packs = (state.club.watchStats.packs | 0) + 1, push();
+    state2.club.collection = [...coll], state2.club.packsOpened = (state2.club.packsOpened || 0) + 1, state2.club.watchStats || (state2.club.watchStats = { packs: 0, wins: 0 }), state2.club.watchStats.packs = (state2.club.watchStats.packs | 0) + 1, push();
+  }
+  var guildCache = { at: 0, view: null };
+  async function guild() {
+    if (!token2) return null;
+    if (Date.now() - guildCache.at < 6e4) return guildCache.view;
+    try {
+      let res = await fetch("./api/guild", { headers: { Authorization: "Bearer ".concat(token2) } });
+      if (!res.ok) return null;
+      let v = await res.json();
+      return guildCache = { at: Date.now(), view: v != null && v.guild ? v : null }, guildCache.view;
+    } catch {
+      return null;
+    }
   }
 
   // js/watch/app.js
@@ -12010,10 +12442,13 @@
     })(), "\n    ").concat((() => {
       let ev = activeEvent();
       return ev ? '<div class="w-ev" style="--ev:'.concat(ev.theme || "#22c55e", '"><span>This week</span><b>').concat(ev.name, "</b></div>") : "";
-    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, "</b></div>") : "", "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
+    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div id="wGuild"></div>\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, "</b></div>") : "", "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
       var _a2;
       return '\n        <div class="w-mini" style="--rar:'.concat(((_a2 = RARITY[p.rarity]) == null ? void 0 : _a2.color) || "#888", '">\n          <b>').concat(p.overall, "</b><span>").concat(p.position, "</span><em>").concat(p.short, "</em>\n        </div>");
-    }).join(""), "</div>") : "", '\n    <div class="w-row"><span>Synced</span><b>').concat(syncLabel(), "</b></div>\n  ")), (_a = app.querySelector("#wDaily")) == null || _a.addEventListener("click", () => {
+    }).join(""), "</div>") : "", '\n    <div class="w-row"><span>Synced</span><b>').concat(syncLabel(), "</b></div>\n  ")), guild().then((g) => {
+      let el = app.querySelector("#wGuild");
+      !el || !(g != null && g.guild) || (el.innerHTML = '\n      <p class="w-title" style="margin-top:8px">'.concat(g.guild.name).concat(g.rank ? " · #".concat(g.rank) : "", "</p>\n      ").concat((g.objectives || []).map((o) => '\n        <div class="w-obj '.concat(o.complete ? "done" : "", '">\n          <span>').concat(o.text, "</span>\n          <b>").concat(o.claimed ? "✓" : "".concat(o.have, "/").concat(o.need), '</b>\n          <i style="width:').concat(Math.round(100 * Math.min(1, o.have / o.need)), '%"></i>\n        </div>')).join("")));
+    }), (_a = app.querySelector("#wDaily")) == null || _a.addEventListener("click", () => {
       claimDaily() && (buzz2([12, 40, 20]), clubScreen());
     });
   }

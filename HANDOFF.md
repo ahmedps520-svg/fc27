@@ -110,7 +110,17 @@ Everything below is on the local machine only.
   server, three sockets). i18n is untouched for the new screens (English).
 - **Watch**: `.w-venue` thumbnail + ground name on the match card; guild
   objectives on the Club glance (`store.guild()`, 60 s cache); bundle rebuilt.
-- **Perf**: gl-scan dusk + night clean (0 black pixels). __FPS__
+- **Perf**: gl-scan dusk + night clean (0 black pixels).
+- **Frame cost, SwiftShader 844×390** (software GL; ratios and scene counts
+  are what transfer): min p95 283 ms (323 calls, 98k tris) · low 933 ms (348,
+  232k) · medium 983 ms (1013, 660k) · high 1200 ms (1028, 940k) · ultra
+  4166 ms (1078, 2.1M) · cinema 5600 ms (1078, 2.1M, DOF + god rays at 2.5–3×
+  ratio). Rain: medium 967 ms (1014) · ultra 3583 ms (2150 calls, 4.2M — the
+  reflection pass doubles the scene) · cinema 8337 ms (2159, 4.2M). Against
+  v71, Medium is +6 % draw calls / +2 % triangles and the same frame time
+  within noise — the boot particles and trample map are High+, faces are
+  High+ (gated this round), god rays and haze are High+. Cinema costs 29× min
+  in the clear and 14× Medium in the rain; it is desktop-only by design.
 - Not done / next: match renderer on WebGPU (TSL port of the turf/crowd/cine
   passes); per-seat crowd is still the instanced sway + arms (no individual
   seated→standing animation); the builder's designs are per save, not per
