@@ -2,7 +2,7 @@ import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
 } from './pools.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, NATION_COLORS } from './realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, NATION_COLORS } from './realPlayers.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — the same world is generated on every load so saved
@@ -231,6 +231,26 @@ const SBC_LEGENDS = [
   ['Frank Lampard', 'F. Lampard', 'England', 'CAM', 88, 28],
   ['Philipp Lahm', 'P. Lahm', 'Germany', 'RB', 88, 28],
   ['Carles Puyol', 'C. Puyol', 'Spain', 'CB', 88, 29],
+];
+
+/* v73: sixteen more, for the sixth wave of SBCs (challenges.js). */
+const SBC_LEGENDS_2 = [
+  ['Francesco Totti', 'F. Totti', 'Italy', 'CAM', 92, 30],
+  ['Ronaldo Nazário', 'Ronaldo', 'Brazil', 'ST', 94, 25],
+  ['Fabio Cannavaro', 'F. Cannavaro', 'Italy', 'CB', 91, 32],
+  ['Xavi', 'Xavi', 'Spain', 'CM', 91, 30],
+  ['Edwin van der Sar', 'E. v. d. Sar', 'Netherlands', 'GK', 90, 34],
+  ['Kaká', 'Kaká', 'Brazil', 'CAM', 90, 25],
+  ['Lilian Thuram', 'L. Thuram', 'France', 'RB', 89, 30],
+  ['Javier Zanetti', 'J. Zanetti', 'Argentina', 'LB', 89, 32],
+  ['Alessandro Nesta', 'A. Nesta', 'Italy', 'CB', 89, 28],
+  ['Patrick Vieira', 'P. Vieira', 'France', 'CDM', 89, 28],
+  ['Samuel Eto\'o', 'S. Eto\'o', 'Cameroon', 'ST', 89, 27],
+  ['Rivaldo', 'Rivaldo', 'Brazil', 'LW', 89, 28],
+  ['Michael Ballack', 'M. Ballack', 'Germany', 'CM', 88, 29],
+  ['Fernando Torres', 'F. Torres', 'Spain', 'ST', 88, 25],
+  ['David Villa', 'D. Villa', 'Spain', 'ST', 88, 28],
+  ['Ruud van Nistelrooy', 'R. v. Nistelrooy', 'Netherlands', 'ST', 88, 28],
 ];
 
 /* The original ten. Every generation loop below runs over these and only
@@ -611,6 +631,32 @@ function buildWorld() {
     freeAgents.push(p.id);
   }
   nameTheWorld(w5Players, REAL_PLAYERS_WAVE5);
+
+  /* ------------------------------ the sixth wave ------------------------------ *
+   * v73: 700 more free agents for the packs, and sixteen more legends for the
+   * new SBCs. Both on their own streams, appended after everything, so every
+   * id above — and every card in every save — stays exactly where it was. */
+  const w6 = makeRand(WORLD_SEED ^ 0x6c6c73);
+  const w6Players = [];
+  for (let i = 0; i < 700; i++) {
+    const p = makePlayer(w6, w6.pick(W3_POOL), w6.around(70, 10), null);
+    players.push(p); w6Players.push(p);
+    freeAgents.push(p.id);
+  }
+  nameTheWorld(w6Players, REAL_PLAYERS_WAVE6);
+  const sbc2 = makeRand(WORLD_SEED ^ 0x5bc6);
+  for (const [name, short, nation, pos, overall, age] of SBC_LEGENDS_2) {
+    const p = makePlayer(sbc2, pos, overall, null);
+    p.name = name; p.short = short; p.nation = nation; p.age = age;
+    p.nationColors = NATION_COLORS[nation] || p.nationColors;
+    p.overall = overall;
+    for (const k of Object.keys(p.stats)) p.stats[k] = clamp(Math.round(p.stats[k] + (overall - 80) * 0.6), 40, 99);
+    p.rarity = 'special';
+    p.sbc = true;
+    p.value = marketValue(overall, age);
+    players.push(p);
+    sbcCards.push(p.id);
+  }
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
 

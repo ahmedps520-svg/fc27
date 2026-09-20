@@ -11,6 +11,7 @@ import * as tourney from '../tournament.js';
 import { getState } from '../state.js';
 import { flagSVG } from '../components/crest.js';
 import { stadiumFor } from '../data/stadiums.js';
+import { cardStrip } from '../components/playerCard.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { t } from '../i18n.js';
 
@@ -20,7 +21,12 @@ let tab = 0;
 
 function tableHTML(div) {
   const n = div.table.length;
+  // the faces of the division above its numbers: the four best players in it
+  const stars = div.table.map((row) => WORLD.clubsById[row.id]).filter(Boolean)
+    .flatMap((c) => c.roster.map((id) => WORLD.playersById[id])).filter(Boolean)
+    .sort((x, y) => y.overall - x.overall).slice(0, 4);
   return `
+    ${cardStrip(stars, { size: 'mini', cls: 'wstars' })}
     <table class="wtable">
       <thead><tr><th>#</th><th class="club">${t('world.club')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th class="form">${t('world.form')}</th></tr></thead>
       <tbody>
@@ -144,9 +150,7 @@ function nationDetailHTML(nation) {
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>${flagSVG(sq.colors, 24)} ${nation}</h2><span class="ph-sub">Rated ${sq.rating}</span></header>
-      <div class="wxi">
-        ${sq.xi.map((p) => `<div class="wxi-row"><span class="wxi-pos">${p.position}</span><b>${p.name}</b><span class="wxi-club">${p.clubId ? WORLD.clubsById[p.clubId].short : 'Free agent'}</span><span class="wn-ovr">${p.overall}</span></div>`).join('')}
-      </div>
+      ${cardStrip(sq.xi, { size: 'mini', cls: 'wxi-cards' })}
       <div class="wfix" style="margin-top:12px">
         <div class="wfix-row"><span>Friendly against</span>
           <select id="natOpp">${others.map((n) => `<option value="${n.nation}">${n.nation} (${n.rating})</option>`).join('')}</select>

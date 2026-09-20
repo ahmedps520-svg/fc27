@@ -13,6 +13,7 @@ import { ultimateSquad, chemistryFor } from './squad.js';
 import { DIVISIONS } from '../state.js';
 import { weekendWindow, currentWeekend, matchesLeft, rankFor, RANKS, WL_MATCHES, untilText } from '../weekend.js';
 import { rewardText } from '../data/season.js';
+import { packArt } from '../components/packArt.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { apiURL } from '../net/config.js';
 import { WORLD } from '../data/generator.js';
@@ -53,7 +54,7 @@ export function render() {
       <section class="panel glass">
         <header class="panel-head"><h2>Ranks</h2></header>
         <div class="wl-ranks">
-          ${RANKS.map((r) => `<div class="wl-rank ${rank === r ? 'on' : ''}"><b>${r.name}</b><span>${r.wins}+ wins</span><em>${rewardText({ apex: r.apex, ultimate: r.ultimate })} · ${r.packs.join(' + ')}</em></div>`).join('')}
+          ${RANKS.map((r) => `<div class="wl-rank ${rank === r ? 'on' : ''}"><b>${r.name}</b><span>${r.wins}+ wins</span><em>${rewardText({ apex: r.apex, ultimate: r.ultimate })}</em><span class="wl-packs">${r.packs.map((id) => packArt(id, { size: 'xs', label: false })).join('')}</span></div>`).join('')}
         </div>
       </section>
       <section class="panel glass" id="wlBoard">

@@ -7,16 +7,16 @@ import { eventPack, activeEvent } from '../live.js';
 import { evolveInfo, evolve } from '../evolve.js';
 import {
   PACKS, PACK_BY_ID, packTone, RARITY_RANK, rollRarity, drawPlayer, openPack, dupValue,
-  FREE_MS, fmtLeft, hasKeeper,
-} from '../data/packs.js';
+  FREE_MS, fmtLeft, hasKeeper, samplePulls, nationOfWeek } from '../data/packs.js';
 
 /** The player ids a pull would be a repeat of: the collection as it stands. */
 const ownedIds = () => new Set(getState().club.collection);
-import { CHALLENGES, challengeById, evaluate } from '../data/challenges.js';
+import { CHALLENGES, challengeById, evaluate, sizeOf, GROUPS as SBC_GROUPS, groupOf } from '../data/challenges.js';
 import { PRESETS } from '../game/sim.js';
 import { divisionOpponent, divisionSkill } from '../ultimate.js';
 import { screenHead } from '../components/screenHead.js';
-import { playerCard, radarSVG, fmtMoney } from '../components/playerCard.js';
+import { playerCard, radarSVG, fmtMoney, cardStrip } from '../components/playerCard.js';
+import { packArt } from '../components/packArt.js';
 import { crestSVG, flagSVG, CREST_PARTS } from '../components/crest.js';
 import { toast, refreshCoins, navigate } from '../app.js';
 import { sfx } from '../audio.js';
@@ -371,11 +371,12 @@ export function storeView() {
           </span>
           <i class="sp-foil" aria-hidden="true"></i>
         </div>
-        <b class="sp-name">${p.name}</b>
+        <b class="sp-name">${p.weekly ? `${p.name}: ${nationOfWeek()}` : p.name}</b>
         <span class="sp-note">${p.note}</span>
         ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
         ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
         <span class="sp-odds">${oddsLine(p)}</span>
+        <span class="sp-could">Could pull</span>${cardStrip(samplePulls(p, 3), { size: 'mini', cls: 'sp-strip' })}
         <!-- last child on purpose: the auto top margin on the button is what
              lines every price in a shelf up on one baseline -->
         <button class="btn ${locked || (free && !freeReady) ? 'ghost' : 'primary'}"
@@ -521,11 +522,14 @@ function challengesView() {
   if (!openChallenge) {
     return `
       <section class="panel glass">
-        <header class="panel-head"><h2>Squad-Building Challenges</h2></header>
-        <p class="hint">Submit eleven cards that meet the conditions. They are
-          spent — this is what a duplicate is really for.</p>
-        <div class="sbc-list">
-          ${CHALLENGES.map((c) => {
+        <header class="panel-head"><h2>SBC <small>Squad Building Challenges</small></h2></header>
+        <p class="hint">Submit cards that meet the conditions and they are
+          spent — this is what a duplicate is really for. The quick ones take
+          a handful of cards; the legends take eleven.</p>
+        ${SBC_GROUPS.map(([g, title, blurb]) => `
+        <h3 class="sbc-group"><span>${title}</span><small>${blurb}</small></h3>
+        <div class="sbc-list sbc-${g}">
+          ${CHALLENGES.filter((c) => groupOf(c) === g).map((c) => {
             const done = doneIds.has(c.id) && !c.repeatable;
             return `
               <article class="sbc ${done ? 'done' : ''}">
@@ -535,10 +539,10 @@ function challengesView() {
                   <ul class="sbc-reqs">${c.reqs.map((r) => `<li>${r.text}</li>`).join('')}</ul>
                 </div>
                 <div class="sbc-side">
+                  ${c.reward.card ? (() => { const legend = WORLD.sbcCards.map(getPlayer).find((p) => p && p.name === c.reward.card); return legend ? `<div class="sbc-legend">${playerCard(legend, { size: 'mini' })}</div>` : `<span class="sbc-card">★ ${c.reward.card}</span>`; })() : ''}
                   <span class="sbc-reward">◈ ${c.reward.apex.toLocaleString()}</span>
                   ${c.reward.ultimate ? `<span class="sbc-reward ult">✦ ${c.reward.ultimate}</span>` : ''}
-                  <span class="sbc-pack">${c.reward.pack} pack</span>
-                  ${c.reward.card ? `<span class="sbc-card">★ ${c.reward.card}</span>` : ''}
+                  ${packArt(c.reward.pack, { size: 'xs' })}
                   ${done
                     ? '<span class="sbc-tick">Completed</span>'
                     : `<button class="btn primary" data-sbc="${c.id}">Start</button>`}
@@ -546,7 +550,7 @@ function challengesView() {
                 </div>
               </article>`;
           }).join('')}
-        </div>
+        </div>`).join('')}
       </section>`;
   }
 
@@ -573,7 +577,7 @@ function challengesView() {
       </div>
 
       <div class="sbc-tray" id="sbcTray">
-        ${Array.from({ length: 11 }, (_, i) => {
+        ${Array.from({ length: sizeOf(openChallenge) }, (_, i) => {
           const p = cards[i];
           const r = p ? RARITY[p.rarity] : null;
           return `
@@ -590,7 +594,7 @@ function challengesView() {
 
       <div class="sbc-actions">
         <button class="btn ${ok ? 'primary' : 'ghost'}" id="sbcSubmit" ${ok ? '' : 'disabled'}>
-          ${ok ? 'Submit and claim' : `${cards.length}/11 — conditions not met`}
+          ${ok ? 'Submit and claim' : `${cards.length}/${sizeOf(openChallenge)} — conditions not met`}
         </button>
         <button class="btn ghost" id="sbcClear">Clear</button>
       </div>
@@ -1111,7 +1115,7 @@ export function mount(root) {
 
     root.querySelector('#sbcPool')?.addEventListener('click', (e) => {
       const card = e.target.closest('[data-submit]');
-      if (!card || submission.length >= 11) return;
+      if (!card || submission.length >= sizeOf(openChallenge)) return;
       submission.push(card.dataset.submit);
       refresh();
     });

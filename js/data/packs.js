@@ -13,8 +13,15 @@ import { WORLD, getPlayer } from './generator.js';
 import { RARITY } from './pools.js';
 import { price } from '../economy.js';
 
+/** The nation the Nations Week pack is drawn from: one of twelve, rotating weekly. */
+const WEEK_NATIONS = ['France', 'Brazil', 'England', 'Spain', 'Argentina', 'Germany', 'Italy', 'Portugal', 'Netherlands', 'Saudi Arabia', 'Morocco', 'Belgium'];
+export const nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 604_800_000) % WEEK_NATIONS.length];
+
 export const PACKS = [
   { id: 'bronze', cat: 'free',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
+  /* v73: SBC fodder. Six cheap bodies — bronzes and silvers — for the quick
+     SBCs, priced so a pack is always worth less than the challenge it feeds. */
+  { id: 'fodder', cat: 'standard', name: 'SBC Fodder', cost: 1500, size: 6, odds: { bronze: 0.62, silver: 0.34, gold: 0.04, special: 0.00 }, tone: 'bronze', note: '6 cards · for SBCs' },
   { id: 'silver', cat: 'standard',  name: 'Silver',  cost: 2000,  size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: '4 cards' },
   /* Sold for what it does, not what it rolls. A squad cannot be fielded without
      a keeper, and the odds of one turning up in a four-card pack are about one
@@ -54,6 +61,10 @@ export const PACKS = [
     note: '6 · silver min',
   },
   { id: 'gold', cat: 'standard',    name: 'Gold',    cost: 7500,  size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: 'gold', note: '5 · gold min' },
+  /* v73: packs by position and by age, at the Keeper pack's price point. */
+  { id: 'youth', cat: 'standard', name: 'Youth Academy', cost: 6000, size: 3, odds: { bronze: 0.10, silver: 0.50, gold: 0.38, special: 0.02 }, filter: { maxAge: 21 }, floor: 'silver', tone: 'silver', note: '3 · aged 21 or under', promise: 'Every card 21 or under' },
+  { id: 'defence', cat: 'standard', name: 'Back Four', cost: 6000, size: 4, odds: { bronze: 0.10, silver: 0.50, gold: 0.38, special: 0.02 }, filter: { positions: ['CB', 'LB', 'RB'] }, floor: 'silver', tone: 'keeper', note: '4 · defenders only', promise: 'Four defenders' },
+  { id: 'midfield', cat: 'standard', name: 'Engine Room', cost: 6000, size: 3, odds: { bronze: 0.10, silver: 0.50, gold: 0.38, special: 0.02 }, filter: { positions: ['CDM', 'CM', 'CAM', 'LM', 'RM'] }, floor: 'silver', tone: 'silver', note: '3 · midfielders only', promise: 'Three midfielders' },
   /* The bulk option, and the only pack that pays for the gap between Gold and
      Prime. Eight cards at Gold-ish odds is worse per card than Prime and far
      better per Apex — it is the one to buy when a squad-building challenge wants
@@ -83,6 +94,10 @@ export const PACKS = [
     promise: '1 guaranteed Special',
   },
   { id: 'prime', cat: 'premium',   name: 'Prime',   cost: 30000, size: 3, odds: { bronze: 0.00, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: 'special', note: '3 · 82+ min' },
+  /* v73: a division's own pack, the nation of the week, and the biggest bulk pack in the store. */
+  { id: 'premier', cat: 'premium', name: 'Premier Pick', cost: 14000, size: 3, odds: { bronze: 0.00, silver: 0.14, gold: 0.74, special: 0.12 }, filter: { leagues: ['Apex Premier Division'] }, floor: 'gold', tone: 'gold', note: '3 · top division only', promise: 'Every card from the Apex Premier Division' },
+  { id: 'nations', cat: 'premium', name: 'Nations Week', cost: 12000, size: 3, odds: { bronze: 0.00, silver: 0.20, gold: 0.70, special: 0.10 }, filter: { nationOfWeek: true }, floor: 'gold', tone: 'gold', note: '3 · one nation', promise: 'This week: the nation on the shelf', weekly: true },
+  { id: 'mega', cat: 'premium', name: 'Mega', cost: 20000, size: 12, odds: { bronze: 0.06, silver: 0.36, gold: 0.52, special: 0.06 }, floor: 'gold', tone: 'gold', note: '12 · gold min', promise: 'A dozen cards in one reveal' },
   /* The other end of Lucky Dip: one card, no floor, no guarantee, and odds
      that are genuinely top-heavy. It is the most volatile thing in the store —
      a quarter of the time it is the best single card you can buy without
@@ -131,6 +146,8 @@ export const PACKS = [
   /* The top of the objective ladder pays this, and almost nothing else does.
      It is in the store so it has a stated price, but 200,000 Apex is roughly
      forty division wins — the intended way to hold one is to earn it. */
+  /* v73: four cards with a Star in them, between the Stars pack and the Icons. */
+  { id: 'wonder', cat: 'limited', name: 'Limited: Wonder', cost: 90000, size: 4, limited: true, guarantee: 'star', odds: { bronze: 0.00, silver: 0.00, gold: 0.34, special: 0.66 }, minOverall: 84, note: '4 cards · 84+ min', promise: '1 guaranteed Star · 84+ throughout' },
   {
     id: 'legend', cat: 'limited', name: 'Limited: Legends', cost: 200000, size: 5, limited: true,
     guarantee: 'icon',
@@ -217,6 +234,8 @@ export function filterOf(f) {
     && (!f.leagues || (p.clubId && f.leagues.includes(WORLD.clubsById[p.clubId]?.league)))
     && (!f.clubs || f.clubs.includes(p.clubId))
     && (!f.positions || f.positions.includes(p.position))
+    && (!f.maxAge || p.age <= f.maxAge)
+    && (!f.nationOfWeek || p.nation === nationOfWeek())
     && (!f.minOverall || p.overall >= f.minOverall);
 }
 
@@ -286,6 +305,27 @@ export function openPack(pack, seen = new Set(), needGK = false) {
     pulls[at] = draw(pack.guarantee);
   }
   return pulls;
+}
+
+/**
+ * Three cards a pack could hand you — the picture on the shelf. The best of
+ * what its scope and floor allow, dealt fresh each day so the shelf changes,
+ * never the same three the store showed yesterday. Deterministic, so the
+ * store does not reshuffle on every render.
+ */
+export function samplePulls(pack, n = 3, day = Math.floor(Date.now() / 86_400_000)) {
+  const scope = filterOf(pack.filter) || (() => true);
+  const rank = RARITY_RANK[pack.guarantee || pack.floor || 'gold'] ?? 2;
+  const pool = WORLD.players.filter((p) => !p.sbc && scope(p) && (RARITY_RANK[p.rarity] ?? 0) >= rank
+    && (!pack.minOverall || p.overall >= pack.minOverall));
+  if (!pool.length) return [];
+  pool.sort((a, b) => b.overall - a.overall);
+  const top = pool.slice(0, Math.min(pool.length, 24));
+  let h = 2166136261;
+  for (const ch of `${pack.id}|${day}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const out = [];
+  while (out.length < n && top.length) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; out.push(top.splice(h % top.length, 1)[0]); }
+  return out;
 }
 
 /** Exposed so the pack odds can be measured against the real draw code. */

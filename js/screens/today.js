@@ -9,7 +9,9 @@ import { getState, update } from '../state.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { sfx } from '../audio.js';
 import { screenHead } from '../components/screenHead.js';
-import { PACK_BY_ID } from '../data/packs.js';
+import { PACK_BY_ID, samplePulls } from '../data/packs.js';
+import { playerCard, cardStrip } from '../components/playerCard.js';
+import { packArt } from '../components/packArt.js';
 import { WORLD } from '../data/generator.js';
 import { activeEvent, eventKey, eventEndsAt, season, eventPack } from '../live.js';
 import { TIER_XP, TIERS, rewardText, tierOf } from '../data/season.js';
@@ -52,9 +54,9 @@ function eventPanel(s) {
     <section class="panel glass ev-card" style="--ev:${ev.theme || 'var(--accent)'}">
       <header class="panel-head"><h2>${ev.name} <small>ends in ${untilText(eventEndsAt(ev))}</small></h2></header>
       <p class="hint">${ev.blurb}</p>
-      <div class="ev-row">
-        ${feat ? `<div class="ev-feat"><span class="ev-kicker">Featured card</span><b>${feat.overall + ev.featured.boost} ${feat.short}</b><span>${feat.position} · +${ev.featured.boost} evolved · ${Math.round(ev.featured.chance * 100)}% in the ${pack?.name || 'event pack'}</span></div>` : ''}
-        ${pack ? `<button class="btn primary" data-go="store">${pack.name} · ◈ ${pack.cost.toLocaleString()}</button>` : ''}
+      <div class="ev-showcase">
+        ${feat ? `<div class="ev-feat-card">${playerCard({ ...feat, overall: feat.overall + ev.featured.boost }, { size: 'showcase' })}<span class="ev-kicker">Featured · +${ev.featured.boost} evolved · ${Math.round(ev.featured.chance * 100)}% in the ${pack?.name || 'event pack'}</span></div>` : ''}
+        ${pack ? `<div class="ev-pack-side">${packArt(pack, { size: 'md' })}<span class="ev-kicker">In the pack this week</span>${cardStrip(samplePulls(pack, 3))}<button class="btn primary" data-go="store">${pack.name} · ◈ ${pack.cost.toLocaleString()}</button></div>` : ''}
       </div>
       <div class="obj-list">
         ${(ev.objectives || []).map((o) => {
@@ -127,7 +129,7 @@ function objectivesPanel(s) {
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>Objectives <small>${(u.objClaimed || []).length} done</small></h2></header>
-      ${open.length ? open.map((o) => `<div class="obj"><div class="obj-text"><b>${o.text}</b><span>◈ ${o.apex.toLocaleString()} · ${o.pack} pack</span></div><div class="obj-bar"><i style="width:${Math.round(100 * o.done / o.need)}%"></i></div><span class="obj-count">${o.done}/${o.need}</span></div>`).join('') : '<p class="empty">All caught up.</p>'}
+      ${open.length ? open.map((o) => `<div class="obj has-art">${packArt(o.pack, { size: 'xs', label: false })}<div class="obj-text"><b>${o.text}</b><span>◈ ${o.apex.toLocaleString()} · ${o.pack} pack</span></div><div class="obj-bar"><i style="width:${Math.round(100 * o.done / o.need)}%"></i></div><span class="obj-count">${o.done}/${o.need}</span></div>`).join('') : '<p class="empty">All caught up.</p>'}
       <button class="btn ghost" data-go="squad">All objectives →</button>
     </section>`;
 }

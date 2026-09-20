@@ -4287,3 +4287,48 @@ html.large-text .tile-name { font-size: 27px; }
 }
 .rotate-hint .btn { margin-top: 14px; }
 .tpad { padding-left: max(12px, env(safe-area-inset-left)); }
+
+/* ------------------------- Cards where there was text ------------------------- */
+.pc-showcase { padding: 14px; width: 210px; }
+.pc-showcase .pc-ovr { font-size: 40px; }
+.pc-showcase .pc-name { font-size: 16px; text-align: center; margin-top: 6px; }
+.pc-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 10px; text-align: center; }
+.pc-row span { display: flex; flex-direction: column; align-items: center; }
+.pc-row i { font-style: normal; font-size: 9px; font-weight: 800; letter-spacing: .06em; color: var(--text-mute); }
+.pc-row b { font-family: var(--font-num); font-size: 15px; }
+.card-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.card-strip::-webkit-scrollbar { display: none; }
+.card-strip .pcard { flex: none; width: 118px; }
+.strip-showcase .pcard { width: 210px; }
+.wstars { margin-bottom: 10px; }
+.wxi-cards { flex-wrap: wrap; overflow: visible; }
+.ev-showcase { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin: 6px 0 12px; }
+.ev-feat-card { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.ev-pack-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.ev-pack-side .btn { align-self: flex-start; }
+.sbc-legend .pcard { width: 118px; }
+.sp-could { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-mute); margin-top: 8px; }
+.sp-strip .pcard { width: 92px; padding: 7px; }
+.sp-strip .pc-ovr { font-size: 20px; }
+.sp-strip .pc-name { font-size: 10.5px; }
+.sp-strip .pc-foot, .sp-strip .pc-rar-tag { display: none; }
+.obj.has-art { grid-template-columns: auto 1fr auto; }
+.wl-packs { display: inline-flex; gap: 4px; margin-inline-start: 6px; }
+/* the pack as a picture, at three sizes */
+.pack-art { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; vertical-align: middle; }
+.pack-art b { font-size: 11px; }
+.pack-art .sp-art { margin-bottom: 0; }
+.pack-art-md .sp-art { width: 96px; height: 120px; }
+.pack-art-sm .sp-art { width: 58px; height: 72px; transform-origin: top; }
+.pack-art-sm .sp-mark, .pack-art-xs .sp-mark { font-size: 9px; }
+.pack-art-sm .sp-count, .pack-art-xs .sp-count { font-size: 8px; }
+.pack-art-xs .sp-art { width: 34px; height: 44px; }
+.pack-art-xs .sp-fan { display: none; }
+.pack-art.rar-bronze { --pk: #c88a4a; } .pack-art.rar-silver { --pk: #b9c4d0; } .pack-art.rar-gold { --pk: #f4c95d; }
+.pack-art.rar-special { --pk: #ff2e88; } .pack-art.rar-star { --pk: #a06bff; } .pack-art.rar-icon { --pk: #7af7ff; }
+.pack-art.rar-keeper { --pk: #46d6a0; } .pack-art.rar-dip { --pk: #ff9f43; } .pack-art.rar-prime { --pk: #ff2e88; }
+.pack-art-md .sp-face { width: 84px; height: 120px; }
+.pack-art-sm .sp-face { width: 50px; height: 72px; border-radius: 8px; }
+.pack-art-xs .sp-face { width: 30px; height: 44px; border-radius: 6px; }
+.pack-art-sm .sp-fan i, .pack-art-md .sp-fan i { width: 44px; }
+.obj.has-art .pack-art { grid-row: 1 / 3; }
