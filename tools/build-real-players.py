@@ -6,6 +6,7 @@ WAVE3='tools/real-players-wave3.json'   # third wave (v70): the two lower divisi
 WAVE4='tools/real-players-wave4.json'   # fourth wave (v71): divisions five and six
 WAVE5='tools/real-players-wave5.json'   # fifth wave (v72): the hundred-club world
 WAVE6='tools/real-players-wave6.json'   # sixth wave (v73): more free agents and the new legends
+WAVE7='tools/real-players-wave7.json'   # seventh wave (v75): the thin countries, for Kick Off by country
 OUT='js/data/realPlayers.js'
 
 # already on the roster as Icon or Star cards
@@ -124,7 +125,15 @@ for p in wave6:
     w6seen.add(plain(p['name'])); kept.append(p)
 wave6 = kept
 random.Random(73).shuffle(wave6)
-missing = sorted({p['country'] for p in pack + extra + wave3 + wave4 + wave5 + wave6} - set(COLORS))
+seen7p = seen6p | set(w6seen)
+wave7 = [{'name': n, 'country': c, 'position': pos} for n, c, pos in json.load(open(WAVE7))]
+w7seen = set(); kept = []
+for p in wave7:
+    if plain(p['name']) in seen7p or plain(p['name']) in w7seen: continue
+    w7seen.add(plain(p['name'])); kept.append(p)
+wave7 = kept
+random.Random(74).shuffle(wave7)
+missing = sorted({p['country'] for p in pack + extra + wave3 + wave4 + wave5 + wave6 + wave7} - set(COLORS))
 if missing:
     sys.exit('no colours for: ' + ', '.join(missing))
 
@@ -139,6 +148,7 @@ wave3_rows = emit(wave3)
 wave4_rows = emit(wave4)
 wave5_rows = emit(wave5)
 wave6_rows = emit(wave6)
+wave7_rows = emit(wave7)
 cols = ',\n'.join("  '%s': ['%s', '%s']" % (k, v[0], v[1]) for k, v in sorted(COLORS.items()))
 
 open(OUT, 'w').write(f'''/**
@@ -209,6 +219,11 @@ export const REAL_PLAYERS_WAVE5 = [
 /** Sixth wave (v73): more free agents for the packs. */
 export const REAL_PLAYERS_WAVE6 = [
 {wave6_rows},
+];
+
+/** Seventh wave (v75): the countries the pool was thin on. */
+export const REAL_PLAYERS_WAVE7 = [
+{wave7_rows},
 ];
 
 /** Flag colours per country, in the same [primary, secondary] shape ICONS use. */

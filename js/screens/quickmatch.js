@@ -1,4 +1,4 @@
-import { WORLD, clubRating, rosterOf } from '../data/generator.js';
+import { WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { padCount } from '../game/input.js';
 import { PRESETS } from '../game/sim.js';
@@ -6,12 +6,21 @@ import { screenHead } from '../components/screenHead.js';
 import { navigate } from '../app.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { stadiumFor } from '../data/stadiums.js';
+import { COUNTRIES, INTERNATIONAL, countryNames, countryByName, flagOf, clubSheet, matchSquad, internationalTeams, internationalSquad } from '../data/countries.js';
+import { flagSVG } from '../components/crest.js';
 import { t } from '../i18n.js';
 
 export const TITLE = 'Kick Off';
 
-let homeIdx = 0;
-let awayIdx = 1;
+/* v75: teams are picked by country, the way a select screen should read —
+   a country (strongest first, Spain to India, then International) and a
+   club within it. `pick.home/away` = { country, idx }. */
+const pick = { home: { country: 'Spain', idx: 0 }, away: { country: 'England', idx: 0 } };
+const teamsOf = (country) => (country === INTERNATIONAL ? internationalTeams() : (countryByName(country)?.clubs || []));
+const teamOf = (side) => { const list = teamsOf(pick[side].country); return list[Math.max(0, Math.min(list.length - 1, pick[side].idx))]; };
+const sheetOf = (team) => (team.national ? (() => { const sq = internationalSquad(team); const avg = (l) => Math.round(l.reduce((t, p) => t + p.overall, 0) / Math.max(1, l.length)); const grp = { GK: 'GK', CB: 'DF', LB: 'DF', RB: 'DF', CDM: 'MF', CM: 'MF', CAM: 'MF', LM: 'MF', RM: 'MF', LW: 'FW', RW: 'FW', ST: 'FW' }; const o = avg(sq.xi); return { att: avg(sq.xi.filter((p) => grp[p.position] === 'FW')), mid: avg(sq.xi.filter((p) => grp[p.position] === 'MF')), def: avg(sq.xi.filter((p) => grp[p.position] === 'DF')), overall: o, stars: Math.max(1, Math.min(5, Math.round((o - 56) / 6))), star: sq.xi.slice().sort((a, b) => b.overall - a.overall)[0] }; })() : clubSheet(team));
+const squadFor = (side) => { const tm = teamOf(side); return tm.national ? internationalSquad(tm) : matchSquad(tm); };
+const crestFor = (team) => ({ shape: team.shape || 'shield', pattern: team.national ? 'halves' : 'solid', device: 'star', colors: team.colors });
 let duration = 240;
 let skill = 1;
 let mode = 'single';       // single | versus | coop
@@ -24,98 +33,74 @@ const MODES = () => [
   { id: 'coop', label: t('quick.coop'), sub: t('quick.coop.sub') },
 ];
 
-/** Departmental ratings, so each card reads like a real team sheet. */
-function clubStats(clubId) {
-  const squad = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall);
-  const avg = (list, key) => (list.length
-    ? Math.round(list.reduce((s, p) => s + (key ? p.stats[key] : p.overall), 0) / list.length)
-    : 0);
-  const att = squad.filter((p) => ['ST', 'LW', 'RW'].includes(p.position)).slice(0, 4);
-  const mid = squad.filter((p) => ['CM', 'CDM', 'CAM', 'LM', 'RM'].includes(p.position)).slice(0, 5);
-  const def = squad.filter((p) => ['CB', 'LB', 'RB'].includes(p.position)).slice(0, 5);
-  const overall = clubRating(clubId);
-  return {
-    att: avg(att), mid: avg(mid), def: avg(def), overall,
-    stars: Math.max(1, Math.min(5, Math.round((overall - 66) / 4))),
-  };
-}
-
-/** The name anyone would recognise: the best player on the books. */
-function talisman(clubId) {
-  return rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall)[0] || null;
-}
-
-function teamCard(idx, side) {
-  const c = WORLD.clubs[idx];
-  const s = clubStats(c.id);
-  const stars = '★'.repeat(s.stars) + '☆'.repeat(5 - s.stars);
-  const star = talisman(c.id);
+function teamCard(side) {
+  const team = teamOf(side);
+  const sh = sheetOf(team);
+  const stars = '★'.repeat(sh.stars) + '☆'.repeat(5 - sh.stars);
+  const list = teamsOf(pick[side].country);
+  const country = pick[side].country;
+  const league = team.national ? 'National team' : (countryByName(country) ? `${country} · rank ${countryByName(country).rank}` : '');
   return `
-    <div class="ts-card" style="--team:${c.crest.colors[0]};--team2:${c.crest.colors[1]}">
+    <div class="ts-country">
+      <button class="ts-arrow" data-country="${side}" data-dir="-1" aria-label="Previous country">◀</button>
+      <span class="ts-flag">${flagSVG(country === INTERNATIONAL ? ['#f4f4f4', '#0a4fa0'] : flagOf(country), 22)}</span>
+      <select class="ts-select" data-country-pick="${side}" aria-label="Country">
+        ${countryNames().map((n) => `<option value="${n}" ${n === country ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+      <button class="ts-arrow" data-country="${side}" data-dir="1" aria-label="Next country">▶</button>
+    </div>
+    <div class="ts-card" style="--team:${team.colors[0]};--team2:${team.colors[1]}">
       <div class="ts-head">
-        <div class="ts-name">${c.name}</div>
-        <div class="ts-meta">Est. ${c.founded} · ${c.ground} · ${(stadiumFor(c).capacity / 1000).toFixed(0)}k</div>
+        <div class="ts-name">${team.name}</div>
+        <div class="ts-meta">${league}</div>
       </div>
       <div class="ts-crest-row">
-        <button class="ts-arrow" data-cycle="${side}" data-dir="-1" aria-label="Previous club">◀</button>
-        <div class="ts-crest">${crestSVG(c.crest, c.short, 128)}</div>
-        <button class="ts-arrow" data-cycle="${side}" data-dir="1" aria-label="Next club">▶</button>
+        <button class="ts-arrow" data-cycle="${side}" data-dir="-1" aria-label="Previous team">◀</button>
+        <div class="ts-crest">${crestSVG(crestFor(team), team.short, 128)}</div>
+        <button class="ts-arrow" data-cycle="${side}" data-dir="1" aria-label="Next team">▶</button>
       </div>
       <div class="ts-stars">${stars}</div>
       <div class="ts-stats">
-        <div><span>ATT</span><b>${s.att}</b></div>
-        <div><span>MID</span><b>${s.mid}</b></div>
-        <div><span>DEF</span><b>${s.def}</b></div>
-        <div class="ovr"><span>OVR</span><b>${s.overall}</b></div>
+        <div><span>ATT</span><b>${sh.att}</b></div>
+        <div><span>MID</span><b>${sh.mid}</b></div>
+        <div><span>DEF</span><b>${sh.def}</b></div>
+        <div class="ovr"><span>OVR</span><b>${sh.overall}</b></div>
       </div>
-      ${star ? `
+      ${sh.star ? `
         <div class="ts-star">
           <span class="tss-kicker">Talisman</span>
-          <b>${star.name}</b>
-          <span class="tss-pos">${star.position}</span>
-          <span class="tss-ovr">${star.overall}</span>
+          <b>${sh.star.name}</b>
+          <span class="tss-pos">${sh.star.position}</span>
+          <span class="tss-ovr">${sh.star.overall}</span>
         </div>` : ''}
-      <div class="ts-kit" title="Club colours">
-        <i style="background:${c.crest.colors[0]}"></i>
-        <i style="background:${c.crest.colors[1]}"></i>
-        <span>${c.league}</span>
+      <div class="ts-kit" title="Colours">
+        <i style="background:${team.colors[0]}"></i>
+        <i style="background:${team.colors[1]}"></i>
+        <span>${list.length} ${team.national ? 'nations' : 'clubs'}</span>
       </div>
     </div>`;
 }
 
-/**
- * Every club, as a row of badges. The arrows are still there, but stepping one
- * at a time through ten clubs to reach the one you want is the sort of thing
- * that only survives because nobody sat down and used it.
- */
-function clubRail(side, idx, otherIdx) {
-  // forty clubs, one row per division, so the rail still reads at a glance
-  return WORLD.leagues.map((league, d) => `
-    <div class="ts-rail" role="listbox" aria-label="${league}">
-      <span class="ts-rail-tag" title="${league}">${d + 1}</span>
-      ${WORLD.clubs.map((c, i) => (c.league !== league ? '' : `
-        <button class="ts-chip ${i === idx ? 'on' : ''}" data-pick="${side}" data-idx="${i}"
-                ${i === otherIdx ? 'disabled aria-disabled="true"' : ''}
-                title="${c.name}" aria-label="${c.name}"
-                style="--team:${c.crest.colors[0]}">
-          ${crestSVG(c.crest, c.short, 34)}
-        </button>`)).join('')}
-    </div>`).join('');
+/** The country's teams as a row of badges. */
+function clubRail(side) {
+  const list = teamsOf(pick[side].country);
+  const cur = pick[side].idx;
+  return `
+    <div class="ts-rail" role="listbox" aria-label="${pick[side].country}">
+      ${list.map((tm, i) => `
+        <button class="ts-chip ${i === cur ? 'on' : ''}" data-pick="${side}" data-idx="${i}"
+                title="${tm.name}" aria-label="${tm.name}" style="--team:${tm.colors[0]}">
+          ${crestSVG(crestFor(tm), tm.short, 34)}
+        </button>`).join('')}
+    </div>`;
 }
 
-/**
- * Head to head. Bars are drawn against the better of the two sides rather than
- * against 100, because every club in this league sits between 74 and 88 and
- * bars anchored at zero would all look the same length.
- */
-function h2h(hIdx, aIdx) {
-  const hc = WORLD.clubs[hIdx];
-  const ac = WORLD.clubs[aIdx];
-  const h = clubStats(hc.id);
-  const a = clubStats(ac.id);
+function h2h() {
+  const hc = teamOf('home'); const ac = teamOf('away');
+  const h = sheetOf(hc); const a = sheetOf(ac);
   const rows = [['ATT', h.att, a.att], ['MID', h.mid, a.mid], ['DEF', h.def, a.def]];
   return `
-    <div class="ts-h2h" style="--hc:${hc.crest.colors[0]};--ac:${ac.crest.colors[0]}">
+    <div class="ts-h2h" style="--hc:${hc.colors[0]};--ac:${ac.colors[0]}">
       ${rows.map(([label, x, y]) => {
     const top = Math.max(x, y) || 1;
     return `
@@ -141,14 +126,14 @@ export function render() {
     <div class="teamsel">
       <div class="ts-side ts-home">
         <span class="ts-label">${t('quick.home')}</span>
-        <div id="tsHome">${teamCard(homeIdx, 'home')}</div>
+        <div id="tsHome">${teamCard('home')}</div>
         <span class="ts-seat" id="tsSeatH"></span>
-        <div id="tsRailH">${clubRail('home', homeIdx, awayIdx)}</div>
+        <div id="tsRailH">${clubRail('home')}</div>
       </div>
 
       <div class="ts-mid">
         <span class="ts-vs">VS</span>
-        <div id="tsH2h">${h2h(homeIdx, awayIdx)}</div>
+        <div id="tsH2h">${h2h()}</div>
         <div class="ts-opt">
           <span>${t('quick.mode')}</span>
           <div class="seg col" id="modeSeg">
@@ -194,14 +179,14 @@ export function render() {
 
       <div class="ts-side ts-away">
         <span class="ts-label">${t('quick.away')}</span>
-        <div id="tsAway">${teamCard(awayIdx, 'away')}</div>
+        <div id="tsAway">${teamCard('away')}</div>
         <span class="ts-seat" id="tsSeatA"></span>
-        <div id="tsRailA">${clubRail('away', awayIdx, homeIdx)}</div>
+        <div id="tsRailA">${clubRail('away')}</div>
       </div>
 
       <div class="ts-hints">
         <span><b>✕</b> Select</span>
-        <span><b>◀ ▶</b> Change club</span>
+        <span><b>◀ ▶</b> Change team · country</span>
         <span><b>R</b> Randomise</span>
         <span class="ts-pads" id="tsPads"></span>
       </div>
@@ -230,35 +215,52 @@ export function mount(root) {
   };
 
   const paint = () => {
-    q('#tsHome').innerHTML = teamCard(homeIdx, 'home');
-    q('#tsAway').innerHTML = teamCard(awayIdx, 'away');
-    q('#tsRailH').innerHTML = clubRail('home', homeIdx, awayIdx);
-    q('#tsRailA').innerHTML = clubRail('away', awayIdx, homeIdx);
-    q('#tsH2h').innerHTML = h2h(homeIdx, awayIdx);
+    q('#tsHome').innerHTML = teamCard('home');
+    q('#tsAway').innerHTML = teamCard('away');
+    q('#tsRailH').innerHTML = clubRail('home');
+    q('#tsRailA').innerHTML = clubRail('away');
+    q('#tsH2h').innerHTML = h2h();
     seatText();
   };
+  const sameTeam = () => teamOf('home').id === teamOf('away').id;
 
   const cycle = (side, dir) => {
-    const n = WORLD.clubs.length;
-    if (side === 'home') {
-      do { homeIdx = (homeIdx + dir + n) % n; } while (homeIdx === awayIdx);
-    } else {
-      do { awayIdx = (awayIdx + dir + n) % n; } while (awayIdx === homeIdx);
-    }
+    const n = teamsOf(pick[side].country).length;
+    do { pick[side].idx = (pick[side].idx + dir + n) % n; } while (sameTeam() && n > 1);
+    paint();
+  };
+  const cycleCountry = (side, dir) => {
+    const names = countryNames();
+    const at = names.indexOf(pick[side].country);
+    pick[side].country = names[(at + dir + names.length) % names.length];
+    pick[side].idx = 0;
+    if (sameTeam()) pick[side].idx = 1;
     paint();
   };
 
+  root.addEventListener('change', (e) => {
+    const sel = e.target.closest('[data-country-pick]');
+    if (!sel) return;
+    const side = sel.dataset.countryPick;
+    pick[side].country = sel.value;
+    pick[side].idx = 0;
+    if (sameTeam()) pick[side].idx = 1;
+    paint();
+  });
+
   root.addEventListener('click', (e) => {
+    const cc = e.target.closest('[data-country]');
+    if (cc) { cycleCountry(cc.dataset.country, +cc.dataset.dir); return; }
     const cy = e.target.closest('[data-cycle]');
     if (cy) { cycle(cy.dataset.cycle, +cy.dataset.dir); return; }
 
-    const pick = e.target.closest('[data-pick]');
-    if (pick && !pick.disabled) {
-      const i = +pick.dataset.idx;
-      // the two sides cannot be the same club, and the rail already disables
-      // the one the other side holds, so this only guards a stray call
-      if (pick.dataset.pick === 'home') { if (i !== awayIdx) homeIdx = i; }
-      else if (i !== homeIdx) awayIdx = i;
+    const pk = e.target.closest('[data-pick]');
+    if (pk && !pk.disabled) {
+      const side = pk.dataset.pick;
+      const i = +pk.dataset.idx;
+      const was = pick[side].idx;
+      pick[side].idx = i;
+      if (sameTeam()) pick[side].idx = was;      // the two sides cannot be the same team
       paint();
       return;
     }
@@ -297,9 +299,12 @@ export function mount(root) {
 
   const onKey = (e) => {
     if (e.code === 'KeyR') {
-      const n = WORLD.clubs.length;
-      homeIdx = Math.floor(Math.random() * n);
-      do { awayIdx = Math.floor(Math.random() * n); } while (awayIdx === homeIdx);
+      const names = countryNames();
+      for (const side of ['home', 'away']) {
+        pick[side].country = names[Math.floor(Math.random() * names.length)];
+        pick[side].idx = Math.floor(Math.random() * teamsOf(pick[side].country).length);
+      }
+      if (sameTeam()) cycle('away', 1);
       paint();
     }
   };
@@ -308,8 +313,11 @@ export function mount(root) {
   q('#kickOff').addEventListener('click', () => {
     enterFullscreen();          // no-ops safely where the API is missing (iPhone)
     navigate('play', {
-      homeId: WORLD.clubs[homeIdx].id,
-      awayId: WORLD.clubs[awayIdx].id,
+      // world ids only anchor the pitch; the picked teams travel as custom squads
+      homeId: WORLD.clubs[0].id,
+      awayId: WORLD.clubs[1].id,
+      homeSquad: squadFor('home'),
+      awaySquad: squadFor('away'),
       duration, skill, mode,
       atmo: { time: timeOf === 'auto' ? undefined : timeOf, weather: weather === 'auto' ? undefined : weather },
     });

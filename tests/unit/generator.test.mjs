@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { WORLD, getPlayer, getClub, rosterOf, clubRating } from '../../js/data/generator.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6 } from '../../js/data/realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, REAL_PLAYERS_WAVE7 } from '../../js/data/realPlayers.js';
 
 /* The world is content, and content that people own. These pin the shape of
  * it, and the first one pins the *identity* of every card that existed before
@@ -22,7 +22,7 @@ test('the original 731 cards are byte-stable', () => {
 
 test('world shape', () => {
   assert.equal(WORLD.clubs.length, 100);
-  assert.equal(WORLD.players.length, 6328);
+  assert.equal(WORLD.players.length, 6328 + 85);
   assert.equal(WORLD.sbcCards.length, 28);
   // v72 world: the first 5612 cards are exactly what they were
   assert.ok(WORLD.players.slice(0, 5612).every((p) => !p.sbc || WORLD.sbcCards.slice(0, 12).includes(p.id)), 'the v72 cards are untouched');
@@ -43,7 +43,7 @@ test('world shape', () => {
 });
 
 test('every card is a real person with a flag', () => {
-  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA, ...REAL_PLAYERS_WAVE3, ...REAL_PLAYERS_WAVE4, ...REAL_PLAYERS_WAVE5, ...REAL_PLAYERS_WAVE6].map((r) => r[0]));
+  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA, ...REAL_PLAYERS_WAVE3, ...REAL_PLAYERS_WAVE4, ...REAL_PLAYERS_WAVE5, ...REAL_PLAYERS_WAVE6, ...REAL_PLAYERS_WAVE7].map((r) => r[0]));
   const unnamed = WORLD.players.filter((p) => !real.has(p.name) && p.rarity !== 'icon' && p.rarity !== 'star' && !p.sbc);
   assert.equal(unnamed.length, 0, `generated names left: ${unnamed.slice(0, 5).map((p) => p.name)}`);
   for (const p of WORLD.players) {
