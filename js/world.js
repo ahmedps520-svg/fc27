@@ -20,7 +20,11 @@ import { SHAPES } from './game/sim.js';
 import { LEAGUES } from './data/pools.js';
 import { hashStr } from './data/stadiums.js';
 
-export const ROUNDS = 18;
+/* v72: divisions are no longer all ten clubs. A season is `ROUNDS` days —
+ * long enough for the biggest division's double round robin (13 clubs, 26
+ * rounds with a bye each); a twelve-club division finishes its 22 rounds
+ * and rests. `roundsOf(n)` is a division's own length. */
+export const ROUNDS = 26;
 export const DAY_MS = 86_400_000;
 /** Season 1 kicked off on the first of September 2026. */
 export const EPOCH_DAY = Math.floor(Date.UTC(2026, 8, 1) / DAY_MS);
@@ -54,14 +58,16 @@ function poisson(lambda, r) {
  * each ground.
  */
 export function roundRobin(ids) {
-  const n = ids.length;
   const list = ids.slice();
+  if (list.length % 2) list.push(null);      // a bye, for an odd division
+  const n = list.length;
   const rounds = [];
   for (let r = 0; r < n - 1; r++) {
     const round = [];
     for (let i = 0; i < n / 2; i++) {
       const a = list[i];
       const b = list[n - 1 - i];
+      if (a === null || b === null) continue;
       round.push(r % 2 ? [b, a] : [a, b]);
     }
     rounds.push(round);
@@ -69,6 +75,7 @@ export function roundRobin(ids) {
   }
   return rounds.concat(rounds.map((round) => round.map(([h, a]) => [a, h])));
 }
+export const roundsOf = (n) => (n % 2 ? n : n - 1) * 2;
 
 const ratingOf = (id) => clubRating(id);
 
@@ -106,7 +113,7 @@ export function sortTable(rows) {
 export function divisionTable(season, division, ids, played) {
   const fixtures = roundRobin(ids);
   const table = Object.fromEntries(ids.map((id) => [id, emptyRow(id)]));
-  for (let r = 0; r < Math.min(played, ROUNDS); r++) {
+  for (let r = 0; r < Math.min(played, fixtures.length); r++) {
     for (const [h, a] of fixtures[r]) {
       const [gh, ga] = result(season, division, r, h, a);
       applyResult(table, h, a, gh, ga);
@@ -126,6 +133,7 @@ export function composition(season) {
   let divs = LEAGUES.map((league, i) => WORLD.clubs.filter((c) => c.division === i + 1).map((c) => c.id));
   for (let s = 0; s < season; s++) {
     const tables = divs.map((ids, d) => divisionTable(s, d + 1, ids, ROUNDS).map((row) => row.id));
+    // the two that go down swap with the two that come up, so sizes never change
     const next = tables.map((t) => t.slice());
     for (let d = 0; d < divs.length - 1; d++) {
       const down = next[d].splice(next[d].length - DOWN, DOWN);
@@ -160,7 +168,9 @@ export function worldState(now = Date.now()) {
       clubs: ids,
       table: divisionTable(season, i + 1, ids, played),
       today: fixtures[played] || [],
-      round: played + 1,
+      round: Math.min(played + 1, fixtures.length),
+      rounds: fixtures.length,
+      resting: played >= fixtures.length,
       // the two that go up and the two that go down, as things stand
       upZone: i === 0 ? 0 : UP,
       downZone: i === divs.length - 1 ? 0 : DOWN,
@@ -281,7 +291,7 @@ export function nationSquad(nation) {
   const n = nations().find((x) => x.nation === nation);
   if (!n) return null;
   return {
-    id: `nat-${nation}`, name: nation, short: n.short, colors: n.colors, rating: n.rating,
+    id: `nat-${nation}`, name: nation, short: n.short, colors: n.colors, rating: n.rating, national: true,
     crest: { shape: 'circle', pattern: 'halves', device: 'star', colors: n.colors },
     xi: n.xi, bench: n.bench,
   };
@@ -335,4 +345,102 @@ export function honours(now = Date.now()) {
     });
   }
   return list;
+}
+
+/* ------------------------------ the club world cup ------------------------------ *
+ * Eight clubs on days 21, 23 and 25 of the season, at the arenas: last
+ * season's champions of the top four divisions, the continental cup winner,
+ * and the next three best of the top flight — a straight knockout. */
+export const CWC_DAYS = [20, 22, 24];
+export function clubWorldCup(season, played = ROUNDS) {
+  let entrants;
+  if (season === 0) entrants = composition(0)[0].slice(0, 8);
+  else {
+    const prev = composition(season - 1);
+    const champs = prev.slice(0, 4).map((ids, d) => divisionTable(season - 1, d + 1, ids, ROUNDS)[0].id);
+    const cup = continentalCup(season - 1).winner;
+    const top = divisionTable(season - 1, 1, prev[0], ROUNDS).map((r) => r.id);
+    entrants = [];
+    for (const id of [...champs, cup, ...top]) if (id && !entrants.includes(id) && entrants.length < 8) entrants.push(id);
+  }
+  let alive = [[entrants[0], entrants[7]], [entrants[3], entrants[4]], [entrants[1], entrants[6]], [entrants[2], entrants[5]]];
+  const rounds = [];
+  for (let r = 0; r < 3; r++) {
+    const day = CWC_DAYS[r];
+    const done = played > day;
+    const ties = alive.map(([h, a]) => (done ? { home: h, away: a, ...cupResultTagged(season, 'cwc', r, h, a) } : { home: h, away: a }));
+    rounds.push({ name: CUP_ROUNDS[r], day, done, today: played === day, ties });
+    if (!done) break;
+    const w = ties.map((t) => t.winner);
+    alive = [];
+    for (let i = 0; i < w.length; i += 2) alive.push([w[i], w[i + 1]]);
+  }
+  return { entrants, rounds, winner: rounds[2]?.done ? rounds[2].ties[0].winner : null };
+}
+function cupResultTagged(season, tag, round, home, away) {
+  const [gh, ga] = result(season, tag === 'cwc' ? 8 : 9, 200 + round, home, away);
+  if (gh !== ga) return { gh, ga, winner: gh > ga ? home : away };
+  const r = rng(hashStr(`pens|${tag}|${season}|${round}|${home}|${away}`));
+  const homeWins = r() < 0.5;
+  return { gh, ga, pens: homeWins ? [5, 4] : [4, 5], winner: homeWins ? home : away };
+}
+
+/* ------------------------------ the World Tournament ------------------------------ *
+ * Thirty-two nations, drawn into eight groups of four by a seeded draw
+ * (pot by rating), three group rounds, then a sixteen-team knockout. This is
+ * the *simulated* edition every fourth season (the calendar's world year);
+ * the playable one, where you take a nation through it, lives in
+ * tournament.js and uses the same draw. */
+export const WT_EVERY = 4;
+export function worldTournamentDraw(edition) {
+  const top = nations().slice(0, 32);
+  const r = rng(hashStr(`wt|${edition}`));
+  const pots = [0, 1, 2, 3].map((p) => top.slice(p * 8, p * 8 + 8).map((n) => n.nation));
+  const groups = Array.from({ length: 8 }, () => []);
+  for (const pot of pots) {
+    const order = pot.slice();
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    order.forEach((n, i) => groups[i].push(n));
+  }
+  return { edition, groups, teams: top };
+}
+function nationTie(edition, tag, a, b, allowDraw) {
+  const rr = rng(hashStr(`wt|${edition}|${tag}|${a}|${b}`));
+  const all = nations();
+  const ra = all.find((n) => n.nation === a)?.rating || 70;
+  const rb = all.find((n) => n.nation === b)?.rating || 70;
+  const edge = (ra - rb) / 10;
+  const ga = poisson(Math.max(0.3, 1.3 + edge), rr);
+  const gb = poisson(Math.max(0.3, 1.2 - edge), rr);
+  let winner = ga > gb ? a : gb > ga ? b : null;
+  let pens = false;
+  if (!winner && !allowDraw) { winner = rr() < 0.5 ? a : b; pens = true; }
+  return { home: a, away: b, gh: ga, ga: gb, winner, pens };
+}
+/** The whole simulated tournament for an edition (all results known). */
+export function worldTournament(edition) {
+  const draw = worldTournamentDraw(edition);
+  const groups = draw.groups.map((g, gi) => {
+    const table = Object.fromEntries(g.map((n) => [n, { id: n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] }]));
+    const matches = [[0, 1], [2, 3], [0, 2], [1, 3], [0, 3], [1, 2]].map(([i, j]) => nationTie(edition, `g${gi}`, g[i], g[j], true));
+    for (const m of matches) applyResult(table, m.home, m.away, m.gh, m.ga);
+    const order = Object.values(table).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.id.localeCompare(y.id));
+    return { teams: g, matches, table: order };
+  });
+  // round of 16: winner of A v runner-up of B, and so on
+  let alive = [];
+  for (let i = 0; i < 8; i += 2) {
+    alive.push([groups[i].table[0].id, groups[i + 1].table[1].id]);
+    alive.push([groups[i + 1].table[0].id, groups[i].table[1].id]);
+  }
+  const knockout = [];
+  const names = ['Round of 16', 'Quarter-finals', 'Semi-finals', 'Final'];
+  for (let r = 0; r < 4; r++) {
+    const ties = alive.map(([a, b]) => nationTie(edition, `k${r}`, a, b, false));
+    knockout.push({ name: names[r], ties });
+    const w = ties.map((t) => t.winner);
+    alive = [];
+    for (let i = 0; i < w.length; i += 2) alive.push([w[i], w[i + 1]]);
+  }
+  return { ...draw, groups, knockout, winner: knockout[3].ties[0].winner };
 }

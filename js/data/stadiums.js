@@ -93,6 +93,58 @@ export const STADIUMS = [
   { id: 'brookside',   name: 'Brookside Arena',   capacity: 7400,  size: 0.13, tiers: 1, roof: 'cantilever', bowl: true,  seats: ['#0f766e', '#ccfbf1'], facade: '#0f3a34', pattern: 'rings',    pylons: 'mast',    fill: 0.57 },
   { id: 'cinder',      name: 'Cinder Ground',     capacity: 5300,  size: 0.09, tiers: 1, roof: 'none',       bowl: false, seats: ['#f59e0b', '#1c1917'], facade: '#2c2418', pattern: 'checks',   pylons: 'lattice', fill: 0.64 },
   { id: 'hawkrow',     name: 'Hawk Row',          capacity: 4500,  size: 0.07, tiers: 1, roof: 'none',       bowl: false, seats: ['#1f2937', '#fbbf24'], facade: '#1f2937', pattern: 'plain',    pylons: 'lattice', fill: 0.68 },
+  // ---- v72: the forty clubs of the hundred-club world ----
+  { id: 'vantage-arena', name: 'Vantage Arena', capacity: 78000, size: 0.8, tiers: 2, roof: 'ring', bowl: true, seats: ['#0f172a', '#38bdf8'], facade: '#0f172a', pattern: 'plain', pylons: 'rim', fill: 0.84 },
+  { id: 'harbourside', name: 'The Harbourside', capacity: 76200, size: 0.78, tiers: 2, roof: 'ring', bowl: true, seats: ['#7f1d1d', '#fde68a'], facade: '#7f1d1d', pattern: 'checks', pylons: 'rim', fill: 0.83 },
+  { id: 'ridgeway-park', name: 'Ridgeway Park', capacity: 62700, size: 0.63, tiers: 2, roof: 'cantilever', bowl: true, seats: ['#065f46', '#a7f3d0'], facade: '#065f46', pattern: 'checks', pylons: 'mast', fill: 0.79 },
+  { id: 'stellar-dome', name: 'Stellar Dome', capacity: 60900, size: 0.61, tiers: 2, roof: 'cantilever', bowl: true, seats: ['#312e81', '#c7d2fe'], facade: '#312e81', pattern: 'rings', pylons: 'mast', fill: 0.78 },
+  { id: 'haven-road', name: 'Haven Road', capacity: 49200, size: 0.48, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#1d4ed8', '#fef3c7'], facade: '#1d4ed8', pattern: 'checks', pylons: 'mast', fill: 0.74 },
+  { id: 'penny-lane', name: 'Penny Lane', capacity: 45600, size: 0.44, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#78350f', '#fde68a'], facade: '#78350f', pattern: 'stripes', pylons: 'lattice', fill: 0.73 },
+  { id: 'holloway-ground', name: 'Holloway Ground', capacity: 39300, size: 0.37, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#4c1d95', '#f5f3ff'], facade: '#4c1d95', pattern: 'rings', pylons: 'lattice', fill: 0.71 },
+  { id: 'dune-park', name: 'Dune Park', capacity: 35700, size: 0.33, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#b45309', '#fff7ed'], facade: '#b45309', pattern: 'diagonal', pylons: 'lattice', fill: 0.7 },
+  { id: 'lakeshore-stadium', name: 'Lakeshore Stadium', capacity: 32100, size: 0.29, tiers: 1, roof: 'cantilever', bowl: false, seats: ['#0e7490', '#ecfeff'], facade: '#0e7490', pattern: 'diagonal', pylons: 'lattice', fill: 0.69 },
+  { id: 'cliff-road', name: 'Cliff Road', capacity: 28500, size: 0.25, tiers: 1, roof: 'none', bowl: false, seats: ['#166534', '#dcfce7'], facade: '#166534', pattern: 'checks', pylons: 'lattice', fill: 0.67 },
+  { id: 'kings-field', name: 'Kings Field', capacity: 25800, size: 0.22, tiers: 1, roof: 'none', bowl: false, seats: ['#1e3a8a', '#fbbf24'], facade: '#1e3a8a', pattern: 'plain', pylons: 'lattice', fill: 0.67 },
+  { id: 'norbury-park', name: 'Norbury Park', capacity: 25800, size: 0.22, tiers: 1, roof: 'none', bowl: false, seats: ['#9f1239', '#fecdd3'], facade: '#9f1239', pattern: 'plain', pylons: 'lattice', fill: 0.67 },
+  { id: 'moor', name: 'The Moor', capacity: 22200, size: 0.18, tiers: 1, roof: 'none', bowl: false, seats: ['#0f766e', '#99f6e4'], facade: '#0f766e', pattern: 'rings', pylons: 'lattice', fill: 0.65 },
+  { id: 'brook-lane', name: 'Brook Lane', capacity: 19500, size: 0.15, tiers: 1, roof: 'none', bowl: false, seats: ['#b91c1c', '#fee2e2'], facade: '#b91c1c', pattern: 'checks', pylons: 'lattice', fill: 0.65 },
+  { id: 'vale-ground', name: 'Vale Ground', capacity: 21300, size: 0.17, tiers: 1, roof: 'none', bowl: false, seats: ['#15803d', '#f0fdf4'], facade: '#15803d', pattern: 'rings', pylons: 'lattice', fill: 0.65 },
+  { id: 'bramford-road', name: 'Bramford Road', capacity: 20400, size: 0.16, tiers: 1, roof: 'none', bowl: false, seats: ['#1e40af', '#dbeafe'], facade: '#1e40af', pattern: 'plain', pylons: 'lattice', fill: 0.65 },
+  { id: 'crest-park', name: 'Crest Park', capacity: 19500, size: 0.15, tiers: 1, roof: 'none', bowl: false, seats: ['#7c2d12', '#fed7aa'], facade: '#7c2d12', pattern: 'stripes', pylons: 'lattice', fill: 0.65 },
+  { id: 'elm-lane', name: 'Elm Lane', capacity: 18600, size: 0.14, tiers: 1, roof: 'none', bowl: false, seats: ['#3f6212', '#ecfccb'], facade: '#3f6212', pattern: 'checks', pylons: 'lattice', fill: 0.64 },
+  { id: 'hollow-field', name: 'Hollow Field', capacity: 17700, size: 0.13, tiers: 1, roof: 'none', bowl: false, seats: ['#c2410c', '#ffedd5'], facade: '#c2410c', pattern: 'diagonal', pylons: 'lattice', fill: 0.64 },
+  { id: 'glen-road', name: 'Glen Road', capacity: 16800, size: 0.12, tiers: 1, roof: 'none', bowl: false, seats: ['#0c4a6e', '#e0f2fe'], facade: '#0c4a6e', pattern: 'rings', pylons: 'lattice', fill: 0.64 },
+  { id: 'green-lane', name: 'Green Lane', capacity: 15900, size: 0.11, tiers: 1, roof: 'none', bowl: false, seats: ['#166534', '#bbf7d0'], facade: '#166534', pattern: 'plain', pylons: 'lattice', fill: 0.63 },
+  { id: 'hurst-row', name: 'Hurst Row', capacity: 15000, size: 0.1, tiers: 1, roof: 'none', bowl: false, seats: ['#292524', '#f5f5f4'], facade: '#292524', pattern: 'stripes', pylons: 'lattice', fill: 0.63 },
+  { id: 'juniper-park', name: 'Juniper Park', capacity: 14100, size: 0.09, tiers: 1, roof: 'none', bowl: false, seats: ['#5b21b6', '#ede9fe'], facade: '#5b21b6', pattern: 'checks', pylons: 'lattice', fill: 0.63 },
+  { id: 'kettle-ground', name: 'Kettle Ground', capacity: 13200, size: 0.08, tiers: 1, roof: 'none', bowl: false, seats: ['#0369a1', '#f0f9ff'], facade: '#0369a1', pattern: 'diagonal', pylons: 'lattice', fill: 0.62 },
+  { id: 'langford-road', name: 'Langford Road', capacity: 12300, size: 0.07, tiers: 1, roof: 'none', bowl: false, seats: ['#be123c', '#ffe4e6'], facade: '#be123c', pattern: 'rings', pylons: 'lattice', fill: 0.62 },
+  { id: 'heath-lane', name: 'Heath Lane', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#4d7c0f', '#f7fee7'], facade: '#4d7c0f', pattern: 'plain', pylons: 'lattice', fill: 0.62 },
+  { id: 'nettle-park', name: 'Nettle Park', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#1f2937', '#fbbf24'], facade: '#1f2937', pattern: 'stripes', pylons: 'lattice', fill: 0.62 },
+  { id: 'oakridge-ground', name: 'Oakridge Ground', capacity: 16800, size: 0.12, tiers: 1, roof: 'none', bowl: false, seats: ['#14532d', '#dcfce7'], facade: '#14532d', pattern: 'plain', pylons: 'lattice', fill: 0.64 },
+  { id: 'pember-lane', name: 'Pember Lane', capacity: 15900, size: 0.11, tiers: 1, roof: 'none', bowl: false, seats: ['#7f1d1d', '#fecaca'], facade: '#7f1d1d', pattern: 'stripes', pylons: 'lattice', fill: 0.63 },
+  { id: 'quarry-vale', name: 'The Vale', capacity: 15000, size: 0.1, tiers: 1, roof: 'none', bowl: false, seats: ['#44403c', '#e7e5e4'], facade: '#44403c', pattern: 'checks', pylons: 'lattice', fill: 0.63 },
+  { id: 'rosemont-park', name: 'Rosemont Park', capacity: 14100, size: 0.09, tiers: 1, roof: 'none', bowl: false, seats: ['#be185d', '#fce7f3'], facade: '#be185d', pattern: 'diagonal', pylons: 'lattice', fill: 0.63 },
+  { id: 'dale-road', name: 'Dale Road', capacity: 13200, size: 0.08, tiers: 1, roof: 'none', bowl: false, seats: ['#075985', '#e0f2fe'], facade: '#075985', pattern: 'rings', pylons: 'lattice', fill: 0.62 },
+  { id: 'thorn-park', name: 'Thorn Park', capacity: 12300, size: 0.07, tiers: 1, roof: 'none', bowl: false, seats: ['#3730a3', '#e0e7ff'], facade: '#3730a3', pattern: 'plain', pylons: 'lattice', fill: 0.62 },
+  { id: 'underhill', name: 'Underhill', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#9a3412', '#ffedd5'], facade: '#9a3412', pattern: 'stripes', pylons: 'lattice', fill: 0.62 },
+  { id: 'royal-field', name: 'Royal Field', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#6d28d9', '#f5f3ff'], facade: '#6d28d9', pattern: 'checks', pylons: 'lattice', fill: 0.62 },
+  { id: 'westbrook-lane', name: 'Westbrook Lane', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#0d9488', '#ccfbf1'], facade: '#0d9488', pattern: 'diagonal', pylons: 'lattice', fill: 0.62 },
+  { id: 'yew-lane', name: 'Yew Lane', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#365314', '#ecfccb'], facade: '#365314', pattern: 'rings', pylons: 'lattice', fill: 0.62 },
+  { id: 'zealand-ground', name: 'Zealand Ground', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#1e3a8a', '#dbeafe'], facade: '#1e3a8a', pattern: 'plain', pylons: 'lattice', fill: 0.62 },
+  { id: 'amber-park', name: 'Amber Park', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#d97706', '#fffbeb'], facade: '#d97706', pattern: 'stripes', pylons: 'lattice', fill: 0.62 },
+  { id: 'fen-road', name: 'Fen Road', capacity: 11400, size: 0.06, tiers: 1, roof: 'none', bowl: false, seats: ['#111827', '#f9fafb'], facade: '#111827', pattern: 'checks', pylons: 'lattice', fill: 0.62 },
+  // ---- the eight wonders (v72): finals, and the arenas the world plays in ----
+  // `wonder` grounds carry a retractable roof, giant screens over both ends,
+  // an LED ribbon round the tier and pyrotechnics at kick-off and goals.
+  { id: 'crown',      name: 'The Crown',              capacity: 100000, size: 1.0,  tiers: 2, roof: 'arch',  bowl: true, seats: ['#f8fafc', '#0f172a'], facade: '#0b1020', pattern: 'checks',   pylons: 'rim', fill: 0.98, showpiece: true, wonder: true, retractable: true },
+  { id: 'aurora-dome', name: 'Aurora Dome',           capacity: 88000,  size: 0.98, tiers: 2, roof: 'dome',  bowl: true, seats: ['#22d3ee', '#0e1a2b'], facade: '#0a2030', pattern: 'rings',    pylons: 'rim', fill: 0.97, showpiece: true, wonder: true, retractable: true },
+  { id: 'colosseo',   name: 'Colosseo Nova',          capacity: 92000,  size: 0.99, tiers: 2, roof: 'ring',  bowl: true, seats: ['#fbbf24', '#1c1917'], facade: '#2a2418', pattern: 'diagonal', pylons: 'rim', fill: 0.97, showpiece: true, wonder: true },
+  { id: 'oasis',      name: 'Oasis Stadium',          capacity: 84000,  size: 0.97, tiers: 2, roof: 'dome',  bowl: true, seats: ['#34d399', '#052e16'], facade: '#0f2a1a', pattern: 'stripes',  pylons: 'rim', fill: 0.96, showpiece: true, wonder: true, retractable: true },
+  { id: 'harbour-arena', name: 'Harbour Arena',       capacity: 80000,  size: 0.96, tiers: 2, roof: 'arch',  bowl: true, seats: ['#60a5fa', '#0c1a3a'], facade: '#0a1a3a', pattern: 'checks',   pylons: 'rim', fill: 0.96, showpiece: true, wonder: true },
+  { id: 'summit-bowl', name: 'Summit Bowl',           capacity: 78000,  size: 0.95, tiers: 2, roof: 'ring',  bowl: true, seats: ['#e2e8f0', '#1e293b'], facade: '#1a2233', pattern: 'rings',    pylons: 'rim', fill: 0.95, showpiece: true, wonder: true },
+  { id: 'lantern-dome', name: 'The Great Lantern',    capacity: 86000,  size: 0.98, tiers: 2, roof: 'dome',  bowl: true, seats: ['#f472b6', '#1e0a2b'], facade: '#2a0a3a', pattern: 'diagonal', pylons: 'rim', fill: 0.97, showpiece: true, wonder: true, retractable: true },
+  { id: 'meridian-prime', name: 'Meridian Prime',     capacity: 95000,  size: 1.0,  tiers: 2, roof: 'arch',  bowl: true, seats: ['#a78bfa', '#0b0a1e'], facade: '#100a2a', pattern: 'stripes',  pylons: 'rim', fill: 0.98, showpiece: true, wonder: true },
   // ---- showpiece arenas: finals, the Weekend League, cup ties ----
   { id: 'apex-arena',  name: 'Apex Arena',           capacity: 90000, size: 1.00, tiers: 2, roof: 'arch',  bowl: true, seats: ['#f0f4ff', '#0a0d16'], facade: '#0e1220', pattern: 'checks',   pylons: 'rim', fill: 0.97, showpiece: true },
   { id: 'meridian',    name: 'Meridian Dome',        capacity: 72000, size: 0.96, tiers: 2, roof: 'dome',  bowl: true, seats: ['#7af7ff', '#08111c'], facade: '#0b1a2c', pattern: 'rings',    pylons: 'rim', fill: 0.95, showpiece: true },
@@ -121,9 +173,11 @@ export function hashStr(s) {
  */
 export function stadiumFor(club, { showpiece = false } = {}) {
   if (showpiece) {
-    const pick = STADIUMS.filter((s) => s.showpiece);
+    // finals go to the wonders; the four older arenas keep the Weekend League
+    const pick = STADIUMS.filter((s) => (showpiece === 'wonder' ? s.wonder : s.showpiece));
     return pick[hashStr(club?.id || club?.name || 'final') % pick.length];
   }
+  if (club?.national) return nationalStadium(club.name, club.rating || 75, club.colors);
   if (!club) return STADIUM_BY_ID.forge;
   const named = club.ground && BY_NAME[club.ground];
   if (named) return named;
@@ -158,3 +212,29 @@ export function atmosphereFor(seed, force = {}) {
 
 export const TIME_LABEL = { day: 'Afternoon', dusk: 'Dusk', night: 'Night' };
 export const WEATHER_LABEL = { clear: 'Clear', overcast: 'Overcast', rain: 'Rain' };
+
+/** The wonders: the eight landmark grounds for finals. */
+export const WONDERS = STADIUMS.filter((s) => s.wonder);
+
+/**
+ * A national stadium for every nation with a team: sized by the nation's
+ * strength, in the flag's colours, its roof and pattern dealt by hash. The
+ * nation's name is the ground's name with the country's word for it kept
+ * plain — "Stadium" — so it reads the same in every language.
+ */
+export function nationalStadium(nation, rating = 75, colors = ['#ffffff', '#222222']) {
+  const h = hashStr(`nat|${nation}`);
+  const size = Math.max(0.45, Math.min(0.98, 0.45 + (rating - 68) / 40));
+  const roofs = ['ring', 'arch', 'dome', 'cantilever'];
+  const pats = ['stripes', 'checks', 'diagonal', 'rings'];
+  return {
+    id: `nat-${nation.toLowerCase().replace(/[^a-z]+/g, '-')}`,
+    name: `${nation} National Stadium`,
+    capacity: Math.round((30000 + size * 60000) / 1000) * 1000,
+    size, tiers: size > 0.6 ? 2 : 1,
+    roof: roofs[h % 4], bowl: size > 0.55,
+    seats: [colors[0], colors[1]], facade: colors[1],
+    pattern: pats[(h >>> 4) % 4], pylons: size > 0.7 ? 'rim' : 'mast',
+    fill: 0.85 + (size * 0.12), national: true,
+  };
+}

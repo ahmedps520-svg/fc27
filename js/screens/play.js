@@ -12,10 +12,13 @@ import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
-import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL } from '../data/stadiums.js';
+import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
+import { EMOTES, emoteText } from '../data/emotes.js';
+import * as tournament from '../tournament.js';
+import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
@@ -86,10 +89,29 @@ function venueOf(params) {
     ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
     : getClub(params.homeId);
   const showpiece = !!(params.weekend || params.final || params.showpiece || params.online);
-  const stadium = stadiumFor(home, { showpiece });
+  /* Your own ground, when you built one (the Stadium Builder) and this is a
+     home fixture of yours: an Ultimate XI match, or a Career home game —
+     where the bowl is only as big as the board has paid for. Finals and
+     online matches are still played at the arenas. */
+  const design = getState().club.stadium?.design;
+  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
+  const car = params.career ? getState().career : null;
+  const stadium = mine
+    ? builderDef(design, { clubName: sq?.name || home?.name, short: sq?.short || home?.short,
+      capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
+    : stadiumFor(home, { showpiece });
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
   const atmo = atmosphereFor(seed, params.atmo || {});
+  /* A quarter of matches see the weather turn: rain arriving in a clear
+     second half, or a wet first half clearing. Decided by the seed, so the
+     same fixture on the same day turns the same way; never when the
+     conditions were chosen by hand. */
+  if (params.atmoChange) atmo.change = params.atmoChange;
+  else if (!params.atmo?.weather) {
+    const h = hashStr(`turn|${seed}`);
+    if ((h & 0xff) < 64) atmo.change = { minute: 30 + ((h >>> 8) % 45), to: atmo.weather === 'rain' ? 'clear' : 'rain' };
+  }
   return { stadium, atmo, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}` };
 }
 
@@ -141,9 +163,16 @@ export function render(params) {
           <span class="gm-fps" id="gmFps" hidden>-- FPS</span>
           <span class="gm-net" id="gmNet" hidden></span>
           <span class="gm-pad" id="gmPad">No pad</span>
+          <button class="icon-btn sm" id="gmEmoteBtn" title="Emotes" hidden>💬</button>
           <button class="icon-btn sm" id="gmFs" title="Fullscreen">⛶</button>
           <button class="icon-btn sm" id="gmPause" title="Pause">❚❚</button>
         </div>
+      </div>
+
+      <!-- Everything one player can say to another: the fixed emote list, by
+           id. There is no free-text chat anywhere in the game, by design. -->
+      <div class="gm-emotes" id="gmEmotes" hidden>
+        ${EMOTES.map((e) => `<button data-emote="${e.id}" title="${e.en}">${e.icon}</button>`).join('')}
       </div>
 
       <!-- "X has queued a pause" — mirrored on both screens by the host -->
@@ -210,6 +239,10 @@ export function mount(root, params) {
   const canvas = root.querySelector('#gmCanvas');
   const mode = params.mode || 'single';
   const online = params.online || null;
+  /* A spectator is a guest that never speaks: the host's snapshots pour in
+   * exactly as they do for the away player, and nothing goes back up — no
+   * input, no pause requests, no result. */
+  const spectating = !!online?.spectate;
   // Online is one person per machine, so the local seat is the only local input.
   const twoUp = !online && (mode === 'versus' || mode === 'coop');
 
@@ -549,10 +582,46 @@ export function mount(root, params) {
     clip = goalClips[0];
     startReplay();
   };
+  /* Shareable clips: the highlights reel, recorded off the canvas with
+   * MediaRecorder while it plays, and handed over as a WebM download when the
+   * last goal ends. No server, no upload — the file is the player's. */
+  let recorder = null;
+  const clipSupported = () => typeof MediaRecorder !== 'undefined' && typeof canvas.captureStream === 'function';
+  const recordClip = () => {
+    if (!clipSupported() || recorder || !goalClips.length) return;
+    try {
+      const stream = canvas.captureStream(30);
+      const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+      const chunks = [];
+      recorder = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : undefined);
+      recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+      recorder.onstop = () => {
+        recorder = null;
+        stream.getTracks().forEach((tr) => tr.stop());
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const [h, aw] = match.teams;
+        a.href = url; a.download = `apexxi-${h.short}-${h.score}-${aw.score}-${aw.short}.webm`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        toast(`Clip saved · ${(blob.size / 1048576).toFixed(1)} MB`, 'good');
+      };
+      recorder.start(500);
+      toast('Recording the highlights…', 'info');
+      playHighlights();
+    } catch (err) {
+      recorder = null;
+      toast('Could not record a clip on this device', 'warn');
+      console.warn('clip', err);
+    }
+  };
+  const stopClip = () => { if (recorder && recorder.state !== 'inactive') recorder.stop(); };
+
   const nextHighlight = () => {
     if (highlightIdx < 0) return false;
     highlightIdx += 1;
-    if (highlightIdx >= goalClips.length) { highlightIdx = -1; overlay.hidden = false; return false; }
+    if (highlightIdx >= goalClips.length) { highlightIdx = -1; overlay.hidden = false; stopClip(); return false; }
     clip = goalClips[highlightIdx];
     return startReplay();
   };
@@ -602,7 +671,7 @@ export function mount(root, params) {
   const view = online && !online.host ? new SnapshotView(match) : null;
   // input rides the direct channel when one is up — sendMatch falls back to the
   // websocket per packet, so this is safe before, during and after an upgrade
-  const sender = online && !online.host ? new InputSender(localInput, 20, sendMatch) : null;
+  const sender = online && !online.host && !spectating ? new InputSender(localInput, 20, sendMatch) : null;
   const netEl = root.querySelector('#gmNet');
   let snapAcc = 0;
 
@@ -644,6 +713,7 @@ export function mount(root, params) {
     showQueueBanner(pq.name);
   };
   let oppGone = null;
+  let spectators = 0;      // host: how many are watching through the hub
   let rtt = null;          // this client to the server
   let peerRtt = null;      // this client to the opponent and back — what you feel
   let lastPeerPing = 0;
@@ -688,7 +758,7 @@ export function mount(root, params) {
       finish();
     }));
     // try to go direct; the relay carries the match until (and unless) it works
-    startP2P(online);
+    if (!spectating) startP2P(online);
     /* Reconnects. The hub holds a dropped player's seat for a grace period.
      * Their opponent gets 'dropped' and the match pauses through the same
      * synchronised pause a menu uses, with the grace as its countdown; a
@@ -710,6 +780,11 @@ export function mount(root, params) {
     netOffs.push(net.on('closed', () => {
       if (!ended) toast('Connection lost — reconnecting…', 'warn');
     }));
+    netOffs.push(net.on('spectators', (m) => {
+      const n = m.n | 0;
+      if (online.host && n > spectators) toast(`${n} watching`, 'info');
+      spectators = n;
+    }));
     netOffs.push(net.on('rejoined', (m) => {
       if (ended) return;
       toast('Reconnected — match resumes', 'good');
@@ -728,15 +803,41 @@ export function mount(root, params) {
      * older build simply never answers, and the readout falls back to the
      * server ping it always showed. */
     netOffs.push(net.on('evt', (m) => {
+      if (spectating) return;
       if (m.k === 'pp') { net.send({ t: 'evt', k: 'pr', at: m.at }); return; }
       if (m.k === 'pr' && m.at === lastPeerPing) peerRtt = Math.round(performance.now() - m.at);
     }));
     const pingTimer = setInterval(async () => { rtt = await net.ping(); }, 3000);
     const peerTimer = setInterval(() => {
+      if (spectating) return;
       lastPeerPing = performance.now();
       net.send({ t: 'evt', k: 'pp', at: lastPeerPing });
     }, 2000);
     netOffs.push(() => { clearInterval(pingTimer); clearInterval(peerTimer); });
+
+    /* Emotes. The receiver renders the id in its own language; the server
+     * drops anything that is not on the list, so nothing else can arrive. */
+    netOffs.push(net.on('emote', (m) => {
+      const text = emoteText(m.id, lang());
+      if (text) toast(`${m.from || online.oppName}: ${text}`, 'info');
+    }));
+    const emoteBar = root.querySelector('#gmEmotes');
+    const emoteBtn = root.querySelector('#gmEmoteBtn');
+    if (!spectating && emoteBar && emoteBtn) {
+      emoteBtn.hidden = false;
+      emoteBtn.addEventListener('click', () => { emoteBar.hidden = !emoteBar.hidden; });
+      let lastEmote = 0;
+      emoteBar.addEventListener('click', (e) => {
+        const id = e.target.closest('[data-emote]')?.dataset.emote;
+        if (!id) return;
+        const now = performance.now();
+        if (now - lastEmote < 1500) return;                 // the server rate-limits too; this just keeps taps honest
+        lastEmote = now;
+        net.send({ t: 'emote', id });
+        toast(`You: ${emoteText(id, lang())}`, 'info');
+        emoteBar.hidden = true;
+      });
+    }
   }
 
   /* ========================== Manager Career ========================== *
@@ -1505,6 +1606,7 @@ export function mount(root, params) {
          * non-blocking menu, which keeps subs and tactics reachable mid-play
          * exactly as before. During the synced pause the menu is pinned open:
          * the input neither closes it nor queues anything new. */
+        if (spectating) { setPaused(!paused); return; }
         if (online.host) requestPause(online.myName);
         else net.send({ t: 'evt', k: 'pausereq', name: online.myName });
         setPaused(!paused);
@@ -1677,6 +1779,9 @@ export function mount(root, params) {
         if (pq && syncLeft <= 0) snap.pq = pq.name;
         if (syncLeft > 0) snap.pz = [pq ? pq.name : '', Math.ceil(syncLeft * 10)];
         sendMatch(snap);
+        // watchers only ever see what goes through the hub: a match running
+        // browser-to-browser has to copy its picture up for them as well
+        if (spectators > 0 && p2pActive()) net.send(snap);
       }
     }
 
@@ -1801,7 +1906,7 @@ export function mount(root, params) {
       // stream during one is expected rather than a connection problem
       const lost = view?.stale && !replay;
       // '· direct' = this match is running browser-to-browser, not through the relay
-      netEl.textContent = lost ? 'reconnecting…' : `${online.oppName} · ${q.text}${p2pActive() ? ' · direct' : ''}`;
+      netEl.textContent = lost ? 'reconnecting…' : spectating ? `👁 Spectating · ${online.oppName}` : `${online.oppName} · ${q.text}${p2pActive() ? ' · direct' : ''}`;
       netEl.className = `gm-net ${lost ? 'bad' : q.cls}`;
     }
     lastScores = [match.teams[0].score, match.teams[1].score];
@@ -2055,6 +2160,7 @@ export function mount(root, params) {
     if (id === 'resume') { if (!syncNow) setPaused(false); return; }
     if (id === 'leave') {
       exitFullscreen();
+      if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; }
       if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
       navigate('quick');
       return;
@@ -2160,7 +2266,7 @@ export function mount(root, params) {
     // offered once: after the shootout there is nothing left to settle
     const drawnKickOff = mine === theirs && !online && !params.ultimate && !shootoutResult;
 
-    if (online) {
+    if (online && !spectating) {
       // A walkover still counts: the player who stayed takes the points.
       const scored = oppGone ? Math.max(mine, theirs + 1) : mine;
       const conceded = oppGone ? theirs : theirs;
@@ -2177,7 +2283,9 @@ export function mount(root, params) {
 
     // Apex Division matches settle the ladder instead of paying a flat fee
     let div = null;
-    if (params.ultimate) {
+    if (spectating) {
+      // nothing to bank: it was somebody else's match
+    } else if (params.ultimate) {
       div = settleDivisionMatch({
         scored: online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score,
         conceded: online ? theirs : a.score,
@@ -2200,7 +2308,9 @@ export function mount(root, params) {
      * season XP, the week's event, the weekend tally — goes through one call. */
     const myScore = online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score;
     const theirScore = online ? theirs : a.score;
-    const prog = progress.onMatch({
+    let tourney = null;
+    if (params.tournament) tourney = tournament.onResult(myScore, theirScore);
+    const prog = spectating ? {} : progress.onMatch({
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
       scored: myScore, conceded: theirScore, online: !!online,
       possession: online && online.seat === 1 ? pa : ph, weekend: !!params.weekend,
@@ -2213,7 +2323,7 @@ export function mount(root, params) {
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
-        <span class="gm-ft">${oppGone ? 'Opponent left — win awarded' : 'Full time'}</span>
+        <span class="gm-ft">${spectating ? (oppGone ? 'Match ended' : 'Full time · spectating') : oppGone ? 'Opponent left — win awarded' : 'Full time'}</span>
         <div class="gm-final">
           <div>${crestSVG(h.club.crest, h.short, 40)}<b>${h.short}</b></div>
           <span>${h.score} – ${a.score}</span>
@@ -2233,6 +2343,7 @@ export function mount(root, params) {
           <div><b>${h.bigChances || 0}</b><span>Big chances</span><b>${a.bigChances || 0}</b></div>
         </div>
         ${goalClips.length ? `<button class="btn ghost" data-o="highlights">▶ Highlights · ${goalClips.length} goal${goalClips.length > 1 ? 's' : ''}</button>` : ''}
+        ${goalClips.length && clipSupported() ? '<button class="btn ghost" data-o="clip">⬇ Save highlights as a clip (WebM)</button>' : ''}
         ${div ? `
           <div class="div-result ${div.promoted ? 'up' : div.relegated ? 'down' : ''}">
             <span class="dr-kicker">${div.promoted ? 'Promoted' : div.relegated ? 'Relegated' : 'Apex Division'}</span>
@@ -2261,11 +2372,14 @@ export function mount(root, params) {
         <div class="gm-btns">
           ${mode === 'career'
             ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
+            : spectating
+            ? '<button class="btn primary" data-o="quit">Back online</button>'
             : online
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
               : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+          ${tourney ? `<p class="season-line tourney-line">${tourney.champion ? `🏆 World Tournament champions!` : tourney.out ? 'Out of the World Tournament.' : tourney.advanced ? `Through to the next round: ${tourney.stage === 'r16' ? 'Round of 16' : tourney.stage === 'qf' ? 'Quarter-finals' : tourney.stage === 'sf' ? 'Semi-finals' : tourney.stage === 'final' ? 'the Final' : 'the knockouts'}.` : 'Group stage continues.'}</p>` : ''}
           <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
         </div>
       </div>`;
@@ -2289,7 +2403,8 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
-      if (o === 'quit') { exitFullscreen(); if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'clip') { recordClip(); return; }
+      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);
@@ -2385,6 +2500,8 @@ export function mount(root, params) {
     document.body.classList.remove('in-game');
     if (mgr) window.removeEventListener('keydown', onWheelKey);
     stopP2P();
+    if (spectating && net.isReady()) net.send({ t: 'unspectate' });
+    stopClip();
     window.removeEventListener('resize', resize);
     document.removeEventListener('fullscreenchange', onFsChange);
     try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }

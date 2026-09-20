@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { WORLD, getPlayer, getClub, rosterOf, clubRating } from '../../js/data/generator.js';
-import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4 } from '../../js/data/realPlayers.js';
+import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5 } from '../../js/data/realPlayers.js';
 
 /* The world is content, and content that people own. These pin the shape of
  * it, and the first one pins the *identity* of every card that existed before
@@ -21,14 +21,15 @@ test('the original 731 cards are byte-stable', () => {
 });
 
 test('world shape', () => {
-  assert.equal(WORLD.clubs.length, 60);
-  assert.equal(WORLD.players.length, 3092);
+  assert.equal(WORLD.clubs.length, 100);
+  assert.equal(WORLD.players.length, 5612);
   assert.equal(WORLD.sbcCards.length, 12);
-  assert.equal(new Set(WORLD.clubs.map((c) => c.league)).size, 6);
-  for (const d of [1, 2, 3, 4, 5, 6]) assert.equal(WORLD.clubs.filter((c) => c.division === d).length, 10, `division ${d} has ten clubs`);
-  // v70 world: the first 2052 cards are exactly what they were
-  const v70 = WORLD.players.slice(0, 2052);
-  assert.ok(v70.every((p) => !p.clubId || Number(p.clubId.slice(1)) <= 40), 'no pre-v71 card was moved to a new club');
+  assert.equal(new Set(WORLD.clubs.map((c) => c.league)).size, 8);
+  for (const d of [1, 2, 3, 4]) assert.equal(WORLD.clubs.filter((c) => c.division === d).length, 12, `division ${d} has twelve clubs`);
+  for (const d of [5, 6, 7, 8]) assert.equal(WORLD.clubs.filter((c) => c.division === d).length, 13, `division ${d} has thirteen clubs`);
+  // v71 world: the first 3092 cards are exactly what they were
+  const v71 = WORLD.players.slice(0, 3092);
+  assert.ok(v71.every((p) => !p.clubId || Number(p.clubId.slice(1)) <= 60), 'no pre-v72 card was moved to a new club');
   // v69 world: the first 1112 cards (20 clubs' worth) are exactly what they were
   const v69 = WORLD.players.slice(0, 1112);
   assert.ok(v69.every((p) => !p.clubId || Number(p.clubId.slice(1)) <= 20), 'no pre-v70 card was moved to a new club');
@@ -40,7 +41,7 @@ test('world shape', () => {
 });
 
 test('every card is a real person with a flag', () => {
-  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA, ...REAL_PLAYERS_WAVE3, ...REAL_PLAYERS_WAVE4].map((r) => r[0]));
+  const real = new Set([...REAL_PLAYERS, ...REAL_PLAYERS_EXTRA, ...REAL_PLAYERS_WAVE3, ...REAL_PLAYERS_WAVE4, ...REAL_PLAYERS_WAVE5].map((r) => r[0]));
   const unnamed = WORLD.players.filter((p) => !real.has(p.name) && p.rarity !== 'icon' && p.rarity !== 'star' && !p.sbc);
   assert.equal(unnamed.length, 0, `generated names left: ${unnamed.slice(0, 5).map((p) => p.name)}`);
   for (const p of WORLD.players) {

@@ -103,6 +103,7 @@ function clubScreen() {
         <b>${o.done ? '✓' : `${o.have}/${o.n}`}</b>
         <i style="width:${Math.round(100 * o.have / o.n)}%"></i>
       </div>`).join('')}
+    <div id="wGuild"></div>
     <div class="w-row"><span>Cards</span><b>${coll.length}</b></div>
     <div class="w-row"><span>Packs waiting</span><b>${packs.length}</b></div>
     ${best ? `<div class="w-row"><span>Best card</span><b>${best.overall} ${best.short}</b></div>` : ''}
@@ -113,6 +114,21 @@ function clubScreen() {
         </div>`).join('')}</div>` : ''}
     <div class="w-row"><span>Synced</span><b>${store.syncLabel()}</b></div>
   `);
+  /* Guild objectives, when the wrist is paired to an account in a guild:
+   * the same three counters the phone shows, filled in after the glance
+   * paints so a slow network never holds up the balance. */
+  store.guild().then((g) => {
+    const el = app.querySelector('#wGuild');
+    if (!el || !g?.guild) return;
+    el.innerHTML = `
+      <p class="w-title" style="margin-top:8px">${g.guild.name}${g.rank ? ` · #${g.rank}` : ''}</p>
+      ${(g.objectives || []).map((o) => `
+        <div class="w-obj ${o.complete ? 'done' : ''}">
+          <span>${o.text}</span>
+          <b>${o.claimed ? '✓' : `${o.have}/${o.need}`}</b>
+          <i style="width:${Math.round(100 * Math.min(1, o.have / o.need))}%"></i>
+        </div>`).join('')}`;
+  });
   app.querySelector('#wDaily')?.addEventListener('click', () => {
     const r = store.claimDaily();
     if (!r) return;

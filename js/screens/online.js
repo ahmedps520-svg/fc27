@@ -4,7 +4,8 @@
  * Rendered as a tab inside Ultimate XI (see squad.js) and reused by the
  * standalone account screen off the main menu.
  */
-import { getState, adoptCloudSave, cloudWins, save } from '../state.js';
+import { getState, adoptCloudSave, cloudWins, save, update } from '../state.js';
+import { pend } from '../progress.js';
 import { WORLD, getPlayer } from '../data/generator.js';
 import * as api from '../net/api.js';
 import * as net from '../net/socket.js';
@@ -108,6 +109,27 @@ export function onlineView() {
         <p class="ol-code" id="olCodeOut" hidden></p>
       </section>
     </div>
+
+    <div class="ol-grid">
+      <section class="ol-card glass" id="olGuild">
+        <span class="ol-kicker">Guild</span>
+        <h3>Your guild</h3>
+        <p class="ol-empty">Loading…</p>
+      </section>
+
+      <section class="ol-card glass" id="olFriends">
+        <span class="ol-kicker">Friends</span>
+        <h3>Friends</h3>
+        <p class="ol-empty">Loading…</p>
+      </section>
+    </div>
+
+    <section class="ol-board glass">
+      <h3>Live now</h3>
+      <p class="ol-sub">Watch a match that is being played right now. Spectators see the
+         host's view and can never touch the game.</p>
+      <div id="olLive" class="ol-rows"><p class="ol-empty">Loading…</p></div>
+    </section>
 
     <section class="ol-board glass">
       <h3>Global leaderboard</h3>
@@ -243,6 +265,150 @@ export function mountOnline(root, { rerender }) {
     if (boardEl?.isConnected) boardEl.innerHTML = '<p class="ol-empty">Leaderboard unavailable.</p>';
   });
 
+  /* --- guild --- */
+  const esc = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const guildEl = root.querySelector('#olGuild');
+  const paintGuild = (v, board) => {
+    if (!guildEl?.isConnected) return;
+    const objs = (v.objectives || []).map((o) => `
+      <li class="gd-obj ${o.complete ? 'done' : ''}">
+        <span>${esc(o.text)}</span>
+        <em>${o.have || 0}/${o.need}</em>
+        <i><b style="width:${Math.min(100, Math.round(100 * (o.have || 0) / o.need))}%"></b></i>
+        ${o.claimable ? `<button class="btn primary sm" data-claim="${o.id}">Claim ${o.pack} pack</button>`
+          : o.claimed ? '<span class="gd-claimed">Claimed</span>' : `<span class="gd-pay">${o.pack} pack · ◈ ${o.apex}</span>`}
+      </li>`).join('');
+    const rows = (board?.rows || []).slice(0, 8).map((r) => `
+      <div class="ol-row ${v.guild && r.code === v.guild.code ? 'me' : ''}">
+        <i>${r.rank}</i><b>${esc(r.name)} <small>[${esc(r.tag)}]</small></b>
+        <span>${r.members} members</span><span>${r.wins}W · ${r.goals} goals</span>
+        <span class="ol-gd"></span><em>${r.points}</em>
+      </div>`).join('');
+    guildEl.innerHTML = v.guild ? `
+      <span class="ol-kicker">Guild · week ${esc(v.week?.id || '')}</span>
+      <h3>${esc(v.guild.name)} <small>[${esc(v.guild.tag)}]</small></h3>
+      <p>Code <b class="gd-code">${esc(v.guild.code)}</b> — share it to invite. ${v.rank ? `Rank <b>#${v.rank}</b> of ${v.guilds} this week.` : ''}</p>
+      <div class="gd-members">${v.guild.members.map((m) => `<span class="${m.online ? 'on' : ''}"><i></i>${esc(m.name)} <em>${m.points}</em></span>`).join('')}</div>
+      <span class="ol-kicker">Weekly objectives</span>
+      <ul class="gd-objs">${objs}</ul>
+      <span class="ol-kicker">Guild board</span>
+      <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>
+      <button class="btn ghost sm" id="gdLeave">Leave guild</button>` : `
+      <span class="ol-kicker">Guild</span>
+      <h3>Join a guild</h3>
+      <p>Play together: the wins, goals and matches of everyone in a guild count toward the
+         same weekly objectives, and each member claims the reward.</p>
+      <div class="ol-lobby">
+        <div class="ol-join"><input id="gdName" maxlength="20" placeholder="New guild name" aria-label="Guild name"><button class="btn ghost" id="gdCreate">Create</button></div>
+        <div class="ol-join"><input id="gdCode" maxlength="5" placeholder="CODE" aria-label="Guild code"><button class="btn ghost" id="gdJoin">Join</button></div>
+      </div>
+      <span class="ol-kicker">Guild board · this week</span>
+      <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>`;
+  };
+  const loadGuild = async () => {
+    try {
+      const [v, board] = await Promise.all([api.guild(), api.guildBoard().catch(() => null)]);
+      paintGuild(v, board);
+    } catch (err) {
+      if (guildEl?.isConnected) guildEl.innerHTML = `<span class="ol-kicker">Guild</span><p class="ol-empty">${esc(err.message || 'Guilds unavailable.')}</p>`;
+    }
+  };
+  loadGuild();
+  guildEl?.addEventListener('click', async (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    try {
+      if (b.id === 'gdCreate') {
+        const r = await api.guildAction({ action: 'create', name: guildEl.querySelector('#gdName').value });
+        toast(`Guild founded — code ${r.view?.guild?.code || ''}`, 'good');
+      } else if (b.id === 'gdJoin') {
+        await api.guildAction({ action: 'join', code: guildEl.querySelector('#gdCode').value.trim().toUpperCase() });
+        toast('Joined the guild', 'good');
+      } else if (b.id === 'gdLeave') {
+        await api.guildAction({ action: 'leave' });
+        toast('Left the guild', 'info');
+      } else if (b.dataset.claim) {
+        const r = await api.guildAction({ action: 'claim', id: b.dataset.claim });
+        if (r.reward) {
+          update((st) => pend(st, r.reward));
+          sfx('confirm');
+          toast(`${r.reward.title} — reward waiting on Today`, 'good');
+        }
+      } else return;
+      loadGuild();
+    } catch (err) { toast(err.message || 'That did not work', 'warn'); }
+  });
+
+  /* --- friends --- */
+  const friendsEl = root.querySelector('#olFriends');
+  const paintFriends = (rows) => {
+    if (!friendsEl?.isConnected) return;
+    const hosting = !codeOut.hidden;
+    friendsEl.innerHTML = `
+      <span class="ol-kicker">Friends</span>
+      <h3>Friends</h3>
+      <div class="ol-join"><input id="frName" maxlength="16" placeholder="Player name" aria-label="Friend's player name"><button class="btn ghost" id="frAdd">Add</button></div>
+      <div class="fr-list">${rows.length ? rows.map((r) => `
+        <div class="fr-row ${r.online ? 'on' : ''}">
+          <i></i><b>${esc(r.name)}</b>${r.guild ? `<small>[${esc(r.guild)}]</small>` : ''}<span>${r.points} pts</span>
+          ${r.online && hosting ? `<button class="btn primary sm" data-invite="${esc(r.name)}">Invite</button>` : ''}
+          ${r.inMatch ? `<button class="btn ghost sm" data-watch="${r.inMatch}">Watch</button>` : ''}
+          <button class="icon-btn sm" data-remove="${esc(r.name)}" title="Remove">✕</button>
+        </div>`).join('') : '<p class="ol-empty">Add friends by their player name. Invites to your lobby and a Watch button appear when they are online.</p>'}</div>`;
+  };
+  const loadFriends = async () => {
+    try { paintFriends((await api.friends()).rows || []); }
+    catch (err) { if (friendsEl?.isConnected) friendsEl.innerHTML = `<span class="ol-kicker">Friends</span><p class="ol-empty">${esc(err.message || 'Friends unavailable.')}</p>`; }
+  };
+  loadFriends();
+  const friendsTimer = setInterval(loadFriends, 15000);
+  friendsEl?.addEventListener('click', async (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    try {
+      if (b.id === 'frAdd') {
+        await api.friendAction({ action: 'add', name: friendsEl.querySelector('#frName').value.trim() });
+        toast('Friend added', 'good');
+      } else if (b.dataset.remove) {
+        await api.friendAction({ action: 'remove', name: b.dataset.remove });
+      } else if (b.dataset.invite) {
+        if (!net.isReady()) return toast('Not connected to the server', 'warn');
+        net.send({ t: 'invite', to: b.dataset.invite });
+        return;
+      } else if (b.dataset.watch) {
+        if (!net.isReady()) return toast('Not connected to the server', 'warn');
+        net.send({ t: 'spectate', matchId: +b.dataset.watch });
+        showSearch('Joining as a spectator…', 'Waiting for the host\'s picture');
+        return;
+      } else return;
+      loadFriends();
+    } catch (err) { toast(err.message || 'That did not work', 'warn'); }
+  });
+
+  /* --- live matches --- */
+  const liveEl = root.querySelector('#olLive');
+  const loadLive = async () => {
+    try {
+      const rows = (await api.liveMatches()).rows || [];
+      if (!liveEl?.isConnected) return;
+      liveEl.innerHTML = rows.length ? rows.map((r) => `
+        <div class="ol-row">
+          <i>▶</i><b>${esc(r.host)} v ${esc(r.guest)}</b>
+          <span>${r.spectators} watching</span><span></span><span class="ol-gd"></span>
+          <em><button class="btn ghost sm" data-watch="${r.matchId}">Watch</button></em>
+        </div>`).join('') : '<p class="ol-empty">Nobody is playing right now.</p>';
+    } catch { if (liveEl?.isConnected) liveEl.innerHTML = '<p class="ol-empty">Live list unavailable.</p>'; }
+  };
+  loadLive();
+  const liveTimer = setInterval(loadLive, 10000);
+  liveEl?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-watch]');
+    if (!b) return;
+    if (!net.isReady()) return toast('Not connected to the server', 'warn');
+    net.send({ t: 'spectate', matchId: +b.dataset.watch });
+    showSearch('Joining as a spectator…', 'Waiting for the host\'s picture');
+  });
+
   /* --- actions --- */
   root.querySelector('#olQueue')?.addEventListener('click', () => {
     if (!net.isReady()) return toast('Not connected to the server', 'warn');
@@ -317,8 +483,22 @@ export function mountOnline(root, { rerender }) {
   offs.push(net.on('hosting', (m) => {
     codeOut.hidden = false;
     codeOut.innerHTML = `Lobby open — share this code: <b>${m.code}</b>`;
-    showSearch('Waiting for a friend…', `Lobby code ${m.code}`);
+    showSearch('Waiting for a friend…', `Lobby code ${m.code} · invite a friend from the list below`);
+    // the search overlay covers the page, so the friends list needs to be usable through it:
+    // an invite is the four-letter code delivered by the server, nothing more
+    const online = [...root.querySelectorAll('.fr-row.on b')].map((b) => b.textContent);
+    if (online.length) {
+      const inv = document.createElement('div');
+      inv.className = 'ols-invite';
+      inv.innerHTML = `<span>Invite</span>${online.map((n) => `<button class="btn ghost sm" data-inv="${n}">${n}</button>`).join('')}`;
+      searchEl.querySelector('.ols-inner')?.appendChild(inv);
+      inv.addEventListener('click', (e) => { const b = e.target.closest('[data-inv]'); if (b) net.send({ t: 'invite', to: b.dataset.inv }); });
+    }
   }));
+  offs.push(net.on('inviteSent', (m) => toast(`Invite sent to ${m.to}`, 'good')));
+  offs.push(net.on('inviteFail', (m) => toast(m.error, 'warn')));
+  offs.push(net.on('spectateFail', (m) => { hideSearch(); toast(m.error, 'warn'); }));
+  offs.push(net.on('spectating', hideSearch));
 
   offs.push(net.on('joinFail', (m) => { hideSearch(); toast(m.error, 'warn'); }));
   offs.push(net.on('queued', () => { /* already showing the search overlay */ }));
@@ -336,6 +516,9 @@ export function mountOnline(root, { rerender }) {
   return () => {
     clearInterval(pipTimer);
     clearInterval(searchTimer);
+    clearInterval(friendsTimer);
+    clearInterval(liveTimer);
+    searchEl.querySelector('.ols-invite')?.remove();
     offs.forEach((off) => off());
   };
 }
@@ -388,6 +571,49 @@ net.on('match', (m) => {
     weekend: m.kind === 'weekend' ? (m.wl || null) : null,
     homeSquad: m.host ? mine : theirs,
     awaySquad: m.host ? theirs : mine,
+  });
+});
+
+/* An invite is a lobby code that arrived by itself. Accepting it is exactly
+ * the Join button with the code typed in. */
+net.on('invited', (m) => {
+  if (!api.isSignedIn()) return;
+  sfx('confirm');
+  const box = document.createElement('div');
+  box.className = 'toast invite-toast';
+  box.innerHTML = `<b>${m.from}</b> invited you to a match <button class="btn primary sm" id="invGo">Join</button><button class="btn ghost sm" id="invNo">Later</button>`;
+  document.body.appendChild(box);
+  const close = () => box.remove();
+  box.querySelector('#invNo').addEventListener('click', close);
+  box.querySelector('#invGo').addEventListener('click', () => {
+    close();
+    const lineup = getState().club.lineup.filter(Boolean);
+    if (lineup.length !== 11) return toast('Fill all 11 Ultimate XI positions to play', 'warn');
+    net.send({ t: 'join', code: m.code, club: WORLD.clubs[0].id, squad: lineup, divIdx: getState().ultimate.divIdx });
+  });
+  setTimeout(close, 45000);
+});
+
+/* Spectating: the match screen in guest mode, with the sender, the pause
+ * requests and the result all switched off (see `spectating` in play.js).
+ * The two squads travel with the message the way an opponent's does. */
+net.on('spectating', (m) => {
+  const squadOf = (ids, name, colors) => {
+    const xi = (ids || []).map(getPlayer).filter(Boolean);
+    const short = (name || '???').slice(0, 3).toUpperCase();
+    return xi.length === 11 ? { xi, name, short, colors, crest: { shape: 'shield', pattern: 'halves', device: 'star', colors } } : null;
+  };
+  const home = squadOf(m.host.squad, m.host.name, ['#2f80ed', '#0b1020']);
+  const away = squadOf(m.guest.squad, m.guest.name, ['#ff2e88', '#160b16']);
+  sfx('confirm');
+  navigate('play', {
+    homeId: WORLD.clubs[0].id,
+    awayId: WORLD.clubs[1].id,
+    duration: 180,
+    mode: 'versus',
+    online: { matchId: m.matchId, host: false, seat: 1, spectate: true, kind: 'spectate', oppName: `${m.host.name} v ${m.guest.name}`, myName: api.getName() },
+    homeSquad: home,
+    awaySquad: away,
   });
 });
 

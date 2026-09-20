@@ -129,3 +129,11 @@ export async function leaderboard() {
 }
 
 export function setProfile(p) { profile = p; }
+
+/* ---- social: guilds, friends, live matches (see the routes in server.js) ---- */
+export const guild = () => call('/api/guild');
+export const guildAction = (body) => call('/api/guild', { method: 'POST', body });
+export const guildBoard = () => call('/api/guild/board');
+export const friends = () => call('/api/friends');
+export const friendAction = (body) => call('/api/friends', { method: 'POST', body });
+export const liveMatches = () => call('/api/live');

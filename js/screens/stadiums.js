@@ -44,6 +44,7 @@ export function render(params = {}) {
         <div class="seg" id="scTime">${['day', 'dusk', 'night'].map((v) => `<button class="${time === v ? 'on' : ''}" data-time="${v}">${TIME_LABEL[v]}</button>`).join('')}</div>
         <div class="seg" id="scWeather">${['clear', 'overcast', 'rain'].map((v) => `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${WEATHER_LABEL[v]}</button>`).join('')}</div>
         ${club ? `<button class="btn primary" id="scPlay">${t('stadiums.playhere')}</button>` : ''}
+        <button class="btn ghost" id="scBuild">Design your own →</button>
       </div>
       <div class="showcase-list">
         ${STADIUMS.map((x) => {
@@ -92,6 +93,7 @@ export function mount(root) {
   root.querySelectorAll('[data-stadium]').forEach((b) => b.addEventListener('click', () => { pick = b.dataset.stadium; navigate('stadiums'); }));
   root.querySelectorAll('[data-time]').forEach((b) => b.addEventListener('click', () => { time = b.dataset.time; navigate('stadiums'); }));
   root.querySelectorAll('[data-weather]').forEach((b) => b.addEventListener('click', () => { weather = b.dataset.weather; navigate('stadiums'); }));
+  root.querySelector('#scBuild')?.addEventListener('click', () => navigate('builder'));
   root.querySelector('#scPlay')?.addEventListener('click', () => {
     navigate('play', { homeId: club.id, awayId: away.id, duration: 240, skill: 1, mode: 'single', atmo: { time, weather } });
   });

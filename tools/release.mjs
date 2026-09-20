@@ -59,7 +59,7 @@ const walk = (dir, out = []) => {
   }
   return out;
 };
-const SKIP = [/^js\/package\.json$/, /^js\/vendor\/three\.LICENSE/, /^js\/vendor\/jsm\/(?!postprocessing|shaders|loaders\/GLTFLoader|utils\/SkeletonUtils)/, /\.md$/, /^js\/watch\/(?!bundle\.js)/];
+const SKIP = [/^js\/package\.json$/, /^js\/vendor\/three\.LICENSE/, /^js\/vendor\/three\.webgpu\.js$/, /^js\/vendor\/jsm\/(?!postprocessing|shaders|loaders\/GLTFLoader|utils\/SkeletonUtils)/, /\.md$/, /^js\/watch\/(?!bundle\.js)/];
 const wanted = [...walk('js'), ...walk('styles')].filter((f) => !SKIP.some((r) => r.test(f)));
 for (const f of wanted) if (!listed.has(f)) problems.push(`sw.js: precache list is missing ./${f}`);
 for (const f of listed) {

@@ -11,6 +11,7 @@
  */
 import { WORLD, getPlayer } from './generator.js';
 import { RARITY } from './pools.js';
+import { price } from '../economy.js';
 
 export const PACKS = [
   { id: 'bronze', cat: 'free',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
@@ -297,4 +298,6 @@ export const __openPackForTest = openPack;
  * repeat. That is deliberate: pulling a second Icon should feel like a result,
  * not like the pack failed.
  */
-export const dupValue = (p) => Math.round(p.value / 25_000);
+/* Quick-sell: a slice of the card's *market* price, which answers to supply
+   and demand (economy.js) — dumping a kind of card lowers what it fetches. */
+export const dupValue = (p) => Math.max(50, Math.round(price(p) / 25_000));

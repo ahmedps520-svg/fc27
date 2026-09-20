@@ -901,7 +901,7 @@ function drawBanner(ctx, match, w, h, kits) {
  *        overrides for tests; read from the browser when absent
  */
 export function resolveQuality(setting, env = null) {
-  if (['high', 'low', 'ultra', 'min', 'medium'].includes(setting)) return setting;
+  if (['high', 'low', 'ultra', 'min', 'medium', 'cinema'].includes(setting)) return setting;
   const e = env || readEnv();
   const gpu = classifyGPU(e.gpu || '');
   const weak = (e.cores || 8) <= 2 || (e.memory || 8) <= 2;

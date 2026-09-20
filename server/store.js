@@ -28,7 +28,7 @@ const FILE = path.join(DIR, 'accounts.json');
 
 const NAME_RE = /^[a-zA-Z0-9_.-]{3,16}$/;
 
-const EMPTY = () => ({ accounts: {}, version: 1 });
+const EMPTY = () => ({ accounts: {}, guilds: {}, version: 1 });
 
 let db = EMPTY();
 let backend = null;
@@ -196,6 +196,7 @@ async function load() {
     console.error('[store] could not read accounts, starting empty:', err.message);
   }
   db = (stored && stored.accounts) ? stored : EMPTY();
+  if (!db.guilds) db.guilds = {};
   indexTokens();
   const count = Object.keys(db.accounts).length;
   console.log(`[store] ${backend.name} — ${count} account${count === 1 ? '' : 's'}`);
@@ -341,8 +342,147 @@ function recordResult(acct, { scored, conceded, divIdx }) {
   else if (scored === conceded) { o.draws += 1; o.points += 1; }
   else o.losses += 1;
   if (typeof divIdx === 'number') o.divIdx = divIdx;
+  // the guild's week counts every member's validated result
+  const g = acct.guild && db.guilds[acct.guild];
+  if (g) {
+    const w = guildWeek(g);
+    w.matches += 1; w.goals += scored; if (scored > conceded) w.wins += 1;
+    w.points += scored > conceded ? 3 : scored === conceded ? 1 : 0;
+  }
   flush();
   return o;
+}
+
+/* ------------------------------------------------------------------ *
+ * Guilds — clubs of players
+ *
+ * A guild is a name, a five-letter code to join by, a member list and a
+ * tally per week. The week's objectives are the same for every guild and
+ * every member claims each completed one once. Points are the members'
+ * validated online results, so the board cannot be gamed without winning.
+ * ------------------------------------------------------------------ */
+const GUILD_NAME_RE = /^[a-zA-Z0-9 _.'-]{3,20}$/;
+const weekId = (now = Date.now()) => {
+  const d = new Date(now); const day = (d.getUTCDay() + 6) % 7;      // Monday = 0
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+  return monday.toISOString().slice(0, 10);
+};
+const GUILD_OBJECTIVES = [
+  { id: 'wins', need: 15, text: 'Win 15 online matches together', pack: 'gold', apex: 1500 },
+  { id: 'goals', need: 40, text: 'Score 40 goals between you', pack: 'silver', apex: 1000 },
+  { id: 'matches', need: 30, text: 'Play 30 online matches as a guild', pack: 'gold', apex: 1200 },
+];
+function guildWeek(g, id = weekId()) {
+  if (!g.weeks) g.weeks = {};
+  const w = g.weeks[id] || (g.weeks[id] = { matches: 0, goals: 0, wins: 0, points: 0, claimed: {} });
+  // keep the last four weeks
+  const keys = Object.keys(g.weeks).sort();
+  while (keys.length > 4) delete g.weeks[keys.shift()];
+  return w;
+}
+const guildCode = () => { let c = ''; const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; for (let i = 0; i < 5; i++) c += A[crypto.randomInt(A.length)]; return c; };
+function createGuild(acct, name) {
+  if (acct.guild && db.guilds[acct.guild]) return { error: 'You are already in a guild. Leave it first.' };
+  name = String(name || '').trim();
+  if (!GUILD_NAME_RE.test(name)) return { error: 'A guild name is 3–20 letters, numbers or spaces.' };
+  if (Object.values(db.guilds).some((g) => g.name.toLowerCase() === name.toLowerCase())) return { error: 'That guild name is taken.' };
+  let code = guildCode();
+  while (db.guilds[code]) code = guildCode();
+  const g = { code, name, tag: name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() || 'GLD', created: Date.now(), owner: acct.name, members: [acct.name], weeks: {} };
+  db.guilds[code] = g;
+  acct.guild = code;
+  flush();
+  return { guild: g };
+}
+function joinGuild(acct, code) {
+  if (acct.guild && db.guilds[acct.guild]) return { error: 'You are already in a guild. Leave it first.' };
+  const g = db.guilds[String(code || '').toUpperCase().trim()];
+  if (!g) return { error: 'No guild with that code.' };
+  if (g.members.length >= 30) return { error: 'That guild is full (30).' };
+  if (!g.members.includes(acct.name)) g.members.push(acct.name);
+  acct.guild = g.code;
+  flush();
+  return { guild: g };
+}
+function leaveGuild(acct) {
+  const g = acct.guild && db.guilds[acct.guild];
+  acct.guild = null;
+  if (g) {
+    g.members = g.members.filter((n) => n !== acct.name);
+    if (!g.members.length) delete db.guilds[g.code];
+    else if (g.owner === acct.name) g.owner = g.members[0];
+  }
+  flush();
+  return { ok: true };
+}
+/** What a member sees: the guild, this week's objectives with progress and what they can claim, the board rank. */
+function guildView(acct, onlineNames = new Set()) {
+  const g = acct.guild && db.guilds[acct.guild];
+  if (!g) return { guild: null, objectives: GUILD_OBJECTIVES.map((o) => ({ ...o, have: 0 })) };
+  const id = weekId();
+  const w = guildWeek(g, id);
+  const board = guildBoard(200, id);
+  const rank = board.findIndex((r) => r.code === g.code) + 1;
+  return {
+    guild: { code: g.code, name: g.name, tag: g.tag, owner: g.owner, members: g.members.map((n) => ({ name: n, online: onlineNames.has(n), points: db.accounts[key(n)]?.online?.points || 0 })) },
+    week: { id, ...w, claimed: undefined },
+    objectives: GUILD_OBJECTIVES.map((o) => {
+      const have = Math.min(o.need, w[o.id] || 0);
+      const complete = have >= o.need;
+      const claimed = !!(w.claimed[o.id] && w.claimed[o.id].includes(acct.name));
+      return { ...o, have, complete, claimed, claimable: complete && !claimed };
+    }),
+    rank, guilds: board.length,
+  };
+}
+function claimGuildObjective(acct, objId) {
+  const g = acct.guild && db.guilds[acct.guild];
+  if (!g) return { error: 'Not in a guild.' };
+  const o = GUILD_OBJECTIVES.find((x) => x.id === objId);
+  if (!o) return { error: 'No such objective.' };
+  const w = guildWeek(g);
+  if ((w[o.id] || 0) < o.need) return { error: 'Not complete yet.' };
+  w.claimed[o.id] = w.claimed[o.id] || [];
+  if (w.claimed[o.id].includes(acct.name)) return { error: 'Already claimed.' };
+  w.claimed[o.id].push(acct.name);
+  flush();
+  return { reward: { pack: o.pack, apex: o.apex, title: `Guild: ${o.text}` } };
+}
+function guildBoard(limit = 25, id = weekId()) {
+  return Object.values(db.guilds)
+    .map((g) => ({ code: g.code, name: g.name, tag: g.tag, members: g.members.length, ...(g.weeks?.[id] || { matches: 0, goals: 0, wins: 0, points: 0 }) }))
+    .sort((x, y) => y.points - x.points || y.wins - x.wins || y.goals - x.goals || x.name.localeCompare(y.name))
+    .slice(0, limit)
+    .map((r, i) => ({ rank: i + 1, code: r.code, name: r.name, tag: r.tag, members: r.members, points: r.points, wins: r.wins, goals: r.goals, matches: r.matches }));
+}
+
+/* ------------------------------------------------------------------ *
+ * Friends — a list of names on the account. Adding is one-way (you can
+ * follow anyone by name); the list itself is what the invites and the
+ * spectating go through. No messages, ever.
+ * ------------------------------------------------------------------ */
+function addFriend(acct, name) {
+  const other = db.accounts[key(name || '')];
+  if (!other) return { error: 'No player with that name.' };
+  if (other === acct) return { error: 'That is you.' };
+  acct.friends = acct.friends || [];
+  if (acct.friends.length >= 50) return { error: 'Fifty friends is the limit.' };
+  if (!acct.friends.includes(other.name)) acct.friends.push(other.name);
+  flush();
+  return { ok: true };
+}
+function removeFriend(acct, name) {
+  acct.friends = (acct.friends || []).filter((n) => n.toLowerCase() !== String(name || '').toLowerCase());
+  flush();
+  return { ok: true };
+}
+/** The list with live status; `live(name)` is the hub's view of who is where. */
+function friendsView(acct, live = () => null) {
+  return (acct.friends || []).map((n) => {
+    const a = db.accounts[key(n)];
+    const st = live(n) || {};
+    return { name: n, points: a?.online?.points || 0, guild: a?.guild ? db.guilds[a.guild]?.tag || null : null, online: !!st.online, hosting: st.hosting || null, inMatch: st.matchId || null };
+  });
 }
 
 /* Weekend League: per-account tallies keyed by the weekend id, written only
@@ -385,7 +525,7 @@ function leaderboard(limit = 25) {
 }
 
 /** What the client is allowed to see about itself. */
-const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created });
+const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null });
 
 /** For the health endpoint: where accounts are going, and whether that lasts. */
 const status = () => ({
@@ -400,6 +540,8 @@ module.exports = {
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
   recordWeekend, weekendBoard,
+  createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
+  addFriend, removeFriend, friendsView,
   // operator tools only — see the note on accountByName
   accountByName,
 };

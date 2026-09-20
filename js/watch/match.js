@@ -15,6 +15,7 @@
 import { Match, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import { draw, makeCamera, updateCamera, groundBasis } from '../game/render3d.js';
+import { stadiumFor } from '../data/stadiums.js';
 import { WORLD } from '../data/generator.js';
 import { say } from '../data/commentary.js';
 
@@ -33,17 +34,44 @@ export const LEVELS = {
   hard:   { label: 'Hard',   skill: 1.3,  pay: 2 },
 };
 
+/**
+ * A 64x22 silhouette of the ground: the three stands in the seat colours,
+ * taller for a bigger ground, a roof line when it has one, a bowl's curved
+ * corners. Enough to tell The Forge from Colliery Row on a 40mm screen.
+ */
+export function drawThumb(canvas, st) {
+  if (!canvas || !st) return;
+  const g = canvas.getContext('2d');
+  const W = canvas.width; const H = canvas.height;
+  g.fillStyle = '#0b1220'; g.fillRect(0, 0, W, H);
+  const h = 4 + Math.round(st.size * 10);
+  const [a, b] = st.seats || ['#1c3f6e', '#14335c'];
+  g.fillStyle = b;
+  // far stand across the top, side stands down the edges
+  g.fillRect(8, 2, W - 16, h); g.fillRect(2, 2, 6, H - 4); g.fillRect(W - 8, 2, 6, H - 4);
+  g.fillStyle = a; g.fillRect(8, 2, W - 16, 2); g.fillRect(2, 2, 6, 2); g.fillRect(W - 8, 2, 6, 2);
+  if (st.bowl) { g.fillStyle = b; g.beginPath(); g.arc(8, 2 + h, h, Math.PI, Math.PI * 1.5); g.lineTo(8, 2); g.fill(); g.beginPath(); g.arc(W - 8, 2 + h, h, Math.PI * 1.5, Math.PI * 2); g.lineTo(W - 8, 2); g.fill(); }
+  if (st.roof && st.roof !== 'none') { g.fillStyle = '#e5e7eb'; g.fillRect(8, 1, W - 16, 1); }
+  g.fillStyle = '#2e8845'; g.fillRect(9, 3 + h, W - 18, H - 5 - h);
+  g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1; g.strokeRect(10.5, 4.5 + h, W - 21, H - 8 - h);
+}
+
 export function playMatch(app, awayId, onDone, level = 'normal') {
   const lv = LEVELS[level] || LEVELS.normal;
+  const homeClub = WORLD.clubs[0];
+  const awayClub = WORLD.clubsById[awayId] || WORLD.clubs[1];
+  const ground = stadiumFor(awayClub);            // the CPU side hosts: you are the visitor on the watch
   app.innerHTML = `
     <div class="w-match">
       <canvas id="wPitch"></canvas>
+      <div class="w-venue"><canvas id="wThumb" width="64" height="22"></canvas><span>${ground.name}</span></div>
       <div class="w-hud"><span id="wClock">0'</span><b id="wScore">0 – 0</b></div>
       <div class="w-comm" id="wComm" hidden></div>
       <div class="w-sp" id="wSp" hidden></div>
       <button class="w-kick" id="wKick">KICK</button>
     </div>`;
 
+  drawThumb(app.querySelector('#wThumb'), ground);
   const canvas = app.querySelector('#wPitch');
   const ctx = canvas.getContext('2d', { alpha: false });
   const clockEl = app.querySelector('#wClock');
