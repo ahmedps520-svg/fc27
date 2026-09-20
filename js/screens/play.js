@@ -1945,6 +1945,18 @@ export function mount(root, params) {
       <div class="photo-filters">${PHOTO_FILTERS.map(([v, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-filter="${v}">${l}</button>`).join('')}</div>
       <div class="photo-actions"><span class="photo-hint">${t('photo.hint')}</span><button class="btn primary" data-photo="save">${t('photo.save')}</button><button class="btn ghost" data-photo="done">${t('photo.done')}</button></div>`;
     root.appendChild(photoBar);
+    /* The way out, in the corner where every phone puts its close button —
+       the bar at the bottom sat under the home indicator on iPhones and
+       people were stuck in photo mode. Esc and the pause button close it too. */
+    const photoExit = document.createElement('button');
+    photoExit.className = 'icon-btn photo-exit';
+    photoExit.setAttribute('aria-label', t('photo.done'));
+    photoExit.textContent = '✕';
+    photoExit.addEventListener('click', () => closePhoto());
+    root.appendChild(photoExit);
+    const photoKey = (e) => { if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); closePhoto(); } };
+    window.addEventListener('keydown', photoKey);
+    photo.exitEl = photoExit; photo.keyOff = () => window.removeEventListener('keydown', photoKey);
     root.classList.add('photo-mode');
     photoBar.addEventListener('click', async (e) => {
       const f = e.target.closest('[data-filter]');
@@ -1979,7 +1991,10 @@ export function mount(root, params) {
     photo.off = () => { canvas.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); canvas.removeEventListener('wheel', wheel); };
   }
   function closePhoto() {
-    photo?.off?.();
+    if (!photo) return;
+    photo.off?.();
+    photo.keyOff?.();
+    photo.exitEl?.remove();
     photo = null;
     canvas.style.filter = '';
     photoBar?.remove(); photoBar = null;
