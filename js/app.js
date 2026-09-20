@@ -13,6 +13,7 @@ import * as Trophies from './screens/trophies.js';
 import * as Weekend from './screens/weekend.js';
 import * as World from './screens/world.js';
 import * as Stadiums from './screens/stadiums.js';
+import * as Builder from './screens/builder.js';
 import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
@@ -26,6 +27,7 @@ import { applyLanguage } from './i18n.js';
 const SCREENS = {
   world: World,
   stadiums: Stadiums,
+  builder: Builder,
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
   settings: Settings, match: MatchScreen, play: Play, online: Online,
   today: Today, trophies: Trophies, weekend: Weekend,

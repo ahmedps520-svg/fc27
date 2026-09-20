@@ -71,6 +71,8 @@ const defaults = () => ({
     dupes: {},                // card id -> duplicate pulls banked as evolve material
     events: {},               // event week key -> { done, claimed }
     watchStats: { packs: 0, wins: 0 },
+    /* The Stadium Builder (builder.js): the design that is your home ground, and up to eight kept ones. */
+    stadium: { design: null, saved: [] },
     /* The club you actually take onto the pitch.
      *
      * Ultimate XI used to be called "Ultimate XI" in a fixed cyan, on every

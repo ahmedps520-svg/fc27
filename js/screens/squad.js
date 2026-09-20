@@ -222,7 +222,7 @@ function nameView() {
   const id = clubIdentity();
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Club name</h2></header>
+      <header class="panel-head"><h2>Club name</h2><button class="btn ghost sm" id="idBuilder">Design your stadium →</button></header>
       <p class="hint">What your side is called on the team sheet, the scoreboard
         and in an opponent\u2019s match report.</p>
 
@@ -1037,6 +1037,7 @@ export function mount(root) {
       }
     });
 
+    root.querySelector('#idBuilder')?.addEventListener('click', () => navigate('builder'));
     nameEl?.addEventListener('input', () => {
       const v = nameEl.value.trim() || 'Ultimate XI';
       update((s) => { s.club.identity = { ...clubIdentity(), name: v }; });

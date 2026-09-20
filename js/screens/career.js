@@ -21,6 +21,8 @@ import { faceSVG, faceOf } from '../components/face.js';
 import { navigate, toast } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import * as v2 from '../careerV2.js';
+import { GROUND_LEVELS, groundLevel, groundCapacity, gateIncome, groundOf, expansionOffer, expand } from '../builder.js';
+import { sfx } from '../audio.js';
 
 export const TITLE = 'Career';
 
@@ -577,8 +579,37 @@ function clubHTML(car) {
         <span><b>${car.stats.rep}</b> Reputation</span>
       </div>
     </section>
+    ${stadiumHTML(car)}
     <section class="panel glass"><header class="panel-head"><h2>League table</h2></header>
       ${miniTable(sortedCareerTable(car), car.clubId)}
+    </section>`;
+}
+
+/* The ground: what it holds, what it pays, and the next expansion — the
+ * board's money when the club is on target, the club's when it is not. */
+function stadiumHTML(car) {
+  const pos = sortedCareerTable(car).findIndex((r) => r.id === car.clubId) + 1;
+  const o = expansionOffer(car, pos);
+  const g = groundOf(car);
+  const design = getState().club.stadium?.design;
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>The ground</h2><span class="tag">Level ${groundLevel(car) + 1} of ${GROUND_LEVELS.length}</span></header>
+      <div class="neg-facts">
+        <span><b>${groundCapacity(car).toLocaleString()}</b> Capacity</span>
+        <span><b>◎ ${fmtCoins(gateIncome(car))}</b> Gate per home match</span>
+        <span><b>◎ ${fmtCoins(g.income || 0)}</b> Gate income so far</span>
+      </div>
+      ${o.done ? '<p class="hint">The ground is as big as they come.</p>' : `
+        <p class="hint">Next: <b>${o.nextCapacity.toLocaleString()}</b> seats for <b>◎ ${fmtCoins(o.cost)}</b>.
+          ${o.thisSeason ? 'The builders are in — one expansion a season.'
+            : o.boardPays ? 'The board will fund it in full: the club is on target.'
+            : o.clubCanPay ? `The board will not pay while the club is below its target (${car.board?.text || 'their brief'}) — the club can.`
+            : 'The board will not pay while the club is below its target, and the club cannot afford it.'}</p>
+        <div class="offer-actions">
+          <button class="btn ${o.boardPays ? 'primary' : ''}" id="groundExpand" ${o.thisSeason || (!o.boardPays && !o.clubCanPay) ? 'disabled' : ''}>${o.boardPays ? 'Ask the board to build it' : 'Fund the expansion'}</button>
+          <button class="btn ghost" id="groundDesign">${design ? 'Redesign the ground' : 'Design the ground'}</button>
+        </div>`}
     </section>`;
 }
 
@@ -696,6 +727,16 @@ function wire(root) {
   root.querySelector('#nextSeason')?.addEventListener('click', rerender);
   // v2
   root.querySelectorAll('[data-tab-go]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tabGo; rerender(); }));
+  root.querySelector('#groundDesign')?.addEventListener('click', () => navigate('builder'));
+  root.querySelector('#groundExpand')?.addEventListener('click', () => {
+    let r = null;
+    update((s) => { const c = s.career; if (!c) return; const pos = sortedCareerTable(c).findIndex((x) => x.id === c.clubId) + 1; r = expand(c, pos); });
+    if (!r) return;
+    if (!r.ok) return toast(r.why, 'warn');
+    sfx('confirm');
+    toast(r.boardPaid ? `The board are building: ${r.capacity.toLocaleString()} seats next home match` : `Expansion funded: ${r.capacity.toLocaleString()} seats`, 'good');
+    rerender();
+  });
   root.querySelectorAll('[data-press]').forEach((el) => el.addEventListener('click', () => {
     const [qi, ai] = el.dataset.press.split(':').map(Number);
     update((s) => { if (s.career) { v2.answerPress(s.career, qi, ai); s.career.pressPending = false; } });

@@ -18,6 +18,7 @@ import { navigate, refreshCoins, toast } from '../app.js';
 import { t, lang } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
+import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
 import { advanceWeek } from '../career.js';
@@ -88,7 +89,17 @@ function venueOf(params) {
     ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
     : getClub(params.homeId);
   const showpiece = !!(params.weekend || params.final || params.showpiece || params.online);
-  const stadium = stadiumFor(home, { showpiece });
+  /* Your own ground, when you built one (the Stadium Builder) and this is a
+     home fixture of yours: an Ultimate XI match, or a Career home game —
+     where the bowl is only as big as the board has paid for. Finals and
+     online matches are still played at the arenas. */
+  const design = getState().club.stadium?.design;
+  const mine = !showpiece && design && (params.ultimate || (params.career?.isHome && sq?.name));
+  const car = params.career ? getState().career : null;
+  const stadium = mine
+    ? builderDef(design, { clubName: sq?.name || home?.name, short: sq?.short || home?.short,
+      capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
+    : stadiumFor(home, { showpiece });
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
   const atmo = atmosphereFor(seed, params.atmo || {});

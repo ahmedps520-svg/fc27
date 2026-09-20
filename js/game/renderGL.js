@@ -82,6 +82,7 @@ function stadiumSpec(seed) {
     tallPylons: scale < 0.64,
     roofStyle: scale > 0.30 ? 'cantilever' : 'none',
     tiers: scale > 0.6 ? 2 : 1,
+    lettering: '', landscape: 'city', facadeStyle: 'concrete',
     facade: 0x2a3142,
     pattern: 'stripes',
     pylons: scale < 0.64 ? 'lattice' : 'mast',
@@ -104,8 +105,14 @@ function specFromDef(def, seed) {
     roof: def.roof !== 'none',
     roofStyle: def.roof || 'none',
     bowl: !!def.bowl,
-    tiers: def.tiers === 2 ? 2 : 1,
+    tiers: Math.min(3, Math.max(1, def.tiers | 0)) || 1,
     fill: Math.min(0.98, Math.max(0.3, (def.fill ?? 0.8) + (r() - 0.5) * 0.16)),
+    /* The builder's extras (data/builder.js): a name spelled out in the seats
+       of the far stand, what surrounds the ground, and what its outside is
+       made of. World grounds leave them unset and get the city. */
+    lettering: String(def.lettering || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 14),
+    landscape: def.landscape || 'city',
+    facadeStyle: def.facadeStyle || 'concrete',
     seats: (def.seats || ['#1c3f6e', '#14335c']).map(hexOf),
     facade: hexOf(def.facade || '#2a3142'),
     pattern: def.pattern || 'stripes',
@@ -1255,10 +1262,17 @@ export function createRenderer(canvas, match, quality, models = false) {
      structure — which is what makes a big ground look big rather than merely
      tall. `terraceAt` maps a 0..1 depth fraction to its actual position and
      is shared with the seats and the crowd, so people sit where the steps are. */
-  const TIER_SPLIT = 0.55;
-  const TIER_GAP = VENUE.tiers === 2 ? { d: 2.2, z: 3.0 } : { d: 0, z: 0 };
+  /* Three tiers (the builder's biggest bowls) are the same idea twice: two
+     balconies, each pushing everything above it back and up by one gap. */
+  const SPLITS = VENUE.tiers === 3 ? [0.4, 0.72] : VENUE.tiers === 2 ? [0.55] : [];
+  const TIER_SPLIT = SPLITS[0] ?? 0.55;
+  const TIER_GAP = SPLITS.length ? { d: 2.2, z: 3.0 } : { d: 0, z: 0 };
+  // the total the whole structure grows by — what the roof, the back wall and the shell clear
+  const GAP_D = TIER_GAP.d * SPLITS.length;
+  const GAP_Z = TIER_GAP.z * SPLITS.length;
   const terraceAt = (t) => {
-    const up = VENUE.tiers === 2 && t >= TIER_SPLIT ? 1 : 0;
+    let up = 0;
+    for (const sp of SPLITS) if (t >= sp) up += 1;
     return {
       depth: MARGIN + t * SD + up * TIER_GAP.d,
       z: STAND_FRONT_Z + t * (SBZ - STAND_FRONT_Z) + up * TIER_GAP.z,
@@ -1270,7 +1284,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     { rot: -Math.PI / 2, cx: PITCH.w + MARGIN, cy: CY, len: PITCH.h + 36 },
   ];
   const TERRACE_ROWS = potato ? 4 : quality === 'low' ? 8 : ultra ? 22 : med ? 11 : 14;
-  const RZ2 = RZ + TIER_GAP.z;      // the roof clears the upper tier
+  const RZ2 = RZ + GAP_Z;           // the roof clears the upper tier(s)
   for (const bk of banks) {
     const g = new THREE.Group();
     g.position.set(bk.cx, bk.cy, 0);
@@ -1286,9 +1300,10 @@ export function createRenderer(canvas, match, quality, models = false) {
       step.receiveShadow = true;
       g.add(step);
     }
-    if (VENUE.tiers === 2) {
+    for (const split of SPLITS) {
       // the balcony: a wall at the front of the upper deck, and the slab under it
-      const at = terraceAt(TIER_SPLIT);
+      const below = terraceAt(split - 1e-4);
+      const at = { depth: below.depth + TIER_GAP.d, z: below.z + TIER_GAP.z };
       const wall = new THREE.Mesh(new THREE.BoxGeometry(bk.len, 0.6, TIER_GAP.z + 0.8), standMat);
       wall.position.set(0, at.depth - MARGIN + TIER_GAP.d - 0.3, at.z + TIER_GAP.z / 2 - 0.2);
       wall.castShadow = true;
@@ -1306,9 +1321,9 @@ export function createRenderer(canvas, match, quality, models = false) {
     // The back wall always closes the ground off. The roof does not: a small
     // ground is open terracing, and seeing the sky over the far end is most of
     // what makes it read as a smaller place than the last one.
-    const backH = SBZ + 1.5 + TIER_GAP.z;
+    const backH = SBZ + 1.5 + GAP_Z;
     const back = new THREE.Mesh(new THREE.BoxGeometry(bk.len, 0.8, backH), roofMat);
-    back.position.set(0, SD + TIER_GAP.d, backH / 2);
+    back.position.set(0, SD + GAP_D, backH / 2);
     g.add(back);
 
     if (VENUE.roof) {
@@ -1320,13 +1335,13 @@ export function createRenderer(canvas, match, quality, models = false) {
       const full = VENUE.roofStyle === 'ring' || VENUE.roofStyle === 'dome';
       const cover = full ? 0.86 : 0.68;
       const roof = new THREE.Mesh(new THREE.BoxGeometry(bk.len, SD * cover, 0.55), roofMat);
-      roof.position.set(0, SD + TIER_GAP.d - SD * cover / 2, RZ2);
+      roof.position.set(0, SD + GAP_D - SD * cover / 2, RZ2);
       roof.castShadow = true;
       g.add(roof);
       if (VENUE.roofStyle === 'dome') {
         const rim = new THREE.Mesh(new THREE.BoxGeometry(bk.len, SD * 0.22, 0.3),
           new THREE.MeshStandardMaterial({ color: 0xdfe8f5, roughness: 0.4, transparent: true, opacity: 0.42, side: THREE.DoubleSide }));
-        rim.position.set(0, SD + TIER_GAP.d - SD * cover - SD * 0.11, RZ2 - 0.4);
+        rim.position.set(0, SD + GAP_D - SD * cover - SD * 0.11, RZ2 - 0.4);
         g.add(rim);
       }
       // roof trusses so the underside is not a blank slab
@@ -1334,7 +1349,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         for (let i = -4; i <= 4; i++) {
           const truss = new THREE.Mesh(
             new THREE.BoxGeometry(0.5, SD * cover, 0.45), trussMat);
-          truss.position.set((bk.len / 9) * i, SD + TIER_GAP.d - SD * cover / 2, RZ2 - 0.55);
+          truss.position.set((bk.len / 9) * i, SD + GAP_D - SD * cover / 2, RZ2 - 0.55);
           g.add(truss);
         }
       }
@@ -1345,7 +1360,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         const n = potato ? 4 : 10;
         for (let i = 0; i < n; i++) {
           const lamp = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.9), rimLamp);
-          lamp.position.set(-bk.len / 2 + (bk.len / n) * (i + 0.5), SD + TIER_GAP.d - SD * cover + 0.6, RZ2 - 0.7);
+          lamp.position.set(-bk.len / 2 + (bk.len / n) * (i + 0.5), SD + GAP_D - SD * cover + 0.6, RZ2 - 0.7);
           g.add(lamp);
         }
       }
@@ -1354,7 +1369,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         const R = bk.len * 0.42;
         const arch = new THREE.Mesh(new THREE.TorusGeometry(R, 1.1, 10, 48, Math.PI),
           new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: 0.35, metalness: 0.6, emissive: 0xffffff, emissiveIntensity: LIGHT.flood > 0 ? 0.25 : 0.02 }));
-        arch.position.set(0, SD + TIER_GAP.d - 2, RZ2 - 2);
+        arch.position.set(0, SD + GAP_D - 2, RZ2 - 2);
         arch.rotation.x = Math.PI / 2 - 0.35;
         scene.add(arch);
         arch.position.applyAxisAngle(new THREE.Vector3(0, 0, 1), bk.rot);
@@ -1394,7 +1409,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       // a ring or dome roof closes over the corners as well
       if (VENUE.roofStyle === 'ring' || VENUE.roofStyle === 'dome') {
         const inner = MARGIN + SD * 0.14;
-        const outer = MARGIN + SD + TIER_GAP.d;
+        const outer = MARGIN + SD + GAP_D;
         const cap = new THREE.Mesh(new THREE.RingGeometry(inner, outer, 14, 1, from, Math.PI / 2), roofMat);
         cap.position.z = RZ2;
         cap.material.side = THREE.DoubleSide;
@@ -1411,10 +1426,22 @@ export function createRenderer(canvas, match, quality, models = false) {
    * Both are boxes: the shell is one instanced mesh, the skyline another,
    * and the silhouette is what sells it, not the detail. */
   if (!potato) {
-    const shellMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(VENUE.facade).multiplyScalar(0.8), roughness: 0.9 });
+    /* What the outside is made of. Concrete is the plain shell; glass is a
+       lighter, mirror-ish skin; brick warms the colour and roughens it; mesh
+       is a metal lattice, darker and shinier. */
+    const FS = VENUE.facadeStyle;
+    const shellColor = new THREE.Color(VENUE.facade).multiplyScalar(FS === 'glass' ? 1.5 : FS === 'mesh' ? 0.55 : 0.8);
+    if (FS === 'brick') shellColor.lerp(new THREE.Color(0x8a4632), 0.55);
+    if (FS === 'glass') shellColor.lerp(new THREE.Color(0x9fc4e8), 0.45);
+    const shellMat = new THREE.MeshStandardMaterial({
+      color: shellColor,
+      roughness: FS === 'glass' ? 0.18 : FS === 'mesh' ? 0.35 : FS === 'brick' ? 1 : 0.9,
+      metalness: FS === 'glass' ? 0.6 : FS === 'mesh' ? 0.8 : 0,
+      envMap: FS === 'glass' || FS === 'mesh' ? scene.environment : null,
+    });
     const winMat = new THREE.MeshStandardMaterial({ color: 0x1a2030, emissive: 0xffe9b0, emissiveIntensity: LIGHT.flood > 0 ? 0.9 : 0.05, roughness: 0.6 });
-    const outer = MARGIN + SD + TIER_GAP.d + 2;
-    const shellH = SBZ + TIER_GAP.z + 2;
+    const outer = MARGIN + SD + GAP_D + 2;
+    const shellH = SBZ + GAP_Z + 2;
     const blocks = [];
     // three sides (the near touchline stays open for the camera)
     const sides = [
@@ -1447,13 +1474,19 @@ export function createRenderer(canvas, match, quality, models = false) {
     scene.add(shell, win);
 
     /* The skyline: towers on a ring 300 m out, lit windows at night, and
-       tall enough that the big ones show above a two-tier roof. */
+       tall enough that the big ones show above a two-tier roof. What the
+       builder calls the landscape decides how many, and what else is out
+       there: a city is all towers; a coast keeps a few on one side and
+       puts the sea on the other; mountains and desert get a handful of low
+       buildings and the land itself. */
+    const LS = VENUE.landscape;
     const towers = [];
     const skyR = mulberry(venueSeed ^ 0x7ab3);
-    const N = ultra ? 90 : 60;
-    const cityScale = 0.6 + VENUE.scale * 0.9;      // big clubs, big cities
+    const N = Math.round((ultra ? 90 : 60) * (LS === 'city' ? 1 : LS === 'coast' ? 0.35 : 0.18));
+    const cityScale = (0.6 + VENUE.scale * 0.9) * (LS === 'city' ? 1 : 0.45);      // big clubs, big cities
     for (let i = 0; i < N; i++) {
-      const a = Math.PI * (0.05 + (i / N) * 0.9);      // the far half only
+      // the far half only; on the coast, the towers keep to the left and the sea has the right
+      const a = Math.PI * (0.05 + (i / N) * (LS === 'coast' ? 0.42 : 0.9));
       const r = 260 + skyR() * 120;
       const w = 12 + skyR() * 22;
       const h = (18 + Math.pow(skyR(), 2.2) * 110) * cityScale;
@@ -1467,6 +1500,67 @@ export function createRenderer(canvas, match, quality, models = false) {
     });
     city.frustumCulled = false;
     scene.add(city);
+
+    const night = LIGHT.flood > 0;
+    const landR = mulberry(venueSeed ^ 0x1a5d);
+    if (LS === 'mountains') {
+      // a ridge of cones on a far ring, blue-grey and softened by the fog
+      const ridge = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), new THREE.MeshStandardMaterial({ color: night ? 0x141c2a : 0x4e5d72, roughness: 1, flatShading: true }), 14);
+      for (let i = 0; i < 14; i++) {
+        const a = Math.PI * (0.02 + (i / 14) * 0.96);
+        const r = 520 + landR() * 200;
+        const h = 140 + landR() * 190;
+        const w = 160 + landR() * 140;
+        d2.position.set(PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, h / 2 - 8);
+        d2.scale.set(w, h, w); d2.rotation.set(Math.PI / 2, landR() * Math.PI, 0); d2.updateMatrix();
+        ridge.setMatrixAt(i, d2.matrix);
+      }
+      ridge.frustumCulled = false;
+      scene.add(ridge);
+    } else if (LS === 'desert') {
+      // dunes: flattened spheres in sand; a few palms by the ground
+      const dunes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshStandardMaterial({ color: night ? 0x2b2417 : 0xc9a96e, roughness: 1 }), 16);
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * (0.02 + (i / 16) * 0.96);
+        const r = 240 + landR() * 260;
+        const w = 90 + landR() * 120;
+        d2.position.set(PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, -2);
+        d2.scale.set(w, w * 0.7, 10 + landR() * 16); d2.rotation.set(0, 0, landR() * Math.PI); d2.updateMatrix();
+        dunes.setMatrixAt(i, d2.matrix);
+      }
+      dunes.frustumCulled = false;
+      scene.add(dunes);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, roughness: 1 });
+      const frondMat = new THREE.MeshStandardMaterial({ color: night ? 0x0e2a14 : 0x2f7a3a, roughness: 0.9 });
+      const palms = new THREE.Group();
+      for (let i = 0; i < 10; i++) {
+        const a = Math.PI * (0.05 + (i / 10) * 0.9);
+        const r = outer + 26 + landR() * 40;
+        const x = PITCH.w / 2 + Math.cos(a) * r, y = CY + Math.sin(a) * r;
+        const h = 9 + landR() * 6;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, h, 6), trunkMat);
+        trunk.rotation.x = Math.PI / 2; trunk.position.set(x, y, h / 2);
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(3.2, 2.4, 7), frondMat);
+        crown.rotation.x = -Math.PI / 2; crown.position.set(x, y, h + 0.6);
+        palms.add(trunk, crown);
+      }
+      scene.add(palms);
+    } else if (LS === 'coast') {
+      // the sea beyond the right-hand half of the horizon, and a lighthouse on the point
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1100),
+        new THREE.MeshStandardMaterial({ color: night ? 0x0a1a2e : 0x1f5c8a, roughness: 0.22, metalness: 0.55, envMap: scene.environment }));
+      sea.position.set(PITCH.w / 2 + 520, CY + 420, -1.2);
+      sea.rotation.z = 0.35;
+      scene.add(sea);
+      const lh = new THREE.Group();
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(3, 4.5, 34, 10), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.8 }));
+      tower.rotation.x = Math.PI / 2; tower.position.z = 17;
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 4, 10), new THREE.MeshStandardMaterial({ color: 0x222831, emissive: 0xfff2c0, emissiveIntensity: night ? 2.4 : 0.2 }));
+      lamp.rotation.x = Math.PI / 2; lamp.position.z = 36;
+      lh.add(tower, lamp);
+      lh.position.set(PITCH.w / 2 + 330, CY + 250, 0);
+      scene.add(lh);
+    }
   }
 
   /* -------------------------------- the tifo --------------------------------
@@ -1500,6 +1594,46 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
   let tifoT = -1;                    // seconds the tifo has been up; -1 = down
 
+  /* Seat lettering: the builder's name for the ground, spelled out in the
+     seats of the far stand's top tier the way clubs pick out their name in
+     a different colour of plastic. A canvas with big block letters, laid
+     flat on the terracing so the crowd sits on top of it. Unlit, so it is as
+     readable under floodlights as at noon. */
+  if (VENUE.lettering && !potato) {
+    const c = document.createElement('canvas');
+    c.width = 2048; c.height = 256;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    g.fillStyle = VENUE.seats[1] ? '#' + VENUE.seats[1].toString(16).padStart(6, '0') : '#ffffff';
+    // the two seat colours may be close; white always reads
+    const [ra, ga, ba] = [VENUE.seats[0] >> 16 & 255, VENUE.seats[0] >> 8 & 255, VENUE.seats[0] & 255];
+    const [rb, gb, bb] = [VENUE.seats[1] >> 16 & 255, VENUE.seats[1] >> 8 & 255, VENUE.seats[1] & 255];
+    if (Math.abs(ra - rb) + Math.abs(ga - gb) + Math.abs(ba - bb) < 160) g.fillStyle = '#f4f6fa';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '900 190px "Bahnschrift", "Arial Black", system-ui, sans-serif';
+    g.fillText(VENUE.lettering, c.width / 2, c.height / 2 + 10);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const top = SPLITS.length ? SPLITS[SPLITS.length - 1] : 0.35;
+    const at0 = terraceAt(top + 0.04); const at1 = terraceAt(0.96);
+    const w = PITCH.w * 0.62;
+    const h = Math.hypot(at1.depth - at0.depth, at1.z - at0.z);
+    const letters = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.92, depthWrite: false }));
+    letters.position.set(PITCH.w / 2, PITCH.h + (at0.depth + at1.depth) / 2, (at0.z + at1.z) / 2 + 0.55);
+    letters.rotation.x = Math.PI / 2 - Math.atan2(at1.z - at0.z, at1.depth - at0.depth);
+    letters.renderOrder = 2;
+    scene.add(letters);
+    /* And the same name as a lit sign along the top of the far stand's back
+       wall, under the roof — the seat mosaic is mostly people on a full
+       night, and the sign is what you read from the far touchline. */
+    const signH = 2.6;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.w * 0.5, signH), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.95, depthWrite: false }));
+    const backTop = SBZ + 1.5 + GAP_Z;
+    sign.position.set(PITCH.w / 2, PITCH.h + MARGIN + SD + GAP_D - 0.45, backTop - signH * 0.5 - 0.3);
+    sign.rotation.x = Math.PI / 2;
+    sign.renderOrder = 2;
+    scene.add(sign);
+  }
+
   /* ------------------------------ the wonders ------------------------------
    * The eight landmark grounds carry what the others do not: two giant
    * screens over the ends showing the score and the clock (a canvas
@@ -1522,8 +1656,8 @@ export function createRenderer(canvas, match, quality, models = false) {
       const sc = mk();
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(26, 9.75),
         new THREE.MeshStandardMaterial({ map: sc.tex, emissive: 0xffffff, emissiveMap: sc.tex, emissiveIntensity: 1.2, roughness: 0.6 }));
-      const x = end === 0 ? -MARGIN - SD * 0.5 - TIER_GAP.d : PITCH.w + MARGIN + SD * 0.5 + TIER_GAP.d;
-      mesh.position.set(x, CY, SBZ + TIER_GAP.z + 7);
+      const x = end === 0 ? -MARGIN - SD * 0.5 - GAP_D : PITCH.w + MARGIN + SD * 0.5 + GAP_D;
+      mesh.position.set(x, CY, SBZ + GAP_Z + 7);
       mesh.rotation.set(Math.PI / 2, end === 0 ? Math.PI / 2 : -Math.PI / 2, 0);
       // a dark frame behind it
       const frame = new THREE.Mesh(new THREE.BoxGeometry(27.5, 11, 0.8), new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 0.6, metalness: 0.4 }));

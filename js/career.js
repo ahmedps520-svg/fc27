@@ -17,6 +17,7 @@ import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './da
 import { getState, update } from './state.js';
 import { onCareer } from './progress.js';
 import * as v2 from './careerV2.js';
+import { bankGate } from './builder.js';
 import { supplyIndex, demandIndex, kindOf } from './economy.js';
 
 export { CAREER_CLUBS, REAL_MANAGERS };
@@ -212,6 +213,8 @@ export function advanceWeek(myScore) {
       applyRow(car.table[a], ag, hg);
       car.results.push({ week: car.week, h, a, hg, ag });
       if (mine && myScore) {
+        // the gate: every seat the ground holds pays on a home matchday (builder.js)
+        if (h === car.clubId) bankGate(car);
         const win = (h === car.clubId ? hg > ag : ag > hg);
         const draw = hg === ag;
         car.stats[win ? 'w' : draw ? 'd' : 'l'] += 1;
