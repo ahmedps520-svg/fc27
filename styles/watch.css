@@ -176,3 +176,8 @@ html, body {
 /* ---------------------------- v69: match voice ---------------------------- */
 .w-comm { position: absolute; left: 6px; right: 6px; bottom: 54px; font-size: 10px; line-height: 1.25; color: #fff; text-shadow: 0 1px 4px #000; text-align: center; pointer-events: none; }
 .w-sp { position: absolute; left: 6px; right: 56px; top: 22px; font-size: 9px; letter-spacing: .04em; color: var(--accent); text-shadow: 0 1px 4px #000; pointer-events: none; }
+
+/* the ground, on the match card: a thumbnail of the bowl and its name */
+.w-venue { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; font-size: 10px; color: var(--muted, #9aa3b5); }
+.w-venue canvas { width: 32px; height: 11px; border-radius: 3px; flex: none; image-rendering: auto; }
+.w-venue span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

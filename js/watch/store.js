@@ -169,3 +169,21 @@ export function addCards(drawn) {
   state.club.watchStats.packs = (state.club.watchStats.packs | 0) + 1;
   push();
 }
+
+/**
+ * The guild's weekly objectives, for the Club glance. One small fetch on the
+ * paired token; a solo watch (no token) has no guild and gets null, as does a
+ * watch that is offline — the glance simply leaves the section out.
+ */
+let guildCache = { at: 0, view: null };
+export async function guild() {
+  if (!token) return null;
+  if (Date.now() - guildCache.at < 60000) return guildCache.view;
+  try {
+    const res = await fetch('./api/guild', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const v = await res.json();
+    guildCache = { at: Date.now(), view: v?.guild ? v : null };
+    return guildCache.view;
+  } catch { return null; }
+}

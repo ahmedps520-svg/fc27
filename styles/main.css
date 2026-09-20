@@ -4185,3 +4185,56 @@ html.large-text .tile-name { font-size: 27px; }
 .wgroup span i { margin-left: auto; font-style: normal; font-family: var(--font-num); }
 .wtable tr.mine td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 #wtNation { background: rgba(255,255,255,.06); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+/* ------------------------- Emotes (online matches) ------------------------- *
+ * The only thing one player can say to another is one of these ids. */
+.gm-emotes {
+  position: absolute; top: 58px; right: 12px; z-index: 22; display: flex; gap: 4px;
+  padding: 6px; border-radius: 999px; background: rgba(6, 10, 18, .88); border: 1px solid var(--line-strong);
+  animation: fade .15s ease both;
+}
+.gm-emotes[hidden] { display: none; }
+.gm-emotes button {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255,255,255,.06);
+  font-size: 18px; cursor: pointer; color: inherit;
+}
+.gm-emotes button:hover, .gm-emotes button:focus-visible { background: var(--accent-soft); }
+
+/* ------------------------------- Guilds ------------------------------- */
+.ol-sub { margin: -6px 0 10px; font-size: 12.5px; color: var(--muted); }
+.gd-code { font-family: var(--font-num); letter-spacing: .12em; color: var(--accent); }
+.gd-members { display: flex; flex-wrap: wrap; gap: 6px; }
+.gd-members span {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px;
+  font-size: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
+}
+.gd-members i, .fr-row i { width: 7px; height: 7px; border-radius: 50%; background: #566; flex: none; }
+.gd-members .on i, .fr-row.on i { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.gd-members em { font-style: normal; color: var(--muted); font-size: 11px; }
+.gd-objs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gd-obj { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; }
+.gd-obj i { grid-column: 1 / -1; display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.gd-obj i b { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.gd-obj em { font-style: normal; font-family: var(--font-num); color: var(--muted); font-size: 12px; }
+.gd-obj.done em { color: var(--good); }
+.gd-obj .btn, .gd-pay, .gd-claimed { grid-column: 1 / -1; justify-self: start; font-size: 12px; }
+.gd-pay { color: var(--muted); }
+.gd-claimed { color: var(--good); }
+.gd-board .ol-row { grid-template-columns: 26px 1fr auto auto 0 44px; }
+.gd-board small, .ol-card h3 small { color: var(--muted); font-weight: 600; font-size: .75em; }
+
+/* ------------------------------- Friends ------------------------------- */
+.fr-list { display: flex; flex-direction: column; gap: 4px; }
+.fr-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; font-size: 13px;
+  background: rgba(255,255,255,.03);
+}
+.fr-row small { color: var(--muted); }
+.fr-row span { color: var(--muted); font-size: 12px; margin-inline-start: auto; }
+.fr-row .btn.sm { padding: 5px 10px; font-size: 12px; }
+.ols-invite { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.invite-toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 90;
+  display: flex; align-items: center; gap: 10px; color: var(--text);
+}
+.invite-toast .btn.sm { padding: 5px 12px; font-size: 12px; }
