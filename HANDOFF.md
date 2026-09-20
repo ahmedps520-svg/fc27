@@ -106,7 +106,16 @@ peaks 3.25 m, finesse 3.4 m, chip 2.96 m over 1.2 s.
   the night look is too bright (exposure/hemisphere not yet matched).
 - **Verification**: 90 unit tests, sweep (re-baselined), smoke, QA bot,
   headless screenshots of Today/SBC/store/weekend/world/nation/builder,
-  iPhone portrait + photo mode, WebGPU match. __FPS__
+  iPhone portrait + photo mode, WebGPU match.
+- **Frame cost, SwiftShader 844×390** (p95; ratios transfer, absolutes do
+  not): min 250 ms (323 calls, 98k tris) · low 1033 ms (348, 232k) ·
+  medium 933 ms (1013, 660k, figures) · high 1733 ms (448, 2.8M, scanned
+  models + 202 textures) · ultra 3317 ms (498, 4.0M) · cinema 3958 ms.
+  Medium is unchanged from v72 (983 ms) within noise: the crowd per-seat
+  math and the two extra lights cost nothing measurable. High is up from
+  1200 ms because the scanned models are now on by default there (the
+  benchmark used to run the figures); with the models on Medium it was
+  1493 ms, which is why Medium keeps the figures.
 - Not done / next: WebGPU parity (node-material ports of the turf, crowd
   and cinematic passes; night exposure); per-club designs in Career are one
   per career, not per club changed by `takeJob`; i18n for career prose;

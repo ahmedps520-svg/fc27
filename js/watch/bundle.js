@@ -8378,6 +8378,707 @@
     ["Erick Pulgar Chile", "E. Chile", "Chile", "CDM"],
     ["Witi", "Witi", "Portugal", "LW"],
     ["Semuel Pizzignacco", "S. Pizzignacco", "Italy", "GK"]
+  ], REAL_PLAYERS_WAVE6 = [
+    ["Paulo Vitor", "P. Vitor", "Portugal", "GK"],
+    ["Bas Dost", "B. Dost", "Netherlands", "CM"],
+    ["Diego Souza", "D. Souza", "Brazil", "ST"],
+    ["Mattias Johansson", "M. Johansson", "Sweden", "CM"],
+    ["Nicolai Larsen", "N. Larsen", "Denmark", "GK"],
+    ["Nahuel Losada", "N. Losada", "Argentina", "GK"],
+    ["Arthur Desmas", "A. Desmas", "France", "GK"],
+    ["Urko Gonzalez", "U. Gonzalez", "Spain", "ST"],
+    ["Mathias Jorgensen", "M. Jorgensen", "Denmark", "CB"],
+    ["Simon Ngapandouetnbu", "S. Ngapandouetnbu", "Cameroon", "GK"],
+    ["Kik Pierie", "K. Pierie", "Netherlands", "CB"],
+    ["Yuki Ohashi", "Y. Ohashi", "Japan", "CM"],
+    ["Adryelson", "Adryelson", "Brazil", "CB"],
+    ["Stijn Wuytens", "S. Wuytens", "Netherlands", "LB"],
+    ["Amjad Attwan", "A. Attwan", "Iraq", "GK"],
+    ["Cesar", "Cesar", "Brazil", "GK"],
+    ["Lucas Silva", "L. Silva", "Brazil", "CM"],
+    ["Dante Vanzeir", "D. Vanzeir", "Belgium", "CM"],
+    ["Wuilker Farinez", "W. Farinez", "Venezuela", "GK"],
+    ["Anthony Martial", "A. Martial", "France", "CAM"],
+    ["Tim Krul", "T. Krul", "Netherlands", "GK"],
+    ["Goncalo Tabuaco", "G. Tabuaco", "Portugal", "GK"],
+    ["Karim Ansarifard", "K. Ansarifard", "Iran", "GK"],
+    ["Curtis Nelson", "C. Nelson", "England", "CB"],
+    ["Harrison Ashby", "H. Ashby", "England", "LB"],
+    ["Khalfan Mubarak", "K. Mubarak", "United Arab Emirates", "GK"],
+    ["Mitchell Dijks", "M. Dijks", "Netherlands", "LB"],
+    ["Jordi Masip", "J. Masip", "Spain", "GK"],
+    ["Eden Hazard", "E. Hazard", "Belgium", "CDM"],
+    ["Ricardo Velho", "R. Velho", "Portugal", "GK"],
+    ["Tommy Conway", "T. Conway", "Scotland", "CM"],
+    ["Nacho Vidal", "N. Vidal", "Spain", "RB"],
+    ["Ryan Merlen", "R. Merlen", "Belgium", "CB"],
+    ["Jose Fonte", "J. Fonte", "Portugal", "CB"],
+    ["Tom Lockyer", "T. Lockyer", "England", "CB"],
+    ["Adebayo Adeleye", "A. Adeleye", "Nigeria", "GK"],
+    ["Djibril Sidibe", "D. Sidibe", "France", "LB"],
+    ["Jonas Lossl", "J. Lossl", "Germany", "RB"],
+    ["Walid Abbas", "W. Abbas", "United Arab Emirates", "GK"],
+    ["Kosei Tani", "K. Tani", "Japan", "GK"],
+    ["Sydney van Hooijdonk", "S. van Hooijdonk", "Netherlands", "CM"],
+    ["Gaetan Coucke", "G. Coucke", "Belgium", "GK"],
+    ["Ezequiel Bullaude", "E. Bullaude", "Argentina", "RB"],
+    ["Marin Ljubicic", "M. Ljubicic", "Croatia", "CM"],
+    ["Vladimir Darida", "V. Darida", "Germany", "ST"],
+    ["Pablo Perez", "P. Perez", "Spain", "CM"],
+    ["Osama Rashid", "O. Rashid", "Iraq", "GK"],
+    ["Jan Thielmann", "J. Thielmann", "Germany", "CM"],
+    ["Juanmi", "Juanmi", "Spain", "RW"],
+    ["Robson Bambu", "R. Bambu", "Portugal", "CB"],
+    ["Lucas Pirard", "L. Pirard", "Belgium", "GK"],
+    ["Chris Basham", "C. Basham", "England", "CB"],
+    ["Colby Bishop", "C. Bishop", "England", "ST"],
+    ["Ayumu Seko", "A. Seko", "Japan", "GK"],
+    ["Kim Jun-hong", "K. Jun-hong", "South Korea", "CM"],
+    ["Thomas Foket", "T. Foket", "Belgium", "CB"],
+    ["Alex Sorloth", "A. Sorloth", "Spain", "ST"],
+    ["Cory Burke", "C. Burke", "Jamaica", "GK"],
+    ["Kim Dong-jun", "K. Dong-jun", "South Korea", "GK"],
+    ["Jerry Yates", "J. Yates", "England", "RM"],
+    ["Andre Amaro", "A. Amaro", "Portugal", "CB"],
+    ["Nathan Redmond", "N. Redmond", "England", "CM"],
+    ["Sonny Perkins", "S. Perkins", "England", "CAM"],
+    ["Sime Vrsaljko", "S. Vrsaljko", "Croatia", "CB"],
+    ["Dawid Kownacki", "D. Kownacki", "Poland", "CM"],
+    ["Aleix Febas", "A. Febas", "Spain", "RB"],
+    ["Mikel Jauregizar", "M. Jauregizar", "Spain", "CM"],
+    ["Bruno Brigido", "B. Brigido", "Portugal", "GK"],
+    ["Bebeto", "Bebeto", "Portugal", "CB"],
+    ["Daniel Iversen", "D. Iversen", "England", "GK"],
+    ["Mateusinho", "Mateusinho", "Brazil", "RB"],
+    ["Lucas Pratto", "L. Pratto", "Argentina", "ST"],
+    ["Ryan Giles", "R. Giles", "England", "LB"],
+    ["Jack Cork", "J. Cork", "England", "CM"],
+    ["Daniel-Kofi Kyereh", "D. Kyereh", "Ghana", "CM"],
+    ["Hugo Siquet", "H. Siquet", "Belgium", "CB"],
+    ["Jerome Boateng", "J. Boateng", "Germany", "CB"],
+    ["Amari'i Bell", "A. Bell", "Jamaica", "GK"],
+    ["Ryan Babel", "R. Babel", "Netherlands", "CM"],
+    ["Ali Salmeen", "A. Salmeen", "United Arab Emirates", "GK"],
+    ["Dimitri Payet", "D. Payet", "France", "CM"],
+    ["Harvey Vale", "H. Vale", "England", "CAM"],
+    ["Eiji Kawashima", "E. Kawashima", "Japan", "GK"],
+    ["Ignacio Laquintana", "I. Laquintana", "Uruguay", "CM"],
+    ["Julian Draxler", "J. Draxler", "Germany", "CM"],
+    ["Presnel Kimpembe", "P. Kimpembe", "France", "CB"],
+    ["Marvin Keller", "M. Keller", "Switzerland", "GK"],
+    ["Steve Zuber", "S. Zuber", "Germany", "ST"],
+    ["Ryan Kent", "R. Kent", "England", "LM"],
+    ["Lewis Baker", "L. Baker", "England", "CM"],
+    ["Mile Skoric", "M. Skoric", "Croatia", "CB"],
+    ["Sam Gallagher", "S. Gallagher", "England", "ST"],
+    ["Sam Greenwood", "S. Greenwood", "England", "LM"],
+    ["Lovre Kalinic", "L. Kalinic", "Croatia", "GK"],
+    ["Adan", "Adan", "Portugal", "GK"],
+    ["Julio Buffarini", "J. Buffarini", "Argentina", "LB"],
+    ["Nicolo Cambiaghi", "N. Cambiaghi", "Italy", "CM"],
+    ["Mads Emil Madsen", "M. Madsen", "Denmark", "CM"],
+    ["Maycon", "Maycon", "Brazil", "CDM"],
+    ["Jorge Almiron", "J. Almiron", "Argentina", "CDM"],
+    ["Samuel Umtiti", "S. Umtiti", "France", "CB"],
+    ["Santiago Solari", "S. Solari", "Argentina", "CM"],
+    ["Xavier Chavalerin", "X. Chavalerin", "France", "CM"],
+    ["Frans Dhia Putros", "F. Putros", "Iraq", "GK"],
+    ["Mathieu Cafaro", "M. Cafaro", "France", "CM"],
+    ["Wesley Hoedt", "W. Hoedt", "Netherlands", "CB"],
+    ["Pontus Dahlberg", "P. Dahlberg", "Sweden", "GK"],
+    ["Nemanja Radonjic", "N. Radonjic", "Serbia", "GK"],
+    ["Lyle Taylor", "L. Taylor", "England", "ST"],
+    ["Bartosz Bida", "B. Bida", "Poland", "CM"],
+    ["Mark Uth", "M. Uth", "Germany", "ST"],
+    ["Lee Ki-je", "L. Ki-je", "South Korea", "GK"],
+    ["Nikola Storm", "N. Storm", "Belgium", "CM"],
+    ["Esteban Andrada", "E. Andrada", "Argentina", "GK"],
+    ["Gabriel Slonina", "G. Slonina", "USA", "GK"],
+    ["Maxime Lopez", "M. Lopez", "France", "CM"],
+    ["Emmanuel Agbadou", "E. Agbadou", "Ivory Coast", "GK"],
+    ["Diogo Goncalves", "D. Goncalves", "Portugal", "CM"],
+    ["Cristian Tello", "C. Tello", "Spain", "LW"],
+    ["Victor Chust", "V. Chust", "Spain", "CB"],
+    ["Damian Martinez", "D. Martinez", "Argentina", "RB"],
+    ["Aurele Amenda", "A. Amenda", "Switzerland", "GK"],
+    ["Trezeguet", "Trezeguet", "Egypt", "GK"],
+    ["Rhys Norrington-Davies", "R. Norrington-Davies", "Wales", "GK"],
+    ["Renzo Saravia", "R. Saravia", "Argentina", "LB"],
+    ["Robby McCrorie", "R. McCrorie", "Scotland", "GK"],
+    ["Alan Pulido", "A. Pulido", "Mexico", "CM"],
+    ["Josh Bowler", "J. Bowler", "England", "CAM"],
+    ["Malcom Bokele", "M. Bokele", "France", "CAM"],
+    ["Robert Arboleda", "R. Arboleda", "Ecuador", "GK"],
+    ["Ricardo Batista", "R. Batista", "Portugal", "GK"],
+    ["Jonjo Shelvey", "J. Shelvey", "England", "CM"],
+    ["Will Keane", "W. Keane", "England", "ST"],
+    ["Cristian Volpato", "C. Volpato", "Italy", "CM"],
+    ["El Mehdi Al Harar", "E. Mehdi Al Harar", "Morocco", "GK"],
+    ["Jack Robinson", "J. Robinson", "England", "LB"],
+    ["Rasmus Hojlund", "R. Hojlund", "Denmark", "GK"],
+    ["Kervin Andrade", "K. Andrade", "Venezuela", "GK"],
+    ["Matej Mitrovic", "M. Mitrovic", "Croatia", "CB"],
+    ["Renaud Ripart", "R. Ripart", "France", "CM"],
+    ["Charlie Austin", "C. Austin", "England", "ST"],
+    ["Kevin Nisbet", "K. Nisbet", "Scotland", "CM"],
+    ["Diogo Barbosa", "D. Barbosa", "Brazil", "LB"],
+    ["Nahki Wells", "N. Wells", "England", "RM"],
+    ["Willian Arao", "W. Arao", "Brazil", "CDM"],
+    ["Sinan Bolat", "S. Bolat", "Belgium", "GK"],
+    ["Mattia Destro", "M. Destro", "Italy", "ST"],
+    ["Maximilian Bauer", "M. Bauer", "Germany", "LB"],
+    ["Jose Sosa", "J. Sosa", "Argentina", "CDM"],
+    ["Ben Wilson", "B. Wilson", "England", "GK"],
+    ["Joao Victor", "J. Victor", "Brazil", "CB"],
+    ["George Hall", "G. Hall", "England", "CDM"],
+    ["Stefano Sensi", "S. Sensi", "Italy", "CDM"],
+    ["Dani Martin", "D. Martin", "Spain", "GK"],
+    ["Ameen Al-Dakhil", "A. Al-Dakhil", "Belgium", "CB"],
+    ["Senne Lammens", "S. Lammens", "Belgium", "GK"],
+    ["Davy Roef", "D. Roef", "Belgium", "GK"],
+    ["Braian Ojeda", "B. Ojeda", "Paraguay", "GK"],
+    ["Mehdi Benabid", "M. Benabid", "Morocco", "GK"],
+    ["Alessio Zerbin", "A. Zerbin", "Italy", "CM"],
+    ["Pizzi", "Pizzi", "Portugal", "CM"],
+    ["Ezequiel Unsain", "E. Unsain", "Argentina", "RB"],
+    ["Tiago Gouveia", "T. Gouveia", "Portugal", "LB"],
+    ["Carlos Borges", "C. Borges", "Portugal", "CM"],
+    ["Ahmed Basil", "A. Basil", "Iraq", "GK"],
+    ["Gabriel Menino", "G. Menino", "Brazil", "CM"],
+    ["Ross McCrorie", "R. McCrorie", "Scotland", "CM"],
+    ["Matteo Lovato", "M. Lovato", "Italy", "CB"],
+    ["Jeong Sang-bin", "J. Sang-bin", "South Korea", "CM"],
+    ["Yusuf Yazici", "Y. Yazici", "Turkey", "CM"],
+    ["Dorukhan Tokoz", "D. Tokoz", "Turkey", "CM"],
+    ["Kieran Dowell", "K. Dowell", "England", "RB"],
+    ["Fabio Quagliarella", "F. Quagliarella", "Italy", "CAM"],
+    ["Luiz Felipe", "L. Felipe", "Brazil", "LB"],
+    ["Alessandro Schopf", "A. Schopf", "Austria", "CM"],
+    ["Lewis O'Brien", "L. O'Brien", "England", "CM"],
+    ["Djamel Benlamri", "D. Benlamri", "Algeria", "GK"],
+    ["Miguel Araujo", "M. Araujo", "Peru", "GK"],
+    ["Oliver Dovin", "O. Dovin", "Sweden", "GK"],
+    ["Davie Selke", "D. Selke", "Germany", "ST"],
+    ["Kevin Akpoguma", "K. Akpoguma", "Nigeria", "CM"],
+    ["Philipp Max", "P. Max", "Germany", "LB"],
+    ["Lucas Perez", "L. Perez", "Spain", "RW"],
+    ["Faitout Maouassa", "F. Maouassa", "France", "LB"],
+    ["Tom Krauss", "T. Krauss", "Germany", "LB"],
+    ["Ellis Simms", "E. Simms", "England", "RM"],
+    ["Thelo Aasgaard", "T. Aasgaard", "Norway", "CM"],
+    ["Erik Durm", "E. Durm", "Germany", "LB"],
+    ["Karlo Letica", "K. Letica", "Croatia", "GK"],
+    ["Federico Macheda", "F. Macheda", "Italy", "ST"],
+    ["Mattia Zanotti", "M. Zanotti", "Italy", "LB"],
+    ["Andy Robertson", "A. Robertson", "Scotland", "GK"],
+    ["Jacen Russell-Rowe", "J. Russell-Rowe", "Canada", "GK"],
+    ["Pape Ndiaye Souare", "P. Souare", "Senegal", "CM"],
+    ["Antonio Candreva", "A. Candreva", "Italy", "CM"],
+    ["Payam Niazmand", "P. Niazmand", "Iran", "GK"],
+    ["Marco Bizot", "M. Bizot", "Netherlands", "GK"],
+    ["Serdar Dursun", "S. Dursun", "Germany", "ST"],
+    ["Josip Posavec", "J. Posavec", "Croatia", "GK"],
+    ["Lovro Zvonarek", "L. Zvonarek", "Croatia", "CM"],
+    ["Tobias Lawal", "T. Lawal", "Austria", "GK"],
+    ["Jamaal Lascelles", "J. Lascelles", "England", "CB"],
+    ["Alfred Gomis", "A. Gomis", "Senegal", "GK"],
+    ["Mahmoud Abdel Rahim", "M. Rahim", "Egypt", "GK"],
+    ["Cleiton", "Cleiton", "Brazil", "GK"],
+    ["Mamadou Sakho", "M. Sakho", "France", "CB"],
+    ["Dario Melnjak", "D. Melnjak", "Croatia", "CB"],
+    ["Charles Folly", "C. Folly", "Ivory Coast", "GK"],
+    ["Andrea Cistana", "A. Cistana", "Italy", "CB"],
+    ["Haris Seferovic", "H. Seferovic", "Switzerland", "CM"],
+    ["Marcel Halstenberg", "M. Halstenberg", "Germany", "LB"],
+    ["Ezequiel Cerutti", "E. Cerutti", "Argentina", "CM"],
+    ["Tiago Ilori", "T. Ilori", "Portugal", "CB"],
+    ["Anthony Moris", "A. Moris", "Belgium", "CB"],
+    ["Yassine Bammou", "Y. Bammou", "Morocco", "CM"],
+    ["Marvin Schwabe", "M. Schwabe", "Germany", "GK"],
+    ["Trigueira", "Trigueira", "Portugal", "GK"],
+    ["Sambou Sissoko", "S. Sissoko", "Senegal", "CM"],
+    ["Balazs Toth", "B. Toth", "Hungary", "GK"],
+    ["Theo Corbeanu", "T. Corbeanu", "Canada", "GK"],
+    ["Lautaro Gimenez", "L. Gimenez", "Argentina", "ST"],
+    ["Gilles Sunu", "G. Sunu", "France", "RB"],
+    ["Kevin Volland", "K. Volland", "Germany", "CAM"],
+    ["Bader Nasser", "B. Nasser", "United Arab Emirates", "GK"],
+    ["Arnaud Bodart", "A. Bodart", "Belgium", "GK"],
+    ["Rafael Navarro", "R. Navarro", "Brazil", "ST"],
+    ["Mitchell van Bergen", "M. van Bergen", "Netherlands", "CM"],
+    ["Luciano Valente", "L. Valente", "Netherlands", "CM"],
+    ["Lars Stindl", "L. Stindl", "Germany", "CM"],
+    ["Ji So-yun", "J. So-yun", "South Korea", "CM"],
+    ["Mohamed Ihattaren", "M. Ihattaren", "Netherlands", "CM"],
+    ["Damian Szymanski", "D. Szymanski", "Poland", "CM"],
+    ["Francesco Forte", "F. Forte", "Italy", "ST"],
+    ["Rodrigo Moreno", "R. Moreno", "Spain", "RW"],
+    ["Orjan Nyland", "O. Nyland", "Norway", "GK"],
+    ["Philippe Coutinho", "P. Coutinho", "Brazil", "CM"],
+    ["Lukasz Skorupski", "L. Skorupski", "Poland", "GK"],
+    ["Cristian Rodriguez", "C. Rodriguez", "Uruguay", "CM"],
+    ["Lucas Hoyos", "L. Hoyos", "Argentina", "GK"],
+    ["Jorne Spileers", "J. Spileers", "Belgium", "CB"],
+    ["Ismael El Haddad", "I. El Haddad", "Morocco", "CM"],
+    ["Sergio Oliveira", "S. Oliveira", "Portugal", "CM"],
+    ["Facundo Roncaglia", "F. Roncaglia", "Argentina", "RB"],
+    ["Gil Dias", "G. Dias", "Portugal", "ST"],
+    ["Dan James", "D. James", "England", "LM"],
+    ["Leo Jardim", "L. Jardim", "Brazil", "GK"],
+    ["Andre Hansen", "A. Hansen", "Norway", "GK"],
+    ["Jakob Johansson", "J. Johansson", "Germany", "CDM"],
+    ["Dejan Lovren", "D. Lovren", "Croatia", "GK"],
+    ["Nicolas Penneteau", "N. Penneteau", "Belgium", "GK"],
+    ["Danijel Subasic", "D. Subasic", "Croatia", "GK"],
+    ["Michael Folorunsho", "M. Folorunsho", "Italy", "CDM"],
+    ["Florian Kainz", "F. Kainz", "Germany", "CAM"],
+    ["Ismaeel Mohammad", "I. Mohammad", "Qatar", "GK"],
+    ["Ohi Omoijuanfo", "O. Omoijuanfo", "Norway", "CM"],
+    ["Lukas Klunter", "L. Klunter", "Germany", "LB"],
+    ["Baris Yilmaz", "B. Yilmaz", "Turkey", "CM"],
+    ["Sten Grytebust", "S. Grytebust", "Norway", "GK"],
+    ["Max Kruse", "M. Kruse", "Germany", "ST"],
+    ["Dinis Almeida", "D. Almeida", "Portugal", "CB"],
+    ["Kevin Paredes", "K. Paredes", "USA", "CM"],
+    ["Marvin Schulz", "M. Schulz", "Germany", "RB"],
+    ["Amara Diouf", "A. Diouf", "Senegal", "CM"],
+    ["Kacper Tobiasz", "K. Tobiasz", "Poland", "GK"],
+    ["Adrian Semper", "A. Semper", "Croatia", "GK"],
+    ["Sebastien Coopman", "S. Coopman", "France", "CB"],
+    ["Louie Barry", "L. Barry", "England", "CAM"],
+    ["Fabio", "Fabio", "Brazil", "GK"],
+    ["Olorunleke Ojo", "O. Ojo", "Nigeria", "GK"],
+    ["Wesley", "Wesley", "Brazil", "CM"],
+    ["Kevin Denkey", "K. Denkey", "Belgium", "CM"],
+    ["Leonidas Stergiou", "L. Stergiou", "Switzerland", "GK"],
+    ["Christopher Antwi-Adjei", "C. Antwi-Adjei", "Ghana", "CM"],
+    ["Alvaro Odriozola", "A. Odriozola", "Spain", "RB"],
+    ["Louis Schaub", "L. Schaub", "Austria", "CM"],
+    ["Peter Vindahl", "P. Vindahl", "Denmark", "GK"],
+    ["Perr Schuurs", "P. Schuurs", "Netherlands", "CB"],
+    ["Leo Dubois", "L. Dubois", "France", "RB"],
+    ["Geromel", "Geromel", "Brazil", "CB"],
+    ["Nicolas Blandi", "N. Blandi", "Argentina", "ST"],
+    ["Jonathan Rodriguez", "J. Rodriguez", "Uruguay", "CM"],
+    ["Arnau Puigmal", "A. Puigmal", "Spain", "CM"],
+    ["Frederik Ronnow", "F. Ronnow", "Germany", "GK"],
+    ["Daniele Padelli", "D. Padelli", "Italy", "GK"],
+    ["Samuel Costa", "S. Costa", "Portugal", "CM"],
+    ["Agustin Giay", "A. Giay", "Argentina", "RB"],
+    ["Koo Ja-cheol", "K. Ja-cheol", "South Korea", "CM"],
+    ["Milan van Ewijk", "M. van Ewijk", "Netherlands", "LB"],
+    ["Hussein Ali Al-Saedi", "H. Al-Saedi", "Iraq", "GK"],
+    ["Mao Hosoya", "M. Hosoya", "Japan", "CM"],
+    ["Mert Hakan Yandas", "M. Yandas", "Turkey", "CM"],
+    ["Vitor Tormena", "V. Tormena", "Portugal", "CB"],
+    ["Abdelali Mhamdi", "A. Mhamdi", "Morocco", "GK"],
+    ["Agustin Alvarez", "A. Alvarez", "Uruguay", "CM"],
+    ["Jorge Broun", "J. Broun", "Argentina", "GK"],
+    ["Rui Sousa", "R. Sousa", "Portugal", "LB"],
+    ["Cucho Hernandez", "C. Hernandez", "Colombia", "CM"],
+    ["Frederik Alves", "F. Alves", "Denmark", "CB"],
+    ["Daley Sinkgraven", "D. Sinkgraven", "Netherlands", "LB"],
+    ["Timo Becker", "T. Becker", "Germany", "LB"],
+    ["Sandro Wagner", "S. Wagner", "Germany", "ST"],
+    ["Kilian Ludewig", "K. Ludewig", "Germany", "CB"],
+    ["Mohamed Daramy", "M. Daramy", "Denmark", "CM"],
+    ["Adel Al-Hosani", "A. Al-Hosani", "United Arab Emirates", "GK"],
+    ["Simon Sluga", "S. Sluga", "Croatia", "GK"],
+    ["Andre Moreira", "A. Moreira", "Portugal", "GK"],
+    ["Lucas Janson", "L. Janson", "Argentina", "ST"],
+    ["Gonzalo Martinez", "G. Martinez", "Argentina", "ST"],
+    ["Bruno Zapelli", "B. Zapelli", "Argentina", "CDM"],
+    ["Okan Kocuk", "O. Kocuk", "Turkey", "GK"],
+    ["Alexsandro", "Alexsandro", "Brazil", "LB"],
+    ["Vanderlei", "Vanderlei", "Brazil", "GK"],
+    ["Macaulay Langstaff", "M. Langstaff", "England", "ST"],
+    ["Luca Moro", "L. Moro", "Italy", "CAM"],
+    ["Edenilson", "Edenilson", "Brazil", "CDM"],
+    ["Eddie Salcedo", "E. Salcedo", "Italy", "ST"],
+    ["Tomas Tavares", "T. Tavares", "Portugal", "LB"],
+    ["Omid Noorafkan", "O. Noorafkan", "Iran", "GK"],
+    ["Lee Chung-yong", "L. Chung-yong", "South Korea", "CM"],
+    ["Chérif Dieye", "C. Dieye", "Senegal", "CM"],
+    ["Hamdy Fathy", "H. Fathy", "Egypt", "GK"],
+    ["Abdul Rahman Baba", "A. Baba", "Ghana", "GK"],
+    ["Karim Onisiwo", "K. Onisiwo", "Austria", "CM"],
+    ["Hernan Galindez", "H. Galindez", "Ecuador", "GK"],
+    ["Giorgos Baldock", "G. Baldock", "Greece", "GK"],
+    ["Marko Maric", "M. Maric", "Croatia", "GK"],
+    ["Robbin Ruiter", "R. Ruiter", "Netherlands", "GK"],
+    ["Leopold Wahlstedt", "L. Wahlstedt", "Norway", "GK"],
+    ["Ivan Romero", "I. Romero", "Spain", "LW"],
+    ["Franco Gonzalez", "F. Gonzalez", "Uruguay", "CM"],
+    ["Allan", "Allan", "Brazil", "CDM"],
+    ["Lucas Alario", "L. Alario", "Argentina", "CM"],
+    ["Josh Maja", "J. Maja", "England", "RM"],
+    ["Jorge Fernandes", "J. Fernandes", "Portugal", "CB"],
+    ["Sam Nombe", "S. Nombe", "England", "LM"],
+    ["Adria Altimira", "A. Altimira", "Spain", "CB"],
+    ["Mostafa Meshaal", "M. Meshaal", "Qatar", "GK"],
+    ["Robert Glatzel", "R. Glatzel", "Germany", "ST"],
+    ["Leonardo Bonucci", "L. Bonucci", "Italy", "CB"],
+    ["Dennis Borkowski", "D. Borkowski", "Germany", "CAM"],
+    ["Josip Brekalo", "J. Brekalo", "Croatia", "CM"],
+    ["Tommaso Barbieri", "T. Barbieri", "Italy", "CAM"],
+    ["Luan Peres", "L. Peres", "Brazil", "CB"],
+    ["Michael Ameyaw", "M. Ameyaw", "Poland", "CM"],
+    ["Kota Takai", "K. Takai", "Japan", "CM"],
+    ["Riccardo Marchizza", "R. Marchizza", "Italy", "LB"],
+    ["Fabian Klos", "F. Klos", "Germany", "CAM"],
+    ["Bruno Amione", "B. Amione", "Argentina", "CB"],
+    ["Ibanez", "Ibanez", "Brazil", "CB"],
+    ["Jordan Lukaku", "J. Lukaku", "Belgium", "CB"],
+    ["Yimmi Chara", "Y. Chara", "Colombia", "CM"],
+    ["Luca Mazzitelli", "L. Mazzitelli", "Italy", "RB"],
+    ["Dogan Alemdar", "D. Alemdar", "Turkey", "GK"],
+    ["Callum Elder", "C. Elder", "England", "LB"],
+    ["Joshua Brenet", "J. Brenet", "Netherlands", "LB"],
+    ["Alex Grimaldo", "A. Grimaldo", "Spain", "LB"],
+    ["Andreas Poulsen", "A. Poulsen", "Germany", "ST"],
+    ["Moussa Sylla", "M. Sylla", "Germany", "ST"],
+    ["Lautaro Rivero", "L. Rivero", "Argentina", "CM"],
+    ["Francesco Cassata", "F. Cassata", "Italy", "LB"],
+    ["Samuel Adegbenro", "S. Adegbenro", "Sweden", "CM"],
+    ["Luciano Abecasis", "L. Abecasis", "Argentina", "RB"],
+    ["Francisco Trincao", "F. Trincao", "Portugal", "CM"],
+    ["Tobe Leysen", "T. Leysen", "Belgium", "GK"],
+    ["Marc Pubill", "M. Pubill", "Spain", "RB"],
+    ["Joel Ward", "J. Ward", "England", "RB"],
+    ["Dujuan Richards", "D. Richards", "Jamaica", "GK"],
+    ["Kiko Casilla", "K. Casilla", "Portugal", "GK"],
+    ["Leo Jaba", "L. Jaba", "Portugal", "ST"],
+    ["Robert Renan", "R. Renan", "Brazil", "CB"],
+    ["Lucas Verissimo", "L. Verissimo", "Brazil", "CB"],
+    ["Cristian Pavon", "C. Pavon", "Argentina", "CM"],
+    ["Federico Peluso", "F. Peluso", "Italy", "LB"],
+    ["Pedro Raul", "P. Raul", "Brazil", "ST"],
+    ["Milton Valenzuela", "M. Valenzuela", "Argentina", "RB"],
+    ["Jake Cooper", "J. Cooper", "England", "CB"],
+    ["Fisnik Asllani", "F. Asllani", "Germany", "ST"],
+    ["Luca Waldschmidt", "L. Waldschmidt", "Germany", "CAM"],
+    ["Jorge de Frutos", "J. de Frutos", "Spain", "CAM"],
+    ["Damian Suarez", "D. Suarez", "Uruguay", "CM"],
+    ["Gaston Pereiro", "G. Pereiro", "Uruguay", "CM"],
+    ["Jordan Carrillo", "J. Carrillo", "Mexico", "CM"],
+    ["Jorge", "Jorge", "Brazil", "LB"],
+    ["Simone Verdi", "S. Verdi", "Italy", "CM"],
+    ["Andre Gray", "A. Gray", "England", "ST"],
+    ["Callum O'Hare", "C. O'Hare", "England", "CM"],
+    ["Federico Bonazzoli", "F. Bonazzoli", "Italy", "ST"],
+    ["Jakob Ahlmann", "J. Ahlmann", "Denmark", "CM"],
+    ["Christoph Klarer", "C. Klarer", "Austria", "CM"],
+    ["Cristian Arango", "C. Arango", "Colombia", "CM"],
+    ["Nicolo Cudrig", "N. Cudrig", "Italy", "ST"],
+    ["Lucas Esquivel", "L. Esquivel", "Argentina", "LB"],
+    ["Emanuel Vignato", "E. Vignato", "Italy", "CM"],
+    ["Jonathan Herrera", "J. Herrera", "Argentina", "ST"],
+    ["Emiliano Papa", "E. Papa", "Argentina", "RB"],
+    ["Simone Zaza", "S. Zaza", "Italy", "ST"],
+    ["Abdulrahman Al-Obood", "A. Al-Obood", "Saudi Arabia", "CM"],
+    ["Roberto Inglese", "R. Inglese", "Italy", "CAM"],
+    ["Auston Trusty", "A. Trusty", "USA", "GK"],
+    ["Josh Onomah", "J. Onomah", "England", "CM"],
+    ["Christoph Kramer", "C. Kramer", "Germany", "CDM"],
+    ["Kevin Lasagna", "K. Lasagna", "Italy", "ST"],
+    ["Ercan Kara", "E. Kara", "Austria", "CM"],
+    ["Pablo Vegetti", "P. Vegetti", "Brazil", "ST"],
+    ["Luka Vuskovic", "L. Vuskovic", "Croatia", "CB"],
+    ["Pote", "Pote", "Portugal", "CM"],
+    ["James Hill", "J. Hill", "England", "CB"],
+    ["Alberto Cerri", "A. Cerri", "Italy", "ST"],
+    ["Andrea Conti", "A. Conti", "Italy", "RB"],
+    ["Toni Villa", "T. Villa", "Spain", "CM"],
+    ["Alberto Paloschi", "A. Paloschi", "Italy", "ST"],
+    ["Andreas Schjelderup", "A. Schjelderup", "Norway", "CM"],
+    ["Andre-Frank Zambo Anguissa", "A. Anguissa", "Cameroon", "GK"],
+    ["Reece Burke", "R. Burke", "England", "CB"],
+    ["Chidozie Awaziem", "C. Awaziem", "Nigeria", "GK"],
+    ["Alessandro Sorrentino", "A. Sorrentino", "Italy", "GK"],
+    ["Rogerio", "Rogerio", "Brazil", "LB"],
+    ["Alfredo Talavera", "A. Talavera", "Mexico", "GK"],
+    ["Jesper Hansen", "J. Hansen", "Denmark", "GK"],
+    ["Muhammed Sengezer", "M. Sengezer", "Turkey", "GK"],
+    ["Rodrigue Casimir Ninga", "R. Ninga", "France", "RB"],
+    ["Dennis Praet", "D. Praet", "Belgium", "CDM"],
+    ["Adolfo Gaich", "A. Gaich", "Argentina", "LB"],
+    ["Diego Valoyes", "D. Valoyes", "Argentina", "ST"],
+    ["Layvin Kurzawa", "L. Kurzawa", "France", "LB"],
+    ["Yuta Nakayama", "Y. Nakayama", "Japan", "GK"],
+    ["Alex Sola", "A. Sola", "Spain", "LW"],
+    ["Nat Phillips", "N. Phillips", "England", "CB"],
+    ["Facundo Altamirano", "F. Altamirano", "Argentina", "GK"],
+    ["Francesco Caputo", "F. Caputo", "Italy", "CM"],
+    ["Lorenzo Pirola", "L. Pirola", "Italy", "CB"],
+    ["Diego Romero", "D. Romero", "Peru", "GK"],
+    ["Tomas Handel", "T. Handel", "Portugal", "RB"],
+    ["Mohamed Sobhi", "M. Sobhi", "Egypt", "GK"],
+    ["Simone Bastoni", "S. Bastoni", "Italy", "LB"],
+    ["Massimo Coda", "M. Coda", "Italy", "ST"],
+    ["Andres Gomez", "A. Gomez", "Colombia", "CM"],
+    ["Diogo Queiros", "D. Queiros", "Portugal", "CB"],
+    ["Martin Aguirregabiria", "M. Aguirregabiria", "Spain", "RB"],
+    ["Mark-Anthony Kaye", "M. Kaye", "Canada", "GK"],
+    ["Paul Bernardoni", "P. Bernardoni", "France", "GK"],
+    ["Elijah Adebayo", "E. Adebayo", "England", "RM"],
+    ["Bright Arrey-Mbi", "B. Arrey-Mbi", "Germany", "CB"],
+    ["Pedro Pelagio", "P. Pelagio", "Portugal", "CM"],
+    ["Marlon", "Marlon", "Brazil", "CB"],
+    ["Leonardo Godoy", "L. Godoy", "Argentina", "LB"],
+    ["Andreas Linde", "A. Linde", "Sweden", "GK"],
+    ["Ivo Grbic", "I. Grbic", "Croatia", "GK"],
+    ["Joel Roca", "J. Roca", "Spain", "RB"],
+    ["Julian Rijsdijk", "J. Rijsdijk", "Netherlands", "LB"],
+    ["Baptiste Reynet", "B. Reynet", "France", "GK"],
+    ["Ozziel Herrera", "O. Herrera", "Mexico", "CM"],
+    ["Marco Nasti", "M. Nasti", "Italy", "CM"],
+    ["Andre Dozzell", "A. Dozzell", "England", "CM"],
+    ["Mohammed Al-Attas", "M. Al-Attas", "United Arab Emirates", "GK"],
+    ["Antonio Oliveira", "A. Oliveira", "Portugal", "LB"],
+    ["Kasim Nuhu", "K. Nuhu", "Ghana", "CM"],
+    ["Marco Tumminello", "M. Tumminello", "Italy", "ST"],
+    ["Luis Maximiano", "L. Maximiano", "Portugal", "GK"],
+    ["Dele Alli", "D. Alli", "England", "CM"],
+    ["Luis Rioja", "L. Rioja", "Spain", "ST"],
+    ["Jon Ander Olasagasti", "J. Olasagasti", "Spain", "CM"],
+    ["Tyreece Campbell", "T. Campbell", "Jamaica", "GK"],
+    ["Juan Camilo Portilla", "J. Portilla", "Colombia", "CM"],
+    ["Sean Morrison", "S. Morrison", "England", "CB"],
+    ["Paik Seung-ho", "P. Seung-ho", "South Korea", "CM"],
+    ["Rafael Ramos", "R. Ramos", "Brazil", "RB"],
+    ["Erce Kardesler", "E. Kardesler", "Turkey", "GK"],
+    ["Raul Garcia", "R. Garcia", "Spain", "LW"],
+    ["Alessandro Zanoli", "A. Zanoli", "Italy", "RB"],
+    ["Mohammed Maran", "M. Maran", "Saudi Arabia", "CM"],
+    ["Viktor Claesson", "V. Claesson", "Sweden", "CM"],
+    ["Jon Ander Garrido", "J. Garrido", "Spain", "RB"],
+    ["Alfa Semedo", "A. Semedo", "Portugal", "CM"],
+    ["Alberto Bueno", "A. Bueno", "Spain", "ST"],
+    ["Sota Kawasaki", "S. Kawasaki", "Japan", "CM"],
+    ["Jason Denayer", "J. Denayer", "Belgium", "CB"],
+    ["Rafa Soares", "R. Soares", "Portugal", "LB"],
+    ["Jean-Michael Seri", "J. Seri", "Ivory Coast", "GK"],
+    ["Gillian Vandenbergh", "G. Vandenbergh", "Belgium", "GK"],
+    ["Mauro Zarate", "M. Zarate", "Argentina", "CDM"],
+    ["Jon Russell", "J. Russell", "Jamaica", "GK"],
+    ["Denis Huseinbasic", "D. Huseinbasic", "Germany", "CAM"],
+    ["Jandrei", "Jandrei", "Brazil", "GK"],
+    ["Cody Drameh", "C. Drameh", "England", "LB"],
+    ["Scott Wright", "S. Wright", "Scotland", "CM"],
+    ["Ronald Koeman", "R. Koeman", "Netherlands", "GK"],
+    ["Marco Benassi", "M. Benassi", "Italy", "CDM"],
+    ["Jens Stryger Larsen", "J. Larsen", "Denmark", "CB"],
+    ["Mario Suarez", "M. Suarez", "Spain", "RW"],
+    ["Sontje Hansen", "S. Hansen", "Netherlands", "ST"],
+    ["Lorenzo Pellizzari", "L. Pellizzari", "Italy", "LB"],
+    ["Elias Cobbaut", "E. Cobbaut", "Belgium", "CB"],
+    ["Mariano Andujar", "M. Andujar", "Argentina", "GK"],
+    ["Rodri Sanchez", "R. Sanchez", "Spain", "RW"],
+    ["Bjorn Maars Johnsen", "B. Johnsen", "Norway", "CM"],
+    ["Kim Shin-wook", "K. Shin-wook", "South Korea", "CM"],
+    ["Robin Quaison", "R. Quaison", "Sweden", "CM"],
+    ["Sondre Brunstad Fet", "S. Fet", "Norway", "CM"],
+    ["Pedro Ganchas", "P. Ganchas", "Portugal", "CB"],
+    ["Zinho Vanheusden", "Z. Vanheusden", "Belgium", "CB"],
+    ["Alexis Gutierrez", "A. Gutierrez", "Mexico", "CM"],
+    ["Andy Polo", "A. Polo", "Peru", "GK"],
+    ["Hossein Kanaani", "H. Kanaani", "Iran", "GK"],
+    ["Santos", "Santos", "Brazil", "GK"],
+    ["Eric Martel", "E. Martel", "Germany", "CDM"],
+    ["Luciano Gondou", "L. Gondou", "Argentina", "CM"],
+    ["Diego Alves", "D. Alves", "Brazil", "GK"],
+    ["Chris Willock", "C. Willock", "England", "LM"],
+    ["Tadeu", "Tadeu", "Brazil", "GK"],
+    ["Tiago Sa", "T. Sa", "Portugal", "GK"],
+    ["Fabio Blanco", "F. Blanco", "Spain", "CAM"],
+    ["Benjamin Mendy", "B. Mendy", "France", "LB"],
+    ["Kaj Sierhuis", "K. Sierhuis", "Netherlands", "ST"],
+    ["Nicolo Turk", "N. Turk", "Italy", "GK"],
+    ["Christian Fassnacht", "C. Fassnacht", "Switzerland", "CM"],
+    ["Ben Hamer", "B. Hamer", "England", "GK"],
+    ["Mahmoud Hassan", "M. Hassan", "Egypt", "GK"],
+    ["Samuele Mulattieri", "S. Mulattieri", "Italy", "CAM"],
+    ["Deian Sorescu", "D. Sorescu", "Romania", "GK"],
+    ["Jetro Willems", "J. Willems", "Netherlands", "LB"],
+    ["Hugo Cuypers", "H. Cuypers", "Belgium", "CM"],
+    ["Noah Weisshaupt", "N. Weisshaupt", "Germany", "CM"],
+    ["Marco Curto", "M. Curto", "Italy", "CB"],
+    ["Pedro Aguiar", "P. Aguiar", "Portugal", "RB"],
+    ["Lee Nicholls", "L. Nicholls", "England", "GK"],
+    ["Marcus Bettinelli", "M. Bettinelli", "England", "GK"],
+    ["Marcos Lopes", "M. Lopes", "Portugal", "LB"],
+    ["Victor Froholdt", "V. Froholdt", "Denmark", "CM"],
+    ["Mohamed Ounajem", "M. Ounajem", "Morocco", "CM"],
+    ["Christian Benteke", "C. Benteke", "Belgium", "CM"],
+    ["Leo Skiri Ostigard", "L. Ostigard", "Norway", "GK"],
+    ["Kacper Kozlowski", "K. Kozlowski", "Poland", "CM"],
+    ["Jony Rodriguez", "J. Rodriguez", "Spain", "LW"],
+    ["Enzo Copetti", "E. Copetti", "Argentina", "ST"],
+    ["David von Ballmoos", "D. von Ballmoos", "Switzerland", "GK"],
+    ["Isak Pettersson", "I. Pettersson", "Sweden", "GK"],
+    ["Marcos Antonio", "M. Antonio", "Brazil", "CM"],
+    ["Benoit Costil", "B. Costil", "France", "GK"],
+    ["Andre Gomes", "A. Gomes", "Portugal", "CM"],
+    ["Antwoine Hackford", "A. Hackford", "England", "LM"],
+    ["Gabriele Corbo", "G. Corbo", "Italy", "CB"],
+    ["Simon Terodde", "S. Terodde", "Germany", "ST"],
+    ["Karlan Grant", "K. Grant", "England", "LM"],
+    ["Alex Smithies", "A. Smithies", "England", "GK"],
+    ["Abdul Manaf Nurudeen", "A. Nurudeen", "Ghana", "GK"],
+    ["Jacob Brown", "J. Brown", "Scotland", "CM"],
+    ["Toni Silic", "T. Silic", "Croatia", "GK"],
+    ["Kwon Chang-hoon", "K. Chang-hoon", "South Korea", "CM"],
+    ["Rafal Gikiewicz", "R. Gikiewicz", "Poland", "GK"],
+    ["Tomas Conechny", "T. Conechny", "Argentina", "CM"],
+    ["Iker Losada", "I. Losada", "Spain", "CDM"],
+    ["Flavius Daniliuc", "F. Daniliuc", "Austria", "GK"],
+    ["Tiago Dantas", "T. Dantas", "Portugal", "CM"],
+    ["Fehmi Mert Gunok", "F. Gunok", "Turkey", "GK"],
+    ["Sebastian Larsson", "S. Larsson", "Sweden", "CM"],
+    ["Anthony Racioppi", "A. Racioppi", "Switzerland", "GK"],
+    ["Antony Silva", "A. Silva", "Paraguay", "GK"],
+    ["Alex Balde", "A. Balde", "Spain", "LB"],
+    ["Joao Ferreira", "J. Ferreira", "Portugal", "RB"],
+    ["Nathan", "Nathan", "Brazil", "RB"],
+    ["Alex Padilla", "A. Padilla", "Spain", "GK"],
+    ["Thierno Ballo", "T. Ballo", "Austria", "CM"],
+    ["Tiago Araujo", "T. Araujo", "Portugal", "LB"],
+    ["Lee Seung-woo", "L. Seung-woo", "South Korea", "CM"],
+    ["Marcus Berg", "M. Berg", "Sweden", "CM"],
+    ["Mathias Villasanti", "M. Villasanti", "Paraguay", "GK"],
+    ["Warner Hahn", "W. Hahn", "Netherlands", "GK"],
+    ["Mads Kikkenborg", "M. Kikkenborg", "Denmark", "GK"],
+    ["Bryan Linssen", "B. Linssen", "Netherlands", "ST"],
+    ["Steven Defour", "S. Defour", "Belgium", "CDM"],
+    ["Kwadwo Baah", "K. Baah", "Ghana", "CM"],
+    ["Ze Carlos", "Z. Carlos", "Portugal", "CB"],
+    ["Jacob Rasmussen", "J. Rasmussen", "Denmark", "CB"],
+    ["Elias Gomez", "E. Gomez", "Argentina", "LB"],
+    ["Nils Petersen", "N. Petersen", "Germany", "CAM"],
+    ["Kevin", "Kevin", "Brazil", "RB"],
+    ["Rui Costa", "R. Costa", "Portugal", "CM"],
+    ["Felipe", "Felipe", "Brazil", "CB"],
+    ["Nam Tae-hee", "N. Tae-hee", "South Korea", "CM"],
+    ["Alexandre Oukidja", "A. Oukidja", "Algeria", "GK"],
+    ["Javi Lopez", "J. Lopez", "Spain", "LB"],
+    ["Iddrisu Baba", "I. Baba", "Ghana", "CM"],
+    ["Ahmed El Shenawy", "A. El Shenawy", "Egypt", "GK"],
+    ["Goncalo Paciencia", "G. Paciencia", "Portugal", "ST"],
+    ["Bafetimbi Gomis", "B. Gomis", "France", "CAM"],
+    ["Krystian Bielik", "K. Bielik", "Poland", "CM"],
+    ["Alessandro Plizzari", "A. Plizzari", "Italy", "RB"],
+    ["Lukas Nmecha", "L. Nmecha", "Germany", "ST"],
+    ["Joe Bryan", "J. Bryan", "England", "LB"],
+    ["Manolo Gabbiadini", "M. Gabbiadini", "Italy", "ST"],
+    ["Ahmed Jamil", "A. Jamil", "United Arab Emirates", "GK"],
+    ["Sam Field", "S. Field", "England", "CDM"],
+    ["Salah Zakaria", "S. Zakaria", "Qatar", "GK"],
+    ["Ki Sung-yueng", "K. Sung-yueng", "South Korea", "CM"],
+    ["Sebastian Polter", "S. Polter", "Germany", "CAM"],
+    ["Leandro Chichizola", "L. Chichizola", "Argentina", "GK"],
+    ["Andros Townsend", "A. Townsend", "England", "LM"],
+    ["Fer Nino", "F. Nino", "Spain", "ST"],
+    ["Arthur Zagre", "A. Zagre", "France", "RB"],
+    ["Anis Mehmeti", "A. Mehmeti", "England", "LM"],
+    ["Mateo Pellegrino", "M. Pellegrino", "Argentina", "CM"],
+    ["Matthieu Dreyer", "M. Dreyer", "France", "GK"],
+    ["Josh Doig", "J. Doig", "Scotland", "CM"],
+    ["Youssef Belammari", "Y. Belammari", "Morocco", "GK"],
+    ["Marco Pasalic", "M. Pasalic", "Croatia", "CM"],
+    ["Filip Marchwinski", "F. Marchwinski", "Poland", "CM"],
+    ["Bruno Fuchs", "B. Fuchs", "Brazil", "CB"],
+    ["Alvaro Vazquez", "A. Vazquez", "Spain", "RW"],
+    ["Alejandro Cantero", "A. Cantero", "Spain", "CAM"],
+    ["Alex Mowatt", "A. Mowatt", "England", "CM"],
+    ["Jacob Rinne", "J. Rinne", "Sweden", "GK"],
+    ["Pau Prim", "P. Prim", "Spain", "CDM"],
+    ["Thomas Buitink", "T. Buitink", "Netherlands", "ST"],
+    ["Kaiky", "Kaiky", "Brazil", "CB"],
+    ["Loreintz Rosier", "L. Rosier", "Netherlands", "ST"],
+    ["Sergio Padt", "S. Padt", "Netherlands", "GK"],
+    ["Franco Carboni", "F. Carboni", "Argentina", "LB"],
+    ["Abdessamad Ezzalzouli", "A. Ezzalzouli", "Morocco", "GK"],
+    ["Fabio Depaoli", "F. Depaoli", "Italy", "LB"],
+    ["Kevin Gameiro", "K. Gameiro", "France", "ST"],
+    ["Gianluca Frabotta", "G. Frabotta", "Italy", "RB"],
+    ["Gabri Veiga", "G. Veiga", "Spain", "CAM"],
+    ["Daniel Svensson", "D. Svensson", "Sweden", "GK"],
+    ["Andrew", "Andrew", "Portugal", "GK"],
+    ["Ron-Robert Zieler", "R. Zieler", "Germany", "GK"],
+    ["Mees de Wit", "M. de Wit", "Netherlands", "ST"],
+    ["Joao Mario", "J. Mario", "Portugal", "LB"],
+    ["Daniel Parejo", "D. Parejo", "Spain", "CM"],
+    ["Lewis Grabban", "L. Grabban", "England", "ST"],
+    ["Ki-Jana Hoever", "K. Hoever", "Netherlands", "LB"],
+    ["Dedryck Boyata", "D. Boyata", "Belgium", "CB"],
+    ["Jose Luis Gaya", "J. Gaya", "Spain", "ST"],
+    ["Emil Hansson", "E. Hansson", "Netherlands", "ST"],
+    ["Danylo Sikan", "D. Sikan", "Ukraine", "GK"],
+    ["Max Johnston", "M. Johnston", "Scotland", "CM"],
+    ["Lucas Orban", "L. Orban", "Argentina", "LB"],
+    ["Bruno Gaspar", "B. Gaspar", "Portugal", "CB"],
+    ["Rafael", "Rafael", "Brazil", "GK"],
+    ["Souleymane Faye", "S. Faye", "Senegal", "CM"],
+    ["Luan Pereira", "L. Pereira", "United Arab Emirates", "GK"],
+    ["Bartol Franjic", "B. Franjic", "Croatia", "CB"],
+    ["Leander Dendoncker", "L. Dendoncker", "Belgium", "CDM"],
+    ["Giovanni Fabbian", "G. Fabbian", "Italy", "CM"],
+    ["Moussa Wague", "M. Wague", "Senegal", "CM"],
+    ["Marco Davide Faraoni", "M. Faraoni", "Italy", "RB"],
+    ["Amin Younes", "A. Younes", "Germany", "CM"],
+    ["Jon Guridi", "J. Guridi", "Spain", "CDM"],
+    ["Pablo Marin", "P. Marin", "Spain", "CDM"],
+    ["Pablo Paez Gavira", "P. Gavira", "Spain", "CDM"],
+    ["Ewoud Pletinckx", "E. Pletinckx", "Belgium", "CB"],
+    ["Raul Gudino", "R. Gudino", "Mexico", "GK"],
+    ["Tim Oermann", "T. Oermann", "Germany", "CB"],
+    ["Marcus Holmgren Pedersen", "M. Pedersen", "Norway", "GK"],
+    ["Romain Faivre", "R. Faivre", "France", "CM"],
+    ["Chris Rigg", "C. Rigg", "England", "LM"],
+    ["Andre", "Andre", "Brazil", "CDM"],
+    ["Pedro Henrique", "P. Henrique", "Brazil", "RB"],
+    ["Mamadou Samassa", "M. Samassa", "France", "GK"],
+    ["Hayden Hackney", "H. Hackney", "England", "CDM"],
+    ["Yannick Cahuzac", "Y. Cahuzac", "France", "RB"],
+    ["Giuseppe Sibilli", "G. Sibilli", "Italy", "LB"],
+    ["Gaston Guruceaga", "G. Guruceaga", "Argentina", "GK"],
+    ["Rodrigo Ribeiro", "R. Ribeiro", "Portugal", "CB"],
+    ["Marko Rog", "M. Rog", "Croatia", "CB"],
+    ["Gonzalo Villar", "G. Villar", "Spain", "CM"],
+    ["Abdullah Ramadan", "A. Ramadan", "United Arab Emirates", "GK"],
+    ["Shunsuke Mito", "S. Mito", "Japan", "CM"],
+    ["Tariqe Fosu", "T. Fosu", "Ghana", "CM"],
+    ["Luan Candido", "L. Candido", "Brazil", "LB"],
+    ["Troy Deeney", "T. Deeney", "England", "ST"],
+    ["Frederik Jakel", "F. Jakel", "Germany", "RB"],
+    ["Bjorn Engels", "B. Engels", "Belgium", "CB"],
+    ["Abdoulaye Seck", "A. Seck", "Senegal", "GK"],
+    ["Rune Jarstein", "R. Jarstein", "Norway", "GK"],
+    ["Ortwin De Wolf", "O. De Wolf", "Belgium", "GK"],
+    ["Ibrahima Niane", "I. Niane", "Senegal", "CM"],
+    ["Ricardo Alves", "R. Alves", "Portugal", "CB"],
+    ["Elayis Tavsan", "E. Tavsan", "Netherlands", "ST"],
+    ["Luke Cundle", "L. Cundle", "England", "CDM"],
+    ["Zian Flemming", "Z. Flemming", "Netherlands", "ST"],
+    ["Rodrigo Caio", "R. Caio", "Brazil", "CB"],
+    ["Ethan Laird", "E. Laird", "England", "RB"],
+    ["Roque Mesa", "R. Mesa", "Spain", "ST"],
+    ["Ivan Nevistic", "I. Nevistic", "Croatia", "GK"],
+    ["Tim Lemperle", "T. Lemperle", "Germany", "ST"],
+    ["Mads Christiansen", "M. Christiansen", "Norway", "GK"],
+    ["David Nemeth", "D. Nemeth", "Austria", "GK"],
+    ["Anwar El Ghazi", "A. El Ghazi", "Netherlands", "CM"],
+    ["Karl-Johan Johnsson", "K. Johnsson", "Sweden", "GK"],
+    ["Hugo Mallo", "H. Mallo", "Spain", "RB"],
+    ["Farid Boulaya", "F. Boulaya", "Algeria", "GK"],
+    ["Tomas Palacios", "T. Palacios", "Argentina", "CB"],
+    ["Toma Basic", "T. Basic", "Croatia", "CB"],
+    ["Jeremy Toljan", "J. Toljan", "Germany", "RB"],
+    ["Sadiq Umar", "S. Umar", "Nigeria", "CM"],
+    ["Emil Hojlund", "E. Hojlund", "Denmark", "CM"],
+    ["Jacob Karlstrom", "J. Karlstrom", "Norway", "GK"],
+    ["Lorenzo Venuti", "L. Venuti", "Italy", "LB"],
+    ["Willian", "Willian", "Brazil", "CM"]
   ], NATION_COLORS = {
     Albania: ["#e41e20", "#000000"],
     Algeria: ["#006233", "#ffffff"],
@@ -8634,6 +9335,23 @@
     ["Frank Lampard", "F. Lampard", "England", "CAM", 88, 28],
     ["Philipp Lahm", "P. Lahm", "Germany", "RB", 88, 28],
     ["Carles Puyol", "C. Puyol", "Spain", "CB", 88, 29]
+  ], SBC_LEGENDS_2 = [
+    ["Francesco Totti", "F. Totti", "Italy", "CAM", 92, 30],
+    ["Ronaldo Nazário", "Ronaldo", "Brazil", "ST", 94, 25],
+    ["Fabio Cannavaro", "F. Cannavaro", "Italy", "CB", 91, 32],
+    ["Xavi", "Xavi", "Spain", "CM", 91, 30],
+    ["Edwin van der Sar", "E. v. d. Sar", "Netherlands", "GK", 90, 34],
+    ["Kaká", "Kaká", "Brazil", "CAM", 90, 25],
+    ["Lilian Thuram", "L. Thuram", "France", "RB", 89, 30],
+    ["Javier Zanetti", "J. Zanetti", "Argentina", "LB", 89, 32],
+    ["Alessandro Nesta", "A. Nesta", "Italy", "CB", 89, 28],
+    ["Patrick Vieira", "P. Vieira", "France", "CDM", 89, 28],
+    ["Samuel Eto'o", "S. Eto'o", "Cameroon", "ST", 89, 27],
+    ["Rivaldo", "Rivaldo", "Brazil", "LW", 89, 28],
+    ["Michael Ballack", "M. Ballack", "Germany", "CM", 88, 29],
+    ["Fernando Torres", "F. Torres", "Spain", "ST", 88, 25],
+    ["David Villa", "D. Villa", "Spain", "ST", 88, 28],
+    ["Ruud van Nistelrooy", "R. v. Nistelrooy", "Netherlands", "ST", 88, 28]
   ], CORE = CLUB_BLUEPRINTS.filter((bp) => !bp.league);
   function buildWorld() {
     var _a, _b, _c;
@@ -8882,6 +9600,19 @@
       players.push(p), w5Players.push(p), freeAgents.push(p.id);
     }
     nameTheWorld(w5Players, REAL_PLAYERS_WAVE5);
+    let w6 = makeRand(WORLD_SEED ^ 7105651), w6Players = [];
+    for (let i = 0; i < 700; i++) {
+      let p = makePlayer(w6, w6.pick(W3_POOL), w6.around(70, 10), null);
+      players.push(p), w6Players.push(p), freeAgents.push(p.id);
+    }
+    nameTheWorld(w6Players, REAL_PLAYERS_WAVE6);
+    let sbc2 = makeRand(WORLD_SEED ^ 23494);
+    for (let [name2, short, nation, pos, overall, age] of SBC_LEGENDS_2) {
+      let p = makePlayer(sbc2, pos, overall, null);
+      p.name = name2, p.short = short, p.nation = nation, p.age = age, p.nationColors = NATION_COLORS[nation] || p.nationColors, p.overall = overall;
+      for (let k of Object.keys(p.stats)) p.stats[k] = clamp(Math.round(p.stats[k] + (overall - 80) * 0.6), 40, 99);
+      p.rarity = "special", p.sbc = !0, p.value = marketValue(overall, age), players.push(p), sbcCards.push(p.id);
+    }
     let byId = Object.fromEntries(players.map((p) => [p.id, p]));
     return {
       leagueName: LEAGUE_NAME,
@@ -9180,8 +9911,11 @@
   }
 
   // js/data/packs.js
-  var PACKS = [
+  var WEEK_NATIONS = ["France", "Brazil", "England", "Spain", "Argentina", "Germany", "Italy", "Portugal", "Netherlands", "Saudi Arabia", "Morocco", "Belgium"], nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 6048e5) % WEEK_NATIONS.length], PACKS = [
     { id: "bronze", cat: "free", name: "Bronze", cost: 0, size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0 }, note: "4 cards" },
+    /* v73: SBC fodder. Six cheap bodies — bronzes and silvers — for the quick
+       SBCs, priced so a pack is always worth less than the challenge it feeds. */
+    { id: "fodder", cat: "standard", name: "SBC Fodder", cost: 1500, size: 6, odds: { bronze: 0.62, silver: 0.34, gold: 0.04, special: 0 }, tone: "bronze", note: "6 cards · for SBCs" },
     { id: "silver", cat: "standard", name: "Silver", cost: 2e3, size: 4, odds: { bronze: 0.32, silver: 0.52, gold: 0.15, special: 0.01 }, note: "4 cards" },
     /* Sold for what it does, not what it rolls. A squad cannot be fielded without
        a keeper, and the odds of one turning up in a four-card pack are about one
@@ -9237,6 +9971,10 @@
       note: "6 · silver min"
     },
     { id: "gold", cat: "standard", name: "Gold", cost: 7500, size: 5, odds: { bronze: 0.06, silver: 0.36, gold: 0.53, special: 0.05 }, floor: "gold", note: "5 · gold min" },
+    /* v73: packs by position and by age, at the Keeper pack's price point. */
+    { id: "youth", cat: "standard", name: "Youth Academy", cost: 6e3, size: 3, odds: { bronze: 0.1, silver: 0.5, gold: 0.38, special: 0.02 }, filter: { maxAge: 21 }, floor: "silver", tone: "silver", note: "3 · aged 21 or under", promise: "Every card 21 or under" },
+    { id: "defence", cat: "standard", name: "Back Four", cost: 6e3, size: 4, odds: { bronze: 0.1, silver: 0.5, gold: 0.38, special: 0.02 }, filter: { positions: ["CB", "LB", "RB"] }, floor: "silver", tone: "keeper", note: "4 · defenders only", promise: "Four defenders" },
+    { id: "midfield", cat: "standard", name: "Engine Room", cost: 6e3, size: 3, odds: { bronze: 0.1, silver: 0.5, gold: 0.38, special: 0.02 }, filter: { positions: ["CDM", "CM", "CAM", "LM", "RM"] }, floor: "silver", tone: "silver", note: "3 · midfielders only", promise: "Three midfielders" },
     /* The bulk option, and the only pack that pays for the gap between Gold and
        Prime. Eight cards at Gold-ish odds is worse per card than Prime and far
        better per Apex — it is the one to buy when a squad-building challenge wants
@@ -9281,6 +10019,10 @@
       promise: "1 guaranteed Special"
     },
     { id: "prime", cat: "premium", name: "Prime", cost: 3e4, size: 3, odds: { bronze: 0, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: "special", note: "3 · 82+ min" },
+    /* v73: a division's own pack, the nation of the week, and the biggest bulk pack in the store. */
+    { id: "premier", cat: "premium", name: "Premier Pick", cost: 14e3, size: 3, odds: { bronze: 0, silver: 0.14, gold: 0.74, special: 0.12 }, filter: { leagues: ["Apex Premier Division"] }, floor: "gold", tone: "gold", note: "3 · top division only", promise: "Every card from the Apex Premier Division" },
+    { id: "nations", cat: "premium", name: "Nations Week", cost: 12e3, size: 3, odds: { bronze: 0, silver: 0.2, gold: 0.7, special: 0.1 }, filter: { nationOfWeek: !0 }, floor: "gold", tone: "gold", note: "3 · one nation", promise: "This week: the nation on the shelf", weekly: !0 },
+    { id: "mega", cat: "premium", name: "Mega", cost: 2e4, size: 12, odds: { bronze: 0.06, silver: 0.36, gold: 0.52, special: 0.06 }, floor: "gold", tone: "gold", note: "12 · gold min", promise: "A dozen cards in one reveal" },
     /* The other end of Lucky Dip: one card, no floor, no guarantee, and odds
        that are genuinely top-heavy. It is the most volatile thing in the store —
        a quarter of the time it is the best single card you can buy without
@@ -9355,6 +10097,8 @@
     /* The top of the objective ladder pays this, and almost nothing else does.
        It is in the store so it has a stated price, but 200,000 Apex is roughly
        forty division wins — the intended way to hold one is to earn it. */
+    /* v73: four cards with a Star in them, between the Stars pack and the Icons. */
+    { id: "wonder", cat: "limited", name: "Limited: Wonder", cost: 9e4, size: 4, limited: !0, guarantee: "star", odds: { bronze: 0, silver: 0, gold: 0.34, special: 0.66 }, minOverall: 84, note: "4 cards · 84+ min", promise: "1 guaranteed Star · 84+ throughout" },
     {
       id: "legend",
       cat: "limited",
@@ -9384,7 +10128,7 @@
   function filterOf(f) {
     return f ? (p) => {
       var _a;
-      return (!f.nations || f.nations.includes(p.nation)) && (!f.leagues || p.clubId && f.leagues.includes((_a = WORLD.clubsById[p.clubId]) == null ? void 0 : _a.league)) && (!f.clubs || f.clubs.includes(p.clubId)) && (!f.positions || f.positions.includes(p.position)) && (!f.minOverall || p.overall >= f.minOverall);
+      return (!f.nations || f.nations.includes(p.nation)) && (!f.leagues || p.clubId && f.leagues.includes((_a = WORLD.clubsById[p.clubId]) == null ? void 0 : _a.league)) && (!f.clubs || f.clubs.includes(p.clubId)) && (!f.positions || f.positions.includes(p.position)) && (!f.maxAge || p.age <= f.maxAge) && (!f.nationOfWeek || p.nation === nationOfWeek()) && (!f.minOverall || p.overall >= f.minOverall);
     } : null;
   }
   function openPack(pack, seen = /* @__PURE__ */ new Set(), needGK = !1) {
@@ -9789,7 +10533,7 @@
       });
       for (let team of this.teams)
         for (let p of team.players)
-          p.touchLock = Math.max(0, p.touchLock - dt), p.stumble = Math.max(0, p.stumble - dt), p.slide = Math.max(0, p.slide - dt), p.skillT = Math.max(0, (p.skillT || 0) - dt), !this.isControlled(p) && this.think(p, dt);
+          p.touchLock = Math.max(0, p.touchLock - dt), p.stumble = Math.max(0, p.stumble - dt), p.slide = Math.max(0, p.slide - dt), p.skillT = Math.max(0, (p.skillT || 0) - dt), p.spinT > 0 && (p.spinT = Math.max(0, p.spinT - dt)), p.burst && (p.burst.t -= dt, p.burst.t <= 0 && (p.vx += p.burst.vx, p.vy += p.burst.vy, p.burst = null)), !this.isControlled(p) && this.think(p, dt);
       for (let team of this.teams)
         for (let p of team.players)
           this.integrate(p, dt), this.fatigue(p, dt);
@@ -9847,7 +10591,7 @@
       let team = this.teams[teamIdx];
       if (!team || team.subsLeft <= 0) return !1;
       let p = team.players[pitchIdx], incoming = (_a = team.bench) == null ? void 0 : _a[benchIdx];
-      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, team.subsLeft -= 1, this.cue("whistle"), !0);
+      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.cue("whistle"), !0);
     }
     /* ----------------------------- movement ---------------------------- */
     /**
@@ -9921,10 +10665,11 @@
       let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
       if (this.drive(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
         if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge)), c.passCharge = 0), input.pressed("through") ? this.pass(p, aim, !0, 0.5) : input.pressed("lob") ? this.pass(p, aim, !0, 0.55, !0) : input.pressed("cross") && this.cross(p, aim), input.pressed("skill") && this.skillMove(p, aim), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85)), input.released("shoot")) {
-          let curled = input.held("curl");
+          let curled = input.held("curl"), chip = input.held("lob");
           this.shoot(p, aim, Math.max(0.28, c.charge), {
-            loft: curled ? 1.35 : 1,
-            curl: curled ? 34 : 0
+            loft: chip ? 2.6 : curled ? 0.9 : 1,
+            curl: curled ? 46 : 0,
+            chip
           }), c.charge = 0;
         }
       } else
@@ -10001,7 +10746,7 @@
         }
         let speed = Math.hypot(o.vx, o.vy), dx = b.x - o.x, dy = b.y - o.y, gap = Math.hypot(dx, dy), skill = o.ref.stats.dribbling / 100, lead = 0.85 + speed * 0.13, off = 0.34 * strongSide(o), tx = o.x + o.dirX * lead + o.dirY * off, ty = o.y + o.dirY * lead - o.dirX * off, stiff = (30 + skill * 26) * this.preset.control, damp2 = 10;
         if (b.vx += ((tx - b.x) * stiff - b.vx * damp2) * dt, b.vy += ((ty - b.y) * stiff - b.vy * damp2) * dt, b.x += b.vx * dt, b.y += b.vy * dt, o.touchT = (o.touchT || 0) - dt, o.touchT <= 0 && speed > 1.2) {
-          let foe = this.nearestTo(1 - o.team, o), tight = foe && dist(o, foe) < 4 ? 0.75 : 1, push2 = (0.7 + speed * 0.18) * (1.3 - skill * 0.4);
+          let foe = this.nearestTo(1 - o.team, o), tight = foe && dist(o, foe) < 4 ? 0.75 : 1, push2 = (0.8 + speed * 0.26) * (1.3 - skill * 0.4);
           b.vx += o.dirX * push2, b.vy += o.dirY * push2, o.touchT = (0.3 + Math.random() * 0.16) * tight * (1.25 - skill * 0.33), this.cue("touch");
         }
         b.lastTouch = o;
@@ -10010,13 +10755,13 @@
       if (b.curl) {
         let sp = Math.hypot(b.vx, b.vy);
         if (sp > 1.5) {
-          let k = b.curl * sp / 26, vx0 = b.vx, vy0 = b.vy;
+          let k = b.curl * sp / 58, vx0 = b.vx, vy0 = b.vy;
           b.vx += -vy0 / sp * k * dt, b.vy += vx0 / sp * k * dt;
         }
-        b.curl *= Math.pow(0.55, dt), b.z <= 0 && (b.curl = 0);
+        b.curl *= Math.pow(0.5, dt), b.z <= 0 && (b.curl = 0);
       }
       b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * 0.42, b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
-      let damp = Math.pow(b.z > 0.4 ? 0.998 : 0.986, dt * 60);
+      let damp = Math.pow(b.z > 0.4 ? 0.9985 : 0.986, dt * 60);
       if (b.vx *= damp, b.vy *= damp, b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5 && (b.vx = 0, b.vy = 0), b.noTouch = Math.max(0, (b.noTouch || 0) - dt), b.noTouch > 0) {
         this.bounds();
         return;
@@ -10276,15 +11021,15 @@
      *           is not at anyone's feet when it is struck
      */
     shoot(p, aim, power, opts = {}) {
-      let { loft = 1, curl = 0, placed = !1 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), spread = ((1.05 - acc) * 0.3 + d2 / 230 + (1 - power) * 0.06) * (weak ? 1.5 : 1) * (2 - this.formOf(p));
+      let { loft = 1, curl = 0, placed = !1, chip = !1 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), spread = ((1.05 - acc) * 0.3 + d2 / 230 + (1 - power) * 0.06) * (weak ? 1.5 : 1) * (2 - this.formOf(p));
       {
         let angle = Math.atan2(GOAL_HALF * 2 * Math.abs(dx), d2 * d2 - GOAL_HALF * GOAL_HALF) || 0.01, foe = this.nearestTo(1 - p.team, p), close = foe && dist(p, foe) < 2 ? 0.66 : 1, xg = clamp2(0.92 * Math.exp(-d2 / 11) * Math.min(1, angle / 0.9) * close, 0.02, 0.8);
         team.xg = (team.xg || 0) + xg, xg >= 0.25 && (team.bigChances = (team.bigChances || 0) + 1, this.cue("bigChance", p));
       }
       let err = (Math.random() - 0.5) * 2 * spread, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2;
       this.cue("shot", power);
-      let speed = (21 + power * 17 + acc * 6) * (weak ? 0.93 : 1), rise = (0.9 + power * 6.4) * loft + (curl ? 2.4 : 0);
-      if (this.release(p, nx * speed, ny * speed, rise), curl) {
+      let speed = chip ? (13 + power * 6) * (weak ? 0.93 : 1) : (22 + power * 19 + acc * 6) * (weak ? 0.93 : 1), rise = chip ? 7.5 + power * 3 : (1.3 + power * 8.2) * loft + (curl ? 1.2 : 0);
+      if (this.release(p, nx * speed, ny * speed, rise), chip && this.cue("lob", p), curl) {
         let sign = aim && Math.abs(aim.y) > 0.2 ? -Math.sign(aim.y) : Math.sign(CY - p.y) || 1;
         this.ball.curl = sign * curl * (0.55 + acc * 0.6);
       }
@@ -10348,11 +11093,30 @@
       let p = team.players[i];
       this.substitute(teamIdx, i, bench[0][1]) && (p.injured = !1, this.cue("sub", p));
     }
-    /** A feint: a burst sideways that a lunging tackler cannot follow. Costs legs. */
+    /**
+     * Skill moves. One button, four tricks, chosen by where the stick points
+     * relative to the way the player faces:
+     *   sideways  — the feint: a burst across a lunging tackler
+     *   forward   — stepovers: the ball stands still for a beat, then a burst
+     *   backward  — the roulette: a spin with the ball glued to the foot
+     *   a defender within two metres ahead — the nutmeg: through the legs
+     * Every one costs legs, keeps the tackler off for its duration
+     * (`skillT`, see tackle), and can fail: a heavy touch that runs away from a
+     * player who is not a dribbler. `skillKind` and `spinT` are for the
+     * renderer, which turns the roulette into a spin.
+     */
     skillMove(p, aim) {
       if (p.skillT > 0 || p.stumble > 0 || p.stamina < 0.15) return;
-      let side = aim && Math.abs(aim.x * p.dirY - aim.y * p.dirX) > 0.2 ? Math.sign(aim.x * p.dirY - aim.y * p.dirX) : Math.random() < 0.5 ? -1 : 1, skill = p.ref.stats.dribbling / 100;
-      p.skillT = 0.28 + skill * 0.2, p.vx += p.dirY * side * (4.5 + skill * 3) + p.dirX * 1.5, p.vy += -p.dirX * side * (4.5 + skill * 3) + p.dirY * 1.5, p.stamina = Math.max(0, p.stamina - 0.04), this.cue("skill", p);
+      let skill = p.ref.stats.dribbling / 100, b = this.ball, hasBall = b.owner === p, lateral = aim ? aim.x * p.dirY - aim.y * p.dirX : 0, along = aim ? aim.x * p.dirX + aim.y * p.dirY : 0, foe = this.nearestTo(1 - p.team, p), foeAhead = foe && dist(p, foe) < 2.2 && (foe.x - p.x) * p.dirX + (foe.y - p.y) * p.dirY > 0.8, kind = "feint";
+      if (hasBall && foeAhead && Math.abs(lateral) < 0.5 ? kind = "nutmeg" : aim && Math.abs(lateral) > 0.35 ? kind = "feint" : aim && along < -0.4 ? kind = "roulette" : aim && along > 0.4 && (kind = "stepover"), p.skillKind = kind, p.stamina = Math.max(0, p.stamina - 0.04), hasBall && Math.random() > 0.5 + skill * 0.5) {
+        p.skillT = 0.2, p.stumble = 0.35, this.release(p, p.dirX * 6, p.dirY * 6), this.cue("skill", p);
+        return;
+      }
+      if (kind === "feint") {
+        let side = Math.abs(lateral) > 0.2 ? Math.sign(lateral) : Math.random() < 0.5 ? -1 : 1;
+        p.skillT = 0.28 + skill * 0.2, p.vx += p.dirY * side * (4.5 + skill * 3) + p.dirX * 1.5, p.vy += -p.dirX * side * (4.5 + skill * 3) + p.dirY * 1.5;
+      } else kind === "stepover" ? (p.skillT = 0.34 + skill * 0.16, p.vx *= 0.35, p.vy *= 0.35, p.burst = { t: p.skillT, vx: p.dirX * (6 + skill * 4), vy: p.dirY * (6 + skill * 4) }) : kind === "roulette" ? (p.skillT = 0.55 + skill * 0.15, p.spinT = p.skillT, p.vx = p.vx * 0.5 + p.dirX * 2.5, p.vy = p.vy * 0.5 + p.dirY * 2.5, hasBall && (b.noTouch = 0)) : kind === "nutmeg" && (p.skillT = 0.3 + skill * 0.1, this.release(p, p.dirX * (9 + skill * 4), p.dirY * (9 + skill * 4)), b.noTouch = 0.05, b.owner = null, foe.stumble = Math.max(foe.stumble, 0.45), p.burst = { t: 0.05, vx: p.dirX * (7 + skill * 4) + p.dirY * 2.2, vy: p.dirY * (7 + skill * 4) - p.dirX * 2.2 });
+      this.cue("skill", p);
     }
     /* -------------------------- free kicks & throw-ins ------------------- *
      * Fouls used to exist only inside the box, because there was nowhere else
@@ -10629,10 +11393,11 @@
     thinkOnBall(p, dt) {
       let team = this.teams[p.team], goalX = team.dir > 0 ? PITCH.w : 0, toGoal = Math.hypot(goalX - p.x, CY - p.y), foe = this.nearestTo(1 - p.team, p), pressure = foe ? dist(p, foe) : 99;
       if (toGoal < 24 && (pressure > 2.4 || toGoal < 13) && Math.random() < (1.7 - toGoal / 26) * this.aiSkillFor(p.team) * dt) {
-        let far = toGoal > 17;
+        let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q) => q.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team);
         this.shoot(p, null, 0.55 + Math.random() * 0.45, {
-          loft: 0.32 + Math.random() * 0.3,
-          curl: far && Math.random() < 0.3 ? 26 : 0
+          loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
+          curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
+          chip
         });
         return;
       }
