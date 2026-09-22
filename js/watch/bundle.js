@@ -10381,6 +10381,12 @@
       stamCost: 1.35 - ref.stats.physical / 100 * 0.6
     };
   }
+  function aggressionOf(ref) {
+    let st = ref.stats, base = (st.physical * 0.5 + st.defending * 0.5 - st.dribbling * 0.35) / 100, back = ["CB", "LB", "RB", "CDM"].includes(ref.position) ? 0.16 : ref.position === "GK" ? -0.4 : 0, h = 2166136261;
+    for (let ch of String(ref.id || ref.name || ""))
+      h ^= ch.charCodeAt(0), h = Math.imul(h, 16777619) >>> 0;
+    return clamp2(base + back + (h % 1e3 / 1e3 - 0.5) * 0.24, 0.02, 1);
+  }
   function makeTeam(clubId, side, isHuman, custom = null) {
     var _a, _b;
     let club = getClub(clubId), xi = ((_a = custom == null ? void 0 : custom.xi) == null ? void 0 : _a.length) === 11 ? custom.xi : pickXI(clubId), dir = side === 0 ? 1 : -1, players = xi.map((ref, i) => {
@@ -10407,7 +10413,17 @@
         diveDir: 0,
         skillT: 0,
         injured: !1,
-        runUntil: 0
+        runUntil: 0,
+        /* How willing this one is to fly in. A physical, defensive-minded player
+           with little composure will lunge from further out and more often than
+           a technician will — and a lunge from further out is exactly what the
+           referee books people for (see `tackle`). Seeded off the card, so the
+           same footballer is the same nuisance every match. */
+        aggression: aggressionOf(ref),
+        downT: 0,
+        // seconds spent on the grass after being fouled
+        cards: 0
+        // yellows
       };
     }), onPitch = new Set(xi.map((r) => r.id)), bench = ((_b = custom == null ? void 0 : custom.bench) != null && _b.filter(Boolean).length ? custom.bench.filter(Boolean) : null) || rosterOf(clubId).filter((r) => !onPitch.has(r.id)).sort((a, b) => b.overall - a.overall).slice(0, BENCH_SIZE);
     return {
@@ -10445,7 +10461,7 @@
       ], this.teams[1].isHuman = !0) : this.mode === "coop" ? this.controllers = [
         { team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: 9, charge: 0, passCharge: 0 }
-      ] : this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      ] : this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -10481,6 +10497,15 @@
      * floor is the baseline the match was created with: cruising cannot make the
      * opposition worse than the division it belongs to.
      */
+    /**
+     * This player's appetite for a challenge right now: his own temperament,
+     * lifted by a side that is behind and running out of match, and dropped
+     * hard by a booking — a man on a yellow keeps his feet.
+     */
+    aggressionOf(p) {
+      let behind = this.teams[1 - p.team].score - this.teams[p.team].score, late = Math.min(1, this.t / Math.max(1, this.duration)), chase = behind > 0 ? Math.min(0.3, behind * 0.1) * (0.35 + late) : 0, booked = p.cards > 0 ? 0.5 : 1;
+      return clamp2((p.aggression + chase) * booked, 0, 1);
+    }
     aiSkillFor(team) {
       let mgr = this.mgrSide === team && typeof this.mgrPerf == "number" ? (this.mgrPerf - 0.5) * 0.44 : 0, me = this.soloHumanSide;
       return me === null || team === me ? this.skill + mgr : this.skill + 0.45 * this.momentum + mgr;
@@ -10540,7 +10565,7 @@
       this.kickoffSide = kickoffSide;
       for (let team of this.teams) {
         for (let p of team.players)
-          p.x = p.sx * PITCH.w, p.y = p.sy * PITCH.h, p.vx = p.vy = 0, p.touchLock = p.stumble = p.holdT = p.slide = 0, p.celebrating = !1, p.diveT = 0;
+          p.x = p.sx * PITCH.w, p.y = p.sy * PITCH.h, p.vx = p.vy = 0, p.touchLock = p.stumble = p.holdT = p.slide = p.downT = 0, p.celebrating = !1, p.diveT = 0;
         let half = team.dir > 0;
         for (let p of team.players)
           half && p.x > PITCH.w / 2 - 2 && (p.x = PITCH.w / 2 - 2 - (p.role === "FWD" ? 3 : 8)), !half && p.x < PITCH.w / 2 + 2 && (p.x = PITCH.w / 2 + 2 + (p.role === "FWD" ? 3 : 8));
@@ -10566,6 +10591,9 @@
     update(dt, input) {
       var _a, _b;
       if (this.phase === "end") return;
+      for (let team of this.teams)
+        for (let p of team.players)
+          p.downT > 0 && (p.downT = Math.max(0, p.downT - dt), p.vx *= 0.82, p.vy *= 0.82);
       let seats = Array.isArray(input) ? input : [input];
       if (this.phase !== "play") {
         if (this.phaseT -= dt, this.phase === "goal" && this.updateCelebration(dt), (_a = this.setPiece) != null && _a.human && this.phaseT > 0) {
@@ -10683,7 +10711,7 @@
       let team = this.teams[teamIdx];
       if (!team || team.subsLeft <= 0) return !1;
       let p = team.players[pitchIdx], incoming = (_a = team.bench) == null ? void 0 : _a[benchIdx];
-      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.cue("whistle"), !0);
+      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.downT = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.cue("whistle"), !0);
     }
     /* ----------------------------- movement ---------------------------- */
     /**
@@ -10713,7 +10741,7 @@
       sp > 0.6 && (p.dirX = p.vx / sp, p.dirY = p.vy / sp);
     }
     drive(p, dx, dy, dt, factor = 1) {
-      if (p.slide > 0) return;
+      if (p.slide > 0 || p.downT > 0) return;
       let m = Math.hypot(dx, dy), tired = 0.82 + p.stamina * 0.18, speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.45 : 1), tx = m > 1e-3 ? dx / m * speed : 0, ty = m > 1e-3 ? dy / m * speed : 0, k = Math.min(1, dt * 9);
       p.vx += (tx - p.vx) * k, p.vy += (ty - p.vy) * k;
     }
@@ -11166,8 +11194,8 @@
         b.owner = p, b.lastTouch = p, owner.touchLock = 0.55, owner.stumble = 0.35;
       else {
         p.stumble = 0.45 + frac * 0.7;
-        let chance = 0.21 * frac * frac;
-        Math.random() < chance && (this.fouls[p.team] += 1, this.cue("foul", p), !owner.injured && Math.random() < 0.125 && this.injure(owner), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : this.awardFreeKick(1 - p.team, owner, p));
+        let chance = (0.1 + 0.28 * this.aggressionOf(p)) * frac * frac;
+        Math.random() < chance && (this.fouls[p.team] += 1, this.cue("foul", p), owner.downT = 1.1 + frac * 0.9, owner.downMax = owner.downT, owner.vx = p.dirX * 3.4, owner.vy = p.dirY * 3.4, owner.stumble = Math.max(owner.stumble, owner.downT + 0.5), !owner.injured && Math.random() < 0.125 && this.injure(owner), frac > 0.82 && p.cards < 1 && (p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() })), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : this.awardFreeKick(1 - p.team, owner, p));
       }
     }
     /** A player is hurt: he stays on, diminished, until someone takes him off. */
@@ -11395,7 +11423,9 @@
       if (b.owner === p) return this.thinkOnBall(p, dt);
       let weHave = b.owner && b.owner.team === p.team, press = this.pressingOf(p.team), isChaser = this.chasers[p.team] === p || ((_a = this.chasers2) == null ? void 0 : _a[p.team]) === p, target = this.shapeTarget(p), goalX = team.dir > 0 ? PITCH.w : 0;
       if (!weHave && (isChaser || !b.owner && dist(p, b) < 14 * press)) {
-        this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06), b.owner && b.owner.team !== p.team && dist(p, b.owner) < 2.4 && Math.random() < 1.1 * this.aiSkillFor(p.team) * press * dt && this.tackle(p);
+        this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
+        let agg = this.aggressionOf(p), commit = 1.9 + agg * 1.5;
+        b.owner && b.owner.team !== p.team && dist(p, b.owner) < commit && Math.random() < (0.75 + agg * 1.4) * this.aiSkillFor(p.team) * press * dt && this.tackle(p);
         return;
       }
       p.runT = (p.runT || Math.random() * 4) + dt;
@@ -12632,6 +12662,13 @@
       "Free kick for that. {player} penalised.",
       "A clumsy challenge from {player}.",
       "{player} catches him. No arguments."
+    ],
+    card: [
+      "Yellow card for {player}. That was reckless.",
+      "{player} is booked, and he cannot complain.",
+      "Into the book goes {player}.",
+      "A caution for {player} — he has to be careful now.",
+      "The referee reaches for his pocket. {player} is shown yellow."
     ],
     injury: [
       "{player} is down, and he is not getting up quickly.",
