@@ -35,7 +35,7 @@ await page.addStyleTag({ content: '#gmRoot > :not(canvas) { visibility: hidden !
 
 const counts = [];
 for (let i = 0; i < FRAMES; i++) {
-  const png = decodePNG(await page.screenshot({ type: 'png' }));
+  const png = decodePNG(await page.screenshot({ type: 'png', timeout: 150000 }));
   const { width, height, channels, data } = png;
   let black = 0, total = 0;
   for (let y = Math.floor(height * 0.30); y < height; y++) {
