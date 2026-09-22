@@ -345,7 +345,7 @@ export function mount(root, params) {
   const CUE_KEY = {
     goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
     bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
-    throwin: 'throwin', foul: 'foul', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+    throwin: 'throwin', foul: 'foul', card: 'card', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
   };
   let lastCommentAt = -9;
   const commentCue = (name, arg) => {

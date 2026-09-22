@@ -18,6 +18,33 @@
  */
 export const RELEASES = [
   {
+    version: 'v76',
+    date: '2026-09-22',
+    tag: 'Grass and nets',
+    title: 'A pitch with depth, goals with nets, defenders with a temper',
+    lede: 'The grass is lit rather than painted and has real relief and blades near the camera; the goals are heavier with a proper '
+        + 'frame and a net that has a roof and moves like cord; and some defenders now fly in, send you to the floor and give away penalties.',
+    entries: [
+      {
+        head: 'The pitch',
+        summary: 'Richer greens, mow stripes that shift with the light as the camera moves, a crowned and gently uneven surface, parallax depth in the blades, and real grass standing up in front of the camera on High and above.',
+        detail: 'The stripes used to be painted into a flat picture, so they never changed as the view moved. They are now '
+              + 'the same grass lying two ways and catching the light differently, which is what a mown pitch actually is.',
+      },
+      {
+        head: 'The goals',
+        summary: 'Heavier posts and crossbar, a rear frame the net hangs from, a roof on the net, and netting that bags, bulges on a strike and swings afterwards instead of snapping back like a board.',
+        detail: 'The net takes tension but goes slack under compression, like cord. A shot into the back shakes the roof too.',
+      },
+      {
+        head: 'Fouls you can see',
+        summary: 'Every player has a temperament: hard defenders lunge from further out and more often, and sides that are losing late get nastier. A foul puts the man on the grass for a moment; in the box it is a penalty; the worst lunges are booked.',
+        detail: 'Measured over 120 AI matches: about 2.5 fouls, 0.3 penalties and a few bookings per match. A booked player '
+              + 'calms down. The balance sweep was re-run deliberately: goals 2.13 → 2.15, shots 12.3 → 12.9.',
+      },
+    ],
+  },
+  {
     version: 'v75',
     date: '2026-09-20',
     tag: 'Kick Off',

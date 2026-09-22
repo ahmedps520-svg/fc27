@@ -15,6 +15,50 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v76 — pitch depth, goals and nets, aggressive AI
+**Sweep re-baselined deliberately** (seed 12345: goals 2.13 → 2.15, shots
+12.30 → 12.93, on target 9.58 → 9.90, conversion 17.3 % → 16.6 %) — the AI
+now tackles by temperament, which changes every contested ball.
+- **Aggression** (`sim.js`): `aggressionOf(ref)` per player (physical +
+  defending − dribbling, +0.16 for defenders, −0.4 for keepers, ±0.12 seeded
+  wobble; defenders ~0.6–0.9, forwards ~0.3); `Match.aggressionOf(p)` adds a
+  chase term when behind (up to +0.3, growing late) and halves after a
+  booking. AI commit distance `1.9 + 1.5·agg` m, rate `(0.75 + 1.4·agg)·
+  skill·press·dt`. Foul chance `(0.1 + 0.28·agg)·frac²`. On a foul the
+  fouled man gets `downT = downMax = 1.1 + 0.9·frac` (ticked every frame
+  whatever the phase — a foul goes straight to a set piece, and a timer
+  that only ran during play left him lying through the free kick; cleared
+  on every reset), a push in the tackle direction, and a yellow when
+  `frac > 0.82` (`bookings`, cue `card`, commentary). 120 AI matches: 0.41
+  penalties / 2.9 fouls per match before the last ease, ~0.3 after.
+- **Falls**: `rig.js poseDown` (prone along the facing, arms out, gathers
+  and rises over the last 28 %), `playerModel.js` tips `root` flat
+  (`rotation.x`, `position.z`) or plays a `down`/`fall` clip if the asset
+  has one; `drive()` refuses a man who is down.
+- **Pitch** (`renderGL.js`): two mow greens a real step apart
+  (`#3d9a4e` / `#1c6530`); one turf shader hook for every tier — the stripe
+  lie tilts the normal per band in view space (`uStripe`), a 3–6 step
+  parallax march through a blade height map (`turfDetail` now returns
+  `{normal, height}`; `uPara` in blade-map uv) with trough shading; the
+  pitch plane is subdivided (52×34 Low … 210×136 High+) and displaced — a
+  16 cm crown plus three octaves of undulation, lifted +9 cm so the hollows
+  never dip under the apron (they did: a black organic patch), apron
+  lowered to −6 cm; crossed-card grass tufts (10k Medium / 18k High / 30k
+  Ultra) with sky normals (vertical cards lit from above were black),
+  shrinking continuously with distance from `uEye` (a full-size plateau
+  made a carpet with a visible ring). `customProgramCacheKey` is a plain
+  string — capturing three's default off the material loses `this` and
+  threw every frame. No backticks in GLSL comments inside template
+  literals (it closed the literal).
+- **Goals**: posts/bar radius 0.06 → 0.105, rear uprights, ground stays,
+  sloping top rails and a rear bar (`REAR_H = 0.72·GOAL_H`); the curtain
+  hangs from the rails with a belly; a separate roof cloth pinned round
+  the frame with a 12 cm sag; a strike impulses every net at that goal.
+  `net.js`: home pull 0.06 → 0.012, drag 0.978, gravity −11, constraints
+  pull at 0.5 when stretched and 0.12 when slack.
+- Not done: the camera can sit inside a stand (seen behind the goal) — the
+  next round's camera collision.
+
 ### v75 — Kick Off by country
 - **`data/countries.js`**: `COUNTRIES` (56, strongest first: Spain … India;
   `rank` 1-based), each with real clubs `{id: 'kc-<country>-<short>', name,

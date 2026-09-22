@@ -69,10 +69,17 @@ export class NetCloth {
   }
 
   step(dt, iterations = 3) {
-    const drag = 0.965;
-    const g = -9.5 * dt * dt;
-    // verlet integrate, with a gentle pull back to the rest shape so the net
-    // recovers instead of hanging bagged out after every strike
+    /* Cord, not cable.
+     *
+     * The pull back to the rest shape used to be 0.06 a step, which is a
+     * spring stiff enough that a strike barely dented the net and everything
+     * snapped flat again inside a couple of frames — the "concrete" look.
+     * At 0.012 the net keeps its shape over seconds rather than frames, so a
+     * ball leaves a bulge that rolls out of it, and a little less drag lets
+     * the whole curtain swing afterwards. */
+    const drag = 0.978;
+    const g = -11 * dt * dt;
+    const homePull = this.homePull ?? 0.012;
     for (let i = 0; i < this.n; i++) {
       if (this.pinned[i]) continue;
       const p = i * 3;
@@ -80,7 +87,7 @@ export class NetCloth {
         const cur = this.pos[p + k];
         let next = cur + (cur - this.prev[p + k]) * drag;
         if (k === 2) next += g;
-        next += (this.home[p + k] - cur) * 0.06;
+        next += (this.home[p + k] - cur) * homePull;
         this.prev[p + k] = cur;
         this.pos[p + k] = next;
       }
@@ -96,7 +103,12 @@ export class NetCloth {
         const dy = this.pos[b + 1] - this.pos[a + 1];
         const dz = this.pos[b + 2] - this.pos[a + 2];
         const d = Math.hypot(dx, dy, dz) || 1e-5;
-        const diff = ((d - rest) / d) * 0.5;
+        /* Netting takes tension but not compression: it can go slack and
+         * gather, it cannot push its own knots apart. Pulling hard when it is
+         * stretched and barely at all when it is loose is the difference
+         * between cord and a sheet of board. */
+        const slack = d < rest;
+        const diff = ((d - rest) / d) * (slack ? 0.12 : 0.5);
         const mx = dx * diff;
         const my = dy * diff;
         const mz = dz * diff;

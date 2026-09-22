@@ -76,6 +76,11 @@ const L = {
     'The referee blows. {player} in the book?', 'Late, from {player}.', 'Free kick for that. {player} penalised.',
     'A clumsy challenge from {player}.', '{player} catches him. No arguments.',
   ],
+  card: [
+    'Yellow card for {player}. That was reckless.', '{player} is booked, and he cannot complain.',
+    'Into the book goes {player}.', 'A caution for {player} — he has to be careful now.',
+    'The referee reaches for his pocket. {player} is shown yellow.',
+  ],
   injury: [
     '{player} is down, and he is not getting up quickly.', 'That looks like a problem for {player}.', 'The physio is on for {player}.',
     '{player} is struggling. He may not last.', 'A worry for {team} — {player} is hurt.', '{player} limps back into position.',

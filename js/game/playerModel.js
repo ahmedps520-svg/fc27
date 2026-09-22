@@ -313,6 +313,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
 
 /** Which action suits what this player is doing right now. */
 export function actionFor(rig, speed, p) {
+  if (p.downT > 0) return rig.actions.down || rig.actions.fall || rig.actions.tackle ? (rig.actions.down ? 'down' : rig.actions.fall ? 'fall' : 'tackle') : 'idle';
   if (p.diveT > 0) return rig.actions.keeperDive ? 'keeperDive' : 'idle';
   if (p._act && p._actT > 0 && rig.actions[p._act]) return p._act;
   if (p.celebrating && rig.actions.celebrate && speed < 1.5) return 'celebrate';
@@ -343,7 +344,20 @@ export function poseRig(rig, p, dt) {
   if (p._actT > 0) p._actT -= dt;
   // a sprint leans into the run: the same clip, faster, with the body tipped forward
   if (rig.root) {
+    /* Fouled: the whole figure is tipped onto the grass for the length of
+       `downT` and levered back up at the end of it, whatever clip the model
+       happens to be playing. A scanned asset with a real fall animation uses
+       that instead (see actionFor); this is what makes the others go down. */
+    if (p.downT > 0) {
+      const T = Math.max(0.001, p.downMax || 1.6);
+      const t = 1 - Math.max(0, Math.min(1, p.downT / T));
+      const flat = Math.max(0, Math.min(1, t * 6) - Math.max(0, (t - 0.72) / 0.28));
+      rig.root.rotation.x = -flat * (Math.PI / 2) * 0.92;
+      rig.root.position.z = -flat * 0.72;
+      return;
+    }
     rig.root.rotation.x = want === 'run' ? -Math.min(0.14, Math.max(0, speed - 4.5) * 0.05) : 0;
+    rig.root.position.z = 0;
     // the roulette: one full turn through the move (sim.js skillMove)
     rig.root.rotation.y = p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
   }

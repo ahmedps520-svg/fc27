@@ -270,11 +270,52 @@ function mow(g, W, H, pattern, colA, colB, feather) {
   }
 }
 
-/** Tiling blade noise, used as the turf's normal map. One square metre or so. */
+/** Weld a couple of small indexed geometries into one. */
+function mergeGeos(...parts) {
+  const positions = []; const normals = []; const uvs = []; const indices = [];
+  for (const g of parts) {
+    const base = positions.length / 3;
+    const pos = g.attributes.position.array;
+    const nrm = g.attributes.normal.array;
+    const uv = g.attributes.uv?.array;
+    for (let i = 0; i < pos.length; i++) positions.push(pos[i]);
+    for (let i = 0; i < nrm.length; i++) normals.push(nrm[i]);
+    if (uv) for (let i = 0; i < uv.length; i++) uvs.push(uv[i]);
+    for (const v of g.index.array) indices.push(v + base);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  if (uvs.length) out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.setIndex(indices);
+  return out;
+}
+
+/** Which way a mow pattern's bands run: 0 across the width, 1 along it, 2 diagonal, 3 rings. */
+function pattern2Axis(pattern) {
+  return pattern === 'rings' ? 3 : pattern === 'diagonal' ? 2 : 0;
+}
+
+/**
+ * Tiling blade noise: the turf's normal map, and the matching height map the
+ * parallax walks through. One square metre or so.
+ *
+ * The height map is the reason the pitch stops being a picture. A normal map
+ * alone only changes how a flat surface is *shaded*; a height map lets the
+ * shader offset what you see along the view direction, so the blades slide
+ * across each other as the camera moves and the troughs between them go dark.
+ * That parallax is what the eye reads as depth.
+ */
 function turfDetail(size = 256) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d');
+  const hc = document.createElement('canvas');
+  hc.width = hc.height = size;
+  const hg = hc.getContext('2d');
+  hg.fillStyle = '#404040';                      // the floor between the blades
+  hg.fillRect(0, 0, size, size);
+  hg.lineCap = 'round';
   g.fillStyle = '#8080ff';                       // flat normal
   g.fillRect(0, 0, size, size);
 
@@ -291,17 +332,31 @@ function turfDetail(size = 256) {
     const r = Math.round(128 + lean * 62);
     const gg = Math.round(128 - (0.35 + rand() * 0.5) * 52);
     g.strokeStyle = `rgb(${r},${gg},235)`;
+    // the same blade in the height map: bright at the tip, fading to the floor
+    const tip = 150 + Math.round(rand() * 95);
+    hg.lineWidth = 1.6;
     for (const [ox, oy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
       g.beginPath();
       g.moveTo(x + ox, y + oy);
       g.lineTo(x + ox + lean * len, y + oy - len);
       g.stroke();
+      const grad = hg.createLinearGradient(x + ox, y + oy, x + ox + lean * len, y + oy - len);
+      grad.addColorStop(0, 'rgb(74,74,74)');
+      grad.addColorStop(1, `rgb(${tip},${tip},${tip})`);
+      hg.strokeStyle = grad;
+      hg.beginPath();
+      hg.moveTo(x + ox, y + oy);
+      hg.lineTo(x + ox + lean * len, y + oy - len);
+      hg.stroke();
     }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = 8;
-  return tex;
+  const hTex = new THREE.CanvasTexture(hc);
+  hTex.wrapS = hTex.wrapT = THREE.RepeatWrapping;
+  hTex.anisotropy = 8;
+  return { normal: tex, height: hTex };
 }
 
 /** Per-stripe gloss plus the worn patches, so the mow catches the lights. */
@@ -365,7 +420,15 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
      stripes read as thirty-two. A mower leaves each pass uniform; the only soft
      edge is where two passes meet, and it is about a boot's width wide.
      Rain darkens and cools the whole surface. */
-  mow(g, c.width, c.height, pattern, wet ? '#25703a' : '#2e8845', wet ? '#1e5a2f' : '#256f38', m(0.35));
+  /* The two bands are not one green at two brightnesses. Grass mown away from
+     you shows the pale underside of the blade and reads cooler and lighter;
+     mown towards you it shows the dark face and reads warmer and deeper. Two
+     different greens, a real step apart, is what a televised pitch looks like
+     — and what the old pair (a 10% brightness step on one hue) did not. */
+  mow(g, c.width, c.height, pattern,
+    wet ? '#2c7b42' : '#3d9a4e',          // away from the camera: lighter, yellower
+    wet ? '#134a26' : '#1c6530',          // towards it: deep and slightly blue
+    m(0.35));
 
   // worn, paler, yellower ground before anything else goes on top
   wearPatches((x, y, r) => {
@@ -1008,7 +1071,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   const surround = new THREE.Mesh(
     new THREE.PlaneGeometry(PITCH.w + MARGIN * 2 + 60, PITCH.h + MARGIN * 2 + 60),
     new THREE.MeshStandardMaterial({ color: wet ? 0x0d2418 : 0x123021, roughness: wet ? 0.7 : 0.95 }));
-  surround.position.set(PITCH.w / 2, CY, -0.02);
+  surround.position.set(PITCH.w / 2, CY, -0.06);
   surround.receiveShadow = true;
   scene.add(surround);
 
@@ -1018,6 +1081,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   const venueSeed = hashName(`${match.teams[0].name}|${match.teams[1].name}`);
   const VENUE = match.venue?.stadium ? specFromDef(match.venue.stadium, venueSeed) : stadiumSpec(venueSeed);
 
+  let turfHeight = null;                 // the blade height map the parallax walks through
   const turfMap = pitchTexture(!lo, VENUE.pattern, wet);
   const turfMat = new THREE.MeshStandardMaterial({
     map: turfMap,
@@ -1040,12 +1104,251 @@ export function createRenderer(canvas, match, quality, models = false) {
      centimetre, and its own `repeat` is independent of the colour map's. */
   if (!lo) {
     const detail = turfDetail(ultra ? 512 : 256);
-    detail.repeat.set(PITCH.w / 2.6, PITCH.h / 2.6);
-    turfMat.normalMap = detail;
-    turfMat.normalScale = new THREE.Vector2(0.55, 0.55);
+    detail.normal.repeat.set(PITCH.w / 2.6, PITCH.h / 2.6);
+    detail.height.repeat.copy(detail.normal.repeat);
+    turfMat.normalMap = detail.normal;
+    turfMat.normalScale = new THREE.Vector2(0.95, 0.95);
     turfMat.roughnessMap = pitchRoughness(VENUE.pattern);
+    turfHeight = detail.height;
   }
-  const turf = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.w, PITCH.h), turfMat);
+
+  /* The pitch is a surface, not a picture.
+   *
+   * Two things stop it reading as a photograph laid on the floor. The first
+   * is here: the plane is subdivided and displaced, with a crown down the
+   * middle (every real pitch is convex — it is how they drain) and a metre-
+   * scale undulation on top of it. A couple of centimetres is enough; what
+   * sells it is that the far touchline is no longer a mathematically straight
+   * line and the light slides across the humps as the camera moves.
+   *
+   * The second is in the shader below: parallax through the blade height map,
+   * so the grass has thickness you can look *into* at a grazing angle.
+   */
+  const segX = potato ? 1 : lo ? 52 : med ? 105 : 210;
+  const segY = potato ? 1 : lo ? 34 : med ? 68 : 136;
+  const turfGeo = new THREE.PlaneGeometry(PITCH.w, PITCH.h, segX, segY);
+  if (!potato) {
+    const pos = turfGeo.attributes.position;
+    const nz = mulberry(venueSeed ^ 0x9ea55);
+    // three octaves of value noise, sampled off a small lattice
+    const lat = [];
+    for (let i = 0; i < 4096; i++) lat.push(nz() * 2 - 1);
+    const at = (x, y, f) => {
+      const gx = x * f; const gy = y * f;
+      const x0 = Math.floor(gx); const y0 = Math.floor(gy);
+      const fx = gx - x0; const fy = gy - y0;
+      const h = (a, b) => lat[(((a * 73856093) ^ (b * 19349663)) >>> 0) % lat.length];
+      const sx = fx * fx * (3 - 2 * fx); const sy = fy * fy * (3 - 2 * fy);
+      return (h(x0, y0) * (1 - sx) + h(x0 + 1, y0) * sx) * (1 - sy)
+           + (h(x0, y0 + 1) * (1 - sx) + h(x0 + 1, y0 + 1) * sx) * sy;
+    };
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + PITCH.w / 2;
+      const y = pos.getY(i) + PITCH.h / 2;
+      // the crown: 9 cm up the middle, tapering to nothing at the touchlines
+      const crown = Math.cos(((y / PITCH.h) - 0.5) * Math.PI) * 0.16;
+      const undulate = at(x, y, 0.045) * 0.055 + at(x, y, 0.12) * 0.022 + at(x, y, 0.4) * 0.008;
+      /* Lifted clear of the apron. The undulation is signed, so without this
+         the hollows dipped under the dark surround plane and it showed
+         through the pitch as a black patch with an organic edge — which is
+         exactly what it looked like. */
+      pos.setZ(i, 0.09 + crown + undulate);
+    }
+    turfGeo.computeVertexNormals();
+  }
+
+  /* Depth, not a picture.
+   *
+   * Two things run in this one shader hook.
+   *
+   * **The stripes are lit, not painted.** A mown stripe is the same grass
+   * lying in opposite directions; what you see is the two lies catching the
+   * light differently. Painting it into the colour map alone is why the pitch
+   * read as a flat sheet with lighter bars on it — the bars never changed as
+   * the camera moved because nothing about them was lit. So the surface
+   * normal is tilted along the band direction, one way in the odd bands and
+   * the other in the even ones, in world space, and the bands match the
+   * colour map's.
+   *
+   * **The blades have thickness.** The view direction is marched a few steps
+   * through the blade height map and the normal map is sampled where it comes
+   * out, so at a grazing angle you look *into* the grass: the near blades
+   * slide over the far ones and the troughs between them go dark. That
+   * parallax, plus the displaced surface above, is what the eye reads as
+   * depth — a normal map on its own only ever shades a flat plane.
+   *
+   * The pitch is one plane lying in world XY, which is the one case where
+   * tangent space and world space agree, so the march needs no tangent frame:
+   * the offset is just the view direction's XY over its Z.
+   */
+  {
+    const uStripe = { value: new THREE.Vector4(
+      pattern2Axis(VENUE.pattern),                    // 0 = across the width, 2 = diagonal, 3 = rings
+      PITCH.w / STRIPES,                              // band width in metres
+      lo ? 0.5 : 0.72,                                // how hard the light separates them
+      VENUE.pattern === 'checks' ? 1 : 0) };
+    const uTurfH = { value: turfHeight };
+    // apparent blade depth, in the blade map's own uv (one tile is 2.6 m across)
+    const uPara = { value: turfHeight ? (ultra ? 0.018 : 0.013) : 0 };
+    const steps = ultra ? 6 : med ? 3 : 4;
+    const prev = turfMat.onBeforeCompile;
+    turfMat.onBeforeCompile = (sh) => {
+      prev?.(sh);
+      sh.uniforms.uStripe = uStripe;
+      sh.uniforms.uTurfH = uTurfH;
+      sh.uniforms.uPara = uPara;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vTurfPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTurfPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', `#include <common>
+          #define STEPS ${steps}
+          uniform vec4 uStripe; uniform sampler2D uTurfH; uniform float uPara; varying vec3 vTurfPos;
+          vec2 vTurfUvP; float vTurfShade;`)
+        .replace('#include <normal_fragment_maps>', `
+          vTurfShade = 1.0;
+          #ifdef USE_NORMALMAP
+          {
+            vec3 vdir = normalize(cameraPosition - vTurfPos);
+            // how far along the surface a ray of sight travels per metre of depth
+            vec2 slide = vdir.xy / max(0.12, abs(vdir.z));
+            float depth = 0.0;
+            float h = 1.0;
+            vec2 uvP = vNormalMapUv;
+            // march until the height map comes up to meet the ray
+            for (int i = 0; i < STEPS; i++) {
+              h = texture2D(uTurfH, uvP).r;
+              float want = 1.0 - depth;
+              if (h >= want) break;
+              depth += 1.0 / float(STEPS);
+              uvP = vNormalMapUv - slide * depth * uPara;
+            }
+            vTurfUvP = uvP;
+            vTurfShade = mix(0.72, 1.0, clamp(h + 0.15, 0.0, 1.0));
+          }
+          #endif
+          #include <normal_fragment_maps>`);
+      // resample the normal map at the parallaxed uv, then lay the stripe lie on top
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <lights_fragment_begin>', `
+          {
+            #ifdef USE_NORMALMAP
+            vec3 mapN = texture2D(normalMap, vTurfUvP).xyz * 2.0 - 1.0;
+            mapN.xy *= normalScale;
+            normal = normalize(vec3(normal.xy + mapN.xy * 0.9, normal.z));
+            #endif
+            float band = uStripe.x < 0.5 ? vTurfPos.x
+                       : uStripe.x < 2.5 ? (vTurfPos.x + vTurfPos.y) * 0.7071
+                       : length(vTurfPos.xy - vec2(${(PITCH.w / 2).toFixed(2)}, ${(PITCH.h / 2).toFixed(2)}));
+            // -1 in one band, +1 in the next, softened across the seam
+            float lie = clamp(sin(band * 6.2831853 / max(0.5, uStripe.y * 2.0)) * 3.0, -1.0, 1.0);
+            vec3 dirW = uStripe.x < 0.5 ? vec3(0.0, 1.0, 0.0) : normalize(vec3(-0.7071, 0.7071, 0.0));
+            // the normal here is in view space, so the world-space lie has to come with it
+            normal = normalize(normal + normalize((viewMatrix * vec4(dirW, 0.0)).xyz) * lie * uStripe.z * 0.42);
+            if (uStripe.w > 0.5) {
+              float lie2 = clamp(sin(vTurfPos.y * 6.2831853 / max(0.5, ${(PITCH.h / 8).toFixed(2)} * 2.0)) * 3.0, -1.0, 1.0);
+              normal = normalize(normal + normalize((viewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz) * lie2 * uStripe.z * 0.2);
+            }
+            // the troughs between the blades sit in their own shadow
+            diffuseColor.rgb *= vTurfShade;
+          }
+          #include <lights_fragment_begin>`);
+    };
+    /* A plain string, not a chain onto the default: three's own
+       `customProgramCacheKey` reads `this.onBeforeCompile.toString()`, and
+       capturing it off the material loses its `this`. */
+    const stripeKey = `apexTurf-${VENUE.pattern}${lo ? '-lo' : ''}${turfHeight ? '-p' : ''}`;
+    turfMat.customProgramCacheKey = () => stripeKey;
+  }
+
+  /* Grass you can see past.
+   *
+   * Everything above still describes a surface. What finally stops the near
+   * field reading as a photograph is grass with actual geometry in it: a
+   * field of crossed cards a few centimetres tall that catch the light
+   * individually and, because they stand out of the plane, break the
+   * silhouette of what is behind them.
+   *
+   * Only near the camera. Each instance is scaled to nothing beyond a radius
+   * in the vertex shader, so the ones across the pitch cost a transform and
+   * no fill at all, and the whole field is one draw call. `uEye` follows the
+   * camera every frame.
+   */
+  let tufts = null;
+  if (!lo && !potato) {
+    const N = ultra ? 30000 : med ? 10000 : 18000;
+    const blade = new THREE.PlaneGeometry(0.17, 0.16).translate(0, 0.08, 0).rotateX(Math.PI / 2);
+    const cross = blade.clone().rotateZ(Math.PI / 2);
+    const tuftGeo = mergeGeos(blade, cross);
+    /* Every normal points at the sky.
+     *
+     * A blade card stands vertically, so its true normal is horizontal, and a
+     * sun overhead lights it at almost exactly nothing — a field of them comes
+     * out as a black mass. Lighting the cards with the *ground's* normal is
+     * the standard answer: they then take the same light the turf does and
+     * read as grass standing in it rather than as cardboard on edge. */
+    {
+      const nrm = tuftGeo.attributes.normal;
+      for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 0, 1);
+      nrm.needsUpdate = true;
+    }
+    const tuftMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.92, side: THREE.DoubleSide,
+    });
+    const uEye = { value: new THREE.Vector3() };
+    const uReach = { value: ultra ? 34 : 26 };
+    tuftMat.onBeforeCompile = (sh) => {
+      sh.uniforms.uEye = uEye; sh.uniforms.uReach = uReach;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform vec3 uEye; uniform float uReach; attribute float aTuft;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          {
+            vec3 root = instanceMatrix[3].xyz;
+            float d = distance(root.xy, uEye.xy);
+            /* Shrinking the whole way out rather than standing full height to
+               a radius and then stopping: the flat plateau made a solid
+               carpet with a visible circular edge where it ended, which is
+               worse than no grass at all. */
+            transformed *= 1.0 - smoothstep(1.5, uReach, d);
+            // and a lean, so the field is not a lawn of identical spikes
+            transformed.x += transformed.z * sin(aTuft * 6.2831) * 0.35;
+            transformed.y += transformed.z * cos(aTuft * 6.2831) * 0.35;
+          }`);
+    };
+    tuftMat.customProgramCacheKey = () => 'apexTuft';
+    tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, N);
+    tufts.castShadow = false;
+    tufts.receiveShadow = false;
+    tufts.frustumCulled = false;
+    const tr = mulberry(venueSeed ^ 0x77a55);
+    const d3 = new THREE.Object3D();
+    const tc = new THREE.Color();
+    const lean = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      const x = tr() * PITCH.w;
+      const y = tr() * PITCH.h;
+      d3.position.set(x, y, 0.09);
+      d3.rotation.set(0, 0, tr() * Math.PI);
+      d3.scale.setScalar(0.75 + tr() * 0.6);
+      d3.updateMatrix();
+      tufts.setMatrixAt(i, d3.matrix);
+      lean[i] = tr();
+      /* Coloured off the stripe it stands in, so the mow runs through the 3D
+         grass as well as the texture rather than sitting underneath it. */
+      const band = Math.floor((x / PITCH.w) * STRIPES) % 2;
+      // a shade brighter than the texture under them: a blade catches more
+      // light than the floor it grows out of, and a mass of them that reads
+      // darker than the pitch looks like a stain rather than like grass
+      tc.setHex(band ? 0x52ad62 : 0x2c7c42).multiplyScalar(0.92 + tr() * 0.24);
+      tufts.setColorAt(i, tc);
+    }
+    tuftGeo.setAttribute('aTuft', new THREE.InstancedBufferAttribute(lean, 1));
+    tufts.instanceMatrix.needsUpdate = true;
+    scene.add(tufts);
+    tufts.userData.uEye = uEye;
+  }
+
+  const turf = new THREE.Mesh(turfGeo, turfMat);
   turf.position.set(PITCH.w / 2, CY, 0);
   turf.receiveShadow = true;
   scene.add(turf);
@@ -1133,7 +1436,9 @@ export function createRenderer(canvas, match, quality, models = false) {
     const uRefl = { value: rt.texture };
     const uReflMat = { value: new THREE.Matrix4() };
     const uWet = { value: 0.16 };          // wet grass, not marble: a hint of the lights, never a mirror
+    const beforeWet = turfMat.onBeforeCompile;
     turfMat.onBeforeCompile = (sh) => {
+      beforeWet?.(sh);
       sh.uniforms.uRefl = uRefl; sh.uniforms.uReflMat = uReflMat; sh.uniforms.uWet = uWet;
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nuniform mat4 uReflMat; varying vec4 vReflUv; varying vec3 vWorldPos;')
@@ -1151,7 +1456,8 @@ export function createRenderer(canvas, match, quality, models = false) {
             }
           }`);
     };
-    turfMat.customProgramCacheKey = () => 'apexWetTurf';
+    const wetKey = `apexWetTurf-${VENUE.pattern}`;
+    turfMat.customProgramCacheKey = () => wetKey;
     reflect = { rt, mirrorCam, uReflMat };
   }
 
@@ -1206,20 +1512,56 @@ export function createRenderer(canvas, match, quality, models = false) {
   });
   const NET_DEPTH = 2.0;
   const nets = [];
+  /* The frame.
+   *
+   * A goal is the one piece of furniture on the pitch every camera angle
+   * frames, and at 6 cm of radius the posts read as wire from the halfway
+   * line — thinner on screen than the paint of the six-yard box. Real posts
+   * are 12 cm across, and a broadcast lens makes them look heavier than that,
+   * so these are drawn heavier still: it is the silhouette people recognise.
+   *
+   * Behind them is a second, lighter frame — two rear uprights and a bar
+   * across them — because a net with nothing to hang from is a curtain, and
+   * because it is what gives the goal its depth from an angle. */
+  const POST_R = 0.105;
+  const REAR_R = 0.055;
+  const REAR_H = GOAL_H * 0.72;                  // the back of the net stands lower than the bar
   for (const side of [0, 1]) {
     const gx = side === 0 ? 0 : PITCH.w;
     const inw = side === 0 ? -1 : 1;
     for (const sy of [-GOAL_HALF, GOAL_HALF]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, GOAL_H, 8), postMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(POST_R, POST_R, GOAL_H, 12), postMat);
       post.position.set(gx, CY + sy, GOAL_H / 2);
       post.rotation.x = Math.PI / 2;
       post.castShadow = true;
       scene.add(post);
+      // the rear upright, and the stay that runs back to it along the ground
+      const rear = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R, REAR_R, REAR_H, 8), postMat);
+      rear.position.set(gx + inw * NET_DEPTH, CY + sy, REAR_H / 2);
+      rear.rotation.x = Math.PI / 2;
+      rear.castShadow = true;
+      scene.add(rear);
+      const stay = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R * 0.8, REAR_R * 0.8, NET_DEPTH, 6), postMat);
+      stay.position.set(gx + inw * NET_DEPTH / 2, CY + sy, 0.05);
+      stay.rotation.z = Math.PI / 2;
+      scene.add(stay);
+      // and the top rail, sloping from the crossbar back down to the rear post
+      const runLen = Math.hypot(NET_DEPTH, GOAL_H - REAR_H);
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R * 0.85, REAR_R * 0.85, runLen, 6), postMat);
+      rail.position.set(gx + inw * NET_DEPTH / 2, CY + sy, (GOAL_H + REAR_H) / 2);
+      rail.rotation.z = Math.PI / 2;
+      rail.rotation.y = Math.atan2(GOAL_H - REAR_H, NET_DEPTH) * (inw > 0 ? 1 : -1);
+      rail.castShadow = true;
+      scene.add(rail);
     }
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, GOAL_HALF * 2, 8), postMat);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R, POST_R, GOAL_HALF * 2 + POST_R * 2, 12), postMat);
     bar.position.set(gx, CY, GOAL_H);
     bar.castShadow = true;
     scene.add(bar);
+    const rearBar = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R, REAR_R, GOAL_HALF * 2, 8), postMat);
+    rearBar.position.set(gx + inw * NET_DEPTH, CY, REAR_H);
+    rearBar.castShadow = true;
+    scene.add(rearBar);
 
     // One cloth wrapped from the left post, across the back, to the right post.
     // Column 0 and the last column sit on the posts; the top row hangs off the
@@ -1245,9 +1587,18 @@ export function createRenderer(canvas, match, quality, models = false) {
           y = CY + GOAL_HALF;
         }
         const rt = r / (ROWS - 1);
-        // net slopes back from the bar down to the ground
-        const z = GOAL_H * (1 - rt);
-        return [x, y, z];
+        /* The top edge is the frame, and the frame is not level: the side
+           panels hang off the rail that slopes from the crossbar back to the
+           rear post, and the back panel hangs off the rear bar. Below that
+           the net falls to the ground with a belly in it — cord bags out, and
+           a curtain pulled flat from bar to floor was most of why this looked
+           like a sheet of board. */
+        const back = t >= NET_DEPTH && t < NET_DEPTH + span;
+        const along = back ? 1 : Math.min(1, (t < NET_DEPTH ? t : perim - t) / NET_DEPTH);
+        const topZ = GOAL_H + (REAR_H - GOAL_H) * along;
+        const belly = Math.sin(rt * Math.PI) * 0.16 * (back ? 1 : 0.4);
+        const z = topZ * (1 - rt);
+        return [x + inw * belly, y, z];
       },
       (c, r) => r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1);
 
@@ -1258,6 +1609,32 @@ export function createRenderer(canvas, match, quality, models = false) {
     mesh.frustumCulled = false;
     scene.add(mesh);
     nets.push({ cloth, geo, gx, inw });
+
+    /* The roof. There was no top on the net at all — a ball over the bar flew
+       through where the netting should be and you could see the crowd through
+       the goal from above. It hangs from the crossbar at the front and the
+       rear bar at the back, pinned along both and down the two side rails,
+       and sags between them under its own weight. */
+    const rCols = COLS;
+    const rRows = potato ? 3 : quality === 'low' ? 4 : ultra ? 8 : 6;
+    const roof = new NetCloth(rCols, rRows,
+      (c, r) => {
+        const u = c / (rCols - 1);
+        const v = r / (rRows - 1);
+        const y = CY - GOAL_HALF + u * span;
+        const x = gx + inw * NET_DEPTH * v;
+        // level with the crossbar at the front, the rear bar at the back, with a sag between
+        const z = GOAL_H + (REAR_H - GOAL_H) * v - Math.sin(v * Math.PI) * 0.12;
+        return [x, y, z];
+      },
+      (c, r) => r === 0 || r === rRows - 1 || c === 0 || c === rCols - 1);
+    const rGeo = new THREE.BufferGeometry();
+    rGeo.setAttribute('position', new THREE.BufferAttribute(roof.pos, 3));
+    rGeo.setIndex(roof.lineIndices());
+    const rMesh = new THREE.LineSegments(rGeo, netMat);
+    rMesh.frustumCulled = false;
+    scene.add(rMesh);
+    nets.push({ cloth: roof, geo: rGeo, gx, inw });
   }
 
   const SD = VENUE.depth;           // how far back the terracing runs
@@ -2797,6 +3174,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     },
     render(m, cam, dt) {
       camera.position.set(cam.x, cam.y, cam.z);
+      // the grass in front of the camera follows the camera
+      if (tufts) tufts.userData.uEye.value.set(cam.x, cam.y, cam.z);
       camera.lookAt(cam.tx, cam.ty, cam.tz);
       // a phone in landscape is wider than 16:9; keep the 16:9 vertical field and show more of the sides, rather than zooming in
       camera.fov = cam.hfov / Math.min(Math.max(1, camera.aspect), 16 / 9) * 1.45;
@@ -2963,8 +3342,12 @@ export function createRenderer(canvas, match, quality, models = false) {
         const h = m.netHit;
         const near = nets.reduce((a, n) =>
           (Math.abs(h.x - n.gx) < Math.abs(h.x - a.gx) ? n : a), nets[0]);
-        const k = 0.016;
-        near.cloth.impulse(h.x, h.y, h.z, 2.6, h.vx * k, h.vy * k, h.vz * k - 0.05);
+        const k = 0.021;
+        // both panels of that goal — a ball into the back of it shakes the roof too
+        for (const n of nets) {
+          if (n.gx !== near.gx) continue;
+          n.cloth.impulse(h.x, h.y, h.z, 2.8, h.vx * k, h.vy * k, h.vz * k - 0.05);
+        }
       }
       const nd = Math.min(dt || 1 / 60, 1 / 30);
       for (const n of nets) {
