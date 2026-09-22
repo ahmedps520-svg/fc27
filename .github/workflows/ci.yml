@@ -34,3 +34,17 @@ jobs:
         run: node tests/perf/gl-scan.mjs --frames 8
       - name: QA bot (onboarding, Ultimate XI, career season, weekend, online 2-client, watch)
         run: npm run test:qa
+      - name: Camera regression shots (every preset and set-piece angle, two grounds)
+        run: node tests/visual/camera-shots.mjs --venues forge,bramble
+      - name: Small-phone and right-to-left layout scan
+        run: node tests/visual/layout-scan.mjs
+      - name: Upload camera and layout screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression
+          path: |
+            tests/tmp/shots/
+            tests/tmp/layout/
+          if-no-files-found: ignore
+          retention-days: 14

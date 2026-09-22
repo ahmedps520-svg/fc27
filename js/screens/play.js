@@ -4,7 +4,7 @@ import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input } from '../game/input.js';
 import {
-  draw, makeCamera, updateCamera, groundBasis, replayCamera, celebrationCamera, resolveQuality,
+  draw, makeCamera, groundBasis, replayCamera, resolveQuality,
   orbitCamera, walkoutCamera,
 } from '../game/render3d.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
@@ -12,12 +12,13 @@ import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
-import { stadiumFor, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
+import { stadiumFor, STADIUM_BY_ID, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { t, lang } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
+import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
@@ -103,7 +104,7 @@ function venueOf(params) {
   const stadium = mine
     ? builderDef(design, { clubName: sq?.name || (car ? home?.name : (getState().club.identity?.name || 'Ultimate XI')), short: sq?.short || (car ? home?.short : (getState().club.identity?.short || 'XI')),
       capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
-    : stadiumFor(home, { showpiece });
+    : (params.venueId && STADIUM_BY_ID[params.venueId]) || stadiumFor(home, { showpiece });
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
   const atmo = atmosphereFor(seed, params.atmo || {});
@@ -168,6 +169,7 @@ export function render(params) {
           <span class="gm-net" id="gmNet" hidden></span>
           <span class="gm-pad" id="gmPad">No pad</span>
           <button class="icon-btn sm" id="gmEmoteBtn" title="Emotes" hidden>💬</button>
+          <button class="icon-btn sm" id="gmCamBtn" title="Camera (V)" aria-label="Change camera">🎥</button>
           <button class="icon-btn sm" id="gmFs" title="Fullscreen">⛶</button>
           <button class="icon-btn sm" id="gmPause" title="Pause">❚❚</button>
         </div>
@@ -292,12 +294,16 @@ export function mount(root, params) {
   });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
+  /* The camera rig (game/camera.js): presets, springs, set-piece angles, the
+     celebration orbit, and collision against this ground's stands and nets. */
+  const camBounds = venueBounds(match.venue?.stadium);
+  const camRig = createCameraRig({ settings: getState().settings.camera, bounds: camBounds });
   window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
+  window.__apexCam = camRig;             // the camera regression shots switch presets through this
   // colour-safe kits: the away strip is chosen against every kind of colour vision
   match.vision = getState().settings.colorSafeKits ? 'all' : 'normal';
   const cam = makeCamera();
   match.basis = groundBasis(cam);        // controls follow the camera
-  const celebCam = makeCamera();
   let celebT = 0;
   let chantT = 18;                       // first song a while after kick-off
   /* The walk-out: seven seconds before kick-off with both sides lined up on
@@ -523,9 +529,12 @@ export function mount(root, params) {
       post: 0,
       goalX: team && team.dir > 0 ? PITCH.w : 0,
       minute: match.minute(),
-      // a different camera for every goal: pitchside, behind the goal, high wide, reverse
       angle: goalClips.length % 4,
+      seq: goalClips.length,
     };
+    /* The director picks the passes: the build-up first, then one or two
+       slowed angles chosen by the kind of goal (see directReplay). */
+    clip.passes = directReplay(clip, { late: match.minute() >= 80 });
     goalClips.push(clip);
   };
 
@@ -642,7 +651,10 @@ export function mount(root, params) {
       frames: clip.frames,
       i: 0, live, celeb,
       goalX: clip.goalX,
-      angle: clip.angle || 0,
+      passes: clip.passes || [{ angle: clip.angle || 0, speed: 1 }],
+      pass: 0,
+      angle: (clip.passes?.[0]?.angle) ?? (clip.angle || 0),
+      speed: (clip.passes?.[0]?.speed) ?? 1,
       cam: makeCamera(),
       hold: 0,
     };
@@ -1666,18 +1678,31 @@ export function mount(root, params) {
           applyFrame(replay.frames[Math.min(N - 1, Math.floor(replay.i))]);
           const t = replay.i / N;
           replayCamera(replay.cam, match.ball, replay.goalX, t, replay.angle);
+          collideCamera(replay.cam, camBounds);
           // advanced against the clock, not the frame: the tape was recorded at
           // 60 Hz, and online both machines roll their own copy — a guest at
           // 30 fps would otherwise sit out twice as much of the match as the
           // host does
-          replay.i += playbackSpeed(t) * dt * 60;
+          replay.i += playbackSpeed(t) * replay.speed * dt * 60;
         } else {
           // Hold on the finish: the ball sits in the net, everyone frozen, so
           // the goal actually registers before we cut back to the match.
           applyFrame(replay.frames[N - 1]);
           replayCamera(replay.cam, match.ball, replay.goalX, 1, replay.angle);
+          collideCamera(replay.cam, camBounds);
           replay.hold += dt;
-          if (replay.hold >= HOLD_SECONDS) endReplay();
+          const lastPass = replay.pass >= replay.passes.length - 1;
+          if (replay.hold >= (lastPass ? HOLD_SECONDS : 0.45)) {
+            if (lastPass) endReplay();
+            else {
+              // the next angle: same tape, a new camera
+              replay.pass += 1;
+              replay.angle = replay.passes[replay.pass].angle;
+              replay.speed = replay.passes[replay.pass].speed;
+              replay.i = 0; replay.hold = 0;
+              replay.cam = makeCamera();
+            }
+          }
         }
       }
     }
@@ -1731,7 +1756,7 @@ export function mount(root, params) {
       } else {
         match.update(dt, inputs);
       }
-      updateCamera(cam, match, dt);
+      camRig.update(match, dt, cam);
       tickManager(dt);
       tickCamera(dt);
       match.basis = groundBasis(cam);
@@ -1831,15 +1856,15 @@ export function mount(root, params) {
         sfx('whistle');
       }
     } else if (photo) {
-      liveCam = photoCamera();
+      liveCam = collideCamera(photoCamera(), camBounds);
     } else if (paused && halfTime && !careerCtx) {
       // the half-time show: a slow orbit of the ground behind the facts
       showT += Math.min(0.25, raw);
-      liveCam = orbitCamera(showCam, showT, 74, 24);
+      liveCam = collideCamera(orbitCamera(showCam, showT, 74, 24), camBounds);
     } else if (match.phase === 'goal' && !replay && !reel && (!careerCtx || mgr?.camMode !== 'manager')) {
-      if (celebT === 0) { celebCam.x = cam.x; celebCam.y = cam.y; celebCam.z = cam.z; gl?.setReplay(true); }
+      if (celebT === 0) gl?.setReplay(true);
       celebT += dt;
-      liveCam = celebrationCamera(celebCam, match, celebT);
+      liveCam = cam;                     // the rig is already orbiting the scorer
     } else if (celebT > 0) { celebT = 0; if (!replay) gl?.setReplay(false); }
     const shot = replay ? replay.cam : reel ? reel.cam : liveCam;
     if (gl) gl.render(match, shot, rdt);
@@ -1922,6 +1947,16 @@ export function mount(root, params) {
   raf = requestAnimationFrame(frame);
 
   /* ----------------------------- fullscreen ---------------------------- */
+  /* The camera button: tap through the seven presets. V on a keyboard.
+     The choice is saved, so the next match starts on it. */
+  const cycleCamera = () => {
+    const id = camRig.cyclePreset(1);
+    update((st) => { st.settings.camera = { ...(st.settings.camera || {}), ...camRig.settings }; });
+    toast(`Camera: ${presetById(id).name}`, 'info');
+  };
+  root.querySelector('#gmCamBtn')?.addEventListener('click', cycleCamera);
+  const onCamKey = (e) => { if (e.code === 'KeyV' && !paused && !ended) cycleCamera(); };
+  window.addEventListener('keydown', onCamKey);
   const fsBtn = root.querySelector('#gmFs');
   // iPhone has no Fullscreen API — hide the control rather than offer a dead button
   if (!fullscreenSupported()) fsBtn.hidden = true;
@@ -2526,6 +2561,7 @@ export function mount(root, params) {
     if (spectating && net.isReady()) net.send({ t: 'unspectate' });
     stopClip();
     window.removeEventListener('resize', resize);
+    window.removeEventListener('keydown', onCamKey);
     document.removeEventListener('fullscreenchange', onFsChange);
     try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
     try { gl?.dispose(); } catch { /* GPU teardown least of all */ }

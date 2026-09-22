@@ -987,6 +987,7 @@ export class Match {
       if (b.z <= 0) b.curl = 0;
     }
 
+    b.px = b.x; b.py = b.y; b.pz = b.z;       // for the swept frame test (hitFrame)
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.z += b.vz * dt;
@@ -1078,18 +1079,55 @@ export class Match {
   hitFrame() {
     const b = this.ball;
     const R = 0.11 + 0.11;                      // post radius plus ball radius
+    /* Swept, not sampled (v77). A shot covers 0.3–1.2 m a frame and the
+       contact band is 44 cm wide, so testing only where the ball ended up let
+       a strike pass straight through a post; and because the goal line is
+       judged 40 cm short of the posts, a ball clipping the inside of one was
+       given as a goal before it ever reached it. The path from last frame's
+       position is tested instead, carried on to the line if this frame takes
+       it over, and the ball is put back at the first point of contact. */
+    const px = Number.isFinite(b.px) ? b.px : b.x;
+    const py0 = Number.isFinite(b.py) ? b.py : b.y;
+    const pz = Number.isFinite(b.pz) ? b.pz : b.z;
+    let ex = b.x; let ey = b.y; let ez = b.z;
+    const jump = Math.hypot(ex - px, ey - py0);
+    const sx = jump > 4 ? ex : px; const sy = jump > 4 ? ey : py0; const sz = jump > 4 ? ez : pz;   // a teleport, not a flight
     for (const gx of [0, PITCH.w]) {
-      if (Math.abs(b.x - gx) > 1.4) continue;
+      if (Math.abs(b.x - gx) > 2.6 && Math.abs(sx - gx) > 2.6) continue;
+      const inw = gx === 0 ? -1 : 1;
+      // this frame takes it over the line: follow the path on to the posts
+      if ((ex - gx) * inw > -0.4 && (sx - gx) * inw < 0 && Math.abs(b.vx) > 0.01) {
+        const t = (gx + inw * 0.3 - sx) / (ex - sx || 1e-6);
+        if (t > 1) { ex = sx + (ex - sx) * t; ey = sy + (ey - sy) * t; ez = sz + (ez - sz) * t; }
+      }
+      const dx = ex - sx; const dy = ey - sy;
+      const L2 = dx * dx + dy * dy;
 
-      // uprights
+      // uprights: first contact along the segment
       for (const py of [CY - GOAL_HALF, CY + GOAL_HALF]) {
-        if (b.z > GOAL_HEIGHT + 0.1) continue;
-        const dx = b.x - gx;
-        const dy = b.y - py;
-        const d = Math.hypot(dx, dy);
-        if (d > R || d < 0.0001) continue;
-        const nx = dx / d;
-        const ny = dy / d;
+        let hx; let hy; let hz;
+        if (L2 < 1e-8) {
+          if (Math.hypot(ex - gx, ey - py) > R) continue;
+          hx = ex; hy = ey; hz = ez;
+        } else {
+          // solve |S + t·D − C| = R for the smaller root in [0, 1]
+          const fx = sx - gx; const fy = sy - py;
+          const bq = 2 * (fx * dx + fy * dy);
+          const cq = fx * fx + fy * fy - R * R;
+          let t;
+          if (cq <= 0) t = 0;                                  // already touching
+          else {
+            const disc = bq * bq - 4 * L2 * cq;
+            if (disc < 0) continue;
+            t = (-bq - Math.sqrt(disc)) / (2 * L2);
+            if (t < 0 || t > 1) continue;
+          }
+          hx = sx + dx * t; hy = sy + dy * t; hz = sz + (ez - sz) * t;
+        }
+        if (hz > GOAL_HEIGHT + 0.1) continue;
+        let nx = hx - gx; let ny = hy - py;
+        const d = Math.hypot(nx, ny);
+        if (d < 1e-4) { nx = -inw; ny = 0; } else { nx /= d; ny /= d; }
         const vn = b.vx * nx + b.vy * ny;
         if (vn > 0) continue;                   // already moving away
         b.vx -= 2 * vn * nx;
@@ -1097,22 +1135,29 @@ export class Match {
         b.vx *= 0.62; b.vy *= 0.62;
         b.x = gx + nx * (R + 0.01);
         b.y = py + ny * (R + 0.01);
+        b.z = Math.max(0, hz);
+        b.px = b.x; b.py = b.y; b.pz = b.z;
         b.curl = 0;
         b.shotBy = null;
         this.cue('post');
         return true;
       }
 
-      // crossbar
-      if (Math.abs(b.y - CY) < GOAL_HALF + 0.2
-          && Math.abs(b.z - GOAL_HEIGHT) < 0.22 && b.vz > -40) {
-        b.vz = -Math.abs(b.vz) * 0.55 - 1.2;
-        b.vx *= 0.7; b.vy *= 0.7;
-        b.z = GOAL_HEIGHT - 0.24;
-        b.curl = 0;
-        b.shotBy = null;
-        this.cue('post');
-        return true;
+      // crossbar: the path through the goal line at the height of the bar
+      if ((sx - gx) * inw < R && (ex - gx) * inw > -R) {
+        const tx = Math.abs(ex - sx) > 1e-6 ? clamp((gx - sx) / (ex - sx), 0, 1) : 1;
+        const cy = sy + (ey - sy) * tx; const cz = sz + (ez - sz) * tx;
+        if (Math.abs(cy - CY) < GOAL_HALF + 0.2 && Math.abs(cz - GOAL_HEIGHT) < 0.22 && b.vz > -40) {
+          b.vz = -Math.abs(b.vz) * 0.55 - 1.2;
+          b.vx *= 0.7; b.vy *= 0.7;
+          b.x = gx - inw * (R + 0.02); b.y = cy;
+          b.z = GOAL_HEIGHT - 0.24;
+          b.px = b.x; b.py = b.y; b.pz = b.z;
+          b.curl = 0;
+          b.shotBy = null;
+          this.cue('post');
+          return true;
+        }
       }
     }
     return false;

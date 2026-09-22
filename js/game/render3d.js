@@ -192,6 +192,24 @@ function replayAngle(cam, ball, goalX, t, dir, angle) {
     lookX = ball.x + (goalX - ball.x) * ease * 0.6;
     lookY = ball.y * 0.6 + CY * 0.4;
     fov = 44 - ease * 8;
+  } else if (angle === 4) {
+    // on the goal line by the near post, low: the ball comes across the frame into the net
+    wantX = goalX - dir * 0.9;
+    wantY = ball.y > CY ? CY - GOAL_HALF - 5 : CY + GOAL_HALF + 5;
+    wantZ = 1.3 + ease * 0.3;
+    lookX = ball.x + (goalX - ball.x) * (0.3 + ease * 0.6);
+    lookY = CY;
+    lookZ = 1.1;
+    fov = 50 - ease * 10;
+  } else if (angle === 5) {
+    // the keeper's eye: just off the line in the middle of the goal, looking out at the shooter
+    wantX = goalX - dir * 1.4;
+    wantY = CY + (ball.y - CY) * 0.15;
+    wantZ = 1.65;
+    lookX = ball.x;
+    lookY = ball.y;
+    lookZ = 0.8 + (ball.z || 0) * 0.5;
+    fov = 58 - ease * 6;
   } else {
     // the low reverse from the far touchline, the crowd at your back
     wantX = clamp(ball.x - dir * 8, 12, PITCH.w - 12);

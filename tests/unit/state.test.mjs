@@ -83,3 +83,28 @@ test('objectives refresh on their timer and the ladder is ordered', () => {
   const _ = before; // the slate may legitimately repeat; only the refresh path is under test
   save();
 });
+
+test('v77: a save with a damaged collection or line-up boots instead of crashing', () => {
+  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, club: { collection: null, lineup: 'x', bench: 3 } }));
+  const s = loadState();
+  assert.ok(Array.isArray(s.club.collection));
+  assert.equal(s.club.lineup.length, 11);
+  assert.equal(s.club.bench.length, 5);
+});
+
+test('v77: a cloud save goes through the same repairs as a local one', () => {
+  loadState();
+  update((s) => { s.settings.renderer = 'webgl'; });
+  const ok = adoptCloudSave({
+    meta: { reset: 'econ-2curr-1' },
+    settings: { models: 'simple', renderer: 'webgpu' },
+    club: { collection: null, bench: null, challengesDone: 'no' },
+    ultimate: { objectives: [{ id: 'old' }] },
+  });
+  assert.ok(ok);
+  const s = getState();
+  assert.equal(s.settings.models, 'realistic');
+  assert.equal(s.settings.renderer, 'webgl', 'the renderer belongs to the device, not the account');
+  assert.ok(Array.isArray(s.club.collection) && Array.isArray(s.club.bench) && Array.isArray(s.club.challengesDone));
+  assert.ok(s.ultimate.objectives.every((o) => o.metric), 'objectives from an old build are redealt');
+});

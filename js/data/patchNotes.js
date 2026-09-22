@@ -18,6 +18,34 @@
  */
 export const RELEASES = [
   {
+    version: 'v77',
+    date: '2026-09-22',
+    tag: 'Cameras',
+    title: 'A new match camera, set-piece angles, and a bug hunt',
+    lede: 'The match camera is rebuilt from scratch with seven presets and sliders, every restart has its own angle, replays pick their '
+        + 'best angles on their own, and a sweep through every screen, ground and rule turned up a list of bugs that are now fixed.',
+    entries: [
+      {
+        head: 'Seven cameras',
+        summary: 'Broadcast, Tele Broadcast, Co-op, Dynamic, Pro, End to End and Tactical, with height, zoom and angle sliders in Settings and a camera button (or V) in the match to switch on the fly.',
+        detail: 'The camera now eases after play on a spring that never overshoots, looks ahead in the direction of the attack, '
+              + 'holds still while the ball moves around inside a small box, and pulls wider when the play spreads out.',
+      },
+      {
+        head: 'Set pieces and replays',
+        summary: 'Corners, free kicks, penalties, throw-ins, goal kicks and kick-offs each get their own angle with a smooth move in and out, the celebration camera circles the scorer, and replays choose two or three angles for you: goal-line, reverse, keeper\'s eye, overhead and a slow tracking shot.',
+        detail: 'A long-range strike gets three angles, a tap-in two. The camera never goes through a stand, a roof or the goal net on any of the 112 grounds.',
+      },
+      {
+        head: 'Bugs fixed',
+        summary: 'A shot straight at a post could go through it; the ball and players sank into the raised middle of the pitch; a roulette flung the player across the pitch; menus ran off small phones and Arabic hid tiles; a damaged save could crash the game on start.',
+        detail: 'The goal frame is now tested along the ball\'s whole path, so a post is solid at any speed and a ball clipping the inside of one goes in off it. '
+              + 'The crossbar only stops a ball that reaches the goal line. The player marker is hidden over celebrations and replays. '
+              + 'Cloud saves get the same repairs as a save on this device, and the graphics renderer choice stays with the device.',
+      },
+    ],
+  },
+  {
     version: 'v76',
     date: '2026-09-22',
     tag: 'Grass and nets',

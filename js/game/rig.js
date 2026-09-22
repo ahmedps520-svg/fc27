@@ -174,10 +174,17 @@ export function buildFor(ref, role) {
 
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
+  /* The parts are placed in pitch coordinates, so the group itself only
+     carries the turf height under the player (rig.groundZ, set by the
+     renderer) and, through a roulette, the spin — which has to turn about
+     the player, not about the corner flag at the origin (v77: it swung the
+     whole figure across the pitch for the length of the move). */
+  const spin = p.spinT > 0 && !(p.diveT > 0) && !(p.downT > 0) ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
+  const cs = Math.cos(spin); const sn = Math.sin(spin);
+  rig.grp.rotation.set(0, 0, spin);
+  rig.grp.position.set(p.x - (cs * p.x - sn * p.y), p.y - (sn * p.x + cs * p.y), rig.groundZ || 0);
   if (p.diveT > 0) { poseDive(rig, p, fine); return; }
   if (p.downT > 0) { poseDown(rig, p); return; }
-  // the roulette: the whole figure turns once through the move (sim.js skillMove)
-  rig.grp.rotation.set(0, 0, p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0);
   const b = rig.build || { height: 1, girth: 1, shoulders: 1 };
   const H = b.height;
   const G = b.girth;
@@ -315,7 +322,6 @@ export function poseDown(rig, p) {
   const H = b.height; const G = b.girth;
   const cos = p.dirX; const sin = p.dirY;
   const face = Math.atan2(sin, cos);
-  rig.grp.rotation.set(0, 0, 0);
 
   // a point `d` metres in front of him and `l` metres to his left
   const at = (d, l = 0) => [p.x + cos * d - sin * l, p.y + sin * d + cos * l];

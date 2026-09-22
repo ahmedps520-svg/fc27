@@ -8,6 +8,7 @@ import { startTutorial, tutorialSeen } from '../tutorial.js';
 import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
 import { describeRenderer } from '../game/gpu.js';
 import { deviceClass } from '../game/render3d.js';
+import { CAMERA_PRESETS, cameraSettings } from '../game/camera.js';
 
 /* The developer unlock: every tier on every device, for this session. */
 const DEV_KEY = 'apexxi.devUnlock';
@@ -182,6 +183,19 @@ export function render() {
       <p class="setting-note ${s.quality === 'ultra' ? 'warn' : ''}" id="qualityNote">
         ${QUALITY_NOTE(s.quality)}
       </p>
+      ${(() => { const c = cameraSettings(s.camera); return `
+      <div class="setting-row cam-row">
+        <div><b>Camera</b><span id="camBlurb">${CAMERA_PRESETS.find((p) => p.id === c.preset).blurb} The 🎥 button in a match (V on a keyboard) changes it as you play.</span></div>
+        <div class="seg cam-seg" id="camSeg">
+          ${CAMERA_PRESETS.map((p) => `<button class="${c.preset === p.id ? 'on' : ''}" data-cam="${p.id}">${p.name}</button>`).join('')}
+        </div>
+      </div>
+      <div class="setting-row cam-sliders">
+        <label><span>Height <b id="camHeightV">${Math.round(c.height * 100)}%</b></span><input type="range" id="camHeight" min="60" max="160" step="5" value="${Math.round(c.height * 100)}"></label>
+        <label><span>Zoom <b id="camZoomV">${Math.round(c.zoom * 100)}%</b></span><input type="range" id="camZoom" min="70" max="140" step="5" value="${Math.round(c.zoom * 100)}"></label>
+        <label><span>Angle <b id="camAngleV">${c.angle > 0 ? '+' : ''}${c.angle}°</b></span><input type="range" id="camAngle" min="-15" max="15" step="1" value="${c.angle}"></label>
+        <button class="btn ghost sm" id="camReset">Reset</button>
+      </div>`; })()}
       <div class="setting-row">
         <div><b>Renderer</b><span id="rendererNote">${describeRenderer()}</span></div>
         <div class="seg" id="rendererSeg">
@@ -312,6 +326,31 @@ export function mount(root) {
   });
   audioSeg('#musicSeg', 'musicVol', 'music');
   audioSeg('#sfxSeg', 'sfxVol', 'sfx');
+
+  // ---- camera
+  const saveCam = (patch) => update((st) => { st.settings.camera = cameraSettings({ ...(st.settings.camera || {}), ...patch }); });
+  root.querySelector('#camSeg')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cam]');
+    if (!b) return;
+    saveCam({ preset: b.dataset.cam });
+    root.querySelectorAll('[data-cam]').forEach((x) => x.classList.toggle('on', x === b));
+    root.querySelector('#camBlurb').firstChild.textContent = `${CAMERA_PRESETS.find((p) => p.id === b.dataset.cam).blurb} `;
+  });
+  const slider = (id, key, fmt, scale = 100) => {
+    const el = root.querySelector(`#${id}`);
+    el?.addEventListener('input', () => {
+      const v = scale === 1 ? +el.value : +el.value / scale;
+      saveCam({ [key]: v });
+      root.querySelector(`#${id}V`).textContent = fmt(+el.value);
+    });
+  };
+  slider('camHeight', 'height', (v) => `${v}%`);
+  slider('camZoom', 'zoom', (v) => `${v}%`);
+  slider('camAngle', 'angle', (v) => `${v > 0 ? '+' : ''}${v}°`, 1);
+  root.querySelector('#camReset')?.addEventListener('click', () => {
+    update((st) => { st.settings.camera = cameraSettings({ preset: st.settings.camera?.preset }); });
+    navigate('settings');
+  });
 
   root.querySelector('#qualitySeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-quality]');
