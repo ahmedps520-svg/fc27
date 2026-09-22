@@ -10,6 +10,8 @@ import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
+import { groundProfile } from '../data/grounds.js';
+import { dressGround } from './groundDressing.js';
 import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
 import { pickAwayHex } from '../kits.js';
 
@@ -87,6 +89,7 @@ function stadiumSpec(seed) {
     pattern: 'stripes',
     pylons: scale < 0.64 ? 'lattice' : 'mast',
     name: '',
+    ...profileFields({ id: `seed-${seed}`, capacity: Math.round(8000 + scale * 60000), pylons: scale < 0.64 ? 'lattice' : 'mast', pattern: 'stripes' }),
   };
 }
 
@@ -119,6 +122,24 @@ function specFromDef(def, seed) {
     pylons: def.pylons || (scale < 0.64 ? 'lattice' : 'mast'),
     tallPylons: (def.pylons || (scale < 0.64 ? 'lattice' : 'mast')) === 'lattice',
     name: def.name || '',
+    ...profileFields(def),
+  };
+}
+
+/* v78: what kind of ground this is (data/grounds.js) — the class decides how
+   much of it gets built, the rest dresses it. A club's own mowing pattern
+   wins over the ground's; the builder's landscape wins over the region's. */
+function profileFields(def) {
+  const pr = groundProfile(def, def.host || null);
+  return {
+    klass: pr.klass,
+    landscape: def.landscape || pr.landscape,
+    floodlights: pr.floodlights,
+    goalStyle: pr.goalStyle,
+    grass: pr.grass,
+    orientation: pr.orientation,
+    pattern: def.host ? pr.pattern : (def.pattern || pr.pattern),
+    pylons: pr.floodlights === 'side' ? 'side' : (def.pylons || pr.floodlights),
   };
 }
 
@@ -128,10 +149,25 @@ function specFromDef(def, seed) {
  * whether the pitch is wet. `atmosphereFor` in data/stadiums.js decides the
  * words; this turns them into light. */
 function lightingFor(atmo) {
+  const L = lightingBase(atmo);
+  /* v78: snow is overcast light off a white pitch — a paler, denser fog and a
+     touch less exposure, or the whole frame clips. */
+  if (atmo?.weather === 'snow') {
+    const night = (atmo.time || 'night') === 'night';
+    L.fog = [night ? 0x2a3140 : 0xc9d1dc, night ? 0.0052 : 0.004];
+    L.exposure *= night ? 0.8 : 0.9;
+    L.beams *= 0.35;                      // the air is full of snow; the beams would turn it to a white sheet
+    L.haze = false;
+    L.bg = night ? 0x1a2030 : 0xaab4c2;
+    L.grade = { ...(L.grade || {}), saturation: 0.82, temperature: -0.35 };
+  }
+  return L;
+}
+function lightingBase(atmo) {
   const time = atmo?.time || 'night';
   const weather = atmo?.weather || 'clear';
   const rain = weather === 'rain';
-  const dull = weather === 'overcast' || rain;
+  const dull = weather === 'overcast' || rain || weather === 'snow';
   if (time === 'day') {
     return dull
       ? { grade: { gain: [0.96, 0.98, 1.02], saturation: 0.85, temperature: -0.25 }, hemi: [0xaab6c8, 0x36493c, 1.45 * (rain ? 0.9 : 1)], sun: [0xdde4ee, 1.25, [-30, -50, 120]], fog: [rain ? 0x6f7887 : 0x8e98a6, rain ? 0.0046 : 0.003], flood: 0.45, beams: 0, exposure: 1.02, bg: rain ? 0x5f6a78 : 0x7d8796 }
@@ -406,7 +442,8 @@ function wearPatches(put) {
   put(PITCH.w * 0.68, PITCH.h - 4.5, 6);
 }
 
-function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
+function pitchTexture(detail = true, pattern = 'stripes', wet = false, opts = {}) {
+  const { seasonWear = 0, lineFade = 0, frost = false, snow = false } = opts;
   const S = detail ? 22 : 12;                     // pixels per metre
   const c = document.createElement('canvas');
   c.width = Math.round(PITCH.w * S);
@@ -474,6 +511,47 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
   }
   g.putImageData(grain, 0, 0);
 
+  /* v78: the season shows. Late in a season the goalmouths and the centre
+     circle are bare earth, not merely paler grass, and the channels the
+     full-backs run are thinned out. `seasonWear` is 0 on the opening day. */
+  if (seasonWear > 0.05) {
+    wearPatches((x, y, r) => {
+      const n = Math.round(4 + seasonWear * 18);
+      for (let k = 0; k < n; k++) {
+        const px2 = x + (Math.random() - 0.5) * r * 1.3; const py2 = y + (Math.random() - 0.5) * r * 1.1;
+        const rr = r * (0.12 + Math.random() * 0.3) * (0.6 + seasonWear);
+        const grad = g.createRadialGradient(m(px2), m(py2), 0, m(px2), m(py2), m(rr));
+        grad.addColorStop(0, `rgba(${wet ? '88,66,42' : '122,98,62'},${0.25 + seasonWear * 0.45})`);
+        grad.addColorStop(0.7, `rgba(${wet ? '88,66,42' : '130,112,70'},${0.1 + seasonWear * 0.2})`);
+        grad.addColorStop(1, 'rgba(130,112,70,0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(m(px2), m(py2), m(rr), 0, 7); g.fill();
+      }
+    });
+  }
+  /* Frost on a winter night: a pale, cold bloom over everything, heaviest in
+     the shade of the stands at the edges. Snow: the pitch is white, and the
+     lines are brushed clear down to the grass. */
+  if (frost || snow) {
+    g.globalAlpha = snow ? 0.9 : 0.34;
+    g.fillStyle = snow ? '#eef3f8' : '#d8e6f4';
+    g.fillRect(0, 0, c.width, c.height);
+    // texture in it: drifts in the snow; in frost only a fine, even sparkle (blotches read as a rash)
+    g.globalAlpha = snow ? 0.18 : 0.07;
+    for (let i = 0; i < (snow ? 1600 : 5000); i++) {
+      g.fillStyle = Math.random() < 0.5 ? '#ffffff' : (snow ? '#c9d4e0' : '#b6c9da');
+      g.beginPath(); g.arc(Math.random() * c.width, Math.random() * c.height, m(snow ? 0.2 + Math.random() * 1.1 : 0.05 + Math.random() * 0.12), 0, 7); g.fill();
+    }
+    if (frost) {
+      // the edges stay frosted longest
+      const edge = g.createLinearGradient(0, 0, 0, c.height);
+      edge.addColorStop(0, 'rgba(225,238,250,.28)'); edge.addColorStop(0.18, 'rgba(225,238,250,0)');
+      edge.addColorStop(0.82, 'rgba(225,238,250,0)'); edge.addColorStop(1, 'rgba(225,238,250,.28)');
+      g.globalAlpha = 1; g.fillStyle = edge; g.fillRect(0, 0, c.width, c.height);
+    }
+    g.globalAlpha = 1;
+  }
+
   /* Markings.
    *
    * Painted, not drawn: a touch of blur and a hair under full white, because
@@ -481,8 +559,10 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
    * diagram. The corner arcs and the two penalty arcs were simply missing
    * before — the most conspicuous omission on the whole surface. */
   g.save();
-  g.strokeStyle = 'rgba(248,252,255,.82)';
-  g.fillStyle = 'rgba(248,252,255,.82)';
+  // paint fades a little on grounds that do not re-mark every week (v78); in snow the lines are cleared to the grass
+  const lineCol = snow ? `rgba(46,120,62,${0.92 - lineFade * 0.3})` : `rgba(248,252,255,${0.82 - lineFade * 0.34})`;
+  g.strokeStyle = lineCol;
+  g.fillStyle = lineCol;
   g.lineWidth = Math.max(2, m(0.12));
   g.shadowColor = 'rgba(255,255,255,.35)';
   g.shadowBlur = Math.max(1, m(0.05));
@@ -527,6 +607,17 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
     }
   }
   g.restore();
+  // worn paint: small gaps where the line has scuffed away
+  if (lineFade > 0.1 && !snow) {
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    const gaps = Math.round(lineFade * 900);
+    for (let i = 0; i < gaps; i++) {
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(40,110,55,.35)' : 'rgba(30,90,45,.3)';
+      g.fillRect(Math.random() * c.width, Math.random() * c.height, m(0.25 + Math.random() * 0.5), m(0.25 + Math.random() * 0.5));
+    }
+    g.restore();
+  }
 
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 16;
@@ -535,12 +626,13 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false) {
 }
 
 /** Generic panelled ball — markings are what make the roll readable. */
-function ballTexture() {
+function ballTexture(winter = false) {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 128;
   const g = c.getContext('2d');
-  g.fillStyle = '#f4f6fa';
+  // v78: the winter ball — orange, so it shows against a white pitch
+  g.fillStyle = winter ? '#ff6a13' : '#f4f6fa';
   g.fillRect(0, 0, c.width, c.height);
 
   // staggered dark panels around the equator and caps
@@ -967,6 +1059,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   const atmo = match.venue?.atmo || { time: 'night', weather: 'clear', intensity: 0.5, wet: false };
   const LIGHT = lightingFor(atmo);
   const wet = !!atmo.wet;
+  const snow = atmo.weather === 'snow';          // v78
+  const frost = !!atmo.frost && !snow;
   /* 'min' is Ultra Low: the tier for hardware that Low still stutters on.
    * `potato` is what it goes further on; `lo` is everything Low already
    * skips, which Ultra Low skips too — one flag, so a future gate cannot
@@ -1080,10 +1174,27 @@ export function createRenderer(canvas, match, quality, models = false) {
      same stadium, and different fixtures are different stadiums. */
   const venueSeed = hashName(`${match.teams[0].name}|${match.teams[1].name}`);
   const VENUE = match.venue?.stadium ? specFromDef(match.venue.stadium, venueSeed) : stadiumSpec(venueSeed);
+  // v78: a big game sells out, whatever the ground usually draws
+  if (match.venue?.bigGame) VENUE.fill = 0.99;
+  /* v78: the ground faces its own way, so the sun comes round with it — at one
+     ground the far stand throws its shadow across the pitch in the late
+     afternoon, at another the sun is behind the camera. Night keeps its tuned
+     moon; only the sun moves. */
+  if (atmo.time !== 'night') {
+    const a = ((VENUE.orientation || 0) * Math.PI) / 180;
+    const [sx, sy] = SUN_OFF;
+    SUN_OFF[0] = sx * Math.cos(a) - sy * Math.sin(a);
+    SUN_OFF[1] = sx * Math.sin(a) + sy * Math.cos(a);
+    sun.position.set(SUN_OFF[0], SUN_OFF[1], SUN_OFF[2]);
+  }
 
   let turfHeight = null;                 // the blade height map the parallax walks through
-  const turfMap = pitchTexture(!lo, VENUE.pattern, wet);
+  // v78: how far through the season (wear), how well the lines are kept, winter
+  const seasonWear = Math.max(0, Math.min(1, match.venue?.seasonWear ?? 0.15));
+  const turfMap = pitchTexture(!lo, VENUE.pattern, wet, { seasonWear, lineFade: VENUE.grass?.lineFade || 0, frost, snow });
   const turfMat = new THREE.MeshStandardMaterial({
+    // v78: snow is white but not a light source — under floodlights a full-albedo pitch blooms the whole frame out
+    color: snow ? new THREE.Color().setScalar(LIGHT.flood > 0 ? 0.5 : 0.82) : 0xffffff,
     map: turfMap,
     /* Cut grass under floodlights is *faintly* specular — that sheen sweeping
        across the stripes is most of what separates a lit pitch from a green
@@ -1202,7 +1313,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       VENUE.pattern === 'checks' ? 1 : 0) };
     const uTurfH = { value: turfHeight };
     // apparent blade depth, in the blade map's own uv (one tile is 2.6 m across)
-    const uPara = { value: turfHeight ? (ultra ? 0.018 : 0.013) : 0 };
+    const uPara = { value: turfHeight && !snow ? (ultra ? 0.018 : 0.013) * Math.min(1.5, VENUE.grass?.length || 1) : 0 };   // longer grass, deeper blades (v78)
     const steps = ultra ? 6 : med ? 3 : 4;
     const prev = turfMat.onBeforeCompile;
     turfMat.onBeforeCompile = (sh) => {
@@ -1288,11 +1399,28 @@ export function createRenderer(canvas, match, quality, models = false) {
    * camera every frame.
    */
   let tufts = null;
-  if (!lo && !potato) {
-    const N = ultra ? 30000 : med ? 10000 : 18000;
-    const blade = new THREE.PlaneGeometry(0.17, 0.16).translate(0, 0.08, 0).rotateX(Math.PI / 2);
-    const cross = blade.clone().rotateZ(Math.PI / 2);
-    const tuftGeo = mergeGeos(blade, cross);
+  // v78: blade length and density are the ground's — a community pitch is shaggier and thinner; snow buries them
+  const GL_LEN = VENUE.grass?.length || 1;
+  if (!lo && !potato && !snow) {
+    const N = Math.round((ultra ? 30000 : med ? 10000 : 18000) * (VENUE.grass?.density || 1));
+    /* v78: a tuft is a fan of five tapered blades, not two crossed cards —
+       close up in the Dynamic and Pro cameras a rectangle reads as a scrap
+       of paper, a spike reads as grass. */
+    const tuftGeo = (() => {
+      const pos = [];
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2 + 0.3;
+        const ox = Math.cos(a) * 0.035; const oy = Math.sin(a) * 0.035;
+        const px = -Math.sin(a) * 0.018; const py = Math.cos(a) * 0.018;
+        const h = 0.13 + (k % 3) * 0.025;
+        const tx = ox + Math.cos(a) * 0.05; const ty = oy + Math.sin(a) * 0.05;
+        pos.push(ox - px, oy - py, 0, ox + px, oy + py, 0, tx, ty, h);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0), 3));
+      return g;
+    })();
     /* Every normal points at the sky.
      *
      * A blade card stands vertically, so its true normal is horizontal, and a
@@ -1327,8 +1455,14 @@ export function createRenderer(canvas, match, quality, models = false) {
             transformed.x += transformed.z * sin(aTuft * 6.2831) * 0.35;
             transformed.y += transformed.z * cos(aTuft * 6.2831) * 0.35;
           }`);
+      /* Double-sided cards flip their normal on the back face, which turned the
+         sky normal into a ground normal on half the blades and drew them black
+         (v78, seen close up in the Dynamic camera). The sky is the sky from
+         either side. */
+      sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
+          normal = normalize(vNormal);`);
     };
-    tuftMat.customProgramCacheKey = () => 'apexTuft';
+    tuftMat.customProgramCacheKey = () => 'apexTuft2';
     tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, N);
     tufts.castShadow = false;
     tufts.receiveShadow = false;
@@ -1342,7 +1476,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       const y = tr() * PITCH.h;
       d3.position.set(x, y, surfaceAt(x, y));
       d3.rotation.set(0, 0, tr() * Math.PI);
-      d3.scale.setScalar(0.75 + tr() * 0.6);
+      d3.scale.set(0.75 + tr() * 0.6, 0.75 + tr() * 0.6, (0.75 + tr() * 0.6) * GL_LEN);
       d3.updateMatrix();
       tufts.setMatrixAt(i, d3.matrix);
       lean[i] = tr();
@@ -1352,7 +1486,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       // a shade brighter than the texture under them: a blade catches more
       // light than the floor it grows out of, and a mass of them that reads
       // darker than the pitch looks like a stain rather than like grass
-      tc.setHex(band ? 0x52ad62 : 0x2c7c42).multiplyScalar(0.92 + tr() * 0.24);
+      tc.setHex(band ? 0x4a9f58 : 0x2a743d).multiplyScalar(0.82 + tr() * 0.22);
       tufts.setColorAt(i, tc);
     }
     tuftGeo.setAttribute('aTuft', new THREE.InstancedBufferAttribute(lean, 1));
@@ -1481,8 +1615,10 @@ export function createRenderer(canvas, match, quality, models = false) {
   // instead of turning it to face down the pitch: at ±90° the run stood on its
   // end as an 80-unit tower behind each goal. They are gone rather than fixed —
   // the ends read better empty, and the touchline runs already carry the sponsors.
+  // v78: the near run has a gap on the halfway line where the tunnel comes out
   const boards = [
-    [PITCH.w / 2, -MARGIN + 1.2, PITCH.w + 20, 0],
+    [(-10 + PITCH.w / 2 - 2) / 2, -MARGIN + 1.2, PITCH.w / 2 - 2 + 10, 0],
+    [(PITCH.w / 2 + 2 + PITCH.w + 10) / 2, -MARGIN + 1.2, PITCH.w / 2 - 2 + 10, 0],
     [PITCH.w / 2, PITCH.h + MARGIN - 1.2, PITCH.w + 20, Math.PI],
   ];
   /* One hoarding every ~5.2 m, which is what a real unit measures, and enough of
@@ -1500,6 +1636,23 @@ export function createRenderer(canvas, match, quality, models = false) {
   const maxTex = renderer.capabilities.maxTextureSize || 4096;
   const panelsPerTex = Math.max(4, Math.floor(maxTex / PANEL_PX));
   let ledSeed = 1471;
+  /* v78: the boards animate. Every so often — and at every goal — the whole
+     run switches from the sponsors to a scrolling sequence in the home
+     club's colours with its short name, the way a stadium's LED ribbon does. */
+  const boardMats = [];
+  let ledClock = 0; let ledClub = false;
+  const clubLed = (() => {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 64;
+    const g = c.getContext('2d');
+    const [a, b] = [match.teams[0].colors?.[0] || '#ffffff', match.teams[0].colors?.[1] || '#111111'];
+    for (let i = 0; i < 8; i++) {
+      g.fillStyle = i % 2 ? a : b; g.fillRect(i * 128, 0, 128, 64);
+      g.fillStyle = i % 2 ? b : a; g.font = 'bold 40px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(String(match.teams[0].short || match.teams[0].name || 'HOME').slice(0, 4).toUpperCase(), i * 128 + 64, 34);
+    }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;
+    return t;
+  })();
 
   boards.forEach(([bx, by, len, rot]) => {
     const wanted = Math.max(1, Math.round(len / PANEL_M));
@@ -1511,6 +1664,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       const mat = new THREE.MeshStandardMaterial({
         map: led, emissive: 0xffffff, emissiveMap: led, emissiveIntensity: 1.15, roughness: 0.5,
       });
+      boardMats.push({ mat, ads: led, reps: Math.max(1, Math.round(segLen / 10)) });
       const bd = new THREE.Mesh(new THREE.PlaneGeometry(segLen, 1.05), mat);
       bd.position.set(bx - len / 2 + (sgi + 0.5) * segLen, by, 0.55);
       bd.rotation.set(Math.PI / 2, 0, rot);
@@ -1523,7 +1677,12 @@ export function createRenderer(canvas, match, quality, models = false) {
   const netMat = new THREE.LineBasicMaterial({
     color: 0xe6eefc, transparent: true, opacity: 0.5,
   });
-  const NET_DEPTH = 2.0;
+  /* v78: three shapes of goal. A box frame (the rear stands at three quarters
+     of the bar), a deep one (a longer net hung almost at full height at the
+     back — the modern stadium goal) and a stanchion goal (the back of the net
+     pulled low to the ground on sloping stays — the old ground's goal). */
+  const GOAL_STYLE = VENUE.goalStyle || 'box';
+  const NET_DEPTH = GOAL_STYLE === 'deep' ? 2.7 : GOAL_STYLE === 'stanchion' ? 2.25 : 2.0;
   const nets = [];
   /* The frame.
    *
@@ -1538,7 +1697,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * because it is what gives the goal its depth from an angle. */
   const POST_R = 0.105;
   const REAR_R = 0.055;
-  const REAR_H = GOAL_H * 0.72;                  // the back of the net stands lower than the bar
+  const REAR_H = GOAL_H * (GOAL_STYLE === 'deep' ? 0.94 : GOAL_STYLE === 'stanchion' ? 0.3 : 0.72);   // the back of the net stands lower than the bar
   for (const side of [0, 1]) {
     const gx = side === 0 ? 0 : PITCH.w;
     const inw = side === 0 ? -1 : 1;
@@ -1679,11 +1838,18 @@ export function createRenderer(canvas, match, quality, models = false) {
       z: STAND_FRONT_Z + t * (SBZ - STAND_FRONT_Z) + up * TIER_GAP.z,
     };
   };
-  const banks = [
-    { rot: 0, cx: PITCH.w / 2, cy: PITCH.h + MARGIN, len: PITCH.w + 44 },
-    { rot: Math.PI / 2, cx: -MARGIN, cy: CY, len: PITCH.h + 36 },
-    { rot: -Math.PI / 2, cx: PITCH.w + MARGIN, cy: CY, len: PITCH.h + 36 },
-  ];
+  /* v78: a community ground is one stand on the far side, half the length of
+     the pitch, and nothing at the ends but a rail, a grass bank and the
+     fence (groundDressing.js builds those). */
+  const COMMUNITY = VENUE.klass === 'community';
+  const COMM_LEN = 46;
+  const banks = COMMUNITY
+    ? [{ rot: 0, cx: PITCH.w / 2, cy: PITCH.h + MARGIN, len: COMM_LEN }]
+    : [
+      { rot: 0, cx: PITCH.w / 2, cy: PITCH.h + MARGIN, len: PITCH.w + 44 },
+      { rot: Math.PI / 2, cx: -MARGIN, cy: CY, len: PITCH.h + 36 },
+      { rot: -Math.PI / 2, cx: PITCH.w + MARGIN, cy: CY, len: PITCH.h + 36 },
+    ];
   const TERRACE_ROWS = potato ? 4 : quality === 'low' ? 8 : ultra ? 22 : med ? 11 : 14;
   const RZ2 = RZ + GAP_Z;           // the roof clears the upper tier(s)
   for (const bk of banks) {
@@ -1699,6 +1865,8 @@ export function createRenderer(canvas, match, quality, models = false) {
       const step = new THREE.Mesh(new THREE.BoxGeometry(bk.len, stepD, stepH + 0.5), standMat);
       step.position.set(0, at.depth - MARGIN, at.z - stepH * 0.5);
       step.receiveShadow = true;
+      // v78: on High and above the stands throw their shadow across the pitch as the sun comes round
+      step.castShadow = !lo && !med && atmo.time !== 'night';
       g.add(step);
     }
     for (const split of SPLITS) {
@@ -1725,6 +1893,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     const backH = SBZ + 1.5 + GAP_Z;
     const back = new THREE.Mesh(new THREE.BoxGeometry(bk.len, 0.8, backH), roofMat);
     back.position.set(0, SD + GAP_D, backH / 2);
+    back.castShadow = !lo && atmo.time !== 'night';
     g.add(back);
 
     if (VENUE.roof) {
@@ -1791,7 +1960,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * Only the two *far* corners. The near touchline is deliberately open (the
    * camera lives there), so closing the near corners would put terracing in
    * front of the lens. */
-  if (VENUE.bowl) {
+  if (VENUE.bowl && !COMMUNITY) {
     const stepH = (SBZ - STAND_FRONT_Z) / TERRACE_ROWS;
     for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
       const g = new THREE.Group();
@@ -1845,7 +2014,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     const shellH = SBZ + GAP_Z + 2;
     const blocks = [];
     // three sides (the near touchline stays open for the camera)
-    const sides = [
+    const sides = COMMUNITY ? [] : [
       { x0: -outer, x1: PITCH.w + outer, y: PITCH.h + outer, along: 'x' },
       { x: -outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
       { x: PITCH.w + outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
@@ -1883,7 +2052,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     const LS = VENUE.landscape;
     const towers = [];
     const skyR = mulberry(venueSeed ^ 0x7ab3);
-    const N = Math.round((ultra ? 90 : 60) * (LS === 'city' ? 1 : LS === 'coast' ? 0.35 : 0.18));
+    const N = Math.round((ultra ? 90 : 60) * (LS === 'city' ? 1 : LS === 'coast' ? 0.35 : LS === 'suburbs' ? (VENUE.klass === 'community' ? 0 : 0.08) : 0.18));   // v78: the suburbs are houses (groundDressing), a far tower or two at most
     const cityScale = (0.6 + VENUE.scale * 0.9) * (LS === 'city' ? 1 : 0.45);      // big clubs, big cities
     for (let i = 0; i < N; i++) {
       // the far half only; on the coast, the towers keep to the left and the sea has the right
@@ -1971,7 +2140,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * or it fades on its own). Drawn on a canvas, so it is whatever the club
    * is, and never a photograph of anything. */
   let tifoMesh = null;
-  if (!potato) {
+  if (!potato && !COMMUNITY) {
     const c = document.createElement('canvas');
     c.width = 1024; c.height = 256;
     const g = c.getContext('2d');
@@ -2136,7 +2305,7 @@ export function createRenderer(canvas, match, quality, models = false) {
        like. A lit roof rim has no masts at all. The *lights* are identical
        either way: they are the scene's main illumination at night and were
        tuned carefully, so only the mast varies; by day they are simply off. */
-    if (VENUE.pylons !== 'rim') {
+    if (VENUE.pylons !== 'rim' && VENUE.pylons !== 'side') {   // side masts are built by groundDressing.js
       const mastH = VENUE.tallPylons ? 34 : Math.max(8, 36 - RZ2);
       const mast = new THREE.Mesh(
         new THREE.CylinderGeometry(0.5, VENUE.tallPylons ? 0.9 : 0.7, mastH, 8), pylonMat);
@@ -2289,11 +2458,13 @@ export function createRenderer(canvas, match, quality, models = false) {
   const rows = potato ? 3 : quality === 'low' ? 8 : ultra ? 22 : med ? 11 : 14;
   const step = potato ? 3.0 : quality === 'low' ? 1.5 : ultra ? 0.62 : med ? 1.2 : 0.95;
   const seats = [];
-  const bankDefs = [
-    { kind: 'far', from: -22, to: PITCH.w + 22 },
-    { kind: 'left', from: -18, to: PITCH.h + 18 },
-    { kind: 'right', from: -18, to: PITCH.h + 18 },
-  ];
+  const bankDefs = COMMUNITY
+    ? [{ kind: 'far', from: PITCH.w / 2 - COMM_LEN / 2 + 1, to: PITCH.w / 2 + COMM_LEN / 2 - 1 }]
+    : [
+      { kind: 'far', from: -22, to: PITCH.w + 22 },
+      { kind: 'left', from: -18, to: PITCH.h + 18 },
+      { kind: 'right', from: -18, to: PITCH.h + 18 },
+    ];
   const [SEAT_A, SEAT_B] = VENUE.seats;
   /* Rain puts the crowd in coats: the palette darkens and the colours thin
      out, which is a small thing that the eye reads before it reads the rain. */
@@ -2307,12 +2478,20 @@ export function createRenderer(canvas, match, quality, models = false) {
   const homeCol = new THREE.Color(hexOf(match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
   const homeAlt = new THREE.Color(hexOf(match.teams[0].colors[1] || match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
   const awayCol = pickAwayKit(match).clone().multiplyScalar(0.85).getHex();
+  /* v78: a proper away end. On a three-sided ground the visitors have the far
+     half of the right-hand end (0.72..0.86 round the walk), fenced off from
+     the home fans by a few empty rows either side; at a community ground
+     they are the right-hand end of the one stand. Nearly all in their colours. */
+  const AWAY = COMMUNITY ? [0.6, 0.66] : [0.72, 0.86];
+  const GAP = COMMUNITY ? 0.012 : 0.028;
+  const inAway = (along) => along > AWAY[0] && along < AWAY[1];
+  const inGap = (along) => (along > AWAY[0] - GAP && along <= AWAY[0]) || (along >= AWAY[1] && along < AWAY[1] + GAP);
   const sectionCol = (along, r) => {
     const roll = rand();
+    if (inAway(along)) return roll < 0.9 ? awayCol : crowdCols[(rand() * crowdCols.length) | 0];
     // far bank centre: 0.42..0.58 along; left bank: 0..0.32; away corner: 0.64..0.7
     if (along > 0.42 && along < 0.58) return roll < 0.72 ? (roll < 0.5 ? homeCol : homeAlt) : crowdCols[(r * 7 + 3) % crowdCols.length];
     if (along < 0.32) return roll < 0.45 ? homeCol : crowdCols[(rand() * crowdCols.length) | 0];
-    if (along > 0.64 && along < 0.71) return roll < 0.7 ? awayCol : crowdCols[(rand() * crowdCols.length) | 0];
     return roll < 0.12 ? homeCol : crowdCols[(rand() * crowdCols.length) | 0];
   };
   const put = (x, y, z, face, r, along = 0) => seats.push({
@@ -2320,7 +2499,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     seatCol: r % 3 === 0 ? SEAT_A : SEAT_B,          // two-tone seating bowl
     // Attendance is this ground's, not a fixed 82%. A half-empty big stadium
     // and a packed small one both happen, and both beat every ground being full.
-    occupied: rand() < VENUE.fill,
+    occupied: !inGap(along) && rand() < (inAway(along) ? Math.min(0.97, VENUE.fill + 0.12) : VENUE.fill),
     c: sectionCol(along, r),
   });
 
@@ -2345,7 +2524,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * by arc length so the density matches the straight banks rather than
    * bunching up on the inside rows. `face` is the angle that turns a figure —
    * authored facing +Y — to look back at the corner's centre. */
-  if (VENUE.bowl) {
+  if (VENUE.bowl && !COMMUNITY) {
     for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
       for (let r = 0; r < rows; r++) {
         const t = r / (rows - 1);
@@ -2516,7 +2695,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     bodies.castShadow = false;      // a stand casting shadows onto itself is invisible and not free
     heads.castShadow = false;
     const crowdAttr = new Float32Array(taken.length * 3);
-    const sectionOf = (along) => (along > 0.42 && along < 0.58) || along < 0.32 ? 1 : (along > 0.64 && along < 0.71) ? 0 : 0.5;
+    const sectionOf = (along) => (inAway(along) ? 0 : (along > 0.42 && along < 0.58) || along < 0.32 ? 1 : 0.5);
     taken.forEach((s, i) => { crowdAttr[i * 3] = rand(); crowdAttr[i * 3 + 1] = s.along || 0; crowdAttr[i * 3 + 2] = sectionOf(s.along || 0); });
     const crowdBuf = new THREE.InstancedBufferAttribute(crowdAttr, 3);
     bodyGeo.setAttribute('aCrowd', crowdBuf);
@@ -2639,6 +2818,82 @@ export function createRenderer(canvas, match, quality, models = false) {
       scene.add(rig.grp);
       rigs.set(p, rig);
     }
+  }
+
+  /* ------------------------- flags and scarves (v78) -------------------------
+   * Flags on poles waving over the home end and the away block, in each
+   * side's colours; and scarves held up over heads before kick-off and
+   * through a goal (the renderer's `uScarf`, driven from the match phase).
+   * Two instanced meshes, all motion in the vertex shader. */
+  const scarfU = { value: 0 };
+  if (!lo && !potato && taken.length) {
+    const nFlags = ultra ? 70 : med ? 26 : 44;
+    const flagGeo = new THREE.PlaneGeometry(1.3, 0.85, 6, 1).rotateX(Math.PI / 2).translate(0.65, 0, 2.45);
+    const poleGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.9, 4).rotateX(Math.PI / 2).translate(0, 0, 1.45);
+    const waveMat = (extra = '') => {
+      const mt = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide });
+      mt.onBeforeCompile = (sh) => {
+        sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uScarf = scarfU;
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uScarf;')
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+            ${extra}`);
+      };
+      return mt;
+    };
+    const flags = new THREE.InstancedMesh(flagGeo, waveMat(`{
+              float ph = float(gl_InstanceID) * 1.7;
+              float along = transformed.x / 1.3;
+              transformed.y += sin(uTime * 4.0 - along * 5.0 + ph) * 0.18 * along;
+              transformed.x += sin(uTime * 0.8 + ph) * 0.25 * along;       // swung by the arm below
+            }`), nFlags);
+    const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.6 }), nFlags);
+    const pool = taken.filter((st) => inAway(st.along || 0) || (st.along > 0.42 && st.along < 0.58) || st.along < 0.3);
+    const d = new THREE.Object3D(); const c = new THREE.Color();
+    for (let i = 0; i < nFlags; i++) {
+      const st = pool[Math.floor(rand() * pool.length)] || taken[0];
+      const away = inAway(st.along || 0);
+      const cols = away ? [awayCol, awayCol] : [homeCol, homeAlt];
+      d.position.set(st.x, st.y, st.z - 0.3); d.rotation.set(0, 0, (st.face || 0) + (rand() - 0.5) * 0.8); d.scale.setScalar(0.9 + rand() * 0.3); d.updateMatrix();
+      flags.setMatrixAt(i, d.matrix); poles.setMatrixAt(i, d.matrix);
+      flags.setColorAt(i, c.setHex(cols[i % 2]));
+    }
+    scene.add(flags, poles);
+    // scarves: a quarter of the ends, held up at arm's length
+    const nScarf = Math.min(taken.length, ultra ? 3000 : 1200);
+    const scarfGeo = new THREE.BoxGeometry(1.1, 0.03, 0.17).translate(0, 0.05, 0);
+    const scarves = new THREE.InstancedMesh(scarfGeo, waveMat(`{
+              float ph = float(gl_InstanceID) * 2.3;
+              transformed *= uScarf;
+              transformed.z += 0.95 + 0.4 * uScarf + sin(uTime * 3.0 + ph) * 0.04;
+              transformed.x += sin(uTime * 2.2 + ph + transformed.x) * 0.03;
+            }`), nScarf);
+    const ends = taken.filter((st) => inAway(st.along || 0) || st.along < 0.3 || (st.along > 0.42 && st.along < 0.58));
+    for (let i = 0; i < nScarf; i++) {
+      const st = ends[Math.floor(rand() * ends.length)] || taken[0];
+      const away = inAway(st.along || 0);
+      d.position.set(st.x, st.y, st.z - 0.34); d.rotation.set(0, 0, st.face || 0); d.scale.setScalar(1); d.updateMatrix();
+      scarves.setMatrixAt(i, d.matrix);
+      scarves.setColorAt(i, c.setHex(away ? awayCol : (i % 3 ? homeCol : homeAlt)));
+    }
+    scarves.frustumCulled = false;
+    scene.add(scarves);
+  }
+
+  /* ---------------------------- round the pitch ----------------------------
+   * v78: flags, dugouts, the tunnel, the people who work the match, fences and
+   * banks at the small grounds, side masts, the suburbs, puddles, snow, the
+   * half-time groundstaff and sprinklers, and flares. groundDressing.js. */
+  const dressing = dressGround({
+    scene, VENUE, match, atmo, LIGHT, lo, potato, ultra, surfaceAt, MARGIN, SD, GAP_D, rand: mulberry(venueSeed ^ 0xd7e55),
+  });
+  {
+    // flares are lit in the away block and in the heart of the home end
+    const spots = [];
+    const pick = (test, n) => { const pool = taken.filter((st) => test(st.along || 0)); for (let i = 0; i < n && pool.length; i++) { const st = pool[(i * 7919) % pool.length]; spots.push([st.x, st.y, st.z]); } };
+    pick(inAway, 4);
+    pick((a) => a > 0.46 && a < 0.54, 3);
+    dressing.setFlareSpots(spots);
   }
 
   /* --------------------------- the manager --------------------------- *
@@ -2813,7 +3068,7 @@ export function createRenderer(canvas, match, quality, models = false) {
 
   const ball = new THREE.Mesh(
     new THREE.SphereGeometry(0.19, 24, 18),
-    new THREE.MeshStandardMaterial({ map: ballTexture(), roughness: 0.55, metalness: 0.02 }));
+    new THREE.MeshStandardMaterial({ map: ballTexture(snow), roughness: 0.55, metalness: 0.02 }));
   ball.castShadow = true;
   scene.add(ball);
 
@@ -3216,7 +3471,13 @@ export function createRenderer(canvas, match, quality, models = false) {
         wasGoal = goal;
         jumpT = goal ? Math.min(1, jumpT + step * 2.2) : Math.max(0, jumpT - step * 0.8);
         crowdU.uJump.value = jumpT;
-        crowdU.uExcite.value += (((m.excitement ?? 0.3) + (goal ? 0.6 : 0)) - crowdU.uExcite.value) * Math.min(1, step * 2);
+        // scarves up for the kick-off and through a goal, down again in open play
+        const scarfWant = m.phase === 'kickoff' || goal ? 1 : 0;
+        scarfU.value += (scarfWant - scarfU.value) * Math.min(1, step * 2.5);
+        // v78: a near miss, a save or a bad foul brings the ground up off its seats for a moment
+        m.crowdStir = Math.max(0, (m.crowdStir || 0) - step * 0.6);
+        crowdU.uExcite.value += (((m.excitement ?? 0.3) + (goal ? 0.6 : 0) + (m.crowdStir || 0) * 0.8) - crowdU.uExcite.value) * Math.min(1, step * 3);
+        if ((m.crowdStir || 0) > 0.5 && !goal) jumpT = Math.max(jumpT, (m.crowdStir - 0.5) * 0.5);
         if (waveT < 0) {
           waveNext -= step;
           if (waveNext <= 0 && m.phase === 'play' && !potato) { waveT = 0; }
@@ -3244,6 +3505,27 @@ export function createRenderer(canvas, match, quality, models = false) {
         wearClock += dt || 0;
         if (wearClock > 30) { wearClock = 0; paintWear(); }
       }
+      /* v78: divots. A slide or a tackle tears a strip out of the turf where it
+         happened — a dark, torn scrape along the direction of the challenge,
+         painted straight into the colour map (the match screen queues them
+         from the sim's cues in `m.divots`). More on a wet pitch. */
+      if (wearCtx && m.divots?.length) {
+        const S = wearCanvas.width / PITCH.w;
+        for (const dv of m.divots.splice(0)) {
+          if (!Number.isFinite(dv.x) || !Number.isFinite(dv.y)) continue;
+          const n = wet ? 3 : 2;
+          for (let k = 0; k < n; k++) {
+            const len = (wet ? 1.2 : 0.7) + Math.random() * 0.6;
+            wearCtx.save();
+            wearCtx.translate((dv.x + (Math.random() - 0.5) * 0.6) * S, (dv.y + (Math.random() - 0.5) * 0.6) * S);
+            wearCtx.rotate(dv.a ?? Math.random() * Math.PI);
+            wearCtx.fillStyle = wet ? 'rgba(62,44,28,.55)' : 'rgba(96,78,50,.45)';
+            wearCtx.beginPath(); wearCtx.ellipse(0, 0, len * S * 0.5, 0.14 * S, 0, 0, 7); wearCtx.fill();
+            wearCtx.restore();
+          }
+        }
+        turfMap.needsUpdate = true;
+      }
       fxStep(Math.min(dt || 0, 0.05));
       bootFx(m, Math.min(dt || 0, 0.05));
       if (WONDER) {
@@ -3259,6 +3541,21 @@ export function createRenderer(canvas, match, quality, models = false) {
         if (m.phase === 'goal' && fx.show < 1) { fx.show = 3; }
       }
       if (!lo && m.phase !== 'end') trampleStep(m, dt);
+      dressing.update(m, dt || 0, cam);
+      {
+        // the boards: sponsors, then 7 s of club colours every 30 s, and through a goal
+        ledClock += dt || 0;
+        const club = m.phase === 'goal' || (ledClock % 30) > 23;
+        if (club !== ledClub) {
+          ledClub = club;
+          for (const b of boardMats) {
+            b.mat.map = club ? clubLed : b.ads; b.mat.emissiveMap = b.mat.map;
+            b.mat.needsUpdate = true;
+          }
+          clubLed.repeat.set(boardMats[0]?.reps || 4, 1);
+        }
+        if (club) clubLed.offset.x = (clubLed.offset.x + (dt || 0) * 0.35) % 1;
+      }
       weatherStep(m, dt);
       if (godrays) {
         // the sun's place on screen: project the low sun; strength fades as it leaves the frame
@@ -3406,6 +3703,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       else renderer.render(scene, camera);
     },
     dispose() {
+      try { dressing.dispose(); } catch { /* already gone */ }
       disposed = true;
       for (const rig of modelRigs.values()) {
         rig.mixer.stopAllAction();

@@ -177,6 +177,20 @@ const SOUNDS = {
   post() {
     tone({ freq: 1350, to: 900, type: 'triangle', dur: 0.5, gain: 0.3 });
     tone({ freq: 2020, type: 'sine', dur: 0.35, gain: 0.12 });
+    SOUNDS.crowdOoh(0.85);                          // v78: the ground goes "ooh" at the woodwork
+  },
+  // v78: a near miss draws a groan, a foul draws boos from the stands
+  shotWide() { SOUNDS.crowdOoh(0.45); },
+  foul() {
+    noise({ dur: 0.1, gain: 0.2, type: 'bandpass', freq: 380, q: 0.9 });
+    SOUNDS.crowdBoo(0.6);
+  },
+  card() { SOUNDS.crowdBoo(0.4); },
+  crowdBoo(level = 0.6) {
+    // a low, sustained "ooo" — the vowel of a boo, rather than the rising ooh
+    [[240, 4], [520, 6]].forEach(([f, q], i) => {
+      noise({ dur: 1.6, gain: 0.08 * level * (1 - i * 0.35), type: 'bandpass', freq: f, to: f * 0.9, q, attack: 0.25 });
+    });
   },
   net() {
     noise({ dur: 0.28, gain: 0.14, type: 'bandpass', freq: 2600, to: 1100, q: 0.6 });
@@ -435,6 +449,11 @@ const CHANTS = {
   clap:  { steps: [['x'], ['x'], [], ['x'], ['x'], ['x'], [], []], bars: 2, notes: false },
   hum:   { steps: [[60], [60], [63], [65], [], [65], [63], [60]], bars: 2, notes: true },
   goal:  { steps: [[67], [67], [], [67], [65], [63], [65], [60]], bars: 3, notes: true },
+  // v78: the stands sing with the scoreline — a bouncing major line when
+  // winning, a slow minor one of defiance when losing, a drum-and-clap when level
+  winning: { steps: [[64], [67], [72], [], [72], [71], [69], [67]], bars: 3, notes: true },
+  losing:  { steps: [[57], [], [60], [], [59], [57], [], []], bars: 2, notes: true },
+  level:   { steps: [['x'], [], ['x'], ['x'], [], ['x'], ['x'], ['x']], bars: 3, notes: false },
 };
 let chantUntil = 0;
 export function chant(kind = 'hum', level = 0.6) {

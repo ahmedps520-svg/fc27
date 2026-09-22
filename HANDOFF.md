@@ -15,6 +15,70 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v78 — grounds and pitch realism (Round 8)
+**Sweep untouched** (no sim change): byte-identical on 12345 and 777.
+- **Ground data** (`js/data/grounds.js`, new): `groundClass` by capacity —
+  community < 7k, town < 20k, bowl < 50k, arena (showpieces/wonders always
+  arena); `groundProfile(def, host)` → klass, landscape (country lists →
+  desert / coast / mountains, else city for bowl+arena, suburbs below; the
+  builder's own landscape wins), floodlights (`rim` / `lattice` corners /
+  `side` masts / `mast`), goalStyle box|deep|stanchion, grass {length,
+  density, lineFade}, orientation 0–359°, mowing (a host club mows its own
+  pattern), opened / record / recordYear (fictional, deterministic).
+  `stadiumFor` now returns `host: {id, name, country}` (named grounds are a
+  shallow copy). Eight community grounds added (1,200–3,800); stadium count
+  120; the round4 capacity floor is now 1,000.
+- **Renderer** (`renderGL.js`): `profileFields()` folds the profile into the
+  venue spec. Community class builds one 46 m far stand, no ends, no bowl,
+  no outer shell, no tifo, and seats only there. Sun azimuth rotated by the
+  ground's orientation (not at night); terrace steps cast shadows on High+
+  by day, back walls on Medium+. `pitchTexture(…, {seasonWear, lineFade,
+  frost, snow})`: bare-earth goalmouths/centre by season, worn line gaps,
+  frost sparkle + frosted edges, snow cover with lines cleared to grass.
+  `lightingFor` wraps `lightingBase`: snow = paler/denser fog, exposure
+  ×0.8 night/×0.9 day, beams ×0.35, no haze; snowy turf colour 0.5 at night
+  (full albedo bloomed the frame white). Orange ball in snow. Tufts: blade
+  fans instead of cards, scaled by grass length/density, none in snow, and
+  the back-face normal flip fixed (black specks close up). Goal styles
+  change NET_DEPTH (2.0 / 2.7 / 2.25) and REAR_H (0.72 / 0.94 / 0.3 ×
+  bar). LED boards cycle to a scrolling home-colour run every 30 s (7 s)
+  and through a goal; the near run has a 4 m gap for the tunnel.
+  Crowd: away block `along` 0.72–0.86 (community 0.60–0.66) ~90 % away
+  colours with empty segregation rows either side; `sectionOf` follows;
+  flags on poles and scarves (`uScarf`, up at kick-off and goals);
+  `m.crowdStir` (set by play.js on post/save/shotWide/foul) lifts the
+  crowd; divots painted from `m.divots` (slides and fouls); sell-out when
+  `match.venue.bigGame`.
+- **`js/game/groundDressing.js`** (new): corner flags (CPU-waved, wind by
+  weather/class), dugouts + dashed technical areas, telescopic tunnel,
+  ballboys, stewards, crouched photographers, camera crews, rail/banks/
+  perimeter fence + hedge at small grounds, side floodlight masts (never on
+  the camera side except the corners), suburbs (houses, roofs, trees),
+  puddles (rain intensity > 0.62), snow piles + flakes, half-time
+  groundstaff and six sprinklers (not in rain/snow/frost), flares (additive
+  points, lit at a goal in the away block and home end). `update(m, dt,
+  cam)` from the render loop; disposed with the renderer.
+- **Weather**: `atmosphereFor(seed, force, {month, warm})` — Dec–Feb: snow
+  1 in 9 (hash byte 4, so old rolls are unchanged), frost on clear winter
+  nights, never in the desert; `force.frost` honoured. `WEATHER_LABEL.snow`.
+  play.js derives month/season fraction from the Career week (Aug→May) or
+  today's date, passes `seasonWear`, `bigGame` (showpiece/final/two ≥84
+  sides). Kick Off gains Snow.
+- **Audio**: crowd ooh on the woodwork and near misses, boos on fouls and
+  cards; chants `winning` / `losing` / `level` chosen by the scoreline.
+- **Walkout**: the sides walk out of the tunnel in pairs for 4.2 s, camera
+  at the tunnel mouth, then the old line-up pan.
+- **Career**: promotion from a second tier grows the ground a level free
+  (`builder.growOnPromotion`, `ground.promoted`), shown on the Career
+  ground panel; Career home games always use the club's own (default or
+  designed) ground so growth is visible.
+- **Grounds gallery** (`screens/stadiums.js`, route unchanged): class
+  filters, stats (capacity, opened, record, floodlights, goals, mowing,
+  outside, roof), Orbit/Fly camera (drag look, wheel/pinch move, WASD Q/E,
+  Shift fast), snow and a winter-night toggle.
+- **Tests**: `tests/unit/grounds.test.mjs`; `tests/visual/r8-shots.mjs`
+  (look-see of every new feature, not in CI).
+
 ### v77 — cameras and bug bash (Round 7)
 **Sweep re-baselined deliberately** (seed 12345: goals 2.15 → 2.12, conversion
 16.6 % → 16.3 %; seed 777: goals 2.10 → 2.05) — the posts are now solid

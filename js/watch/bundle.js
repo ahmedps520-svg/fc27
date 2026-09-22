@@ -12443,6 +12443,15 @@
     { id: "brookside", name: "Brookside Arena", capacity: 7400, size: 0.13, tiers: 1, roof: "cantilever", bowl: !0, seats: ["#0f766e", "#ccfbf1"], facade: "#0f3a34", pattern: "rings", pylons: "mast", fill: 0.57 },
     { id: "cinder", name: "Cinder Ground", capacity: 5300, size: 0.09, tiers: 1, roof: "none", bowl: !1, seats: ["#f59e0b", "#1c1917"], facade: "#2c2418", pattern: "checks", pylons: "lattice", fill: 0.64 },
     { id: "hawkrow", name: "Hawk Row", capacity: 4500, size: 0.07, tiers: 1, roof: "none", bowl: !1, seats: ["#1f2937", "#fbbf24"], facade: "#1f2937", pattern: "plain", pylons: "lattice", fill: 0.68 },
+    // ---- v78: community grounds — a single stand, a rail and a fence ----
+    { id: "millbrook", name: "Millbrook Rec", capacity: 1800, size: 0.03, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#1e6f5c", "#f4f1de"], facade: "#2b3a33", pattern: "stripes", pylons: "lattice", fill: 0.55 },
+    { id: "ferrylane", name: "Ferry Lane", capacity: 2400, size: 0.04, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#264653", "#e9c46a"], facade: "#23313a", pattern: "plain", pylons: "lattice", fill: 0.6 },
+    { id: "parish", name: "Parish Field", capacity: 1500, size: 0.03, tiers: 1, roof: "none", bowl: !1, seats: ["#6a040f", "#f4f1de"], facade: "#2f2525", pattern: "plain", pylons: "lattice", fill: 0.52 },
+    { id: "coalyard", name: "Coalyard Meadow", capacity: 3200, size: 0.05, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#111827", "#f59e0b"], facade: "#1f2430", pattern: "checks", pylons: "lattice", fill: 0.62 },
+    { id: "allotments", name: "The Allotments", capacity: 2e3, size: 0.03, tiers: 1, roof: "none", bowl: !1, seats: ["#2d6a4f", "#95d5b2"], facade: "#24352c", pattern: "stripes", pylons: "lattice", fill: 0.58 },
+    { id: "stationrd", name: "Station Road", capacity: 3800, size: 0.06, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#1d3557", "#e63946"], facade: "#1d2433", pattern: "stripes", pylons: "lattice", fill: 0.64 },
+    { id: "kilncommon", name: "Kiln Common", capacity: 1200, size: 0.02, tiers: 1, roof: "none", bowl: !1, seats: ["#7f5539", "#ede0d4"], facade: "#3a2d24", pattern: "plain", pylons: "lattice", fill: 0.5 },
+    { id: "orchardpk", name: "Orchard Park", capacity: 2900, size: 0.04, tiers: 1, roof: "cantilever", bowl: !1, seats: ["#386641", "#f2e8cf"], facade: "#27332a", pattern: "diagonal", pylons: "lattice", fill: 0.6 },
     // ---- v72: the forty clubs of the hundred-club world ----
     { id: "vantage-arena", name: "Vantage Arena", capacity: 78e3, size: 0.8, tiers: 2, roof: "ring", bowl: !0, seats: ["#0f172a", "#38bdf8"], facade: "#0f172a", pattern: "plain", pylons: "rim", fill: 0.84 },
     { id: "harbourside", name: "The Harbourside", capacity: 76200, size: 0.78, tiers: 2, roof: "ring", bowl: !0, seats: ["#7f1d1d", "#fde68a"], facade: "#7f1d1d", pattern: "checks", pylons: "rim", fill: 0.83 },
@@ -12514,13 +12523,14 @@
     }
     if (club != null && club.national) return nationalStadium(club.name, club.rating || 75, club.colors);
     if (!club) return STADIUM_BY_ID.forge;
-    let named = club.ground && BY_NAME[club.ground];
-    if (named) return named;
+    let host = { id: club.id, name: club.name, country: club.country || null }, named = club.ground && BY_NAME[club.ground];
+    if (named) return { ...named, host };
     let level2 = Number.isFinite(club.level) ? club.level : 0.7, pool = STADIUMS.filter((s) => !s.showpiece && Math.abs(s.size - level2) < 0.22), base = (pool.length ? pool : STADIUMS.filter((s) => !s.showpiece))[hashStr(club.id || club.name) % (pool.length || STADIUMS.length)];
     return {
       ...base,
       id: "".concat(base.id, ":").concat(club.id || club.name),
       name: club.ground || base.name,
+      host,
       seats: Array.isArray(club.colors) && club.colors.length === 2 ? [club.colors[0], club.colors[1]] : base.seats
     };
   }

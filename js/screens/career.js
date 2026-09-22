@@ -600,6 +600,7 @@ function stadiumHTML(car) {
         <span><b>◎ ${fmtCoins(gateIncome(car))}</b> Gate per home match</span>
         <span><b>◎ ${fmtCoins(g.income || 0)}</b> Gate income so far</span>
       </div>
+      ${g.promoted && g.promoted.season === car.season - 1 ? `<p class="hint ground-grew">Promotion: the board expanded the ground from <b>${g.promoted.from.toLocaleString()}</b> to <b>${g.promoted.to.toLocaleString()}</b> for the new season.</p>` : ''}
       ${o.done ? '<p class="hint">The ground is as big as they come.</p>' : `
         <p class="hint">Next: <b>${o.nextCapacity.toLocaleString()}</b> seats for <b>◎ ${fmtCoins(o.cost)}</b>.
           ${o.thisSeason ? 'The builders are in — one expansion a season.'
@@ -908,6 +909,6 @@ function startMatchday(car) {
     duration: 90,
     homeSquad: mk(fx.home),
     awaySquad: mk(fx.away),
-    career: { isHome: fx.isHome, manager: { ...car.manager, look, height: car.manager.height || 182 }, morale: car.morale },
+    career: { isHome: fx.isHome, manager: { ...car.manager, look, height: car.manager.height || 182 }, morale: car.morale, week: car.week, weeks: car.fixtures?.length || 38 },
   });
 }

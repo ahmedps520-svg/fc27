@@ -17,7 +17,7 @@ import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './da
 import { getState, update } from './state.js';
 import { onCareer } from './progress.js';
 import * as v2 from './careerV2.js';
-import { bankGate } from './builder.js';
+import { bankGate, growOnPromotion } from './builder.js';
 import { supplyIndex, demandIndex, kindOf } from './economy.js';
 
 export { CAREER_CLUBS, REAL_MANAGERS };
@@ -266,6 +266,8 @@ function endSeason(car) {
     const myLeague = car.leagueOf[car.clubId];
     const other = myLeague.endsWith(' 2') ? v2.topOf(myLeague) : v2.tier2Of(myLeague);
     v2.seasonReviewV2(car, table, v2.syntheticOrder(car, other));
+    // up from the second tier: the ground grows with the club (v78)
+    if (myLeague.endsWith(' 2') && car.leagueOf[car.clubId] && !car.leagueOf[car.clubId].endsWith(' 2')) growOnPromotion(car);
     v2.developSquads(car);
     v2.refillYouth(car);
   }

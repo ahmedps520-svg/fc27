@@ -193,7 +193,7 @@ export function clubSheet(club) {
 export function matchSquad(club) {
   const { xi, bench } = clubSquad(club);
   return {
-    id: club.id, name: club.name, short: club.short, colors: club.colors,
+    id: club.id, name: club.name, short: club.short, colors: club.colors, country: club.country,
     crest: { shape: club.shape || 'shield', pattern: 'solid', device: 'star', colors: club.colors },
     xi, bench, rating: clubSheet(club).overall,
   };

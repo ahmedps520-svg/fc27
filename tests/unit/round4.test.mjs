@@ -16,7 +16,7 @@ test('every club has its own ground and the definitions are sound', () => {
     assert.ok(['stripes', 'checks', 'diagonal', 'rings', 'plain'].includes(s.pattern), `${s.id} pattern`);
     assert.ok(['lattice', 'mast', 'rim'].includes(s.pylons), `${s.id} pylons`);
     assert.equal(s.seats.length, 2);
-    assert.ok(s.capacity > 4000 && s.fill > 0 && s.fill <= 1);
+    assert.ok(s.capacity >= 1000 && s.fill > 0 && s.fill <= 1);   // v78: community grounds hold 1,200 and up
   }
   const seen = new Set();
   for (const c of WORLD.clubs) {
