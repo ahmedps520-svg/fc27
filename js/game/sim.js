@@ -170,6 +170,24 @@ function attributesOf(ref) {
   };
 }
 
+/**
+ * How hard this player goes in, 0..1.
+ *
+ * Physicality and a defender's instinct push it up; the touch that lets
+ * someone take the ball instead of the man pulls it down. Seeded off the
+ * card's own id so a given footballer is the same nuisance in every match,
+ * rather than a coin flip per kick-off.
+ */
+function aggressionOf(ref) {
+  const st = ref.stats;
+  const base = (st.physical * 0.5 + st.defending * 0.5 - st.dribbling * 0.35) / 100;
+  const back = ['CB', 'LB', 'RB', 'CDM'].includes(ref.position) ? 0.16 : ref.position === 'GK' ? -0.4 : 0;
+  // a stable per-player wobble, so two identical centre-halves are not identical
+  let h = 2166136261;
+  for (const ch of String(ref.id || ref.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return clamp(base + back + ((h % 1000) / 1000 - 0.5) * 0.24, 0.02, 1);
+}
+
 function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
   const xi = custom?.xi?.length === 11 ? custom.xi : pickXI(clubId);
@@ -186,6 +204,14 @@ function makeTeam(clubId, side, isHuman, custom = null) {
       ...attributesOf(ref),
       touchLock: 0, stumble: 0, holdT: 0, slide: 0, diveT: 0, diveDir: 0,
       skillT: 0, injured: false, runUntil: 0,
+      /* How willing this one is to fly in. A physical, defensive-minded player
+         with little composure will lunge from further out and more often than
+         a technician will — and a lunge from further out is exactly what the
+         referee books people for (see `tackle`). Seeded off the card, so the
+         same footballer is the same nuisance every match. */
+      aggression: aggressionOf(ref),
+      downT: 0,          // seconds spent on the grass after being fouled
+      cards: 0,          // yellows
     };
   });
 
@@ -273,6 +299,7 @@ export class Match {
     this.setPiece = null;
     this.injuries = [];          // { team, name, minute }
     this.fouls = [0, 0];
+    this.bookings = [];          // { team, name, minute } — yellows
     this.lastOwnerTeam = null;
     this.kickoffSide = 1;
     this.resetPositions(0);
@@ -311,6 +338,19 @@ export class Match {
    * floor is the baseline the match was created with: cruising cannot make the
    * opposition worse than the division it belongs to.
    */
+  /**
+   * This player's appetite for a challenge right now: his own temperament,
+   * lifted by a side that is behind and running out of match, and dropped
+   * hard by a booking — a man on a yellow keeps his feet.
+   */
+  aggressionOf(p) {
+    const behind = this.teams[1 - p.team].score - this.teams[p.team].score;
+    const late = Math.min(1, this.t / Math.max(1, this.duration));
+    const chase = behind > 0 ? Math.min(0.3, behind * 0.1) * (0.35 + late) : 0;
+    const booked = p.cards > 0 ? 0.5 : 1;
+    return clamp((p.aggression + chase) * booked, 0, 1);
+  }
+
   aiSkillFor(team) {
     /* Manager Career: nobody holds a stick, but one side has a manager on the
      * touchline whose team performance meter is allowed to move the needle —
@@ -376,7 +416,7 @@ export class Match {
         p.x = p.sx * PITCH.w;
         p.y = p.sy * PITCH.h;
         p.vx = p.vy = 0;
-        p.touchLock = p.stumble = p.holdT = p.slide = 0;
+        p.touchLock = p.stumble = p.holdT = p.slide = p.downT = 0;
         p.celebrating = false;
         p.diveT = 0;
       }
@@ -414,6 +454,14 @@ export class Match {
   /* ------------------------------ update ----------------------------- */
   update(dt, input) {
     if (this.phase === 'end') return;
+    /* Anyone on the grass gets up on his own clock, not the phase's. A foul
+     * puts the game into a set piece immediately, so a timer that only ran
+     * during play would leave him lying there through the whole free kick. */
+    for (const team of this.teams) {
+      for (const p of team.players) {
+        if (p.downT > 0) { p.downT = Math.max(0, p.downT - dt); p.vx *= 0.82; p.vy *= 0.82; }
+      }
+    }
 
     const seats = Array.isArray(input) ? input : [input];
 
@@ -596,7 +644,7 @@ export class Match {
     team.bench[benchIdx] = p.ref;      // the man coming off takes the seat
     p.ref = incoming;
     Object.assign(p, attributesOf(incoming));
-    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.diveT = 0; p.injured = false; p.skillT = 0; p.spinT = 0; p.burst = null; p.skillKind = null;
+    p.touchLock = 0; p.stumble = 0; p.slide = 0; p.downT = 0; p.diveT = 0; p.injured = false; p.skillT = 0; p.spinT = 0; p.burst = null; p.skillKind = null;
     team.subsLeft -= 1;
     this.cue('whistle');
     return true;
@@ -647,7 +695,7 @@ export class Match {
   }
 
   drive(p, dx, dy, dt, factor = 1) {
-    if (p.slide > 0) return;
+    if (p.slide > 0 || p.downT > 0) return;
     const m = Math.hypot(dx, dy);
     const tired = 0.82 + p.stamina * 0.18;
     const speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.45 : 1);
@@ -1620,14 +1668,27 @@ export class Match {
        * sits well inside REACH and so was living in the upper half of `frac`
        * more often than assumed. This constant was picked to bring it back to
        * the same ballpark rather than quietly double the penalty count. */
-      const chance = 0.21 * frac * frac;
+      /* A rash player fouls; a composed one mistimes it and stands there
+       * looking foolish. `0.21` was the flat rate before aggression existed
+       * and is kept as the middle of the new range, so the match-wide foul
+       * count is in the same place while *who* gives them away changes. */
+      const chance = (0.1 + 0.28 * this.aggressionOf(p)) * frac * frac;
       if (Math.random() < chance) {
         this.fouls[p.team] += 1;
         this.cue('foul', p);
+        /* The man goes down — properly down, flat on the grass, for a second
+         * or two while play stops and he gets up. It is the thing that makes
+         * a foul read as a foul rather than as a turnover with a noise. */
+        owner.downT = 1.1 + frac * 0.9;
+        owner.downMax = owner.downT;          // the renderers read both to time the fall and the get-up
+        owner.vx = p.dirX * 3.4; owner.vy = p.dirY * 3.4;     // knocked the way the challenge came in
+        owner.stumble = Math.max(owner.stumble, owner.downT + 0.5);
         /* A foul can hurt. One in eight leaves the fouled man limping for the
          * rest of the match — slower, less accurate, a candidate for the next
          * substitution — and the career keeps him out for weeks. */
         if (!owner.injured && Math.random() < 0.125) this.injure(owner);
+        // the lunge from distance is the bookable one
+        if (frac > 0.82 && p.cards < 1) { p.cards += 1; this.cue('card', p); this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() }); }
         if (this.inPenaltyArea(owner, p.team)) this.awardPenalty(1 - p.team, p);
         else this.awardFreeKick(1 - p.team, owner, p);
       }
@@ -2038,8 +2099,16 @@ export class Match {
     // ---- pressing the ball -------------------------------------------------
     if (!weHave && (isChaser || (!b.owner && dist(p, b) < 14 * press))) {
       this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
-      if (b.owner && b.owner.team !== p.team && dist(p, b.owner) < 2.4) {
-        if (Math.random() < 1.1 * this.aiSkillFor(p.team) * press * dt) this.tackle(p);
+      /* Going in. How close they insist on being before they commit, and how
+         often they commit at all, is the player's own aggression lifted by
+         how badly the side is chasing the game — a centre-half 2-0 down with
+         ten minutes left will fly into things he would have stood up in the
+         first half. A lunge from the edge of that range is the one that
+         takes the man (see `tackle`), so a nasty side gives away fouls. */
+      const agg = this.aggressionOf(p);
+      const commit = 1.9 + agg * 1.5;                      // 1.9 m composed, 3.4 m rash
+      if (b.owner && b.owner.team !== p.team && dist(p, b.owner) < commit) {
+        if (Math.random() < (0.75 + agg * 1.4) * this.aiSkillFor(p.team) * press * dt) this.tackle(p);
       }
       return;
     }

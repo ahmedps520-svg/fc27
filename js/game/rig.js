@@ -175,6 +175,7 @@ export function buildFor(ref, role) {
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
   if (p.diveT > 0) { poseDive(rig, p, fine); return; }
+  if (p.downT > 0) { poseDown(rig, p); return; }
   // the roulette: the whole figure turns once through the move (sim.js skillMove)
   rig.grp.rotation.set(0, 0, p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0);
   const b = rig.build || { height: 1, girth: 1, shoulders: 1 };
@@ -292,6 +293,93 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   parts.mouth.rotation.set(0, 0, face);
   parts.mouth.scale.set(0.012, 0.022, 0.006 + shout * 0.02);
   parts.eyeL.visible = fine; parts.eyeR.visible = fine; parts.mouth.visible = fine;
+}
+
+/**
+ * Fouled: flat on the grass.
+ *
+ * The figure goes down the way the challenge sent it — face down along its own
+ * facing — holds there while the referee walks over, then pushes itself up in
+ * the last third of the timer. Built out of the same segment helpers as the
+ * dive, so it lies on the turf rather than sinking through it.
+ */
+export function poseDown(rig, p) {
+  const { parts } = rig;
+  const T = Math.max(0.001, p.downMax || 1.6);
+  // 0 at the moment of impact, 1 when he is back on his feet
+  const t = 1 - Math.max(0, Math.min(1, p.downT / T));
+  const fall = Math.min(1, t * 6);                    // hits the deck fast
+  const rise = Math.max(0, (t - 0.72) / 0.28);        // and pushes himself up at the end
+  const flat = Math.max(0, fall - rise);              // 1 = lying down, 0 = upright
+  const b = rig.build || { height: 1, girth: 1, shoulders: 1 };
+  const H = b.height; const G = b.girth;
+  const cos = p.dirX; const sin = p.dirY;
+  const face = Math.atan2(sin, cos);
+  rig.grp.rotation.set(0, 0, 0);
+
+  // a point `d` metres in front of him and `l` metres to his left
+  const at = (d, l = 0) => [p.x + cos * d - sin * l, p.y + sin * d + cos * l];
+  const up = (z) => z * (1 - flat) + 0.16 * flat;     // every height collapses to the turf
+
+  const hipZ = up(HIP_Z * H * 0.9);
+  const shZ = up(SHOULDER_Z * H * 0.95);
+  const [hxx, hyy] = at(-0.3 * flat);
+  const [sxx, syy] = at(0.34 * flat);
+
+  ovalSegment(parts.hips, hxx, hyy, hipZ, ...at(-0.2 * flat), hipZ + 0.08 * (1 - flat), HIPS_W * G, HIPS_D * G, face, 1);
+  ovalSegment(parts.torso, hxx, hyy, hipZ, sxx, syy, shZ + 0.02, CHEST_W * b.shoulders * G, CHEST_D * G, face, 1);
+  parts.shoulder.position.set(sxx, syy, shZ);
+  parts.shoulder.rotation.set(0, 0, face);
+  parts.shoulder.scale.set(CHEST_W * b.shoulders * G, CHEST_D * G, 0.075);
+
+  const [nx, ny] = at(0.5 * flat);
+  segment(parts.neck, sxx, syy, shZ, nx, ny, up(SHOULDER_Z * H + 0.1), 0.046);
+  const [hdx, hdy] = at(0.62 * flat);
+  const headZ = up(SHOULDER_Z * H + 0.18);
+  parts.head.position.set(hdx, hdy, headZ);
+  parts.head.rotation.set(0, 0, face);
+  parts.head.scale.set(0.098, 0.092, 0.112);
+  parts.hair.position.set(hdx, hdy, headZ + 0.03 * (1 - flat) + 0.02);
+  parts.hair.rotation.set(0, 0, face);
+  parts.hair.scale.set(0.1, 0.094, 0.088);
+  // a face pressed into the grass is not worth three draw calls
+  for (const k of ['eyeL', 'eyeR', 'mouth']) if (parts[k]) parts[k].visible = flat < 0.5 && parts[k].visible !== false;
+
+  // legs trailing behind, gathered under him as he gets up
+  for (const [thigh, shin, knee, foot, side] of [
+    [parts.thighL, parts.shinL, parts.kneeL, parts.footL, 1],
+    [parts.thighR, parts.shinR, parts.kneeR, parts.footR, -1]]) {
+    const lat = side * 0.1;
+    const [kx, ky] = at(-0.62 * flat, lat + side * 0.06 * flat);
+    const kneeZ = up((HIP_Z - THIGH) * H);
+    segment(thigh, ...at(-0.3 * flat, lat), hipZ, kx, ky, kneeZ, 0.082 * G);
+    knee.position.set(kx, ky, kneeZ);
+    knee.scale.setScalar(0.062 * G);
+    const [fx, fy] = at(-0.98 * flat, lat + side * 0.1 * flat);
+    const ankZ = up(0.12);
+    segment(shin, kx, ky, kneeZ, fx, fy, ankZ, 0.062 * G);
+    foot.position.set(fx, fy, Math.max(0.035, ankZ - 0.03));
+    foot.rotation.set(0, 0, face);
+    foot.scale.set(0.23, 0.1, 0.07);
+  }
+
+  // arms out in front, breaking the fall and then pushing him back up
+  for (const [arm, fore, hand, sleeve, side] of [
+    [parts.armL, parts.foreL, parts.handL, parts.sleeveL, 1],
+    [parts.armR, parts.foreR, parts.handR, parts.sleeveR, -1]]) {
+    const lat = side * 0.2;
+    const [ex, ey] = at(0.26 * flat, lat + side * 0.06);
+    const elbZ = up((SHOULDER_Z - 0.3) * H);
+    segment(arm, ...at(0.1 * flat, lat), shZ, ex, ey, elbZ, 0.05 * G);
+    sleeve.position.set(...at(0.16 * flat, lat + side * 0.03), (shZ + elbZ) / 2);
+    sleeve.rotation.set(0, 0, face);
+    sleeve.scale.set(0.055 * G, 0.055 * G, 0.16);
+    const [wx2, wy2] = at(0.62 * flat, lat + side * 0.1);
+    const wristZ = up(0.28) * (1 - rise) + up((SHOULDER_Z - 0.55) * H) * rise;
+    segment(fore, ex, ey, elbZ, wx2, wy2, wristZ, 0.044 * G);
+    hand.position.set(wx2, wy2, wristZ);
+    hand.scale.setScalar(0.05 * G);
+  }
 }
 
 /**
