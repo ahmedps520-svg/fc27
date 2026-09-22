@@ -15,6 +15,76 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v77 — cameras and bug bash (Round 7)
+**Sweep re-baselined deliberately** (seed 12345: goals 2.15 → 2.12, conversion
+16.6 % → 16.3 %; seed 777: goals 2.10 → 2.05) — the posts are now solid
+(swept collision), so shots that used to pass through a post now rebound.
+- **Camera rig** (`js/game/camera.js`, new): presets `broadcast` (default),
+  `tele`, `coop`, `dynamic`, `pro`, `e2e`, `tactical`; settings
+  `{preset, height 0.6–1.6, zoom 0.7–1.4, angle −15..15}` saved in
+  `settings.camera` (`cameraSettings()` clamps). `smoothDamp` is the closed
+  form critically damped spring (no overshoot); focus has look-ahead (ball
+  velocity + 4.5 m towards the attacked goal) and a dead-zone box; auto zoom
+  from the 8th-nearest player to the ball. Dynamic/Pro follow the
+  controlled player through their own 0.35 s spring (a switch of player
+  used to teleport the camera 6.5 m in a frame); body speed capped 45 m/s.
+  Modes play / kickoff / corner / freekick / penalty / throwin / goalkick /
+  celebrate; a mode change lengthens the springs for ~1.1 s (the blend).
+  Celebration orbits `m.celebrant` from the current bearing.
+  `directReplay(clip)` picks 2–3 passes from 0 pitchside, 1 behind goal,
+  2 aerial, 3 reverse, 4 goal-line, 5 keeper's eye (`render3d.replayAngle`).
+  `window.__apexCam` exposes the rig (`modeTime` is match seconds in the
+  current mode — the regression shots wait on it, not the wall clock).
+- **Collision**: `venueBounds(def)` + `collideCamera` — stand faces are
+  full-height walls (convex legal space: a camera allowed over a small
+  stand's roof snapped 25 m when it came back down), goal volume exited
+  through the nearest face, near-side boards z ≥ 1.6, z ≥ 0.35. Photo mode,
+  the half-time orbit and replays go through it too.
+- **UI**: Settings camera segment + three sliders + reset; match HUD 🎥
+  button and the V key cycle presets with a toast.
+- **Bugs found and fixed**:
+  1. Ball through the post (`sim.js hitFrame`): sampled test vs a 44 cm band
+     at 0.3–1.2 m/frame, and the goal line judged 40 cm short of the post →
+     dead-centre shots passed through, shots overlapping the post by ≤15 cm
+     scored without touching it. Now swept along last→current position
+     (`b.px/py/pz`, extended to the line when the frame crosses it).
+  2. Phantom crossbar: any ball at bar height within 1.4 m in front of the
+     goal bounced down. Now only a path crossing the goal line.
+  3. v76 crown buried ball/players/tufts by up to 25 cm mid-pitch and lifted
+     the goal mouth 16 cm up the posts: `surfaceAt(x,y)` in renderGL lifts
+     ball, procedural rigs (`rig.groundZ`), GLB roots, tufts, markers; the
+     crown tapers to 0 over the last 9 m before each goal line.
+  4. Roulette (`rig.js`): the group was rotated about the world origin, so
+     the figure swung across the pitch for 0.7 s. Now pivots on the player.
+  5. The controlled-player marker showed over goal celebrations, half/full
+     time and replays.
+  6. Small phones: grid `1fr` tracks grew to content width, so Today,
+     Weekend League, Kick Off, the builder and the menu rail ran off 320–390
+     px screens; the Ultimate XI dock overflowed at 320 px.
+  7. RTL: `[dir=rtl] .hub` two-column rule outranked the phone layout and
+     pushed Arabic players' menu tiles off the left edge (now ≥761 px only).
+  8. Save: a save with a non-array collection/line-up crashed at start (the
+     repair ran outside the try); cloud saves skipped the objectives/bench/
+     SBC/Light-figures repairs (`repairSave()` now shared); the WebGPU
+     renderer choice is now per device like quality.
+  9. CI: the Ultra black-patch scan timed out on v76 (screenshots past 30 s
+     on SwiftShader) — fixed on main as a hotfix; the scan was clean.
+- **Found, not changed (Round 9)**: AI play almost never puts the ball out
+  for a throw-in (0 in 4 matches, v75 too) and goal kicks are rare; passes
+  target 4 m inside the lines and players clamp at 0.5 m. Restarts are
+  correct when they happen (directed test). Changing it moves the balance,
+  so it belongs to the gameplay round.
+- **Tests**: `tests/unit/camera.test.mjs` (spring, collision, director,
+  every preset × every ground incl. custom min/max, 150 s AI match each, no
+  frame jump > 2.5 m); `tests/unit/sim-invariants.test.mjs` (8 seeded AI
+  matches, every-frame invariants + directed restarts); two new state tests.
+  `tests/visual/camera-shots.mjs` (7 presets + 5 set pieces × forge,
+  bramble: not black, pitch share, rig mode) and `tests/visual/layout-scan.mjs`
+  (12 screens × 320/375/390 × en/ar: sideways scroll, off-edge, overlapping
+  buttons) run in CI and upload screenshots as the `visual-regression`
+  artifact. `tests/visual/venue-matrix.mjs` walks all 112 grounds rotating
+  tier × time × weather (too slow for CI; run by hand).
+
 ### v76 — pitch depth, goals and nets, aggressive AI
 **Sweep re-baselined deliberately** (seed 12345: goals 2.13 → 2.15, shots
 12.30 → 12.93, on target 9.58 → 9.90, conversion 17.3 % → 16.6 %) — the AI

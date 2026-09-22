@@ -10880,7 +10880,7 @@
         }
         b.curl *= Math.pow(0.5, dt), b.z <= 0 && (b.curl = 0);
       }
-      b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * 0.42, b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
+      b.px = b.x, b.py = b.y, b.pz = b.z, b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * 0.42, b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
       let damp = Math.pow(b.z > 0.4 ? 0.9985 : 0.986, dt * 60);
       if (b.vx *= damp, b.vy *= damp, b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5 && (b.vx = 0, b.vy = 0), b.noTouch = Math.max(0, (b.noTouch || 0) - dt), b.noTouch > 0) {
         this.bounds();
@@ -10924,20 +10924,42 @@
      * into play instead of sailing through.
      */
     hitFrame() {
-      let b = this.ball, R = 0.11 + 0.11;
-      for (let gx of [0, PITCH.w])
-        if (!(Math.abs(b.x - gx) > 1.4)) {
-          for (let py of [CY - GOAL_HALF, CY + GOAL_HALF]) {
-            if (b.z > GOAL_HEIGHT + 0.1) continue;
-            let dx = b.x - gx, dy = b.y - py, d2 = Math.hypot(dx, dy);
-            if (d2 > R || d2 < 1e-4) continue;
-            let nx = dx / d2, ny = dy / d2, vn = b.vx * nx + b.vy * ny;
-            if (!(vn > 0))
-              return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R + 0.01), b.y = py + ny * (R + 0.01), b.curl = 0, b.shotBy = null, this.cue("post"), !0;
-          }
-          if (Math.abs(b.y - CY) < GOAL_HALF + 0.2 && Math.abs(b.z - GOAL_HEIGHT) < 0.22 && b.vz > -40)
-            return b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.z = GOAL_HEIGHT - 0.24, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+      let b = this.ball, R = 0.11 + 0.11, px = Number.isFinite(b.px) ? b.px : b.x, py0 = Number.isFinite(b.py) ? b.py : b.y, pz = Number.isFinite(b.pz) ? b.pz : b.z, ex = b.x, ey = b.y, ez = b.z, jump = Math.hypot(ex - px, ey - py0), sx = jump > 4 ? ex : px, sy = jump > 4 ? ey : py0, sz = jump > 4 ? ez : pz;
+      for (let gx of [0, PITCH.w]) {
+        if (Math.abs(b.x - gx) > 2.6 && Math.abs(sx - gx) > 2.6) continue;
+        let inw = gx === 0 ? -1 : 1;
+        if ((ex - gx) * inw > -0.4 && (sx - gx) * inw < 0 && Math.abs(b.vx) > 0.01) {
+          let t = (gx + inw * 0.3 - sx) / (ex - sx || 1e-6);
+          t > 1 && (ex = sx + (ex - sx) * t, ey = sy + (ey - sy) * t, ez = sz + (ez - sz) * t);
         }
+        let dx = ex - sx, dy = ey - sy, L22 = dx * dx + dy * dy;
+        for (let py of [CY - GOAL_HALF, CY + GOAL_HALF]) {
+          let hx, hy, hz;
+          if (L22 < 1e-8) {
+            if (Math.hypot(ex - gx, ey - py) > R) continue;
+            hx = ex, hy = ey, hz = ez;
+          } else {
+            let fx = sx - gx, fy = sy - py, bq = 2 * (fx * dx + fy * dy), cq = fx * fx + fy * fy - R * R, t;
+            if (cq <= 0) t = 0;
+            else {
+              let disc = bq * bq - 4 * L22 * cq;
+              if (disc < 0 || (t = (-bq - Math.sqrt(disc)) / (2 * L22), t < 0 || t > 1)) continue;
+            }
+            hx = sx + dx * t, hy = sy + dy * t, hz = sz + (ez - sz) * t;
+          }
+          if (hz > GOAL_HEIGHT + 0.1) continue;
+          let nx = hx - gx, ny = hy - py, d2 = Math.hypot(nx, ny);
+          d2 < 1e-4 ? (nx = -inw, ny = 0) : (nx /= d2, ny /= d2);
+          let vn = b.vx * nx + b.vy * ny;
+          if (!(vn > 0))
+            return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R + 0.01), b.y = py + ny * (R + 0.01), b.z = Math.max(0, hz), b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+        }
+        if ((sx - gx) * inw < R && (ex - gx) * inw > -R) {
+          let tx = Math.abs(ex - sx) > 1e-6 ? clamp2((gx - sx) / (ex - sx), 0, 1) : 1, cy = sy + (ey - sy) * tx, cz = sz + (ez - sz) * tx;
+          if (Math.abs(cy - CY) < GOAL_HALF + 0.2 && Math.abs(cz - GOAL_HEIGHT) < 0.22 && b.vz > -40)
+            return b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.x = gx - inw * (R + 0.02), b.y = cy, b.z = GOAL_HEIGHT - 0.24, b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+        }
+      }
       return !1;
     }
     bounds() {

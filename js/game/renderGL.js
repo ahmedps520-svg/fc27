@@ -1127,6 +1127,11 @@ export function createRenderer(canvas, match, quality, models = false) {
   const segX = potato ? 1 : lo ? 52 : med ? 105 : 210;
   const segY = potato ? 1 : lo ? 34 : med ? 68 : 136;
   const turfGeo = new THREE.PlaneGeometry(PITCH.w, PITCH.h, segX, segY);
+  /* The height of the turf at a point on the pitch, so the ball, the players,
+     the goals and the markers stand on the crowned surface instead of inside
+     it (v77: the v76 crown buried the ball by up to a quarter of a metre in
+     the middle of the pitch). Flat at 0 on the potato tier. */
+  let surfaceAt = () => 0;
   if (!potato) {
     const pos = turfGeo.attributes.position;
     const nz = mulberry(venueSeed ^ 0x9ea55);
@@ -1142,11 +1147,14 @@ export function createRenderer(canvas, match, quality, models = false) {
       return (h(x0, y0) * (1 - sx) + h(x0 + 1, y0) * sx) * (1 - sy)
            + (h(x0, y0 + 1) * (1 - sx) + h(x0 + 1, y0 + 1) * sx) * sy;
     };
+    const endTaper = (x) => { const e = Math.min(1, Math.min(x, PITCH.w - x) / 9); return e * e * (3 - 2 * e); };
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i) + PITCH.w / 2;
       const y = pos.getY(i) + PITCH.h / 2;
       // the crown: 9 cm up the middle, tapering to nothing at the touchlines
-      const crown = Math.cos(((y / PITCH.h) - 0.5) * Math.PI) * 0.16;
+      /* tapered away over the last 9 m before each goal line (v77), so the
+         goal mouth sits level with the frame instead of 16 cm up it */
+      const crown = Math.cos(((y / PITCH.h) - 0.5) * Math.PI) * 0.16 * endTaper(x);
       const undulate = at(x, y, 0.045) * 0.055 + at(x, y, 0.12) * 0.022 + at(x, y, 0.4) * 0.008;
       /* Lifted clear of the apron. The undulation is signed, so without this
          the hollows dipped under the dark surround plane and it showed
@@ -1154,6 +1162,11 @@ export function createRenderer(canvas, match, quality, models = false) {
          exactly what it looked like. */
       pos.setZ(i, 0.09 + crown + undulate);
     }
+    surfaceAt = (x, y) => {
+      if (x < 0 || x > PITCH.w || y < 0 || y > PITCH.h) return 0;
+      const crown = Math.cos(((y / PITCH.h) - 0.5) * Math.PI) * 0.16 * endTaper(x);
+      return 0.09 + crown + at(x, y, 0.045) * 0.055 + at(x, y, 0.12) * 0.022 + at(x, y, 0.4) * 0.008;
+    };
     turfGeo.computeVertexNormals();
   }
 
@@ -1327,7 +1340,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     for (let i = 0; i < N; i++) {
       const x = tr() * PITCH.w;
       const y = tr() * PITCH.h;
-      d3.position.set(x, y, 0.09);
+      d3.position.set(x, y, surfaceAt(x, y));
       d3.rotation.set(0, 0, tr() * Math.PI);
       d3.scale.setScalar(0.75 + tr() * 0.6);
       d3.updateMatrix();
@@ -3264,12 +3277,13 @@ export function createRenderer(canvas, match, quality, models = false) {
         for (const p of m.teams[t].players) {
           if (useModels) {
             const rig = modelRigs.get(p);
-            if (rig) poseRig(rig, p, dt);
+            if (rig) { poseRig(rig, p, dt); rig.root.position.z += surfaceAt(p.x, p.y); }
             continue;
           }
           const rig = rigs.get(p);
           if (!rig) continue;
           p._phase = (p._phase || 0) + Math.hypot(p.vx, p.vy) * dt * 2.4;
+          rig.groundZ = surfaceAt(p.x, p.y);
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
       }
@@ -3322,7 +3336,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         cine.setFocus(focusDist);
       }
 
-      ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19);
+      ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19 + surfaceAt(m.ball.x, m.ball.y));
       // Roll it. Angular speed is v/r about the axis perpendicular to travel,
       // so the ball visibly spins along the ground instead of sliding.
       {
@@ -3358,8 +3372,11 @@ export function createRenderer(canvas, match, quality, models = false) {
       const acts = m.actives || (m.active ? [m.active] : []);
       markers.forEach((mk, i) => {
         const p = acts[i];
-        mk.visible = !!p;
-        if (p) mk.position.set(p.x, p.y, 2.6);
+        // not over the celebration, the half-time and full-time shots, or a replay
+        // ...nor from a close camera (Pro, a penalty, a free kick at goal), where it is a white slab in the shot
+        const near = p && Math.hypot(cam.x - p.x, cam.y - p.y, cam.z) < 16;
+        mk.visible = !!p && !near && m.phase !== 'goal' && m.phase !== 'half' && m.phase !== 'end' && !replayMode;
+        if (p) mk.position.set(p.x, p.y, 2.6 + surfaceAt(p.x, p.y));
       });
 
       if (contextLost) return;

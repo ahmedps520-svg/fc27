@@ -4150,9 +4150,14 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 html.large-text { font-size: 118%; }
 html.large-text .tile-name { font-size: 27px; }
 [dir="rtl"] { text-align: right; }
-[dir="rtl"] .hub { grid-template-columns: 1fr 128px; }
-[dir="rtl"] .hub-rail { order: 2; }
-[dir="rtl"] .hub-main { order: 1; }
+/* the side rail only exists beside the main doors on a wide screen; on a phone
+   the hub is one column in either direction (v77: this rule outranked the
+   phone layout and pushed Arabic players' mini tiles off the left edge) */
+@media (min-width: 761px) {
+  [dir="rtl"] .hub { grid-template-columns: 1fr 128px; }
+  [dir="rtl"] .hub-rail { order: 2; }
+  [dir="rtl"] .hub-main { order: 1; }
+}
 [dir="rtl"] .tile-swoosh { transform: scaleX(-1); }
 [dir="rtl"] .menu-hero { right: auto; left: -6px; }
 @media (min-width: 1000px) { [dir="rtl"] .menu-wordmark, [dir="rtl"] .hub { margin-right: 0; margin-left: 250px; } [dir="rtl"] .menu-hero { right: auto; left: -10px; } }
@@ -4339,7 +4344,40 @@ html.large-text .tile-name { font-size: 27px; }
 .dev-dot:hover { color: var(--text-dim); }
 
 /* ------------------------- Kick Off by country ------------------------- */
-.ts-country { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.ts-country { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; width: 100%; max-width: 330px; min-width: 0; }
 .ts-country .ts-flag { display: inline-flex; flex: none; }
 .ts-select { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: inherit; font: inherit; font-weight: 700; }
 .ts-rail { flex-wrap: wrap; }
+
+/* ------------------------------ camera settings ------------------------------ */
+.cam-seg { flex-wrap: wrap; }
+.cam-sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 18px; align-items: end; }
+.cam-sliders label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-dim); }
+.cam-sliders label span { display: flex; justify-content: space-between; }
+.cam-sliders label b { color: var(--text); font-family: var(--font-num); }
+.cam-sliders input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+/* ---- v77: nothing wider than the phone ----
+   A grid track of 1fr is at least as wide as its widest child's content, so a
+   nowrap line or a fixed-size card inside a panel made the whole column wider
+   than a 320–390 px screen and the panel's right edge (the left in Arabic)
+   fell off it. Letting the children shrink puts the wrapping back where it
+   belongs, inside the panel. */
+.hub > *, .hub-main > *, .today > *, .teamsel > *, .wl > *, .builder > * { min-width: 0; }
+.today > .panel, .wl > .panel { max-width: 100%; }
+@media (max-width: 760px) {
+  .hub-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+  .hub-rail .tile { min-width: 0; }
+  .hub-rail .tile.t-mini { padding-left: 4px; padding-right: 4px; }
+  .hub-rail .t-mini .tile-name { font-size: clamp(10.5px, 3.2vw, 13.5px); overflow-wrap: normal; word-break: normal; }
+}
+/* Kick Off: the team card column is the side's width, never its content's —
+   on a 320 px phone the country arrows were clipped at both edges */
+.ts-side > div { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.ts-card { min-width: 0; }
+/* the Ultimate XI dock: six labels have to fit a 320 px phone */
+.tab { min-width: 0; }
+@media (max-width: 380px) {
+  .tabs { padding-left: 4px; padding-right: 4px; gap: 0; }
+  .tab { font-size: 8.5px; letter-spacing: .01em; padding-left: 1px; padding-right: 1px; }
+}

@@ -202,16 +202,37 @@ export function loadState() {
   } catch {
     state = defaults();
   }
-  // the Light figures option is gone (v73): every save gets the scanned models
-  if (state.settings.models === 'simple') state.settings.models = 'realistic';
-  // A save from an older world could reference ids that no longer exist.
-  if (!Array.isArray(state.club.packs)) state.club.packs = [];
-  if (!Array.isArray(state.club.bench)) state.club.bench = Array(5).fill(null);
-  if (!Array.isArray(state.club.challengesDone)) state.club.challengesDone = [];
-  state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
-  state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
-  state.club.bench = state.club.bench.map((id) => (id && WORLD.playersById[id] ? id : null));
+  repairSave(state);
   return state;
+}
+
+/**
+ * What every save goes through however it arrived — from this device or from
+ * the cloud (v77: a cloud save skipped all of this, so a save written by an
+ * older build could bring back the old objectives or the Light figures, and a
+ * save with a damaged collection or line-up crashed the game on start because
+ * this ran outside the guard).
+ */
+function repairSave(s) {
+  const d = defaults();
+  for (const k of ['settings', 'club', 'flags']) if (!s[k] || typeof s[k] !== 'object') s[k] = d[k];
+  // the Light figures option is gone (v73): every save gets the scanned models
+  if (s.settings.models === 'simple') s.settings.models = 'realistic';
+  if (!Array.isArray(s.ultimate?.objectives) || !s.ultimate.objectives.every((o) => o && o.metric)) {
+    s.ultimate.objectives = freshObjectives();
+    s.ultimate.objClaimed = [];
+    s.ultimate.objRefresh = Date.now() + REFRESH_MS;
+  }
+  if (!Array.isArray(s.ultimate.objClaimed)) s.ultimate.objClaimed = [];
+  // A save from an older world could reference ids that no longer exist.
+  if (!Array.isArray(s.club.packs)) s.club.packs = [];
+  if (!Array.isArray(s.club.bench)) s.club.bench = Array(5).fill(null);
+  if (!Array.isArray(s.club.challengesDone)) s.club.challengesDone = [];
+  if (!Array.isArray(s.club.collection)) s.club.collection = [...d.club.collection];
+  if (!Array.isArray(s.club.lineup)) s.club.lineup = [...d.club.lineup];
+  s.club.collection = s.club.collection.filter((id) => WORLD.playersById[id]);
+  s.club.lineup = s.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
+  s.club.bench = s.club.bench.map((id) => (id && WORLD.playersById[id] ? id : null));
 }
 
 /**
@@ -255,22 +276,21 @@ export function adoptCloudSave(cloud) {
    * two that describe *this machine*. A phone that turned quality down did so
    * because it had to; adopting a desktop's Ultra on sign-in put it straight
    * back into the stutter the setting existed to escape. */
-  const device = { quality: state?.settings?.quality, models: state?.settings?.models };
+  const device = { quality: state?.settings?.quality, models: state?.settings?.models, renderer: state?.settings?.renderer };
   state = { ...defaults(), ...cloud };
   state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
   if (device.quality) state.settings.quality = device.quality;
   if (device.models) state.settings.models = device.models;
+  // WebGPU is a property of this browser too (v77)
+  state.settings.renderer = device.renderer;
   state.club = { ...defaults().club, ...(cloud.club || {}) };
   state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
   state.flags = { ...defaults().flags, ...(cloud.flags || {}) };
   state.meta = { ...(cloud.meta || {}) };
-  if (!Array.isArray(state.ultimate.objectives)) state.ultimate.objectives = freshObjectives();
   // a save pulled from the cloud may predate the wipe even when this device's
   // local copy did not
   applyReset(state);
-  if (!Array.isArray(state.club.packs)) state.club.packs = [];
-  state.club.collection = state.club.collection.filter((id) => WORLD.playersById[id]);
-  state.club.lineup = state.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
+  repairSave(state);
   try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
   return true;
 }
