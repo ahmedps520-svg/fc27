@@ -237,6 +237,22 @@ export function expand(car, position = null) {
   return { ok: true, boardPaid: offer.boardPays, capacity: GROUND_LEVELS[g.level].capacity };
 }
 
+/**
+ * v78: promotion grows the ground. Going up, the board puts in the next
+ * expansion free — on top of whatever the club buys itself — so a promoted
+ * club walks out in a bigger ground the next season, and the Career screen
+ * says so. Returns the new capacity, or null when there is nothing to grow.
+ */
+export function growOnPromotion(car) {
+  const g = { ...groundOf(car) };
+  if (g.level >= GROUND_LEVELS.length - 1) return null;
+  const from = GROUND_LEVELS[g.level].capacity;
+  g.level += 1;
+  g.promoted = { season: car.season, from, to: GROUND_LEVELS[g.level].capacity };
+  car.ground = g;
+  return g.promoted.to;
+}
+
 /** Bank a home gate (call inside `update`, on a home fixture). */
 export function bankGate(car) {
   const gate = gateIncome(car);

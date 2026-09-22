@@ -18,6 +18,44 @@
  */
 export const RELEASES = [
   {
+    version: 'v78',
+    date: '2026-09-22',
+    tag: 'Grounds',
+    title: 'Every ground a place: village recs to giant arenas, a pitch that lives through the season',
+    lede: 'Grounds now come in four kinds and each is built for what it is; the pitch has its own grass, mowing, wear, frost and snow; '
+        + 'the touchline has flags, dugouts, a tunnel and the people who work the match; the crowd has a proper away end, flags, scarves and flares; '
+        + 'and a new Grounds gallery lets you fly round all of them.',
+    entries: [
+      {
+        head: 'Four kinds of ground',
+        summary: 'Community grounds with one stand, a rail and a fence; town grounds with terraces and floodlight masts; modern bowls; and the giant arenas. Eight new community grounds, and a Career club\'s ground now grows when it is promoted.',
+        detail: 'Every ground has its own floodlights (a roof ring, four corner pylons, masts down the side or roof masts), its own goals '
+              + '(box, deep or stanchion), faces its own way so the sun and the stands\' shadows fall differently, and has the country outside it: '
+              + 'a skyline, suburbs, the coast, mountains or the desert.',
+      },
+      {
+        head: 'The pitch through a season',
+        summary: 'Grass length and density by ground, each club mows its own pattern, goalmouths wear to bare earth as the season goes on, slides tear divots, heavy rain leaves puddles, winter nights bring frost, and snow matches are played with an orange ball on cleared lines.',
+        detail: 'The lines fade a little on grounds that do not re-mark every week. Close up, the grass is now proper blades instead of flat cards.',
+      },
+      {
+        head: 'Round the pitch',
+        summary: 'Corner flags that move in the wind, dugouts and technical areas, the tunnel the teams walk out of, ballboys, stewards, photographers behind the goals and camera crews; at half-time the groundstaff come out and the sprinklers run.',
+        detail: 'The boards switch to a scrolling run in the home club\'s colours every so often and at every goal.',
+      },
+      {
+        head: 'The crowd',
+        summary: 'A proper away end with a gap of empty seats either side, flags and scarves in each side\'s colours, flares (smoke and light only) at a goal, songs that change with the score, groans at a near miss, boos at a foul, and sell-outs for the big games.',
+        detail: 'A small crowd leaves empty seats; a final or a clash of two strong sides fills the ground.',
+      },
+      {
+        head: 'The Grounds gallery',
+        summary: 'Every ground grouped by kind, with its capacity, the year it opened, its record crowd, floodlights, goals and mowing — and a Fly camera to tour it: drag to look, scroll or pinch to move, WASD on a keyboard. Day, dusk, night, rain, snow and a winter-night frost.',
+        detail: 'The history is invented, like the grounds themselves.',
+      },
+    ],
+  },
+  {
     version: 'v77',
     date: '2026-09-22',
     tag: 'Cameras',

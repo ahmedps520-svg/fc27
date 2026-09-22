@@ -12,6 +12,7 @@ import { settleDivisionMatch } from '../ultimate.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
+import { groundProfile } from '../data/grounds.js';
 import { stadiumFor, STADIUM_BY_ID, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
@@ -87,7 +88,7 @@ function venueOf(params) {
      the ground its blueprint names. */
   const sq = params.homeSquad;
   const home = sq?.name
-    ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
+    ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, country: sq.country || null, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
     : getClub(params.homeId);
   const showpiece = !!(params.weekend || params.final || params.showpiece || params.online);
   /* Your own ground, when you built one (the Stadium Builder) and this is a
@@ -96,7 +97,9 @@ function venueOf(params) {
      online matches are still played at the arenas. */
   const car = params.career ? getState().career : null;
   // the career club has its own design (v73); Ultimate XI has yours
-  const design = car ? (car.ground?.design || null) : getState().club.stadium?.design;
+  // v78: a Career club always plays at home in its own ground — designed or the default — so every
+  // expansion, and every promotion, is a bigger ground on the next home match
+  const design = car ? (car.ground?.design || (params.career?.isHome ? {} : null)) : getState().club.stadium?.design;
   // yours whenever you are the home side and nothing else claims the venue: Ultimate XI, a
   // Career home game, or a Kick Off match with you on the home team (v74)
   const humanHome = params.mode !== 'career' && !params.online && (params.human ?? 0) === 0;
@@ -107,7 +110,17 @@ function venueOf(params) {
     : (params.venueId && STADIUM_BY_ID[params.venueId]) || stadiumFor(home, { showpiece });
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
-  const atmo = atmosphereFor(seed, params.atmo || {});
+  /* v78: where in the season this is. A Career match knows its week; any other
+     match is played on today's date, the season running August to May. It
+     decides the month (and so the chance of frost and snow) and how worn the
+     goalmouths already are. */
+  const now = new Date();
+  const frac = params.career?.week
+    ? Math.max(0, Math.min(1, (params.career.week - 1) / Math.max(1, (params.career.weeks || 38) - 1)))
+    : Math.max(0, Math.min(1, (((now.getMonth() + 12 - 7) % 12) + now.getDate() / 31) / 10));
+  const month = params.career?.week ? (7 + Math.floor(frac * 10)) % 12 : now.getMonth();
+  const profile = groundProfile(stadium, stadium.host || null);
+  const atmo = atmosphereFor(seed, params.atmo || {}, { month, warm: profile.landscape === 'desert' });
   /* A quarter of matches see the weather turn: rain arriving in a clear
      second half, or a wet first half clearing. Decided by the seed, so the
      same fixture on the same day turns the same way; never when the
@@ -117,7 +130,10 @@ function venueOf(params) {
     const h = hashStr(`turn|${seed}`);
     if ((h & 0xff) < 64) atmo.change = { minute: 30 + ((h >>> 8) % 45), to: atmo.weather === 'rain' ? 'clear' : 'rain' };
   }
-  return { stadium, atmo, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}` };
+  // a final, a showpiece, or two strong sides: the ground sells out
+  const strong = (s) => (s?.rating || 0) >= 84;
+  const bigGame = showpiece || !!params.final || (strong(params.homeSquad) && strong(params.awaySquad));
+  return { stadium, atmo, seasonWear: 0.08 + frac * 0.82, bigGame, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}${atmo.frost ? ' · Frost' : ''}` };
 }
 
 export function render(params) {
@@ -1757,6 +1773,11 @@ export function mount(root, params) {
         match.update(dt, inputs);
       }
       camRig.update(match, dt, cam);
+      // a slide just started tears a divot (v78; the renderer paints m.divots)
+      for (const tm of match.teams) for (const pl of tm.players) {
+        if (pl.slide > 0 && !pl._slid) { (match.divots ||= []).push({ x: pl.x, y: pl.y, a: Math.atan2(pl.dirY || 0, pl.dirX || 1) }); if (match.divots.length > 12) match.divots.shift(); }
+        pl._slid = pl.slide > 0;
+      }
       tickManager(dt);
       tickCamera(dt);
       match.basis = groundBasis(cam);
@@ -1773,6 +1794,11 @@ export function mount(root, params) {
       while (match.cues.length) {
         const c = match.cues.shift();
         sfx(c.name, c.arg);
+        if ((c.name === 'tackle' || c.name === 'foul') && c.arg && typeof c.arg === 'object' && Number.isFinite(c.arg.x)) {
+          (match.divots ||= []).push({ x: c.arg.x, y: c.arg.y, a: Math.atan2(c.arg.dirY || 0, c.arg.dirX || 1) });
+          if (match.divots.length > 12) match.divots.shift();
+        }
+        if (c.name === 'post' || c.name === 'save') match.crowdStir = 1; else if (c.name === 'shotWide' || c.name === 'foul') match.crowdStir = Math.max(match.crowdStir || 0, 0.6);
         // the scanned models play a kick, a slide or a header for these moments
         if (c.arg && typeof c.arg === 'object' && c.arg.ref) {
           const act = c.name === 'shot' || c.name === 'pass' || c.name === 'cross' || c.name === 'lob' ? 'kick'
@@ -1792,7 +1818,10 @@ export function mount(root, params) {
       chantT -= dt;
       if (chantT <= 0 && match.phase === 'play' && !paused && !replay) {
         chantT = 28 + Math.random() * 30;
-        chant(Math.random() < 0.45 ? 'clap' : 'hum', 0.35 + (1 - near) * 0.5);
+        // v78: what they sing follows the score, from the home end's point of view
+        const diff = match.teams[0].score - match.teams[1].score;
+        const song = diff > 0 ? (Math.random() < 0.7 ? 'winning' : 'clap') : diff < 0 ? (Math.random() < 0.6 ? 'losing' : 'hum') : (Math.random() < 0.5 ? 'level' : 'hum');
+        chant(song, 0.35 + (1 - near) * 0.5 + (Math.abs(diff) > 1 && diff > 0 ? 0.15 : 0));
       }
     }
 
@@ -1848,7 +1877,28 @@ export function mount(root, params) {
     if (walkout) {
       walkout.t += Math.min(0.25, raw);   // wall clock, so a slow device still walks out in seven seconds
       lineUp();
-      liveCam = walkoutCamera(showCam, walkout.t, walkout.dur);
+      /* v78: out of the tunnel. For the first four seconds the two sides walk
+         out side by side from the tunnel mouth on the halfway line to where
+         they line up, one pair every quarter-second, and the camera starts at
+         the tunnel and swings round with them. */
+      const W = 4.2;
+      if (walkout.t < W) {
+        for (let tm = 0; tm < 2; tm++) {
+          match.teams[tm].players.slice(0, 11).forEach((p, i) => {
+            const f = Math.max(0, Math.min(1, (walkout.t - i * 0.22) / 2.6));
+            const ex = p.x; const ey = p.y;
+            const sx = PITCH.w / 2 + (tm === 0 ? -0.7 : 0.7); const sy = -4.5;
+            p.x = sx + (ex - sx) * f; p.y = sy + (ey - sy) * f;
+            const moving = f > 0 && f < 1;
+            p.vx = moving ? (ex - sx) / 2.6 : 0; p.vy = moving ? (ey - sy) / 2.6 : 0;
+            if (moving) { const h = Math.hypot(p.vx, p.vy) || 1; p.dirX = p.vx / h; p.dirY = p.vy / h; }
+          });
+        }
+        const e = Math.min(1, walkout.t / W); const k = e * e * (3 - 2 * e);
+        showCam.x = PITCH.w / 2 - 9 + k * 2; showCam.y = -11 + k * 8; showCam.z = 2.4 + k * 0.6;
+        showCam.tx = PITCH.w / 2; showCam.ty = -3 + k * 30; showCam.tz = 1.3; showCam.hfov = 46;
+        liveCam = collideCamera(showCam, camBounds);
+      } else liveCam = walkoutCamera(showCam, (walkout.t - W) * (walkout.dur / (walkout.dur - W)) * 0.6 + walkout.dur * 0.4, walkout.dur);
       if (walkout.t >= walkout.dur) {
         walkout = null;
         match.resetPositions(0);

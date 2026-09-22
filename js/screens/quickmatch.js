@@ -167,7 +167,7 @@ export function render() {
         <div class="ts-opt">
           <span>${t('quick.weather')}</span>
           <div class="seg" id="weatherSeg">
-            ${[['auto', t('auto')], ['clear', t('clear')], ['overcast', t('cloud')], ['rain', t('rain')]].map(([v, l]) =>
+            ${[['auto', t('auto')], ['clear', t('clear')], ['overcast', t('cloud')], ['rain', t('rain')], ['snow', t('snow')]].map(([v, l]) =>
               `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${l}</button>`).join('')}
           </div>
         </div>
