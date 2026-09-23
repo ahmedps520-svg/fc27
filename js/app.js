@@ -55,7 +55,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v82';
+export const APP_VERSION = 'v83';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');

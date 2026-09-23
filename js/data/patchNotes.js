@@ -18,6 +18,42 @@
  */
 export const RELEASES = [
   {
+    version: 'v83',
+    date: '2026-09-23',
+    tag: 'Broadcast',
+    title: 'Every match on television: the show, two voices, graphics and the story after',
+    lede: 'A pre-match show from the flyover to the coin toss, two commentators in English or Arabic with subtitles, a full graphics package with '
+        + 'stoppage time and reviews, heat maps at the break, and a full time with the player of the match, ratings, the dressing room and a result card to share. '
+        + 'Plus seasonal menus and a playlist.',
+    entries: [
+      {
+        head: 'Before kick-off',
+        summary: 'A flyover of the ground, both team sheets with the shape, faces and ratings, a studio preview from our pundit, the walk-out with the anthem, the handshakes and the coin toss.',
+        detail: 'Skip it any time, or set it to the walk-out only (Settings → Broadcast). It stays off under reduced motion.',
+      },
+      {
+        head: 'In the match',
+        summary: 'Name straps for the man on the ball after a restart, card and substitution boards, stat pop-ups, a momentum bar, the fourth official\'s board and a 45+2 clock, and a review panel that draws the lines for a tight offside.',
+        detail: 'Stoppage time comes from what stopped the half — goals, cards, changes, injuries, dead balls. Replays open and close on a logo wipe and show which angle you are watching; the highlights play over their own music.',
+      },
+      {
+        head: 'Two voices',
+        summary: 'A play-by-play caller and a co-commentator who speak through your device, with more than 750 lines between them — derbies, finals, the weather, hat-tricks, late winners, comebacks, men in form — and a full Arabic commentary. Subtitles show who said what.',
+        detail: 'Voices are your device\'s own speech; where there is no Arabic voice, the Arabic commentary runs on subtitles.',
+      },
+      {
+        head: 'After the whistle',
+        summary: 'Heat maps for both sides at half time; at full time the player of the match, ratings for all 22, the full stat sheet, the match\'s momentum, the dressing room\'s reaction, a trophy lift for a won final, and a result card to share.',
+        detail: 'The card is drawn in the game and goes to your share sheet, or downloads.',
+      },
+      {
+        head: 'The menu',
+        summary: 'Seasonal themes — National Day, Ramadan nights with lanterns, and winter snow — and a music player with six tracks made in the game.',
+        detail: 'Themes follow the date, or pick one (or none) in Settings → Broadcast.',
+      },
+    ],
+  },
+  {
     version: 'v82',
     date: '2026-09-23',
     tag: 'New modes',

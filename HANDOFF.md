@@ -15,6 +15,75 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v83 — broadcast presentation (Round 13)
+**Sweep byte-identical**: nothing in the broadcast writes to the match. The
+new code lives in `js/broadcast/` and play.js only calls into it.
+- **director.js** is the one object play.js talks to: `cue`, `line`,
+  `tick(dt, live)`, `clock()`, `goal`, `kickoff`, `halfTime`/`halfTimeHTML`/
+  `drawHeat`, `fullTime`, `wipe`, `destroy`. `window.__apexBC` in a match.
+  Created when the loading veil lifts, not for practice or spectators;
+  graphics and the broadcast clock are **offline only** (online keeps the
+  plain minute, because the stoppage board must agree on two machines).
+- **Clock** (`context.js broadcastMinute`): the sim half is fixed length; the
+  board goes up at 43' (`BOARD_AT`) with `addedMinutes(goals, cards, subs,
+  injuries, dead balls)` (1–6), and the rest of the half is displayed as
+  43' → 45+N, so the whistle lands on the last added minute. The goal list
+  still uses `match.minute()` (a goal in added time reads 45'/90').
+- **Voice** (`voice.js`): `createDesk` — two speakers (Tom Hale / Nadia
+  Farouk; Arabic فهد السالم / ليلى ناصر, all invented), two platform voices
+  where available, a two-item queue that drops lines older than 4 s, goals
+  interrupt, a timeout guard because some platforms never fire `onend`. No
+  voice for the language (or none at all, as in headless Chromium) → subtitles
+  only. Lines: `data/commentary.js` (233, play-by-play) + `data/
+  commentaryVoices.js` CO 141, CONTEXT 103, AR 293 → 770. Settings:
+  `commVoice`, `subtitles`, `commLang` (auto follows the game language).
+  With subtitles on the old text feed is hidden (`#gmRoot.bc-subtitled`).
+- **Context** (`context.js`): derbies are generated — clubs in each league
+  sorted by id and paired 0–1, 2–3 — named "the Ironvale–Solaris derby";
+  `goalKeys` (hat-trick, brace, late winner/equaliser, opener, derby goal);
+  `fullTimeKeys` (final win, comeback, upset by ≥5 rating, big win, goalfest,
+  clean sheet); `formMap` (career `pl[name].ratings` avg ≥7.3 hot / ≤6.1
+  cold, plus the week's In-Form cards); `offsideMargin` — an offside within
+  0.9 m gets the review panel (it confirms the sim's call; it never
+  overturns one).
+- **Graphics** (`graphics.js`): stoppage board, sub board (subs detected by
+  a slot's `ref.id` changing, so AI and injury subs show too), card (yellow
+  only — the sim has no red cards), name strap (first touch after a restart,
+  25 s cooldown), stat pop-ups at the quarter hours, momentum bar
+  (`createMomentum`: territory + decaying shot/chance/corner/goal events,
+  series every 2 s for the full-time graph), review panel, logo wipe, heat
+  maps (`createHeat`, 24×16 per side in its attacking direction, sampled at
+  2 Hz). `gfx.counts()` for tests.
+- **Pre-match** (`pregame.js`): flyover 4 s, sheets 4.5 s each, pundit 5.5 s
+  (`previewText`, Omar Reyes / خالد الراشد), walk-out (the existing 7 s
+  one), handshake 2.4 s, coin 2.8 s. The show never advances while the
+  walk-out runs; `pastWalkout()` hands back. The XIs stay lined up until the
+  show ends, then `resetPositions(0)`. The toss is cosmetic and always ends
+  with the home side kicking off (the sim's rule): an away win "picks ends".
+  `pregame: full | short | off`; skipped under reduced motion, online, for
+  guided matches and practice. `#gmRoot.pregame-on` hides the match HUD.
+- **Full time** (`postmatch.js`): POTM reveal, tabs Ratings / Stats (the
+  sim's counts + summed `pst`) / Momentum / Dressing room (`reaction`, seeded
+  by the score), and `drawResultCard` (1080² canvas) → `navigator.share` with
+  a file, else a download. A won `params.final` gets `trophyScene` over the
+  card after 1.8 s. Not shown for street matches (they have their own card).
+- **Menu**: `js/seasonal.js` — National Day (20–26 Sep), Ramadan (a per-year
+  table 2025–2030; a year not listed shows no Ramadan theme), winter
+  (Dec–Feb); `menuTheme` setting. Plain green/white pennants and palms, no
+  flag or emblem; lanterns and a crescent for Ramadan. `audio.js` TRACKS
+  (6 generated tracks) with `nextTrack`/`prevTrack`/`setMusicMuted`
+  (remembered in `localStorage apexxi.music`) and a highlights bed
+  (`startHighlightsBed`) under the full-time highlights.
+- **Bug found on the way**: I first reused the class name `bc-subs` (the sub
+  board's) as the match root's "subtitles on" flag, which gave the whole
+  match view the sub board's absolute position and size. Renamed to
+  `bc-subtitled`. The r13 script caught it; worth remembering that `.bc-*`
+  names are global.
+- **Tests**: `tests/unit/broadcast.test.mjs` (9), `tests/visual/r13-shots.mjs`
+  (reduced motion off: every pre-match stage, graphics, the 45+ clock, heat
+  maps drawn, every full-time tab, the result card, the trophy, all three
+  themes, the music player, Settings).
+
 ### v82 — new modes (Round 12)
 **Sweep byte-identical** (seeds 12345, 777): every addition is gated on a
 field spec or an option that the 11-a-side sweep never sets.

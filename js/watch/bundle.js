@@ -9988,7 +9988,20 @@
       // the guided tour runs itself once, then lives in Settings
       sound: !0,
       musicVol: 0.5,
-      sfxVol: 0.9
+      sfxVol: 0.9,
+      // v83: the broadcast
+      commVoice: !0,
+      // two-voice spoken commentary (speech synthesis)
+      subtitles: !0,
+      // commentary subtitles
+      commLang: "auto",
+      // auto (the game's language) | en | ar
+      pregame: "full",
+      // full | short | off — the pre-match show
+      broadcastGfx: !0,
+      // straps, boards, pop-ups, momentum bar
+      menuTheme: "auto"
+      // auto | off | nationalDay | ramadan | winter
     },
     club: {
       // Squad Builder progress
