@@ -38,7 +38,9 @@ await page.addInitScript((ver) => {
   // the simulated controller
   const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
   const pad = { id: 'Xbox Wireless Controller (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons, vibrationActuator: null };
-  navigator.getGamepads = () => [pad, null, null, null];
+  // a list the test can plug more controllers into (v91: couch play)
+  window.__pads = [pad, null, null, null];
+  navigator.getGamepads = () => window.__pads;
   window.__simPad = pad;
   window.addEventListener('load', () => window.dispatchEvent(Object.assign(new Event('gamepadconnected'), { gamepad: pad })));
 }, appVersion);
@@ -244,6 +246,25 @@ if (!process.argv.includes('--explore')) {
     await page.evaluate(async () => { (await import('/js/app.js')).navigate('menu'); });
     await page.waitForTimeout(500);
     return paused ? '' : `unplugging did not pause (tactic went ${t0} → ${t1})`;
+  });
+  await feature('couch versus: two controllers pick sides and kick off', async () => {
+    if (!(await via([...ROUTES.quick, '[data-mode=versus]']))) return 'could not choose Versus with the pad';
+    // a second controller is plugged in
+    await page.evaluate(() => { const b = Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })); const p2 = { id: 'Wireless Controller (Vendor: 054c)', index: 1, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons: b }; window.__pads[1] = p2; window.dispatchEvent(Object.assign(new Event('gamepadconnected'), { gamepad: p2 })); });
+    if (!(await pressKey('#kickOff'))) return 'could not press Kick off';
+    await page.waitForSelector('.ss-layer', { timeout: 5000 }).catch(() => {});
+    if (!(await page.$('.ss-layer'))) return 'Kick off in Versus did not open the side select';
+    await page.waitForTimeout(400);
+    const sides = await page.evaluate(() => [...document.querySelectorAll('.ss-col')].map((c) => c.textContent.includes('Controller 1') ? 'P1' : '') .join('|') + ' / ' + [...document.querySelectorAll('.ss-col')].map((c) => c.textContent.includes('Controller 2') ? 'P2' : '').join('|'));
+    const tap = async (padIdx, btn) => { await page.evaluate(([i, b]) => { window.__pads[i].buttons[b].pressed = true; }, [padIdx, btn]); await page.waitForTimeout(120); await page.evaluate(([i, b]) => { window.__pads[i].buttons[b].pressed = false; }, [padIdx, btn]); await page.waitForTimeout(160); };
+    await tap(0, A); await tap(1, A);                                     // both ready
+    await tap(0, START);                                                  // kick off
+    await page.waitForFunction(() => window.__apexMatch?.controllers?.length, null, { timeout: 60000 }).catch(() => {});
+    const seats = await page.evaluate(() => window.__apexMatch?.controllers?.map((c) => c.team));
+    await page.evaluate(() => { window.__pads[1] = null; });
+    await page.evaluate(async () => { (await import('/js/app.js')).navigate('menu'); });
+    await page.waitForTimeout(600);
+    return JSON.stringify(seats) === '[0,1]' ? '' : `seats ${JSON.stringify(seats)} (tokens ${sides})`;
   });
   await feature('B closes a modal (the release notes)', async () => {
     await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('apexxi.save.v1')); s.flags.notesSeen = 'v1'; localStorage.setItem('apexxi.save.v1', JSON.stringify(s)); });

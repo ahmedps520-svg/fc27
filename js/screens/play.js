@@ -349,11 +349,15 @@ export function mount(root, params) {
    * input, no pause requests, no result. */
   const spectating = !!online?.spectate;
   // Online is one person per machine, so the local seat is the only local input.
-  const twoUp = !online && (mode === 'versus' || mode === 'coop');
+  /* v91: seats from the side-select screen — up to four people at one
+     screen, each on their own controller or half of the keyboard. */
+  const localSeats = !online && Array.isArray(params.localSeats) && params.localSeats.length ? params.localSeats.slice(0, 4) : null;
+  const twoUp = !online && (mode === 'versus' || mode === 'coop' || (localSeats?.length > 1));
+  const seatInput = (st) => new Input({ padSlot: st.pad == null ? -1 : st.pad, keys: st.keys || 'none' });
 
   // Seat 1 takes pad 0 and the WASD set; seat 2 takes pad 1 and the arrow/numpad
   // set, so a second person can join with a pad or just the other half of the keyboard.
-  const localInput = new Input({ pad: 0, keys: 'primary', arrows: !twoUp });
+  const localInput = localSeats ? seatInput(localSeats[0]) : new Input({ pad: 0, keys: 'primary', arrows: !twoUp });
   let inputs;
   let remote = null;
   let remotes = null;   // v82: party host — a RemoteInput per seat
@@ -369,7 +373,8 @@ export function mount(root, params) {
     if (online.party && online.host) { remotes = online.party.seats.map((st, i) => (i === 0 ? null : new RemoteInput())); inputs = [localInput, ...remotes.slice(1)]; }
   } else {
     inputs = [localInput];
-    if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
+    if (localSeats) for (const st of localSeats.slice(1)) inputs.push(seatInput(st));
+    else if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
   }
   const input = localInput;
   const quality = resolveQuality(getState().settings.quality);
@@ -399,7 +404,8 @@ export function mount(root, params) {
     // v80: Quickfire Fives plays on a small pitch with five a side
     field: params.field || 'full',
     // v82: a party brings one seat per person, in the server's order
-    seats: online?.party ? online.party.seats.map((st) => ({ team: st.team })) : undefined,
+    seats: online?.party ? online.party.seats.map((st) => ({ team: st.team }))
+      : localSeats ? localSeats.map((st) => ({ team: st.team })) : undefined,
   });
   // v82: pro five-a-side — every person is locked to their own pro
   if (online?.party?.locks) for (const [seat, id] of Object.entries(online.party.locks)) { const c = match.controllers[+seat]; if (c) { c.lockId = id; match.locked = true; } }
@@ -2259,8 +2265,8 @@ export function mount(root, params) {
     scoreA.textContent = match.teams[1].score;
     clockEl.textContent = director ? director.clock() : `${match.minute()}'`;
     if (twoUp) {
-      padEl.textContent = `P1 ${inputs[0].pad ? '✓' : 'kbd'} · P2 ${inputs[1].pad ? '✓' : 'kbd'}`;
-      padEl.classList.toggle('on', !!(inputs[0].pad && inputs[1].pad));
+      padEl.textContent = inputs.map((inp, i) => `P${i + 1} ${inp.pad ? '✓' : 'kbd'}`).join(' · ');
+      padEl.classList.toggle('on', inputs.every((inp) => inp.pad || inp.keyMap && Object.keys(inp.keyMap).length));
     } else {
       padEl.textContent = input.pad ? 'Pad ✓' : 'No pad';
       padEl.classList.toggle('on', !!input.pad);

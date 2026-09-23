@@ -311,17 +311,34 @@ export function mount(root) {
   };
   window.addEventListener('keydown', onKey);
 
-  q('#kickOff').addEventListener('click', () => {
+  const kickOff = (localSeats = null) => {
     enterFullscreen();          // no-ops safely where the API is missing (iPhone)
+    // v91: with seats, the mode is wherever the people went — all on one side is co-op
+    const m = !localSeats ? mode
+      : new Set(localSeats.map((st) => st.team)).size > 1 ? 'versus' : localSeats.length > 1 ? 'coop' : 'single';
     navigate('play', {
       // world ids only anchor the pitch; the picked teams travel as custom squads
       homeId: WORLD.clubs[0].id,
       awayId: WORLD.clubs[1].id,
       homeSquad: squadFor('home'),
       awaySquad: squadFor('away'),
-      duration, skill, mode,
+      duration, skill, mode: m,
+      localSeats,
       atmo: { time: timeOf === 'auto' ? undefined : timeOf, weather: weather === 'auto' ? undefined : weather },
     });
+  };
+  q('#kickOff').addEventListener('click', async () => {
+    /* v91: co-op and versus pick sides first — up to four people, each on a
+       controller or half the keyboard. A touch-only tablet keeps its split-screen
+       touch controls instead: there is nobody to hand a token to. */
+    const touchOnly = window.matchMedia('(pointer: coarse)').matches && padCount() === 0;
+    if ((mode === 'coop' || mode === 'versus') && !touchOnly) {
+      const { openSideSelect } = await import('../components/sideSelect.js');
+      const seats = await openSideSelect({ home: teamOf('home').name, away: teamOf('away').name, preset: mode });
+      if (seats) kickOff(seats);
+      return;
+    }
+    kickOff();
   });
 
   q('#worldBtn').addEventListener('click', () => navigate('world'));

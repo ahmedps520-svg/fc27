@@ -34,6 +34,7 @@ const KEYSETS = {
     NumpadAdd: 'sprint', ShiftRight: 'sprint',
     Escape: 'pause',
   },
+  none: {},                     // v91: a controller seat at a shared screen ignores the keyboard
 };
 
 const MOVE_SETS = {
@@ -43,6 +44,7 @@ const MOVE_SETS = {
   secondary: {
     ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
   },
+  none: {},
 };
 
 // Standard gamepad mapping — on a DualSense: 0 ✕, 1 ○, 2 □, 3 △, 4 L1, 5 R1, 6 L2, 7 R2, 9 Options.
@@ -134,8 +136,11 @@ export class Input {
    */
   constructor(opts = {}) {
     this.padIndex = opts.pad ?? null;
+    // v91: a seat at the side-select screen owns one controller by its Gamepad API
+    // index (stable across plugging others in and out), or none at all (-1)
+    this.padSlot = opts.padSlot ?? null;
     this.keyMap = keyMapFor(opts.keys || 'primary');
-    this.padMap = (opts.keys || 'primary') === 'primary' ? padMapFor() : PAD_ACTIONS;
+    this.padMap = (opts.keys || 'primary') === 'secondary' ? PAD_ACTIONS : padMapFor();   // v91: your remapped buttons on every controller seat
     // v84 hotfix: alone at the keyboard, the arrow keys move too (they were player 2's only)
     this.moveMap = opts.arrows ? { ...MOVE_SETS.primary, ...MOVE_SETS.secondary } : MOVE_SETS[opts.keys || 'primary'];
     this.keys = new Set();
@@ -171,7 +176,9 @@ export class Input {
   poll(dt = 0) {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()] : [];
     const live = pads.filter((g) => g && g.connected);
-    this.pad = this.padIndex === null ? (live[0] || null) : (live[this.padIndex] || null);
+    this.pad = this.padSlot === -1 ? null
+      : this.padSlot !== null ? (live.find((g) => g.index === this.padSlot) || null)
+        : this.padIndex === null ? (live[0] || null) : (live[this.padIndex] || null);
     this.padName = this.pad ? this.pad.id : '';
 
     this.was = this.now;

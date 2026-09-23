@@ -5034,7 +5034,7 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 }
 .osk-card {
   width: min(720px, 100%); padding: 16px; border-radius: 18px;
-  background: var(--panel, #111827); border: 1px solid rgba(255, 255, 255, .12);
+  background: #0d1422;               /* solid: --panel is a translucent wash */ border: 1px solid rgba(255, 255, 255, .12);
   box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
 }
 .osk-field {
@@ -5056,3 +5056,24 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @media (prefers-reduced-motion: reduce) { .osk-caret { animation: none; } }
 /* v90: controller layout headings span the grid */
 .ctrl-grid .ctrl-head { grid-column: 1 / -1; margin: 10px 0 2px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+
+/* v91: side select — up to four people at one screen */
+.ss-layer { position: fixed; inset: 0; z-index: 8800; display: grid; place-items: center; padding: 16px; background: rgba(4, 7, 14, .82); backdrop-filter: blur(6px); }
+.ss-card { width: min(980px, 100%); max-height: 100%; overflow: auto; padding: 18px; border-radius: 18px; background: #0d1422; border: 1px solid rgba(255, 255, 255, .12); }
+.ss-card h2 { margin: 0 0 4px; }
+.ss-hint { margin: 0 0 14px; opacity: .7; font-size: 13px; }
+.ss-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.ss-col { min-height: 180px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, .04); }
+.ss-col.home { box-shadow: inset 0 3px 0 var(--accent); }
+.ss-col.away { box-shadow: inset 0 3px 0 #ffc63d; }
+.ss-col h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.ss-token { display: flex; align-items: center; gap: 6px; padding: 8px; margin-bottom: 8px; border-radius: 10px; background: rgba(255, 255, 255, .07); border: 1px solid transparent; }
+.ss-token.is-ready { border-color: var(--accent); background: var(--accent-soft, rgba(35, 197, 94, .18)); }
+.ss-token span { flex: 1; display: grid; min-width: 0; }
+.ss-token b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-token i { font-style: normal; font-size: 12px; opacity: .7; }
+.ss-arrow { width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .08); color: inherit; border: 0; }
+.ss-arrow:disabled { opacity: .25; }
+.ss-empty { opacity: .35; text-align: center; }
+.ss-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; }
+@media (max-width: 640px) { .ss-cols { grid-template-columns: 1fr; } .ss-col { min-height: 0; } }

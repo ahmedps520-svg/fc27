@@ -3030,8 +3030,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   ball.castShadow = true;
   scene.add(ball);
 
-  // one marker per seat — P1 white, P2 amber, so couch players can tell them apart
-  const MARKER_COLS = [0xffffff, 0xffc63d];
+  // one marker per seat — P1 white, P2 amber, P3 cyan, P4 pink (v91: four at one screen)
+  const MARKER_COLS = [0xffffff, 0xffc63d, 0x3fd8ff, 0xff5fa8];
   const markers = MARKER_COLS.map((col) => {
     const m = new THREE.Mesh(
       new THREE.ConeGeometry(0.3, 0.55, 4),
