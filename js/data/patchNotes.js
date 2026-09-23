@@ -18,6 +18,40 @@
  */
 export const RELEASES = [
   {
+    version: 'v85',
+    date: '2026-09-23',
+    tag: 'Grounds',
+    title: 'The world outside the ground',
+    lede: 'The land around every stadium is rebuilt: real streets in the city, real mountains, and trees and rocks everywhere.',
+    entries: [
+      {
+        head: 'City and coast',
+        summary: 'Streets on a proper grid, with lane markings, zebra crossings, street lights, parked cars, parks, and towers of every height whose windows light up at night.',
+        detail: 'The coast adds a sea, a beach, a promenade of palms, rocks along the shore and a lighthouse. Buildings are drawn in batches that the camera can skip when they are out of view, and window detail fades out in the distance so far towers do not shimmer.',
+      },
+      {
+        head: 'Mountains',
+        summary: 'A real range: sharp ridges, snow on the peaks (and lower when it snows), bare rock on the steep faces, meadows, and pine forest below, with a village of chalets by the ground.',
+        detail: 'The old mountains were cones that the fog washed out to white paper. Distance haze is now built into the land\'s colours, so far ridges fade towards the sky but keep their shape. The view reaches 3 km, where it used to be cut off at 900 m and left a hard band along the horizon.',
+      },
+      {
+        head: 'Suburbs and desert',
+        summary: 'Suburbs have streets lined with gable-roofed houses, gardens and a wood beyond; the desert has dunes, flat-topped red mesas, low sandstone buildings and palms.',
+        detail: 'Every landscape plants its own trees (palms by the sea and in the desert, pines in the mountains, broadleaf trees in the suburbs and city parks), with a simpler model for distant trees. The strips between the plaza and the first streets are now planted instead of left bare.',
+      },
+      {
+        head: 'Grounds gallery',
+        summary: 'A new Aerial camera circles high above the ground so you can see the land around it.',
+        detail: 'Orbit stays inside the bowl as before, and Fly still goes anywhere.',
+      },
+      {
+        head: 'Performance',
+        summary: 'The Low tier builds a much lighter landscape, about half the triangles of High.',
+        detail: 'Low drops street lights, parked cars and rooftop details, and only the nearest trees get the full model.',
+      },
+    ],
+  },
+  {
     version: 'v84',
     date: '2026-09-23',
     tag: 'Hotfix',
