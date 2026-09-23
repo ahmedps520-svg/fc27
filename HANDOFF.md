@@ -48,7 +48,12 @@ threshold is `20 * (PITCH.h / 68)` so it is exactly 20 m on a full pitch).
 - **Market** (`js/market.js`): offline, deterministic listings per 4 h slot,
   price range 0.5×–3× value on list/bid/buy, 5 % tax, bids escrowed,
   14-day history graph. `data/cardValue.js` is the pure rounding the watch
-  shares. **Binder** (`js/binder.js`): `club.everOwned` (written by `save()`),
+  shares. Market value follows real-world worth (economy `price`), not
+  rating — a rating floor was tried and made every pack resell for 1.5–3×
+  its cost, so it was dropped. Instead cards rated `ELITE` (88+) are never
+  listed by the market, and its buyers pay at most `BUYER_CAP` (1.3×) value,
+  which closes the buy-and-relist-at-3× farm. Resale of every pack stays
+  below its price (best: Limited 0.79×). **Binder** (`js/binder.js`): `club.everOwned` (written by `save()`),
   sets pay once.
 - **Tasks** (`js/tasks.js`): 3 daily + 5 weekly dealt by hash, `bump(metric)`
   from progress/market/evolutions/binder; club level from lifetime XP
@@ -63,6 +68,11 @@ threshold is `20 * (PITCH.h / 68)` so it is exactly 20 m on a full pitch).
 - Tests: `tests/unit/ultimate-depth.test.mjs` (10). Visual:
   `tests/visual/r10-shots.mjs` (every new panel, both orientations, a live
   Fives match to full time).
+- Verified: unit 123/123, sweep identical, smoke, QA bot, layout scan
+  (12 screens × 3 phones × 2 languages), r10-shots clean (it now also flags
+  anything clipped past a panel's right edge — the squad hub was, in portrait,
+  from the manager list's long labels; `.sb-layout` is `minmax(0, 1fr)` now).
+- FPS (SwiftShader, CI-class): Low 1.7 · Medium 1.1 · High 0.4 · Ultra 0.1.
 - Next: R11 career depth (task list).
 
 ### v79 — gameplay feel and AI (Round 9)

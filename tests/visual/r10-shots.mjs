@@ -51,6 +51,9 @@ try {
       await page.waitForTimeout(500);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (over > 1) { bad += 1; errors.push(`${tag}/${name}: page is ${over}px wider than the viewport`); }
+      // clipped inside a panel counts too: overflow: hidden hides it from scrollWidth
+      const wide = await page.evaluate(() => [...document.querySelectorAll('.panel, .panel *')].filter((el) => el.offsetParent && el.getBoundingClientRect().right > window.innerWidth + 1 && !el.closest('.store-row, .rank-strip, .lvl-track, .subtabs, .tabs, .chips, .mkt-list')).slice(0, 3).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`));
+      if (wide.length) { bad += 1; errors.push(`${tag}/${name}: past the right edge: ${wide.join(', ')}`); }
       await page.screenshot({ path: `${OUT}/${tag}-${name}.png`, fullPage: false });
     };
     const tab = (id) => page.click(`[data-utab="${id}"]`);
@@ -72,12 +75,12 @@ try {
       const info = await page.evaluate(() => ({ n: window.__apexMatch.teams.map((t) => t.players.length), w: window.__apexMatch.constructor && (window.__apexMatch.pitchW || null) }));
       if (info.n.join() !== '5,5') { bad += 1; errors.push(`fives fielded ${info.n}`); }
       await page.screenshot({ path: `${OUT}/${tag}-fives-match.png` });
-      await page.evaluate(() => { const m = window.__apexMatch; m.t = m.duration - 0.5; });
+      await page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
       await page.waitForSelector('.gm-panel', { timeout: 120000 }).catch(() => {});
       await page.waitForTimeout(800);
       await page.screenshot({ path: `${OUT}/${tag}-fives-ft.png` });
       const ft = await page.evaluate(() => document.querySelector('.gm-panel')?.innerText || '');
-      if (!/Quickfire Fives/.test(ft)) { bad += 1; errors.push('the full-time panel has no Fives result'); }
+      if (!/Quickfire Fives/i.test(ft)) { bad += 1; errors.push('the full-time panel has no Fives result'); }
       console.log('  fives full time:', ft.replace(/\s+/g, ' ').slice(0, 160));
     }
     await ctx.close();

@@ -25,6 +25,10 @@ import { weekCards, campaignCards, campaignNow, weekNow } from './data/promos.js
 
 export const SLOT_MS = 4 * 3600_000;
 export const TAX = 0.05;
+/** Cards at or above this rating are never listed by the market itself. */
+export const ELITE = 88;
+/** The market's buyers do not pay more than this multiple of value. */
+export const BUYER_CAP = 1.3;
 const DAY = 86_400_000;
 
 /** A card's market value in Apex — ten times what quick-selling it pays. */
@@ -45,8 +49,11 @@ const slotOf = (now) => Math.floor(now / SLOT_MS);
 /** The market's own listings for a four-hour slot: deterministic, 40 of them. */
 function aiListings(slot) {
   const r = rng(hash(`mkt|${slot}`));
-  const pool = WORLD.players.filter((p) => !p.sbc && p.rarity !== 'icon');
-  const promo = [...weekCards('inform', weekNow(slot * SLOT_MS)), ...weekCards('totw', weekNow(slot * SLOT_MS)).slice(0, 3), ...campaignCards(campaignNow(slot * SLOT_MS)).slice(-40)];
+  /* The top of the store stays pack-only: market value follows real-world
+     worth, not rating, so a 90-rated special could otherwise list for a
+     fraction of what the pack that promises one costs. */
+  const pool = WORLD.players.filter((p) => !p.sbc && p.rarity !== 'icon' && p.overall < ELITE);
+  const promo = [...weekCards('inform', weekNow(slot * SLOT_MS)), ...weekCards('totw', weekNow(slot * SLOT_MS)).slice(0, 3), ...campaignCards(campaignNow(slot * SLOT_MS)).slice(-40)].filter((p) => p.overall < ELITE);
   const out = [];
   for (let i = 0; i < 40; i++) {
     let p;
@@ -112,7 +119,10 @@ export function settle(now = Date.now()) {
       const hours = Math.max(0, (Math.min(now, l.ends) - (l.checked || l.at)) / 3600_000);
       l.checked = Math.min(now, l.ends);
       // buyers at buy-now: the nearer to value, the likelier each hour
-      const perHour = Math.max(0.01, Math.min(0.85, 1.35 - l.buyNow / value));
+      /* Nobody buys above BUYER_CAP × value: listing at the three-times ceiling
+         and waiting used to sell one time in five, which made buy-and-relist a
+         coin farm. */
+      const perHour = l.buyNow > value * BUYER_CAP ? 0 : Math.max(0.02, Math.min(0.85, 1.35 - l.buyNow / value));
       if (hours > 0 && r() < 1 - Math.pow(1 - perHour, hours)) {
         l.done = 'sold'; l.soldFor = l.buyNow;
       } else if (now >= l.ends) {

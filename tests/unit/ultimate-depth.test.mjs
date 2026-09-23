@@ -221,3 +221,17 @@ test('the five-a-side field: five a side, small goals, and the full field restor
   assert.equal(full.teams[0].players.length, 11);
   setField('full');
 });
+
+test('the market cannot be farmed: no elite listings, nobody pays over the buyer cap', () => {
+  for (let k = 0; k < 6; k++) {
+    for (const l of market.search({}, Date.now() + k * market.SLOT_MS)) assert.ok(l.p.overall < market.ELITE, `${l.p.name} ${l.p.overall} listed`);
+  }
+  const p = golds().find((x) => x.overall < 85);
+  const r = market.priceRange(p);
+  update((s) => { s.club.collection = [p.id]; s.club.lineup = Array(11).fill(null); });
+  assert.equal(market.listCard(p.id, r.max, r.max, 24).ok, true);
+  let t = Date.now();
+  for (let h = 0; h < 30; h++) { t += 3600_000; market.settle(t); }
+  assert.ok(!getState().club.mkt.trades.some((x) => x.side === 'sell'), 'a listing at the ceiling never sells');
+  assert.ok(getState().club.collection.includes(p.id), 'and comes back unsold');
+});

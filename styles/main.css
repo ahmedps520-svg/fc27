@@ -673,7 +673,7 @@ select {
 .sb-actions { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 
 .sb-layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; }
-@media (max-width: 900px) { .sb-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .sb-layout { grid-template-columns: minmax(0, 1fr); } }
 
 .pitch-wrap { padding: 14px; }
 .pitch {
@@ -4564,3 +4564,7 @@ html.large-text .tile-name { font-size: 27px; }
   .hub-break { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .evo-run, .mkt-detail { grid-template-columns: 1fr; }
 }
+/* the manager list's long option labels must not widen the side column */
+.sb-side, .squad-hub, .squad-hub .field { min-width: 0; }
+.squad-hub select, .mkt-sell select, .evo-start select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
+.squad-hub .field { display: grid; }
