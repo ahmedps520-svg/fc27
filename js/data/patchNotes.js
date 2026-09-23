@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v86',
+    date: '2026-09-23',
+    tag: 'Fixes',
+    title: 'Everyone turns',
+    lede: 'The CPU\'s players are as light on their feet as yours now, and a round of bug fixes across the game.',
+    entries: [
+      {
+        head: 'Agile CPU players',
+        summary: 'The CPU\'s players turn and change direction properly: a 180 at a sprint in half a second (it was over one and a half), and they no longer run in circles around a loose ball.',
+        detail: 'A movement bug made every CPU player turn at about a sixth of the rate it was meant to, so at a sprint it swung through an eight-metre circle. On a small pitch that meant two players could circle a loose ball for ten seconds. With the fix, more tackles land and more shots come in, so the balance was retuned and measured over 240 AI-vs-AI matches: about 2.2 goals a match, fewer penalties, and defenders who are more careful in their own box.',
+      },
+      {
+        head: 'The same match on every device',
+        summary: 'The match now runs at a fixed 60 steps a second whatever your frame rate, so a slow phone and a fast monitor play the same game.',
+        detail: 'Before this, the CPU turned twice as sharply at 30 fps as at 60. Button presses are held until the game has seen them, so none are lost on a high-refresh screen and none fire twice on a slow one.',
+      },
+      {
+        head: 'Substitutions',
+        summary: 'A player who has been substituted can no longer come back on, and a substitute now looks like himself instead of the player he replaced.',
+        detail: 'The CPU used to bring an injured player off and, at the next injury, send the same man straight back on, healed and rested.',
+      },
+      {
+        head: 'Menus',
+        summary: 'Fixed an error when leaving a screen at the same moment it opened another; the quick-match controller check could keep running after you left.',
+        detail: 'Found by a new test that clicks at random through every screen on a phone and a desktop.',
+      },
+    ],
+  },
+  {
     version: 'v85',
     date: '2026-09-23',
     tag: 'Grounds',

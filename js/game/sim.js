@@ -158,7 +158,8 @@ export const MAX_SUBS = 3;
 const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true };
+/* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns") */
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35 };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -813,6 +814,9 @@ export class Match {
     const p = team.players[pitchIdx];
     const incoming = team.bench?.[benchIdx];
     if (!p || !incoming) return false;
+    // Once off, off: a man who has been substituted cannot come back on (he used
+    // to — fresh, and cured if he had gone off injured).
+    if (this.cameOff(incoming.id)) return false;
     // A keeper comes off for a keeper or the goal is left to a winger.
     if (p.role === 'GK' && incoming.position !== 'GK') return false;
 
@@ -946,9 +950,26 @@ export class Match {
         let da = want - have;
         while (da > Math.PI) da -= Math.PI * 2;
         while (da < -Math.PI) da += Math.PI * 2;
-        const maxTurn = (p.turn || 9) * (1.6 - 0.9 * frac) * dt;
+        const omega = (p.turn || 9) * (1.6 - 0.9 * frac);
+        const maxTurn = omega * dt;
         const a = have + clamp(da, -maxTurn, maxTurn);
-        tx = Math.cos(a) * speed; ty = Math.sin(a) * speed;
+        /* v86: a target inside his turning circle cannot be reached at this
+           speed — he would circle it for ever (a loose ball in a street cage
+           was orbited for ten seconds by both players). Ease off to the speed
+           at which the turn does reach it: radius = speed / omega, and a
+           point at distance m and bearing da needs 2·r·|sin da| ≤ m. */
+        const side = Math.abs(Math.sin(da));
+        let v = speed;
+        if (side > 0.05 && m < 2 * (cur / omega) * side) v = Math.min(speed, Math.max(1.5, (m * omega) / (2 * side)));
+        /* v86: the heading turns by the capped amount and only the speed is
+           eased. Blending the whole vector towards an already-capped heading
+           applied the cap and then 15% of it, so a runner really turned at
+           about 1 rad/s — an eight-metre circle at a sprint, the "brick" —
+           and twice as sharply at 30 fps as at 60. */
+        const k = Math.min(1, dt * (v > cur ? (p.accel || 9) : 11));
+        const nv = cur + (v - cur) * k;
+        p.vx = Math.cos(a) * nv; p.vy = Math.sin(a) * nv;
+        return;
       }
     }
     const faster = tx * tx + ty * ty > cur * cur;
@@ -1011,7 +1032,7 @@ export class Match {
       const def = carrier === a ? b : a;
       const cs = Math.hypot(carrier.vx, carrier.vy); const ds = Math.hypot(def.vx, def.vy);
       const beaten = (def.x - carrier.x) * (carrier.dirX || 0) + (def.y - carrier.y) * (carrier.dirY || 0) < 0.3;
-      if (cs > ds + 0.6 && beaten && def.downT <= 0 && Math.random() < (0.7 + this.aggressionOf(def) * 1.6) * dt) {
+      if (cs > ds + 0.6 && beaten && def.downT <= 0 && Math.random() < (0.7 + this.aggressionOf(def) * 1.6) * (this.inPenaltyArea(carrier, def.team) ? TUNE.boxCare : 1) * dt) {
         this.fouls[def.team] += 1;
         this.cue('foul', def);
         carrier.downT = 1.2; carrier.downMax = 1.2;
@@ -1049,7 +1070,7 @@ export class Match {
         weak.touchLock = 0.35;
         // from behind, with a shove, is a foul
         const behind = (strong.dirX * weak.dirX + strong.dirY * weak.dirY) > 0.55 && (strong.x - weak.x) * weak.dirX + (strong.y - weak.y) * weak.dirY < 0;
-        if (behind && Math.random() < 0.35 + this.aggressionOf(strong) * 0.4 - (strong.tr?.rock ? 0.2 : 0)) {
+        if (behind && Math.random() < (0.35 + this.aggressionOf(strong) * 0.4 - (strong.tr?.rock ? 0.2 : 0)) * (this.inPenaltyArea(weak, strong.team) ? TUNE.boxCare : 1)) {
           this.fouls[strong.team] += 1;
           this.cue('foul', strong);
           weak.downT = 0.9; weak.downMax = 0.9;
@@ -2359,7 +2380,8 @@ export class Match {
        * count is in the same place while *who* gives them away changes. */
       // v79: re-tuned against real foul counts (about one in four challenges from
       // the edge of his reach is a foul); a Rock at the Back is cleaner
-      const chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * (p.tr?.rock ? 1 - 0.3 * p.tr.rock : 1);
+      const chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * (p.tr?.rock ? 1 - 0.3 * p.tr.rock : 1)
+        * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1);      // v86: nobody dives in in his own box
       if (Math.random() < chance) {
         this.fouls[p.team] += 1;
         this.cue('foul', p);
@@ -2391,13 +2413,16 @@ export class Match {
     this.cue('injury', p);
   }
 
+  /** Has this player already been substituted off in this match? */
+  cameOff(id) { return (this.pst?.[id]?.off ?? null) !== null; }
+
   /** The CPU brings an injured man off at the next dead ball, if it can. */
   autoSubInjured(teamIdx) {
     const team = this.teams[teamIdx];
     if (team.isHuman || team.subsLeft <= 0) return;
     const i = team.players.findIndex((q) => q.injured && q.role !== 'GK');
     if (i < 0) return;
-    const bench = team.bench.map((r, j) => [r, j]).filter(([r]) => r && r.position !== 'GK')
+    const bench = team.bench.map((r, j) => [r, j]).filter(([r]) => r && r.position !== 'GK' && !this.cameOff(r.id))
       .sort((a, b) => b[0].overall - a[0].overall);
     if (!bench.length) return;
     const p = team.players[i];
@@ -2844,7 +2869,7 @@ export class Match {
       }
       const commit = 2.3 + agg * 1.6;                      // v79: 2.3 m composed, 3.9 m rash (real sides make ~35 tackles a match)
       if (b.owner && b.owner.team !== p.team && dist(p, b.owner) < commit) {
-        if (Math.random() < (1.4 + agg * 2.2) * this.aiSkillFor(p.team) * press * dt) this.tackle(p);
+        if (Math.random() < (1.4 + agg * 2.2) * TUNE.tackleRate * this.aiSkillFor(p.team) * press * dt) this.tackle(p);
       }
       return;
     }
@@ -3057,7 +3082,7 @@ export class Match {
 
     const sc = Math.max(0.55, SCALE);
     if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc)) {
-      if (Math.random() < (3.3 - toGoal / (22 * sc)) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+      if (Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
         // CPU keeps most efforts down, but bends the odd one from range
         const far = toGoal > 17;
         const gk = this.teams[1 - p.team].players.find((q) => q.role === 'GK');

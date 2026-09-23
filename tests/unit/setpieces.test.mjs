@@ -120,7 +120,7 @@ test('skill move and lob exist as actions, counters fire, tuning knobs are the d
     m.pass(p, { x: 1, y: 0 }, true, 0.5, true);
     assert.ok(m.ball.vz > 0, 'a lob leaves the ground');
     void sp;
-    assert.deepEqual(TUNE, { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true });
+    assert.deepEqual(TUNE, { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35 });
   } finally { Math.random = realRandom; }
 });
 

@@ -2708,49 +2708,57 @@ export function createRenderer(canvas, match, quality, models = false) {
   const kitHome = new THREE.Color(hexOf(match.teams[0].colors[0]));
   const kitAway = pickAwayKit(match);
   const rigs = new Map();
+  /* One player's figure. Built again when a substitute takes the slot: the
+     look (skin, hair, build) and the name on the shirt are baked in, and the
+     man coming on used to run out as the man he replaced. */
+  const simpleRig = (p, t, shirtNo) => {
+    const isGK = p.role === 'GK';
+    const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
+    const shorts = base.clone().multiplyScalar(0.6);
+    // same look the card portrait uses, so a player on the pitch matches his card
+    const look = faceOf(p.ref);
+    const rig = buildPlayer(
+      base, shorts,
+      new THREE.Color(look.skin), new THREE.Color(look.hair),
+      base.clone().multiplyScalar(0.8),
+      buildFor(p.ref, p.role), { face: !lo && !med });
+    /* The number and the name on the back — on every tier but Ultra Low,
+       where a texture per shirt is twenty-two textures too many. */
+    if (!potato) {
+      const no = p.ref?.number || (isGK ? 1 : shirtNo + 1);
+      const surname = String(p.ref?.name || p.ref?.short || '').split(' ').pop().toUpperCase();
+      rig.parts.torso.material = new THREE.MeshStandardMaterial({
+        map: kitTexture(base, no, surname, lo ? 128 : 256), roughness: 0.62, metalness: 0.02,
+      });
+      /* Cloth, on High and Ultra: the shirt's hem and back ripple with the
+         player's speed — a few sine terms in the vertex shader on the
+         lower half of the torso, driven by a per-player speed uniform. */
+      if (!lo && !med) {
+        const uSpeed = { value: 0 };
+        const mat = rig.parts.torso.material;
+        mat.onBeforeCompile = (sh) => {
+          sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uSpeed = uSpeed;
+          sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uSpeed;')
+            .replace('#include <begin_vertex>', `#include <begin_vertex>
+              {
+                float hem = smoothstep(0.55, -0.5, position.y);       // 1 at the hem, 0 at the shoulders
+                float w = sin(uTime * 14.0 + position.x * 6.0) * 0.35 + sin(uTime * 9.0 + position.z * 8.0) * 0.25;
+                float amp = (0.02 + uSpeed * 0.035) * hem;
+                transformed += normalize(vec3(position.x, 0.0, position.z)) * (w * amp);
+              }`);
+        };
+        mat.customProgramCacheKey = () => 'apexClothKit';
+        rig.cloth = uSpeed;
+      }
+    }
+    rig.refId = p.ref?.id; rig.shirtNo = shirtNo;
+    return rig;
+  };
   for (let t = 0; t < 2; t++) {
     let shirtNo = 1;
     for (const p of match.teams[t].players) {
-      const isGK = p.role === 'GK';
-      const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
-      const shorts = base.clone().multiplyScalar(0.6);
-      // same look the card portrait uses, so a player on the pitch matches his card
-      const look = faceOf(p.ref);
-      const rig = buildPlayer(
-        base, shorts,
-        new THREE.Color(look.skin), new THREE.Color(look.hair),
-        base.clone().multiplyScalar(0.8),
-        buildFor(p.ref, p.role), { face: !lo && !med });
-      /* The number and the name on the back — on every tier but Ultra Low,
-         where a texture per shirt is twenty-two textures too many. */
-      if (!potato) {
-        const no = p.ref?.number || (isGK ? 1 : shirtNo + 1);
-        const surname = String(p.ref?.name || p.ref?.short || '').split(' ').pop().toUpperCase();
-        rig.parts.torso.material = new THREE.MeshStandardMaterial({
-          map: kitTexture(base, no, surname, lo ? 128 : 256), roughness: 0.62, metalness: 0.02,
-        });
-        /* Cloth, on High and Ultra: the shirt's hem and back ripple with the
-           player's speed — a few sine terms in the vertex shader on the
-           lower half of the torso, driven by a per-player speed uniform. */
-        if (!lo && !med) {
-          const uSpeed = { value: 0 };
-          const mat = rig.parts.torso.material;
-          mat.onBeforeCompile = (sh) => {
-            sh.uniforms.uTime = crowdU.uTime; sh.uniforms.uSpeed = uSpeed;
-            sh.vertexShader = sh.vertexShader
-              .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uSpeed;')
-              .replace('#include <begin_vertex>', `#include <begin_vertex>
-                {
-                  float hem = smoothstep(0.55, -0.5, position.y);       // 1 at the hem, 0 at the shoulders
-                  float w = sin(uTime * 14.0 + position.x * 6.0) * 0.35 + sin(uTime * 9.0 + position.z * 8.0) * 0.25;
-                  float amp = (0.02 + uSpeed * 0.035) * hem;
-                  transformed += normalize(vec3(position.x, 0.0, position.z)) * (w * amp);
-                }`);
-          };
-          mat.customProgramCacheKey = () => 'apexClothKit';
-          rig.cloth = uSpeed;
-        }
-      }
+      const rig = simpleRig(p, t, shirtNo);
       shirtNo++;
       scene.add(rig.grp);
       rigs.set(p, rig);
@@ -2929,6 +2937,23 @@ export function createRenderer(canvas, match, quality, models = false) {
    * offline, or the file missing — nothing happens and the match carries on
    * looking exactly as it did.                                               */
   const modelRigs = new Map();
+  let loadedModel = null;
+  const modelRig = (p, t, index) => {
+    const isGK = p.role === 'GK';
+    const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
+    const rig = makeRig(loadedModel, {
+      kit: {
+        shirt: base,
+        shorts: base.clone().multiplyScalar(0.62),
+        socks: base.clone().multiplyScalar(0.82),
+      },
+      ref: p.ref,
+      index,
+      isGK,
+    });
+    rig.refId = p.ref?.id; rig.index = index;
+    return rig;
+  };
   let useModels = false;
   /* Resolves once there is nothing left that would visibly change the picture.
    * The loading screen waits on this, which is the whole reason it exists: the
@@ -2974,21 +2999,11 @@ export function createRenderer(canvas, match, quality, models = false) {
   if (models) {
     loadPlayerModel().then((model) => {
       if (!model || disposed) { warmUp(); return; }
+      loadedModel = model;
       let index = 0;
       for (let t = 0; t < 2; t++) {
         for (const p of match.teams[t].players) {
-          const isGK = p.role === 'GK';
-          const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
-          const rig = makeRig(model, {
-            kit: {
-              shirt: base,
-              shorts: base.clone().multiplyScalar(0.62),
-              socks: base.clone().multiplyScalar(0.82),
-            },
-            ref: p.ref,
-            index: index++,
-            isGK,
-          });
+          const rig = modelRig(p, t, index++);
           scene.add(rig.root);
           modelRigs.set(p, rig);
         }
@@ -3511,8 +3526,21 @@ export function createRenderer(canvas, match, quality, models = false) {
 
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
+          // a substitute has come on in this slot: dress him as himself
+          const simple = rigs.get(p);
+          if (simple && simple.refId !== p.ref?.id) {
+            scene.remove(simple.grp);
+            simple.parts.torso.material.map?.dispose?.();
+            const fresh = simpleRig(p, t, simple.shirtNo);
+            fresh.grp.visible = !useModels;
+            scene.add(fresh.grp); rigs.set(p, fresh);
+          }
           if (useModels) {
-            const rig = modelRigs.get(p);
+            let rig = modelRigs.get(p);
+            if (rig && rig.refId !== p.ref?.id && loadedModel) {
+              rig.mixer.stopAllAction(); scene.remove(rig.root);
+              rig = modelRig(p, t, rig.index); scene.add(rig.root); modelRigs.set(p, rig);
+            }
             if (rig) { poseRig(rig, p, dt); rig.root.position.z += surfaceAt(p.x, p.y); }
             continue;
           }

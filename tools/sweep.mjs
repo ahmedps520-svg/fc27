@@ -95,7 +95,7 @@ for (let i = 0; i < N; i++) {
 const per = (v) => (v / N).toFixed(2);
 console.log(`${N} matches, seed ${SEED}, ${PRESET}`);
 console.log(`  goals        ${per(total.goals)}        (target 2-3)`);
-console.log(`  shots        ${per(total.shots)}       (target ~11)`);
+console.log(`  shots        ${per(total.shots)}       (target 11-15)`);
 console.log(`  on target    ${per(total.onTarget)}`);
 console.log(`  conversion   ${((total.goals / total.shots) * 100).toFixed(1)}%`);
 console.log(`  home poss    ${per(total.poss)}%`);

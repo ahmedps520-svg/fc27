@@ -197,6 +197,7 @@ export function mount(root) {
   const q = (s) => root.querySelector(s);
 
   const seatText = () => {
+    if (!q('#tsSeatH')) return;              // gone: the screen was left under the timer
     const pads = padCount();
     if (mode === 'coop') {
       q('#tsSeatH').textContent = 'P1 + P2';

@@ -55,7 +55,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v85';
+export const APP_VERSION = 'v86';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -65,6 +65,7 @@ const ultEl = document.getElementById('ultCoins');
 
 let current = 'menu';
 let activeCleanup = null;
+let navSeq = 0;               // v86: which navigation is current (see navigate)
 
 export function applyTheme() {
   const s = getState().settings;
@@ -181,8 +182,19 @@ export function navigate(name, params = {}) {
   // inside .screen would ride the entry animation's containing block
   document.body.classList.toggle('on-menu', name === 'menu');
 
+  const token = ++navSeq;
   try {
-    if (typeof mod.mount === 'function') activeCleanup = mod.mount(root, params) || null;
+    if (typeof mod.mount === 'function') {
+      const cleanup = mod.mount(root, params) || null;
+      /* v86: a screen that navigates while it is still mounting (a redirect,
+         a button the pad clicked in the same tick) has already been replaced:
+         the screen now showing set its own cleanup. Assigning this one over it
+         leaked the new screen's listeners and left this one's timers running
+         against a DOM that was gone ("Cannot set properties of null" from the
+         quick-match pad poll). Run it now instead. */
+      if (token === navSeq) activeCleanup = cleanup;
+      else if (typeof cleanup === 'function') { try { cleanup(); } catch { /* it was never on screen */ } }
+    }
   } catch (err) {
     /* A screen that throws while mounting used to leave whatever half of it
      * had rendered, with no way out but the browser's back button. Show the

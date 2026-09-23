@@ -117,3 +117,26 @@ test('the person turns quicker than the CPU model, and the Responsiveness settin
   assert.ok(low.sprint180 > high.sprint180, `sprint 180: low ${low.sprint180}s, high ${high.sprint180}s`);
   assert.ok(low.sprint180 <= 0.5, 'even the heaviest setting turns within half a second');
 });
+
+test('v86: the CPU is light on its feet too — quick turns, and it never orbits a target', () => {
+  const { m, p } = setup(false);
+  const turn = (factor, dir, until) => {
+    p.x = 50; p.y = 34; p.vx = 0; p.vy = 0;
+    for (let i = 0; i < 180; i++) { m.drive(p, 1, 0, DT, factor); p.x += p.vx * DT; p.y += p.vy * DT; }
+    const v0 = Math.hypot(p.vx, p.vy);
+    for (let i = 0; i < 300; i++) { m.drive(p, dir[0], dir[1], DT, factor); p.x += p.vx * DT; p.y += p.vy * DT; if (until(v0)) return (i + 1) * DT; }
+    return Infinity;
+  };
+  const jog180 = turn(0.6, [-1, 0], (v0) => p.vx < -0.8 * v0);
+  const sprint180 = turn(1.1, [-1, 0], (v0) => p.vx < -0.8 * v0);
+  const sprint90 = turn(1.1, [0, 1], (v0) => p.vy > 0.8 * v0 && Math.abs(p.vx) < 0.3 * v0);
+  assert.ok(jog180 <= 0.35, `CPU 180 at a jog ${jog180}s (was 1.2 s)`);
+  assert.ok(sprint180 <= 0.6, `CPU 180 at a sprint ${sprint180}s (was 1.65 s)`);
+  assert.ok(sprint90 <= 0.3, `CPU 90 at a sprint ${sprint90}s (was 0.9 s)`);
+  // a loose ball four metres to his side at full tilt: he used to circle it for ever
+  p.x = 50; p.y = 34; p.vx = 0; p.vy = 0;
+  for (let i = 0; i < 180; i++) { m.drive(p, 1, 0, DT, 1.1); p.x += p.vx * DT; }
+  const tx = p.x; const ty = p.y + 4; let reached = Infinity;
+  for (let i = 0; i < 300; i++) { m.moveTo(p, tx, ty, DT, 1.1); p.x += p.vx * DT; p.y += p.vy * DT; if (Math.hypot(p.x - tx, p.y - ty) < 0.8) { reached = (i + 1) * DT; break; } }
+  assert.ok(reached <= 1, `reaches a point 4 m to the side in ${reached}s`);
+});

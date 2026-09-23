@@ -210,3 +210,31 @@ export function padCount() {
   const pads = navigator.getGamepads ? [...navigator.getGamepads()] : [];
   return pads.filter((g) => g && g.connected).length;
 }
+
+/**
+ * v86: the simulation's view of an input. The match now runs in fixed 1/60 s
+ * steps (the same steps the balance sweep measures), so a drawn frame can hold
+ * no step (a 120 Hz screen) or two (a slow one). Presses and releases are
+ * collected here between steps and cleared once a step has seen them — never
+ * lost on a frame without a step, never fired twice on a frame with two.
+ * Everything continuous (the stick, what is held) reads straight through.
+ */
+export class SimLatch {
+  constructor(inner) { this.inner = inner; this.down = new Set(); this.up = new Set(); }
+  /** After the frame's poll: remember this frame's edges until a step takes them. */
+  absorb() {
+    for (const a of ACTIONS) {
+      if (this.inner.pressed(a)) this.down.add(a);
+      if (this.inner.released(a)) this.up.add(a);
+    }
+  }
+  /** After each step. */
+  clear() { this.down.clear(); this.up.clear(); }
+  axis() { return this.inner.axis(); }
+  moving() { return this.inner.moving(); }
+  held(a) { return this.inner.held(a) || this.down.has(a); }
+  pressed(a) { return this.down.has(a); }
+  released(a) { return this.up.has(a); }
+  heldTime(a) { return this.inner.heldTime?.(a) ?? 0; }
+  takeGesture() { return this.inner.takeGesture?.() ?? null; }
+}
