@@ -15,6 +15,26 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v92 — polish: the new-player walkthrough (R15 item 1, first pass)
+`tests/tmp/newplayer.mjs` (throwaway; its screenshots are in tests/tmp/newplayer)
+starts from an empty save on a phone (390×844) and a desktop, through the
+splash, the welcome card, skipping to Today, and then every main screen. Fixed:
+- **Kick Off tile unreadable.** The generic `.tile::after` scrim (a dark
+  wash under every tile's words, for the image-backed tiles) also covered
+  the green PLAY door, so its dark text sat on near-black.
+  `.tile.t-play::after { display: none }`.
+- **Weekend League said "Last weekend · Bronze · 0 wins" to everyone between
+  weekends.** `currentWeekend()` already rolls the tally to the *upcoming*
+  window (the finished one moves to `weekendPending`). While closed, the
+  screen now explains the next weekend and hides the empty wins and pips.
+- **Today was 3,600 px on a phone**, most of it the 30-tier season grid. It
+  now shows a 9-tier window starting at the first unclaimed reward or the
+  current tier, with "Show all 30 tiers" (`showAllTiers`).
+- **Career** showed "New in v81" as the Player Mode kicker. It is now
+  "Run a club" / "Be the player".
+- A scan for other version labels in player-facing strings found none.
+- **Play session (v91)** is clean on all three devices.
+
 ### v91 — R15 controller support, part 3: four at one screen
 - **Side select** (`js/components/sideSelect.js`): one token per connected pad,
   keyed by its Gamepad API `index` so hot-plugging doesn't reshuffle anyone,

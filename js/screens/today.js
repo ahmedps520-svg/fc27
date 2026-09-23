@@ -21,6 +21,8 @@ import { DAILY } from '../progress.js';
 import { worldState } from '../world.js';
 import { t } from '../i18n.js';
 
+let showAllTiers = false;   // v92: the season grid shows a window of tiers unless asked for all
+
 export const TITLE = 'Today';
 
 const rewardLabel = (r) => rewardText({ apex: r.apex, ultimate: r.ultimate, pack: r.pack });
@@ -74,6 +76,8 @@ function seasonPanel(s) {
   const tier = tierOf(sp.xp);
   const claimable = Array.from({ length: Math.min(TIERS, tier) }, (_, i) => i + 1).filter((t) => !sp.claimed.includes(t));
   const next = tier < TIERS ? se.tiers[tier] : null;
+  const firstOpen = claimable.length ? claimable[0] - 1 : tier;
+  const tierWin = Math.max(0, Math.min(TIERS - 9, firstOpen - 1));
   return `
     <section class="panel glass season">
       <header class="panel-head"><h2>${se.name} <small>${se.daysLeft != null ? `${se.daysLeft} days left` : ''}</small></h2></header>
@@ -84,11 +88,16 @@ function seasonPanel(s) {
       </div>
       <div class="tiers">
         ${se.tiers.map((r, i) => {
+          /* v92: a window round where you are — the first unclaimed reward and
+             the next few — rather than all thirty tiers: on a phone the full grid
+             was most of the Today screen before anything else could be seen */
+          if (!showAllTiers && (i < tierWin || i >= tierWin + 9)) return '';
           const t = i + 1;
           const st = sp.claimed.includes(t) ? 'done' : t <= tier ? 'claim' : 'locked';
           return `<button class="tier ${st} ${r.label ? 'milestone' : ''}" data-tier="${t}" ${st === 'claim' ? '' : 'disabled'} title="${rewardLabel(r)}"><b>${t}</b><span>${rewardLabel(r)}</span></button>`;
         }).join('')}
       </div>
+      <button class="btn ghost sm" id="allTiers">${showAllTiers ? 'Show fewer tiers' : `Show all ${TIERS} tiers`}</button>
       ${claimable.length > 1 ? `<button class="btn primary" id="claimTiers">Claim ${claimable.length} tiers</button>` : ''}
       <p class="hint">XP: 40 a match, +60 a win, +5 a goal · objectives 80 · daily login 50 · challenges 90 · event objectives 120.</p>
     </section>`;
@@ -164,6 +173,7 @@ export function mount(root) {
     toast(`Day reward: ${rewardLabel(r)}`, 'good');
     refresh();
   });
+  root.querySelector('#allTiers')?.addEventListener('click', () => { showAllTiers = !showAllTiers; refresh(); });
   root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => {
     const r = progress.claimTier(+b.dataset.tier);
     if (!r) return;
