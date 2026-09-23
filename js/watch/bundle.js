@@ -12573,7 +12573,9 @@
       NumpadAdd: "sprint",
       ShiftRight: "sprint",
       Escape: "pause"
-    }
+    },
+    none: {}
+    // v91: a controller seat at a shared screen ignores the keyboard
   }, MOVE_SETS = {
     primary: {
       KeyW: [0, -1],
@@ -12586,7 +12588,8 @@
       ArrowDown: [0, 1],
       ArrowLeft: [-1, 0],
       ArrowRight: [1, 0]
-    }
+    },
+    none: {}
   }, PAD_ACTIONS = {
     0: "pass",
     1: "shoot",
@@ -12637,8 +12640,8 @@
      *   keys which keyboard set this seat uses, so two people can share one board
      */
     constructor(opts = {}) {
-      var _a;
-      this.padIndex = (_a = opts.pad) != null ? _a : null, this.keyMap = keyMapFor(opts.keys || "primary"), this.padMap = (opts.keys || "primary") === "primary" ? padMapFor() : PAD_ACTIONS, this.moveMap = opts.arrows ? { ...MOVE_SETS.primary, ...MOVE_SETS.secondary } : MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
+      var _a, _b;
+      this.padIndex = (_a = opts.pad) != null ? _a : null, this.padSlot = (_b = opts.padSlot) != null ? _b : null, this.keyMap = keyMapFor(opts.keys || "primary"), this.padMap = (opts.keys || "primary") === "secondary" ? PAD_ACTIONS : padMapFor(), this.moveMap = opts.arrows ? { ...MOVE_SETS.primary, ...MOVE_SETS.secondary } : MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
         e.repeat || (this.keys.add(e.code), (this.keyMap[e.code] || this.moveMap[e.code]) && e.preventDefault());
       }, this._up = (e) => this.keys.delete(e.code), this._blur = () => this.keys.clear(), window.addEventListener("keydown", this._down), window.addEventListener("keyup", this._up), window.addEventListener("blur", this._blur);
     }
@@ -12649,7 +12652,7 @@
     poll(dt = 0) {
       var _a, _b, _c, _d, _e, _f;
       let live2 = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
-      this.pad = this.padIndex === null ? live2[0] || null : live2[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
+      this.pad = this.padSlot === -1 ? null : this.padSlot !== null ? live2.find((g) => g.index === this.padSlot) || null : this.padIndex === null ? live2[0] || null : live2[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
       let x = 0, y = 0;
       for (let [code, v] of Object.entries(this.moveMap))
         this.keys.has(code) && (x += v[0], y += v[1]);

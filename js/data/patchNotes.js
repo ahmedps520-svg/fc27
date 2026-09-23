@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v91',
+    date: '2026-09-24',
+    tag: 'Couch',
+    title: 'Four at one screen',
+    lede: 'Up to four people can play on one screen, on the same team or against each other, with a new screen for choosing sides.',
+    entries: [
+      {
+        head: 'Choose sides',
+        summary: 'In Quick Match, choose Co-op or Versus and press Kick Off. Every controller gets a token, and so do the two halves of the keyboard. Push yours left for the home team or right for the away team, press A when ready, and Start to kick off.',
+        detail: 'Controllers plugged in while the screen is open appear straight away, and any mix works: two against two, three against the CPU, or one of you against three friends. If everyone is on the same side it is co-op. On a tablet with no controllers, the split-screen touch controls work as before.',
+      },
+      {
+        head: 'In the match',
+        summary: 'Each player has a coloured marker (white, amber, cyan and pink), and the top bar shows who is on a controller and who is on the keyboard.',
+        detail: 'Each controller only moves its own player, and vibration goes only to the controller whose player made the tackle or took the shot. Your button remapping now applies to every controller, not just the first.',
+      },
+    ],
+  },
+  {
     version: 'v90',
     date: '2026-09-23',
     tag: 'Controller',

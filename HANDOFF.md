@@ -15,6 +15,43 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v91 — R15 controller support, part 3: four at one screen
+- **Side select** (`js/components/sideSelect.js`): one token per connected pad,
+  keyed by its Gamepad API `index` so hot-plugging doesn't reshuffle anyone,
+  plus WASD and the arrows.
+  - Controls: left/right move a token between home, not playing and away;
+    A is ready, Start (or Enter) kicks off, B backs out.
+  - At most 4 people playing. The first two pads start where the chosen
+    mode would put them.
+  - The first sample of a pad records what's already held, so the A that
+    opened the screen isn't a ready press. Sets `body.pad-capture` so the
+    menu's pad driver stands down.
+  - Returns `[{ team, pad, keys }]`, home seats then away.
+- **Quick Match**: Co-op or Versus opens it unless the device is touch-only
+  with no pads (that keeps the split-screen touch mode). The mode is then
+  derived from the seats (mixed sides = versus, one side = co-op).
+- **play.js** `params.localSeats` → one `Input` per seat
+  (`new Input({ padSlot, keys })`). `padSlot` binds a pad by Gamepad `index`;
+  -1 means no pad. `keys: 'none'` is an empty key set, so a controller seat
+  ignores the keyboard. `Match({ seats })` uses the multi-seat path the
+  online party already used. The HUD chip lists every seat.
+- **Every pad seat gets your remapped buttons** (it used to be only the
+  first). The second keyboard half keeps the defaults.
+- **Renderer**: four seat markers (white, amber, cyan, pink).
+- **Tests**: `pad-reach.mjs` plugs in a second simulated pad, chooses
+  Versus, readies both and kicks off with Start, and checks the seats are
+  `[0, 1]`. The Gamepad stub is now a list (`window.__pads`). A one-off
+  four-player check (two pads and both keyboard halves, 2 v 2): all four
+  seats and markers present, each seat moved only by its own device.
+
+Controller support for R15 is complete: menus (v89), the in-match scheme
+(v90) and couch play (v91). Left of R15: the new-player playthrough and
+rough edges, the visual consistency audit, the balance/economy audit,
+launch assets (attract mode, store screenshots, landing page, credits,
+verify the existing PWA icons without replacing them), and final hardening
+(zero console errors across QA, Lighthouse/PWA scores, a server security
+review), then the Round 7–15 report.
+
 ### v90 — R15 controller support, part 2: the in-match scheme
 None of it is reachable by the CPU (the sweep is identical); it's all in
 `handleSeat` and the input layer.
