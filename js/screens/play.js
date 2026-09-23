@@ -123,7 +123,7 @@ function buildSplitTouch(root, inputs) {
     const R = 48; let id = null;
     const move = (e) => { if (e.pointerId !== id) return; const r = stick.getBoundingClientRect(); const dx = e.clientX - (r.left + r.width / 2); const dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy) || 1; const cl = Math.min(1, m / R); inp.setTouchVec((dx / m) * cl, (dy / m) * cl); nub.style.transform = `translate(${(dx / m) * cl * R}px, ${(dy / m) * cl * R}px)`; };
     const end = (e) => { if (e.pointerId !== id) return; id = null; stick.hidden = true; inp.setTouchVec(0, 0); nub.style.transform = ''; };
-    zone.addEventListener('pointerdown', (e) => { if (id !== null) return; id = e.pointerId; zone.setPointerCapture(e.pointerId); const zr = zone.getBoundingClientRect(); stick.style.left = `${e.clientX - zr.left}px`; stick.style.top = `${e.clientY - zr.top}px`; stick.hidden = false; move(e); });
+    zone.addEventListener('pointerdown', (e) => { if (id !== null) return; id = e.pointerId; try { zone.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ } const zr = zone.getBoundingClientRect(); stick.style.left = `${e.clientX - zr.left}px`; stick.style.top = `${e.clientY - zr.top}px`; stick.hidden = false; move(e); });
     zone.addEventListener('pointermove', move); zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
     half.querySelectorAll('[data-act]').forEach((b) => {
       const a = b.dataset.act;
@@ -546,7 +546,7 @@ export function mount(root, params) {
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
     () => `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`,
-    'Keys 1–5 or the flag button switch quick tactics, from Park the bus to All-out attack',
+    () => `${lastDevice() === 'keyboard' ? 'Keys 1–5 or the flag button switch' : 'The flag button switches'} quick tactics, from Park the bus to All-out attack`,
     () => `LOB (${promptFor('lob')}) — chip it over the defence to a runner`,
     () => `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting`,
     'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
@@ -1543,7 +1543,10 @@ export function mount(root, params) {
     zone.addEventListener('pointerdown', (e) => {
       if (stickId !== null) return;
       stickId = e.pointerId;
-      zone.setPointerCapture(e.pointerId);
+      /* v88: capture can throw when the pointer is already gone; unguarded, it
+         left stickId set with no stick shown, and every later touch was
+         ignored — the stick was dead until that phantom finger lifted */
+      try { zone.setPointerCapture(e.pointerId); } catch { /* moves still arrive on the zone itself */ }
       // plant the stick under the thumb, kept clear of the screen edges
       const pad = R + 18;
       const x = Math.min(Math.max(e.clientX, pad), window.innerWidth - pad);
@@ -2256,6 +2259,8 @@ export function mount(root, params) {
     } else {
       padEl.textContent = input.pad ? 'Pad ✓' : 'No pad';
       padEl.classList.toggle('on', !!input.pad);
+      // v88: on a phone, "No pad" is noise — shown only once a controller is in play
+      padEl.hidden = !input.pad && lastDevice() === 'touch';
     }
     if (online) {
       const q = qualityLabel(peerRtt ?? rtt);

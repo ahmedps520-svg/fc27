@@ -101,8 +101,22 @@ function tick(dt) {
   const pad = pads.find((g) => g && g.connected);
   if (!pad) return;
 
+  /* v88: back and home first. A screen with nothing focusable (the trophy
+     room) used to return before these were read, and a controller player
+     was stranded there. */
+  const down = pad.buttons.map((b) => b.pressed);
+  const hit = (i) => down[i] && !prevButtons[i];
+  if (down.some((d, i) => d && !prevButtons[i])) resumeAudio();
+  if (hit(1)) {                                               // circle / B = back
+    prevButtons = down;
+    const back = document.getElementById('backBtn');
+    if (back && !back.hidden) back.click();
+    return;
+  }
+  if (hit(9)) { prevButtons = down; document.getElementById('homeBtn')?.click(); return; }   // options = home
+
   const list = items();
-  if (!list.length) return;
+  if (!list.length) { prevButtons = down; return; }
   if (focusIdx >= list.length) focusIdx = 0;
 
   let x = pad.axes[0] || 0;
@@ -127,16 +141,7 @@ function tick(dt) {
   holdT -= dt;
   lastDir = dir;
 
-  const down = pad.buttons.map((b) => b.pressed);
-  const hit = (i) => down[i] && !prevButtons[i];
-  // a pad press counts as the gesture that lets audio start, same as a tap
-  if (down.some((d, i) => d && !prevButtons[i])) resumeAudio();
-  if (hit(0)) activate(list[focusIdx]);                       // cross
-  if (hit(1)) {                                               // circle = back
-    const back = document.getElementById('backBtn');
-    if (back && !back.hidden) back.click();
-  }
-  if (hit(9)) document.getElementById('homeBtn')?.click();    // options = home
+  if (hit(0)) activate(list[focusIdx]);                       // cross / A
   prevButtons = down;
 
   paint(list);
@@ -162,6 +167,20 @@ function onKey(e) {
   e.preventDefault();
   list[focusIdx]?.focus({ preventScroll: false });
   list[focusIdx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+/* v88: a read-only view for the controller-reachability test (tests/qa/pad-reach.mjs):
+   the list the ring moves over, where it is, and where a direction would take it. */
+if (typeof window !== 'undefined') {
+  window.__padMenu = {
+    list: () => items(),
+    focus: () => focusIdx,
+    peek(i, d) {
+      const list = items(); const keep = focusIdx; focusIdx = i;
+      const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[d];
+      step(list, dx, dy); const out = focusIdx; focusIdx = keep; return out;
+    },
+  };
 }
 
 export function startPadMenu() {

@@ -3697,7 +3697,11 @@ export function createRenderer(canvas, match, quality, models = false) {
       if (composer && load.post) composer.render();
       else renderer.render(scene, camera);
     },
-    dispose() {
+    /** `keepContext`: the caller builds a new renderer on this same canvas
+     *  (the stadium builder). A forced context loss there is permanent — the
+     *  canvas hands the same, lost context to the next renderer — so it is
+     *  left alive for the next one to reuse. */
+    dispose({ keepContext = false } = {}) {
       try { dressing.dispose(); } catch { /* already gone */ }
       disposed = true;
       for (const rig of modelRigs.values()) {
@@ -3737,7 +3741,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       reflect?.rt.dispose();
       pmrem?.dispose();
       renderer.dispose();
-      try { renderer.forceContextLoss(); } catch { /* already lost */ }
+      if (!keepContext) { try { renderer.forceContextLoss(); } catch { /* already lost */ } }
     },
   };
 }

@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v88',
+    date: '2026-09-23',
+    tag: 'Fixes',
+    title: 'Builder, controller and touch fixes',
+    lede: 'Fixes for problems found by playing the last release on a phone, a keyboard and a controller.',
+    entries: [
+      {
+        head: 'Stadium Builder',
+        summary: 'The 3D preview in the Stadium Builder works again after you change something. Since v87 it could go blank after the first change.',
+        detail: 'The builder redraws the stadium on the same canvas after every change. The memory fix in v87 released the graphics context on the way out, so the next preview had nothing to draw with. The builder now keeps the context and hands it on.',
+      },
+      {
+        head: 'Controller',
+        summary: 'B (or Circle) goes back from every screen, including the Trophy Room, where a controller player could get stuck.',
+        detail: 'A new automatic check walks every screen with a simulated controller to make sure each one can be reached and left without a mouse.',
+      },
+      {
+        head: 'Touch',
+        summary: 'Fixed a rare case where the on-screen stick stopped responding until you lifted every finger. Tips no longer name keyboard keys on a phone, and the "No pad" label is hidden on touch screens.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v87',
     date: '2026-09-23',
     tag: 'Performance',

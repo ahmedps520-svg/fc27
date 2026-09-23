@@ -137,7 +137,7 @@ export function mount(root) {
   const onKey = (e) => { if (camMode !== 'fly') return; if (/^(Key[WASDQE]|Arrow)/.test(e.code)) { e.preventDefault(); if (e.type === 'keydown') keys.add(e.code); else keys.delete(e.code); } };
   window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey);
   const pts = new Map(); let pinch = 0;
-  view.addEventListener('pointerdown', (e) => { if (camMode !== 'fly' || e.target.closest('button')) return; view.setPointerCapture?.(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+  view.addEventListener('pointerdown', (e) => { if (camMode !== 'fly' || e.target.closest('button')) return; try { view.setPointerCapture?.(e.pointerId); } catch { /* gone */ } pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
   view.addEventListener('pointermove', (e) => {
     const p = pts.get(e.pointerId); if (!p || camMode !== 'fly') return;
     if (pts.size === 1) fly.look(e.clientX - p.x, e.clientY - p.y);
