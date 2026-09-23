@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v93',
+    date: '2026-09-24',
+    tag: 'Balance',
+    title: 'Fairer packs',
+    lede: 'We measured every pack in the store against what it actually gives, and fixed the three that were poor value.',
+    entries: [
+      {
+        head: 'High Roller',
+        summary: 'Now 18,000 (was 26,000), with a Special more often than not and an 83+ minimum. Its label said it had "the best single-card odds in the store", and it gave a 90+ card only about one time in five.',
+        detail: 'Its label now just says what it is: one card, usually a Special.',
+      },
+      {
+        head: 'Lucky Dip and Prime',
+        summary: 'Lucky Dip\'s single card is better (Specials 12% → 20%): its best card used to average lower than a Silver pack\'s at two and a half times the price. Prime has more Specials (22% → 30%), so it now sits fairly beside Double Down.',
+        detail: 'Every other pack was already in a sensible order of value for price, and no pack\'s cards sell for more than the pack costs.',
+      },
+    ],
+  },
+  {
     version: 'v92',
     date: '2026-09-24',
     tag: 'Polish',
