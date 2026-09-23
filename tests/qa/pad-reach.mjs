@@ -89,6 +89,7 @@ async function focusByPad(k) {
       return first;
     }, k).catch(() => null);
     if (step === 'here') return true;
+    if (process.env.TRACE) console.log('      step', k, step, await page.evaluate(() => window.__padMenu?.focus()));
     if (!step) return false;
     await press(DPAD[step], 60);
   }
@@ -125,11 +126,111 @@ async function home() {
   if ((await current()) !== 'menu') { await press(START); await page.waitForTimeout(500); }
   return (await current()) === 'menu';
 }
-/* Once a screen has been reached by a real pad press, it is explored by
-   jumping straight back to it: the chain of proof stays pad-only (every
-   screen was first entered by pressing A on a control focused with the
-   D-pad), and replaying long paths through screens whose state changes on
-   the way (a claimed reward, a toggled setting) would only test the test. */
+// controls that wipe or leave on purpose: reachable, but not pressed by the walk
+const SKIP = new Set(['#resetBtn', '#forceUpdate', '#startTut', '#exportBtn', '#importFile', '#signOut', '#logoutBtn']);
+const reached = new Map([['menu', []]]);
+await checkScreen('menu');
+
+/* The routes a person takes to each screen, walked with the pad alone: the
+   control is focused with the D-pad and pressed with A at every step. A
+   route that breaks — a button gone, moved out of reach, or no longer
+   answering the pad — fails CI. */
+const ROUTES = {
+  today: ['go:today'], trophies: ['go:trophies'], career: ['go:career'], street: ['go:street'],
+  skills: ['go:skills'], settings: ['go:settings'], squad: ['go:squad'], quick: ['go:quick'],
+  world: ['go:quick', '#worldBtn'], stadiums: ['go:quick', '#stadiumsBtn'], builder: ['go:quick', '#stadiumsBtn', '#scBuild'],
+  pro: ['go:career', '#cmPlayer'], weekend: ['go:squad', '[data-utab=division]', '#goWeekend'],
+};
+if (!process.argv.includes('--explore')) {
+  for (const [target, route] of Object.entries(ROUTES)) {
+    if (!(await home())) { problems.push(`${target}: could not get back to the menu first`); continue; }
+    let ok = true;
+    for (const key of route) {
+      lastKey = `${target}: ${key}`;
+      const keys = await keysHere();
+      if (!keys.includes(key)) { problems.push(`${target}: "${key}" is not on ${await current()} (route ${route.join(' → ')})`); ok = false; break; }
+      if (!(await pressKey(key))) { problems.push(`${target}: could not focus "${key}" on ${await current()} with the D-pad`); ok = false; break; }
+    }
+    if (!ok) continue;
+    const now = await current();
+    if (now !== target) { problems.push(`${target}: the route ${route.join(' → ')} ended on ${now}`); continue; }
+    reached.set(target, route);
+    await checkScreen(target);
+    console.log(`  · ${target}  (${route.join(' → ')})`);
+    for (let i = 0; i < 3 && (await current()) !== 'menu'; i++) { await press(B); await page.waitForTimeout(450); }
+    if ((await current()) !== 'menu') problems.push(`${target}: B does not lead back to the menu`);
+  }
+}
+
+/* v89: the controller features, each proved with the pad */
+async function feature(name, fn) {
+  try { const why = await fn(); if (why) problems.push(`${name}: ${why}`); else console.log(`  · ${name}`); } catch (e) { problems.push(`${name}: ${e.message.split('\n')[0]}`); }
+}
+const via = async (route) => { if (!(await home())) return false; for (const k of route) if (!(await pressKey(k))) return false; return true; };
+const focusOnly = async (key) => { const k = (await keysHere()).indexOf(key); return k >= 0 && focusByPad(k); };
+if (!process.argv.includes('--explore')) {
+  await feature('tabs on the bumpers (RB)', async () => {
+    if (!(await via(ROUTES.squad))) return 'could not reach Squad';
+    const before = await page.evaluate(() => document.querySelector('[data-utab].on')?.dataset.utab);
+    await press(5); await page.waitForTimeout(600);
+    const after = await page.evaluate(() => document.querySelector('[data-utab].on')?.dataset.utab);
+    return before && after && before !== after ? '' : `the tab did not change (${before} → ${after})`;
+  });
+  await feature('a card is put into the line-up with the pad (squad builder)', async () => {
+    // setup, not navigation: a handful of cards in the collection to pick from
+    await page.evaluate(async () => {
+      const [{ update }, { WORLD }] = await Promise.all([import('/js/state.js'), import('/js/data/generator.js')]);
+      const ids = Object.keys(WORLD.playersById).slice(0, 14);
+      update((st) => { st.club.collection = [...new Set([...(st.club.collection || []), ...ids])]; });
+    });
+    if (!(await via(ROUTES.squad))) return 'could not reach Squad';
+    // the builder's way: A on a pitch slot, then A on the card that goes in it
+    const slots = (await keysHere()).filter((k) => k.startsWith('[data-slot='));
+    if (!slots.length) return 'no pitch slot is focusable';
+    const target = slots[slots.length - 1];
+    if (!(await pressKey(target))) return `could not focus ${target}`;
+    const pk = (await keysHere()).find((k) => k.startsWith('[data-player='));
+    if (!pk) return 'no player card is focusable';
+    const pid = pk.slice('[data-player='.length, -1);
+    if (!(await pressKey(pk))) return `could not focus and pick ${pk}`;
+    const lineup = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).club?.lineup || []);
+    return lineup.map(String).includes(pid) ? '' : `player ${pid} is not in the line-up after pick → ${target}`;
+  });
+  await feature('a slider moves with the D-pad', async () => {
+    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await focusOnly('#respRange'))) return 'could not focus the Responsiveness slider';
+    const v0 = await page.$eval('#respRange', (e) => Number(e.value));
+    await press(DPAD.right); await page.waitForTimeout(200);
+    const v1 = await page.$eval('#respRange', (e) => Number(e.value));
+    await press(DPAD.left); await page.waitForTimeout(200);
+    return v1 > v0 ? '' : `value stayed ${v0} → ${v1}`;
+  });
+  await feature('text entry with the on-screen keyboard', async () => {
+    // the sign-in form on Squad → Online: a name typed with the pad alone
+    if (!(await via([...ROUTES.squad, '[data-utab=online]']))) return 'could not reach the Online tab';
+    if (!(await focusOnly('#acctName'))) return 'could not focus the account-name field';
+    const before = await page.$eval('#acctName', (e) => e.value);
+    await press(A); await page.waitForTimeout(300);
+    if (!(await page.$('.osk-layer'))) return 'A did not open the keyboard';
+    await press(A); await page.waitForTimeout(150); await press(A); await page.waitForTimeout(150);   // types the focused key twice
+    await press(START); await page.waitForTimeout(300);
+    if (await page.$('.osk-layer')) return 'Start did not close the keyboard';
+    const after = await page.$eval('#acctName', (e) => e.value).catch(() => before);
+    return after.length === before.length + 2 ? '' : `typed "${before}" → "${after}"`;
+  });
+  await feature('B closes a modal (the release notes)', async () => {
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('apexxi.save.v1')); s.flags.notesSeen = 'v1'; localStorage.setItem('apexxi.save.v1', JSON.stringify(s)); });
+    await page.goto(`${server.url}/`); await page.waitForSelector('#startBtn'); await page.waitForTimeout(400);
+    await press(A); await page.waitForTimeout(2500);
+    if (!(await page.$('.np-layer'))) return 'the release-notes card did not appear (nothing to close)';
+    await press(B); await page.waitForTimeout(700);
+    return (await page.$('.np-layer')) ? 'B left the card open' : '';
+  });
+}
+
+/* --explore: the full breadth-first walk, pressing every control with a
+   stable identity on every screen. Slow (tens of minutes); for finding
+   routes nobody listed, not for CI. */
 async function goToScreen(name) {
   await ensureApp();
   if (name === 'menu') return home();
@@ -137,11 +238,8 @@ async function goToScreen(name) {
   await page.waitForTimeout(600);
   return (await current()) === name;
 }
-// controls that wipe or leave on purpose: reachable, but not pressed by the walk
-const SKIP = new Set(['#resetBtn', '#forceUpdate', '#startTut', '#exportBtn', '#importFile', '#signOut', '#logoutBtn']);
-const reached = new Map([['menu', []]]);
-const queue = ['menu'];
-await checkScreen('menu');
+const queue = process.argv.includes('--explore') ? [process.env.START || 'menu'] : [];
+if (process.env.START) reached.set(process.env.START, ['(jump)']);
 while (queue.length) {
   const screen = queue.shift();
   if (!(await goToScreen(screen))) { problems.push(`${screen}: could not get back to it`); continue; }
@@ -150,14 +248,13 @@ while (queue.length) {
     if (!(await goToScreen(screen))) break;
     lastKey = `${screen} ${key}`;
     if (process.env.DEBUG) console.log('    try', screen, key);
+    if (!(await keysHere()).includes(key)) continue;          // this state of the screen does not have it
     if (!(await pressKey(key))) { problems.push(`${screen}: could not focus "${key}" with the D-pad`); continue; }
     await ensureApp();
     const now = await current();
     if (now && !reached.has(now)) {
       reached.set(now, [...reached.get(screen), key]); queue.push(now);
       await checkScreen(now); console.log(`  · ${now}  (${reached.get(now).join(' → ')})`);
-      // and B leads home from it (not in a match, where B is shoot and Start pauses)
-      if (now !== 'play' && !(await (async () => { for (let i = 0; i < 3 && (await current()) !== 'menu'; i++) { await press(B); await page.waitForTimeout(450); } return (await current()) === 'menu'; })())) problems.push(`${now}: B does not lead back to the menu`);
     }
   }
 }

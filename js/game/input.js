@@ -80,11 +80,20 @@ export const onDeviceChange = (fn) => { deviceFns.add(fn); return () => deviceFn
 if (typeof window !== 'undefined' && window.addEventListener) {
   window.addEventListener('keydown', () => setDevice('keyboard'), true);
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setDevice('touch'); else if (e.pointerType === 'mouse') setDevice('keyboard'); }, true);
-  window.addEventListener('gamepadconnected', (e) => { PAD_KIND = /sony|dualsense|dualshock|playstation|054c/i.test(e.gamepad.id) ? 'ps' : 'xbox'; });
+  window.addEventListener('gamepadconnected', (e) => { PAD_KIND = padKindOf(e.gamepad.id); });
 }
+/** v89: which glyphs a pad's name asks for — PlayStation, Xbox, or the plain generic set. */
+export function padKindOf(id = '') {
+  if (/sony|dualsense|dualshock|playstation|054c/i.test(id)) return 'ps';
+  if (/xbox|xinput|microsoft|045e/i.test(id)) return 'xbox';
+  return 'generic';
+}
+export const padKind = () => PAD_KIND;
 const PAD_GLYPH = {
   ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', '↑', '↓', '←', '→'],
   xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', '↑', '↓', '←', '→'],
+  // a pad that names no maker: the numbers most generic pads print on their face buttons
+  generic: ['1', '2', '3', '4', 'L1', 'R1', 'L2', 'R2', 'Select', 'Start', 'L3', 'R3', '↑', '↓', '←', '→'],
 };
 export const padGlyph = (i, kind = PAD_KIND) => PAD_GLYPH[kind][i] ?? `B${i}`;
 export const keyLabel = (code) => (code || '').replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Num ').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'R-Shift').replace('Space', 'Space').replace('Escape', 'Esc');
