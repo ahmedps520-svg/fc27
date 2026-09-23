@@ -379,6 +379,10 @@ select {
 }
 .tile.t-play .tile-swoosh path { stroke: rgba(255, 255, 255, .5); }
 .tile.t-play::before { display: none; }
+/* v92: nor the dark scrim every other tile gets under its words — on the green
+   door it turned the dark text into dark-on-near-black, the least readable
+   words on the menu */
+.tile.t-play::after { display: none; }
 @media (max-width: 760px) {
   .hub { grid-template-columns: 1fr; }
   .hub-rail { flex-direction: row; }
@@ -5077,3 +5081,5 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .ss-empty { opacity: .35; text-align: center; }
 .ss-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; }
 @media (max-width: 640px) { .ss-cols { grid-template-columns: 1fr; } .ss-col { min-height: 0; } }
+/* v92: the season grid's "show all" sits clear of the grid and the hint */
+#allTiers { display: inline-flex; margin: 10px 8px 6px 0; }

@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v92',
+    date: '2026-09-24',
+    tag: 'Polish',
+    title: 'First impressions',
+    lede: 'Fixes from playing the game as a brand-new player on a phone and a desktop.',
+    entries: [
+      {
+        head: 'Main menu',
+        summary: 'The Kick Off button is readable again: its text was dark on a dark wash that covered the green.',
+        detail: '',
+      },
+      {
+        head: 'Weekend League',
+        summary: 'Between weekends the screen now explains the next one, instead of showing "Last weekend · Bronze · 0 wins" to everybody.',
+        detail: 'Results from a weekend you played are still waiting on the Today screen once it closes.',
+      },
+      {
+        head: 'Today',
+        summary: 'The season rewards show the tiers around your progress, with a button to see all thirty, so the Today screen is much shorter on a phone.',
+        detail: '',
+      },
+      {
+        head: 'Career',
+        summary: 'The Manager and Player cards say what each mode is ("Run a club", "Be the player") instead of an old version label.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v91',
     date: '2026-09-24',
     tag: 'Couch',

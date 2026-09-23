@@ -57,7 +57,7 @@ function modesHTML() {
     ${screenHead({ kicker: 'Mode 03', title: 'Career', sub: 'Take a real club. Live with the results.', motif: 'season', tone: 'b' })}
     <div class="cm-modes">
       <button class="cm-mode glass" id="cmManager">
-        <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Available now'}</span>
+        <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Run a club'}</span>
         <b>MANAGER MODE</b>
         <p>You are the manager. Pick your touchline persona, take charge of a real club,
            work the transfer market, and influence matches from the technical area —
@@ -65,7 +65,7 @@ function modesHTML() {
         <span class="cm-cta">Start →</span>
       </button>
       <button class="cm-mode glass" id="cmPlayer">
-        <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `Continue · ${getState().pro.name}` : 'New in v81'}</span>
+        <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `Continue · ${getState().pro.name}` : 'Be the player'}</span>
         <b>PLAYER MODE</b>
         <p>Create a footballer — name, nation, position, look — and start at seventeen in a second tier.
            Play only your player, earn the manager's trust, train, move clubs, win caps, and retire with a legacy.</p>

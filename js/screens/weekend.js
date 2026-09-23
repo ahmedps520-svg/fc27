@@ -38,12 +38,15 @@ export function render() {
     <div class="wl">
       <section class="panel glass">
         <div class="wl-hero">
-          <div class="wl-big"><b>${tally.wins}</b><span>wins</span></div>
-          <div class="wl-info">
-            <span class="ev-kicker">${w.open ? 'This weekend' : 'Last weekend'}</span>
+          ${w.open ? `<div class="wl-big"><b>${tally.wins}</b><span>wins</span></div>` : ''}
+          ${!w.open ? `<div class="wl-info">
+            <span class="ev-kicker">Next weekend</span>
+            <b>Ten matches, one ranking</b>
+            <span>Qualify during the week, then play up to ${WL_MATCHES} matches between Friday evening and Monday morning. The more you win, the better the rewards.</span>` : `<div class="wl-info">
+            <span class="ev-kicker">This weekend</span>
             <b>${rank.name}</b>
-            <span>${tally.played}/${WL_MATCHES} played · ${tally.draws}D ${tally.losses}L · ${tally.goalsFor}–${tally.goalsAgainst}</span>
-            <div class="div-pips">${Array.from({ length: WL_MATCHES }, (_, i) => `<i class="${i < tally.wins ? 'on' : i < tally.played ? 'lost' : ''}"></i>`).join('')}</div>
+            <span>${tally.played}/${WL_MATCHES} played · ${tally.draws}D ${tally.losses}L · ${tally.goalsFor}–${tally.goalsAgainst}</span>`}
+            ${!w.open ? '' : `<div class="div-pips">${Array.from({ length: WL_MATCHES }, (_, i) => `<i class="${i < tally.wins ? 'on' : i < tally.played ? 'lost' : ''}"></i>`).join('')}</div>`}
           </div>
           ${w.open && left ? `<div class="wl-btns">
             <button class="btn primary big" id="wlPlay" ${squadReady && q.qualified ? '' : 'disabled'}>Play match ${tally.played + 1}</button>
