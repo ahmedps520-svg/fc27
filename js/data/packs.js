@@ -12,12 +12,19 @@
 import { WORLD, getPlayer } from './generator.js';
 import { RARITY } from './pools.js';
 import { price } from '../economy.js';
+import { campaignNow, campaignCards, weekCards, iconTierCards, weekNow } from './promos.js';
 
 /** The nation the Nations Week pack is drawn from: one of twelve, rotating weekly. */
 const WEEK_NATIONS = ['France', 'Brazil', 'England', 'Spain', 'Argentina', 'Germany', 'Italy', 'Portugal', 'Netherlands', 'Saudi Arabia', 'Morocco', 'Belgium'];
 export const nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 604_800_000) % WEEK_NATIONS.length];
 
 export const PACKS = [
+  /* v80: the promo shelf. Each promises one card of its kind in the first slot,
+     on top of gold filler, and says exactly what that slot can be. */
+  { id: 'campaign', cat: 'promo', name: 'Campaign', cost: 25000, size: 3, variant: 'campaign', odds: { bronze: 0, silver: 0, gold: 0.9, special: 0.1 }, floor: 'gold', note: '3 cards · 1 campaign card', promise: '1 guaranteed card from this week\'s campaign', variantOdds: [['Campaign card', 1]] },
+  { id: 'inform', cat: 'promo', name: 'In-Form', cost: 18000, size: 3, variant: 'inform', odds: { bronze: 0, silver: 0, gold: 0.92, special: 0.08 }, floor: 'gold', note: '3 cards · 1 in-form', promise: '1 guaranteed In-Form (1 in 8 is Team of the Week)', variantOdds: [['In-Form', 0.875], ['Team of the Week', 0.125]] },
+  { id: 'vault', cat: 'limited', name: 'Legends Vault', cost: 120000, size: 1, limited: true, variant: 'icontier', odds: { bronze: 0, silver: 0, gold: 0, special: 1 }, note: '1 Icon · any tier', promise: '1 guaranteed Icon — Early, Peak or Prime', variantOdds: [['Early Icon (92)', 0.7], ['Peak Icon (95)', 0.25], ['Prime Icon (99)', 0.05]] },
+
   { id: 'bronze', cat: 'free',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
   /* v73: SBC fodder. Six cheap bodies — bronzes and silvers — for the quick
      SBCs, priced so a pack is always worth less than the challenge it feeds. */
@@ -184,7 +191,7 @@ export const packTone = (p) => p.tone || p.guarantee || p.id;
 /* Cheapest to rarest. `rarityFor` only ever returns the first four — star and
  * icon are set by hand on the named cards — but they rank above `special` so a
  * "gold or better" floor is satisfied by an Icon rather than overwritten by one. */
-export const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, star: 4, icon: 5 };
+export const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, star: 4, icon: 5 };
 
 export function rollRarity(odds) {
   const r = Math.random();
@@ -296,6 +303,24 @@ export function openPack(pack, seen = new Set(), needGK = false) {
   // rating so the best card lands last, see runPackAnimation. Kept random
   // anyway because nothing should depend on the guarantee sitting at a fixed
   // index. Slot 0 is skipped when a keeper was forced into it.
+  // v80: the promo slot
+  if (pack.variant) {
+    const r = Math.random();
+    let pool = [];
+    if (pack.variant === 'campaign') pool = campaignCards(campaignNow());
+    else if (pack.variant === 'inform') pool = r < 0.125 ? weekCards('totw', weekNow()) : weekCards('inform', weekNow());
+    else if (pack.variant === 'icontier') pool = iconTierCards(r < 0.7 ? 'early' : r < 0.95 ? 'peak' : 'prime');
+    if (pool.length) {
+      const fresh = pool.filter((p) => !seen.has(p.id));
+      const from = fresh.length ? fresh : pool;
+      // better cards are rarer: weight towards the lower end of the pool
+      const sorted = from.slice().sort((a, b) => a.overall - b.overall);
+      const p = sorted[Math.floor(Math.pow(Math.random(), 1.8) * sorted.length)];
+      const dup = seen.has(p.id);
+      seen.add(p.id);
+      pulls[0] = { p, dup };
+    }
+  }
   if (pack.guarantee) {
     /* `wantGK` here was a leftover from before the move out of squad.js —
      * an undefined name, so every pack with a guarantee (Star, Icon) threw
@@ -314,6 +339,11 @@ export function openPack(pack, seen = new Set(), needGK = false) {
  * store does not reshuffle on every render.
  */
 export function samplePulls(pack, n = 3, day = Math.floor(Date.now() / 86_400_000)) {
+  // v80: a promo pack shows the best of its promo slot
+  if (pack.variant) {
+    const pool = pack.variant === 'campaign' ? campaignCards(campaignNow()) : pack.variant === 'inform' ? weekCards('totw', weekNow()) : iconTierCards('prime');
+    return pool.slice().sort((a, b) => b.overall - a.overall).slice(0, n);
+  }
   const scope = filterOf(pack.filter) || (() => true);
   const rank = RARITY_RANK[pack.guarantee || pack.floor || 'gold'] ?? 2;
   const pool = WORLD.players.filter((p) => !p.sbc && scope(p) && (RARITY_RANK[p.rarity] ?? 0) >= rank

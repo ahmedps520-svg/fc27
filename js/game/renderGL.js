@@ -21,8 +21,8 @@ import { pickAwayHex } from '../kits.js';
  * is set accordingly and geometry is placed in sim coordinates directly.
  * ------------------------------------------------------------------ */
 
-const CY = PITCH.h / 2;
-const GOAL_H = 2.44;
+import { CY, FIELD, SCALE } from './field.js';
+import { GOAL_HEIGHT as GOAL_H } from './field.js';
 const MARGIN = 6;
 const STAND_FRONT_Z = 1.9;
 /* The stand's front wall is fixed — it is the wall the perimeter boards lean
@@ -429,13 +429,14 @@ function pitchRoughness(pattern = 'stripes') {
  *
  * @param {(x:number, y:number, r:number) => void} put called per patch, in metres
  */
-function wearPatches(put) {
+function wearPatches(put0) {
+  const put = (x, y, r) => put0(x, y, r * Math.max(0.45, SCALE));   // v80: smaller pitch, smaller patches
   for (const side of [0, 1]) {
     const gx = side === 0 ? 0 : PITCH.w;
     const inw = side === 0 ? 1 : -1;
     put(gx + inw * 3.2, CY, 8.5);            // the goalmouth
-    put(gx + inw * 11, CY, 2.4);             // the penalty spot
-    put(gx + inw * 16.5, CY, 4.2);           // the edge of the D
+    put(gx + inw * FIELD.spot, CY, 2.4);     // the penalty spot
+    put(gx + inw * BOX.w, CY, 4.2);          // the edge of the D
   }
   put(PITCH.w / 2, CY, 7);                   // the centre circle
   put(PITCH.w * 0.32, 4.5, 6);               // the channels the full-backs run
@@ -570,26 +571,26 @@ function pitchTexture(detail = true, pattern = 'stripes', wet = false, opts = {}
 
   g.strokeRect(m(L), m(L), m(PITCH.w - L * 2), m(PITCH.h - L * 2));
   g.beginPath(); g.moveTo(m(PITCH.w / 2), m(L)); g.lineTo(m(PITCH.w / 2), m(PITCH.h - L)); g.stroke();
-  g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(9.15), 0, 7); g.stroke();
+  g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(FIELD.circle), 0, 7); g.stroke();
   g.beginPath(); g.arc(m(PITCH.w / 2), m(CY), m(0.35), 0, 7); g.fill();
 
   for (const side of [0, 1]) {
     const gx = side === 0 ? L : PITCH.w - L;
     const inw = side === 0 ? 1 : -1;
-    const spot = gx + inw * 11;
+    const spot = gx + inw * FIELD.spot;
     g.strokeRect(side === 0 ? m(L) : m(PITCH.w - L - BOX.w), m(CY - BOX.half),
       m(BOX.w), m(BOX.half * 2));
-    g.strokeRect(side === 0 ? m(L) : m(PITCH.w - L - 5.5), m(CY - 9.16),
-      m(5.5), m(18.32));
+    if (FIELD.sixW > 0) g.strokeRect(side === 0 ? m(L) : m(PITCH.w - L - FIELD.sixW), m(CY - FIELD.sixHalf),
+      m(FIELD.sixW), m(FIELD.sixHalf * 2));
     g.beginPath(); g.arc(m(spot), m(CY), m(0.3), 0, 7); g.fill();
 
     /* The D: a 9.15 m arc about the penalty spot, clipped to the part that
        falls outside the box — which is the only part that gets painted. */
     const boxEdge = gx + inw * BOX.w;
-    const half = Math.acos(Math.abs(boxEdge - spot) / 9.15);
+    const half = Math.acos(Math.min(1, Math.abs(boxEdge - spot) / FIELD.circle));
     const face = side === 0 ? 0 : Math.PI;
     g.beginPath();
-    g.arc(m(spot), m(CY), m(9.15), face - half, face + half);
+    g.arc(m(spot), m(CY), m(FIELD.circle), face - half, face + half);
     g.stroke();
 
     /* Corner arcs: 1 m radius, a quarter turn, always the quarter that faces

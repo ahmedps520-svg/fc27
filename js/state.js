@@ -1,4 +1,5 @@
-import { WORLD } from './data/generator.js';
+import { WORLD, getPlayer } from './data/generator.js';
+import './data/promos.js';          // v80: registers the promo / in-form / icon-tier cards
 import { dealSlate, LADDER, REFRESH_MS, ULTIMATE_RUNGS } from './data/objectives.js';
 import { pushSave } from './net/api.js';
 import * as storage from './storage.js';
@@ -230,9 +231,9 @@ function repairSave(s) {
   if (!Array.isArray(s.club.challengesDone)) s.club.challengesDone = [];
   if (!Array.isArray(s.club.collection)) s.club.collection = [...d.club.collection];
   if (!Array.isArray(s.club.lineup)) s.club.lineup = [...d.club.lineup];
-  s.club.collection = s.club.collection.filter((id) => WORLD.playersById[id]);
-  s.club.lineup = s.club.lineup.map((id) => (id && WORLD.playersById[id] ? id : null));
-  s.club.bench = s.club.bench.map((id) => (id && WORLD.playersById[id] ? id : null));
+  s.club.collection = s.club.collection.filter((id) => getPlayer(id));
+  s.club.lineup = s.club.lineup.map((id) => (id && getPlayer(id) ? id : null));
+  s.club.bench = s.club.bench.map((id) => (id && getPlayer(id) ? id : null));
 }
 
 /**
@@ -259,6 +260,11 @@ function applyReset(s) {
 export const getState = () => state;
 
 export function save() {
+  // v80: the binder keeps every card you have ever owned
+  if (state?.club?.collection) {
+    const seen = state.club.everOwned || (state.club.everOwned = {});
+    for (const id of state.club.collection) if (!seen[id]) seen[id] = 1;
+  }
   try {
     storage.setItem(KEY, JSON.stringify(state));
   } catch { /* storage full or blocked — keep playing in memory */ }

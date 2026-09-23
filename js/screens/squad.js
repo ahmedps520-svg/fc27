@@ -1,7 +1,11 @@
 import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE, ULTIMATE_RUNGS } from '../state.js';
+import { campaignNow, campaignEndsIn, baseOf } from '../data/promos.js';
+import { evolvedRef } from '../evolutions.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
-import { chemistryFor, moddedRef, levelOf, linksFor } from '../data/chemistry.js';
+import { chemistryFor as chemRaw, moddedRef, levelOf, linksFor, chemLinks } from '../data/chemistry.js';
+import { managerOf, managersOpen, setManager, savedSquads, saveSquad, loadSquad, deleteSquad, SAVED_MAX, buildSquad, applyBuild } from '../squadHub.js';
+import { modesView, mountModes, tasksView, mountTasks, evosView, mountEvos, marketView, mountMarket, binderView, mountBinder } from './uxiHub.js';
 import * as progress from '../progress.js';
 import { eventPack, activeEvent } from '../live.js';
 import { evolveInfo, evolve } from '../evolve.js';
@@ -30,13 +34,16 @@ export { PACK_BY_ID, openPack as __openPackForTest };
 
 export const TITLE = 'Ultimate XI';
 
+/** v80: chemistry on this screen always counts the club's manager. */
+export const chemistryFor = (lineup, formation) => chemRaw(lineup, formation, managerOf(getState().club));
+
 let tab = 'club';            // club | division | online | objectives | challenges | store
-let storeTab = 'packs';      // packs | locker | icons — the Store tab's own row
+let storeTab = 'packs';      // packs | locker | icons | market | binder — the Store tab's own row
 /* The Club tab's own three. Squad and the identity editor used to be two
    top-level tabs sitting next to each other, which put "pick your eleven" and
    "pick your badge" at the same level as "play a match" — they are both the
    same job, so they are one tab with three faces now. */
-let clubTab = 'squad';       // squad | badge | name
+let clubTab = 'squad';       // squad | evos | badge | name
 let openChallenge = null;    // the SBC being filled in, if any
 let submission = [];         // card ids staged for it
 
@@ -90,7 +97,6 @@ const SORTS = {
 /* ------------------------------------------------------------------ *
  * Chemistry
  * ------------------------------------------------------------------ */
-export { chemistryFor };
 
 /* ------------------------------------------------------------------ *
  * Pack logic
@@ -113,7 +119,8 @@ export function ultimateSquad() {
    * the one place a custom squad is handed to the engine — the engine itself
    * never learns the words. See data/chemistry.js. */
   const chem = chemistryFor(ids, s.club.formation);
-  const xi = raw.map((p, i) => moddedRef(p, { chem: chem.per[i], level: levelOf(s.club, p.id) }));
+  // v80: evolutions first (they change the card), then chemistry and level on top
+  const xi = raw.map((p, i) => moddedRef(evolvedRef(s.club, p), { chem: chem.per[i], level: levelOf(s.club, p.id) }));
   // The bench is optional — an empty seat simply means nobody to bring on there.
   const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean)
     .map((p) => moddedRef(p, { level: levelOf(s.club, p.id) }));
@@ -340,13 +347,15 @@ export function storeView() {
   const subs = `
     <nav class="subtabs" id="sSubs">
       ${[['packs', 'Packs'], ['locker', `Locker${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
-         ['icons', 'Icon Exchange']]
+         ['icons', 'Icon Exchange'], ['market', 'Market'], ['binder', 'Binder']]
         .map(([id, label]) =>
           `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
     </nav>`;
 
   if (storeTab === 'locker') return subs + lockerView(owned, counts);
   if (storeTab === 'icons') return subs + iconExchangeView();
+  if (storeTab === 'market') return subs + marketView();
+  if (storeTab === 'binder') return subs + binderView();
   const shelfEvent = eventShelf(s);
 
   /* Shelves, not one grid.
@@ -372,7 +381,7 @@ export function storeView() {
           </span>
           <i class="sp-foil" aria-hidden="true"></i>
         </div>
-        <b class="sp-name">${p.weekly ? `${p.name}: ${nationOfWeek()}` : p.name}</b>
+        <b class="sp-name">${p.weekly ? `${p.name}: ${nationOfWeek()}` : p.variant === 'campaign' ? campaignNow().name : p.name}</b>
         <span class="sp-note">${p.note}</span>
         ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
         ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
@@ -392,6 +401,7 @@ export function storeView() {
     ['free', 'On the house', 'A free bronze pack, every six hours.'],
     ['standard', 'Standard', 'The everyday packs — squad filler, a keeper, a cheap gamble.'],
     ['premium', 'Premium', 'Higher floors and better odds, priced like it.'],
+    ['promo', `This week: ${campaignNow().name}`, `${campaignNow().blurb} Ends in ${fmtLeft(campaignEndsIn() * 1000)}. In-Forms and the Team of the Week come from the world's own round of matches.`],
     ['limited', 'Limited & Icons', 'Guaranteed headline cards. The top of the store.'],
   ];
 
@@ -509,7 +519,9 @@ function oddsLine(p) {
   const parts = Object.entries(p.odds)
     .filter(([, v]) => v > 0.001)
     .map(([k, v]) => `${RARITY[k].label} ${Math.round(v * 100)}%`);
-  return parts.join(' · ');
+  // v80: the promo slot's own odds, stated plainly
+  const v = p.variantOdds ? ` · promo slot: ${p.variantOdds.map(([n, x]) => `${n} ${Math.round(x * 1000) / 10}%`).join(', ')}` : '';
+  return parts.join(' · ') + v;
 }
 
 /* ---------------------------- Challenges ---------------------------- */
@@ -558,7 +570,8 @@ function challengesView() {
   const cards = submittedCards();
   // Chemistry needs a formation to score against; the challenge is about the
   // set rather than the shape, so it is measured in the club's own formation.
-  const chem = chemistryFor(
+  // SBCs score the cards alone: the manager's bonus does not count toward them
+  const chem = chemRaw(
     [...submission, ...Array(11).fill(null)].slice(0, 11), s.club.formation);
   const { rows, ok } = evaluate(openChallenge, cards, chem);
 
@@ -772,8 +785,8 @@ export function render() {
   const sorry = apologyCard();
 
   if (tab === 'online') return tabs + sorry + onlineView();
-  if (tab === 'division') return tabs + sorry + divisionView();
-  if (tab === 'objectives') return tabs + sorry + objectivesView();
+  if (tab === 'division') return tabs + sorry + divisionView() + modesView(ultimateSquad());
+  if (tab === 'objectives') return tabs + sorry + tasksView() + objectivesView();
   if (tab === 'challenges') return tabs + sorry + challengesView();
   if (tab === 'store') return tabs + sorry + storeView();
 
@@ -784,11 +797,12 @@ export function render() {
    * other read as a hierarchy instead of as fourteen buttons. */
   const sub = `
     <nav class="subtabs" id="cSubs">
-      ${[['squad', 'Squad'], ['badge', 'Club Badge'], ['name', 'Club Name']]
+      ${[['squad', 'Squad'], ['evos', 'Evolutions'], ['badge', 'Club Badge'], ['name', 'Club Name']]
         .map(([id, label]) =>
           `<button class="subtab ${clubTab === id ? 'on' : ''}" data-ctab="${id}">${label}</button>`).join('')}
     </nav>`;
 
+  if (clubTab === 'evos') return tabs + sorry + sub + evosView();
   if (clubTab === 'badge') return tabs + sorry + sub + badgeView();
   if (clubTab === 'name') return tabs + sorry + sub + nameView();
 
@@ -822,6 +836,7 @@ export function render() {
             <span class="pl-box top"></span><span class="pl-box bottom"></span>
             <span class="pl-six top"></span><span class="pl-six bottom"></span>
           </div>
+          ${linksSVG(lineup, formation)}
           ${FORMATIONS[formation].map((slot, i) => slotHTML(slot, i, lineup[i], chem.per[i])).join('')}
         </div>
         <p class="pitch-hint">Tap an empty slot to see who can play there, or drag a card onto the pitch.</p>
@@ -842,6 +857,8 @@ export function render() {
             <b>${owned} pack${owned > 1 ? 's' : ''} waiting</b>
             <span>Open them in the Store</span>
           </button>` : ''}
+
+        ${hubPanel(chem)}
 
         <section class="panel glass">
           <header class="panel-head">
@@ -871,8 +888,62 @@ export function render() {
     <div class="detail-overlay" id="detailOverlay" hidden></div>`;
 }
 
+/** Chemistry v2: the lines between neighbouring cards, coloured by what joins them. */
+function linksSVG(lineup, formation) {
+  const links = chemLinks(lineup, formation);
+  return `<svg class="chem-links" id="chemLinks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    ${links.map((l) => `<line class="cl-${l.kind}" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}"/>`).join('')}</svg>`;
+}
+
+/** The squad hub: manager, the chemistry breakdown, saved squads and the auto-builder. */
+function hubPanel(chem) {
+  const s = getState();
+  const mgr = managerOf(s.club);
+  const saved = savedSquads(s.club);
+  return `
+    <section class="panel glass squad-hub" id="squadHub">
+      <header class="panel-head"><h2>Squad hub</h2>
+        <button class="btn primary" id="buildSquad" ${s.club.collection.length ? '' : 'disabled'}>Build me a squad</button></header>
+      <label class="field"><span>Manager</span>
+        <select id="mgrSel"><option value="">No manager</option>
+          ${managersOpen(s.club).map((m) => `<option value="${m.id}" ${mgr?.id === m.id ? 'selected' : ''} ${m.open ? '' : 'disabled'}>${m.name} · ${m.nation} · ${m.league}${m.open ? '' : ` (club level ${m.unlock})`}</option>`).join('')}
+        </select></label>
+      <p class="hint">A manager who shares a card's nation or league gives it a point of chemistry, up to the cap of 3.</p>
+      <div id="hubBreak">${breakdownHTML(chem)}</div>
+      <div class="chem-key"><i class="cl-club"></i>Club <i class="cl-nation"></i>Nation <i class="cl-league"></i>League <i class="cl-none"></i>No link</div>
+      <h3 class="hub-h">Saved squads</h3>
+      <ul class="saved-squads" id="savedSquads">
+        ${Array.from({ length: SAVED_MAX }, (_, i) => {
+          const sq = saved[i];
+          return `<li>${sq ? `<b>${sq.name}</b><span>${sq.formation}</span>
+            <button class="mini-btn" data-sq-load="${i}">Load</button>
+            <button class="mini-btn" data-sq-save="${i}">Overwrite</button>
+            <button class="mini-btn danger" data-sq-del="${i}" aria-label="Delete ${sq.name}">×</button>`
+            : `<span class="empty">Empty slot</span><button class="mini-btn" data-sq-save="${i}">Save current</button>`}</li>`;
+        }).join('')}
+      </ul>
+    </section>`;
+}
+
+function breakdownHTML(chem) {
+  const s = getState();
+  const parts = chem.parts || [];
+  const sum = (k) => parts.reduce((t, x) => t + (x ? x[k] : 0), 0);
+  const ovr = s.club.lineup.map((id) => (id ? evolvedRef(s.club, getPlayer(id)) : null)).filter(Boolean);
+  const byGroup = { GK: [], DEF: [], MID: [], FWD: [] };
+  for (const p of ovr) byGroup[POSITIONS[p.position].group]?.push(p.overall);
+  const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : '–');
+  return `<div class="hub-break">
+    <div><b>${sum('pos')}</b><span>from positions</span></div>
+    <div><b>${sum('link')}</b><span>from links</span></div>
+    <div><b>${sum('mgr')}</b><span>from manager</span></div>
+    <div><b>${chem.team}</b><span>team chem</span></div>
+  </div>
+  <div class="hub-break lines">${Object.entries(byGroup).map(([g, a]) => `<div><b>${avg(a)}</b><span>${g}</span></div>`).join('')}</div>`;
+}
+
 function slotHTML(slot, i, playerId, chem) {
-  const p = playerId ? getPlayer(playerId) : null;
+  const p = playerId ? evolvedRef(getState().club, getPlayer(playerId)) : null;
   const r = p ? RARITY[p.rarity] : null;
   const club = p ? getClub(p.clubId) : null;
   return `
@@ -880,7 +951,7 @@ function slotHTML(slot, i, playerId, chem) {
          style="left:${slot.x}%;top:${slot.y}%${p ? `;--rar:${r.color};--rar-glow:${r.glow}` : ''}">
       ${p ? `
         <span class="slot-chem chem-${chem >= 3 ? 'hi' : chem >= 2 ? 'mid' : 'lo'}">${chem}</span>
-        <span class="slot-ovr">${Math.min(99, p.overall + levelOf(getState().club, p.id))}${levelOf(getState().club, p.id) ? '<i class="slot-lvl">▲</i>' : ''}</span>
+        <span class="slot-ovr">${Math.min(99, p.overall + levelOf(getState().club, p.id))}${levelOf(getState().club, p.id) || p.evoStage ? '<i class="slot-lvl">▲</i>' : ''}</span>
         <span class="slot-crest">${club ? crestSVG(club.crest, club.short, 18) : ''}</span>
         <span class="slot-name">${p.short}</span>
         <span class="slot-pos">${slot.pos}</span>
@@ -950,7 +1021,7 @@ function collectionHTML() {
     return `
     <div class="coll-item ${selectedId === p.id ? 'is-selected' : ''} ${fit === 2 ? 'is-misfit' : ''}"
          data-player="${p.id}" draggable="false">
-      ${playerCard(p, { size: 'mini' })}
+      ${(() => { const ev = evolvedRef(s.club, p); return playerCard(ev, { size: 'mini', evo: ev.evoStage || 0 }); })()}
       ${slot ? `<span class="coll-fit fit-${fit}">${fit === 0 ? 'Fits' : fit === 1 ? 'Near' : 'Out of position'}</span>` : ''}
       <div class="coll-tools">
         <button class="mini-btn" data-detail="${p.id}">Info</button>
@@ -1002,6 +1073,13 @@ export function mount(root) {
    * re-render would tear the text field out from under whoever is typing in it.
    * Everything writes straight to state — there is no Save button, and nothing
    * here can be invalid enough to need one. */
+  // v80 panels
+  if (tab === 'club' && clubTab === 'evos') { mountEvos(root); return; }
+  if (tab === 'store' && storeTab === 'market') { mountMarket(root); return; }
+  if (tab === 'store' && storeTab === 'binder') { mountBinder(root); return; }
+  if (tab === 'objectives') mountTasks(root);
+  if (tab === 'division') mountModes(root, ultimateSquad);
+
   if (tab === 'club' && clubTab !== 'squad') {
     const preview = root.querySelector('#ciPreview');
     const nameEl = root.querySelector('#ciName');
@@ -1130,7 +1208,7 @@ export function mount(root) {
     root.querySelector('#sbcSubmit')?.addEventListener('click', () => {
       const c = openChallenge;
       const cards = submittedCards();
-      const chem = chemistryFor([...submission, ...Array(11).fill(null)].slice(0, 11),
+      const chem = chemRaw([...submission, ...Array(11).fill(null)].slice(0, 11),
         getState().club.formation);
       if (!c || !evaluate(c, cards, chem).ok) return toast('Conditions not met', 'warn');
 
@@ -1266,6 +1344,11 @@ export function mount(root) {
       const el = pitch.querySelector(`[data-slot="${i}"]`);
       if (el) el.outerHTML = slotHTML(slot, i, s.club.lineup[i], chem.per[i]);
     });
+    const svg = pitch.querySelector('#chemLinks');
+    if (svg) svg.outerHTML = linksSVG(s.club.lineup, s.club.formation);
+    else pitch.querySelector('.pitch-lines')?.insertAdjacentHTML('afterend', linksSVG(s.club.lineup, s.club.formation));
+    const hb = root.querySelector('#hubBreak');
+    if (hb) hb.innerHTML = breakdownHTML(chem);
     const metrics = root.querySelector('.sb-metrics');
     metrics.querySelectorAll('.metric')[0].querySelector('.big').textContent = chem.rating || '--';
     const chemEl = metrics.querySelector('.chem-num');
@@ -1302,6 +1385,10 @@ export function mount(root) {
     update((s) => {
       const existing = s.club.lineup.indexOf(playerId);
       if (existing >= 0) s.club.lineup[existing] = null;   // move, don't duplicate
+      // v80: one footballer, one shirt — a promo replaces his other card
+      const me = baseOf(getPlayer(playerId));
+      s.club.lineup.forEach((id, i) => { if (id && id !== playerId && baseOf(getPlayer(id)) === me) s.club.lineup[i] = null; });
+      (s.club.bench || []).forEach((id, i) => { if (id && id !== playerId && baseOf(getPlayer(id)) === me) s.club.bench[i] = null; });
       const onBench = (s.club.bench || []).indexOf(playerId);
       if (onBench >= 0) s.club.bench[onBench] = null;      // ...including off the bench
       s.club.lineup[slotIndex] = playerId;
@@ -1310,6 +1397,27 @@ export function mount(root) {
     pickSlot = null;
     rerenderPitch();
   };
+
+  /* --- v80 squad hub --- */
+  root.querySelector('#mgrSel')?.addEventListener('change', (e) => {
+    setManager(e.target.value || null);
+    rerenderPitch();
+  });
+  root.querySelector('#buildSquad')?.addEventListener('click', () => {
+    const b = buildSquad();
+    if (!b) return toast('No cards to build with', 'warn');
+    applyBuild(b);
+    toast(`Built a ${b.formation}: rated ${b.rating}, chemistry ${b.chem}`, 'good');
+    navigate('squad');
+  });
+  root.querySelector('#savedSquads')?.addEventListener('click', (e) => {
+    const sv = e.target.closest('[data-sq-save]'); const ld = e.target.closest('[data-sq-load]'); const dl = e.target.closest('[data-sq-del]');
+    if (sv) { saveSquad(+sv.dataset.sqSave, `${getState().club.formation} · ${chemistryFor(getState().club.lineup, getState().club.formation).rating || '--'}`); toast('Squad saved', 'good'); }
+    else if (ld) { const miss = loadSquad(+ld.dataset.sqLoad); toast(miss ? `Loaded — ${miss} card${miss > 1 ? 's' : ''} no longer owned` : 'Squad loaded', miss ? 'warn' : 'good'); }
+    else if (dl) deleteSquad(+dl.dataset.sqDel);
+    else return;
+    navigate('squad');
+  });
 
   /* --- formation / bulk actions --- */
   root.querySelector('#formationSel').addEventListener('change', (e) => {

@@ -20,6 +20,7 @@ import { WORLD } from '../data/generator.js';
 import * as net from '../net/socket.js';
 import { isSignedIn } from '../net/api.js';
 import { queueWeekend, cancelQueue } from './online.js';
+import { qualification } from '../modes.js';
 
 export const TITLE = 'Weekend League';
 
@@ -30,6 +31,8 @@ export function render() {
   const rank = rankFor(tally.wins);
   const left = matchesLeft(tally);
   const squadReady = !!ultimateSquad();
+  // v80: ten qualification points (Division, Fives and Squad Clash wins) buy the entry
+  const q = qualification();
   const head = screenHead({ kicker: 'Competitive', title: 'Weekend League', sub: w.open ? `Open · closes in ${untilText(w.closesAt)}` : `Opens in ${untilText(w.opensAt)}`, motif: 'ladder', tone: 'c' });
   return head + `
     <div class="wl">
@@ -43,11 +46,14 @@ export function render() {
             <div class="div-pips">${Array.from({ length: WL_MATCHES }, (_, i) => `<i class="${i < tally.wins ? 'on' : i < tally.played ? 'lost' : ''}"></i>`).join('')}</div>
           </div>
           ${w.open && left ? `<div class="wl-btns">
-            <button class="btn primary big" id="wlPlay" ${squadReady ? '' : 'disabled'}>Play match ${tally.played + 1}</button>
-            <button class="btn big" id="wlOnline" ${squadReady && isSignedIn() ? '' : 'disabled'}>Find an opponent online</button>
+            <button class="btn primary big" id="wlPlay" ${squadReady && q.qualified ? '' : 'disabled'}>Play match ${tally.played + 1}</button>
+            <button class="btn big" id="wlOnline" ${squadReady && q.qualified && isSignedIn() ? '' : 'disabled'}>Find an opponent online</button>
           </div>` : ''}
         </div>
         <div class="wl-search" id="wlSearch" hidden><span>Searching for a weekend opponent with a similar record…</span><button class="btn ghost" id="wlCancel">Cancel</button></div>
+        <div class="wl-qual ${q.qualified ? 'ok' : ''}"><b>${q.qualified ? 'Qualified' : `Qualification ${q.points}/${q.need}`}</b>
+          <span>${q.qualified ? 'Your entry is confirmed for this weekend.' : 'Win Apex Division or Quickfire Fives matches (1 point) and Squad Clash matches (2) to qualify.'}</span>
+          <i class="obj-bar"><b style="width:${Math.min(100, (q.points / q.need) * 100)}%"></b></i></div>
         ${!squadReady ? '<p class="setting-note warn">Fill all eleven slots of your Ultimate XI first.</p>' : ''}
         ${!w.open ? '<p class="hint">Rewards for a finished weekend are claimed on the Today screen once the window closes.</p>' : ''}
       </section>
@@ -71,6 +77,7 @@ export function mount(root) {
   root.querySelector('#wlPlay')?.addEventListener('click', () => {
     const squad = ultimateSquad();
     if (!squad) return toast('Fill your XI first', 'warn');
+    if (!qualification().qualified) return toast('Qualify first: ten points from Division, Fives and Squad Clash wins', 'warn');
     const chem = chemistryFor(s.club.lineup, s.club.formation);
     const opp = divisionOpponent(s.ultimate.divIdx, chem.rating);
     enterFullscreen();

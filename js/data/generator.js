@@ -772,7 +772,13 @@ function nameTheWorld(players, list = REAL_PLAYERS) {
 
 export const WORLD = buildWorld();
 
-export const getPlayer = (id) => WORLD.playersById[id];
+/* v80: promo, in-form, team-of-the-week and icon-tier cards are variants of a
+   base card, built on first request by data/promos.js and cached here. They
+   are never added to a club roster or to WORLD.players, so squads, packs and
+   the balance sweep never see them unless something asks for one by id. */
+let variantResolver = null;
+export function setVariantResolver(fn) { variantResolver = fn; }
+export const getPlayer = (id) => WORLD.playersById[id] || (variantResolver && id ? variantResolver(id) : undefined);
 export const getClub = (id) => (id ? WORLD.clubsById[id] : null);
 export const clubName = (id) => (id ? WORLD.clubsById[id].name : 'Free Agent');
 export const rosterOf = (clubId) => WORLD.clubsById[clubId].roster.map(getPlayer);

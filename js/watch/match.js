@@ -56,7 +56,7 @@ export function drawThumb(canvas, st) {
   g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1; g.strokeRect(10.5, 4.5 + h, W - 21, H - 8 - h);
 }
 
-export function playMatch(app, awayId, onDone, level = 'normal') {
+export function playMatch(app, awayId, onDone, level = 'normal', opts = {}) {
   const lv = LEVELS[level] || LEVELS.normal;
   const homeClub = WORLD.clubs[0];
   const awayClub = WORLD.clubsById[awayId] || WORLD.clubs[1];
@@ -101,7 +101,8 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
     commT = 3;
   };
 
-  const match = new Match(HOME_ID, awayId, { duration: DURATION, mode: 'single', human: 0, preset: 'authentic', skill: lv.skill });
+  // v80: Quickfire Fives on the wrist — five a side on the small pitch
+  const match = new Match(HOME_ID, awayId, { duration: DURATION, mode: 'single', human: 0, preset: 'authentic', skill: lv.skill, field: opts.field || 'full' });
   const input = new Input({ keys: 'primary' });
   const cam = makeCamera();
   /* A watch is not a television. The broadcast camera shows the shape of a
@@ -254,7 +255,7 @@ export function playMatch(app, awayId, onDone, level = 'normal') {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       input.destroy?.();
-      onDone(reward, { goals: h.score, won, level });
+      onDone(reward, { goals: h.score, conceded: match.teams[1].score, won, level, field: opts.field || 'full' });
     });
   }
 }

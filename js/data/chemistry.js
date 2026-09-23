@@ -25,33 +25,67 @@ export const CHEM_STEP = 0.012;
 /** Each evolve level is +1 overall and +1% on every stat. */
 export const LEVEL_STEP = 0.01;
 
-export function chemistryFor(lineup, formation) {
+export function chemistryFor(lineup, formation, manager = null) {
   const slots = FORMATIONS[formation];
   const ids = lineup.filter(Boolean);
   const placed = ids.map(getPlayer).filter(Boolean);
   const leagueOf = (p) => (p.clubId ? getClub(p.clubId)?.league : null);
 
+  // v80: the breakdown behind every number — slot, links, manager — for the squad hub
+  const parts = [];
   const per = lineup.map((id, i) => {
+    parts[i] = null;
     if (!id) return 0;
     const p = getPlayer(id);
     if (!p) return 0;
     const slot = slots[i];
     const exact = p.position === slot.pos;
     const sameGroup = POSITIONS[p.position].group === POSITIONS[slot.pos].group;
-    let chem = exact ? 2 : sameGroup ? 1 : 0;
+    const pos = exact ? 2 : sameGroup ? 1 : 0;
+    let chem = pos;
 
     const clubMates = placed.filter((o) => o.id !== p.id && o.clubId && o.clubId === p.clubId).length;
     const nationMates = placed.filter((o) => o.id !== p.id && o.nation === p.nation).length;
     const lg = leagueOf(p);
     const leagueMates = lg ? placed.filter((o) => o.id !== p.id && leagueOf(o) === lg).length : 0;
-    if (clubMates >= 2 || nationMates >= 3 || (clubMates >= 1 && nationMates >= 1) || leagueMates >= 4) chem += 1;
-
-    return Math.max(0, Math.min(CHEM_MAX, chem));
+    const link = (clubMates >= 2 || nationMates >= 3 || (clubMates >= 1 && nationMates >= 1) || leagueMates >= 4) ? 1 : 0;
+    chem += link;
+    /* v80: the manager. One who shares a card's nation or league is worth a
+       point to it — the way a coach who speaks your language gets more out of
+       you — but never past the cap, so a perfect eleven gains nothing. */
+    const mgr = manager && (manager.nation === p.nation || (lg && manager.league === lg)) ? 1 : 0;
+    chem += mgr;
+    const total = Math.max(0, Math.min(CHEM_MAX, chem));
+    parts[i] = { pos, link, mgr: total > pos + link ? 1 : 0 };
+    return total;
   });
 
   const team = Math.min(100, Math.round((per.reduce((a, b) => a + b, 0) / 33) * 100));
   const rating = placed.length ? Math.round(placed.reduce((s, p) => s + p.overall, 0) / placed.length) : 0;
-  return { per, team, rating, placedCount: placed.length };
+  return { per, team, rating, placedCount: placed.length, parts };
+}
+
+/**
+ * Chemistry v2's lines: every pair of neighbouring slots and what joins them
+ * (`club` strongest, then `nation`, then `league`, or `none`). Neighbours are
+ * slots close enough on the formation drawing to pass to each other.
+ */
+export function chemLinks(lineup, formation) {
+  const slots = FORMATIONS[formation];
+  const out = [];
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      const d = Math.hypot(slots[i].x - slots[j].x, slots[i].y - slots[j].y);
+      if (d > 30) continue;
+      const a = lineup[i] && getPlayer(lineup[i]); const b = lineup[j] && getPlayer(lineup[j]);
+      if (!a || !b) continue;
+      const la = a.clubId ? getClub(a.clubId)?.league : null;
+      const lb = b.clubId ? getClub(b.clubId)?.league : null;
+      const kind = a.clubId && a.clubId === b.clubId ? 'club' : a.nation === b.nation ? 'nation' : la && la === lb ? 'league' : 'none';
+      out.push({ i, j, kind, x1: slots[i].x, y1: slots[i].y, x2: slots[j].x, y2: slots[j].y });
+    }
+  }
+  return out;
 }
 
 /** The link kinds a card has with the rest of the eleven, for the squad screen. */

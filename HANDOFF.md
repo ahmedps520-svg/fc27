@@ -15,6 +15,56 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v80 — Ultimate XI depth (Round 10)
+**Sweep byte-identical** for seeds 12345 and 777. The field became
+configurable without moving a single full-pitch number (the cross "wide"
+threshold is `20 * (PITCH.h / 68)` so it is exactly 20 m on a full pitch).
+- **Field** (`js/game/field.js`): `PITCH`, `CY`, `GOAL_HALF`, `GOAL_HEIGHT`,
+  `BOX`, `FIELD`, `SCALE` are live bindings set by `setField('full' | 'fives'
+  | 'futsal')`, called by `new Match(..., { field })`. The sim, camera and all
+  three renderers read them. Fives: 60×38, 2.5 m half-goal, 5 a side
+  (`SHAPES5` 1-2-1 / 2-2 / 2-1-1, `fivesFrom(xi)` picks GK/DEF/2 MID/FWD),
+  no offside; keeper reach, pickup, shot spread and read error scale with the
+  goal. About 2.5 goals per 150 s match.
+- **Scorers** are `{ name, id, assist, assistName, minute }`; `ball.passer`
+  feeds the assist and is cleared on a turnover.
+- **Promo cards** (`js/data/promos.js`): ids `pr:<campaign>:<id>`,
+  `if:<week>:<id>`, `tw:<week>:<id>`, `ic:<early|peak>:<id>`, resolved lazily
+  through `setVariantResolver` in `getPlayer` and never in rosters.
+  `weekPerformers(week)` sims a deterministic world round for TOTW (11) and
+  In-Forms (24). Campaigns rotate weekly (Future Stars / Heroes of the Desert /
+  Winter Legends). `baseOf(card)` — one footballer per lineup (squad `place`).
+  Packs `campaign`, `inform`, `vault` carry `variant` + `variantOdds`.
+- **Evolutions** (`js/evolutions.js`): six tracks × three stages, three at
+  once; `recordEvoMatch` runs after every Ultimate XI match (Division, Fives,
+  Clash, Weekend); `evolvedRef` applies boosts before chemistry in
+  `ultimateSquad`. Fixed during the round: a running track's boost read
+  `live.track`, which does not exist (the track is the key).
+- **Modes** (`js/modes.js`, UI `js/screens/uxiHub.js` under Division):
+  Quickfire Fives (`params.fives`, `field: 'fives'`, venue `stationrd`),
+  Squad Clash (16 themes, 12 a week, 5 levels, weekly rank paid the next
+  week), Division weekly rewards (`noteDivisionResult`), Weekend League
+  qualification (10 points per weekend window; gated in `screens/weekend.js`).
+- **Market** (`js/market.js`): offline, deterministic listings per 4 h slot,
+  price range 0.5×–3× value on list/bid/buy, 5 % tax, bids escrowed,
+  14-day history graph. `data/cardValue.js` is the pure rounding the watch
+  shares. **Binder** (`js/binder.js`): `club.everOwned` (written by `save()`),
+  sets pay once.
+- **Tasks** (`js/tasks.js`): 3 daily + 5 weekly dealt by hash, `bump(metric)`
+  from progress/market/evolutions/binder; club level from lifetime XP
+  (`club.xpTotal`), paid every level, packs at 5/10/25.
+- **Squad hub** (`js/squadHub.js`): 20 invented managers unlocking by club
+  level; `chemistryFor(lineup, formation, manager)` adds +1 on nation or league
+  (capped) and returns `parts` for the breakdown; `chemLinks` draws the pitch
+  lines; five saved squads; `buildSquad()` tries every formation × anchors.
+  SBCs use the raw chemistry (no manager).
+- **Watch**: Quickfire Fives button (`playMatch(..., { field: 'fives' })`),
+  Fives record (phone + wrist), best card's guide market price.
+- Tests: `tests/unit/ultimate-depth.test.mjs` (10). Visual:
+  `tests/visual/r10-shots.mjs` (every new panel, both orientations, a live
+  Fives match to full time).
+- Next: R11 career depth (task list).
+
 ### v79 — gameplay feel and AI (Round 9)
 **Sweep re-baselined deliberately** — this round rebuilds the football. The
 sweep now also reports restarts and discipline beside real top-flight

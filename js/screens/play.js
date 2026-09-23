@@ -9,6 +9,8 @@ import {
 } from '../game/render3d.js';
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
+import { settleFives, settleClash, noteDivisionResult } from '../modes.js';
+import { recordEvoMatch } from '../evolutions.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
@@ -32,7 +34,7 @@ import {
 } from '../net/netplay.js';
 
 export const TITLE = 'Match';
-const CY = PITCH.h / 2;
+import { CY } from '../game/field.js';
 
 /**
  * What the loading screen says while it waits.
@@ -309,6 +311,8 @@ export function mount(root, params) {
     preset: params.ultimate ? 'competitive' : 'authentic',
     homeSquad: params.homeSquad || null,
     awaySquad: params.awaySquad || null,
+    // v80: Quickfire Fives plays on a small pitch with five a side
+    field: params.field || 'full',
   });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
@@ -2458,8 +2462,13 @@ export function mount(root, params) {
 
     // Apex Division matches settle the ladder instead of paying a flat fee
     let div = null;
+    let sub = null;   // v80: a Fives or Squad Clash settlement
     if (spectating) {
       // nothing to bank: it was somebody else's match
+    } else if (params.fives) {
+      sub = settleFives(h.score, a.score);
+    } else if (params.clash) {
+      sub = settleClash(params.clash.theme, params.clash.level, h.score, a.score);
     } else if (params.ultimate) {
       div = settleDivisionMatch({
         scored: online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score,
@@ -2467,6 +2476,7 @@ export function mount(root, params) {
         // possession is reported home-first, and "mine" depends on the seat
         possession: online && online.seat === 1 ? pa : ph,
       });
+      noteDivisionResult((online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score) > (online ? theirs : a.score));
     } else if (mode === 'career') {
       /* The result flows into the career: my score home-first, the rest of the
        * round simulated, the table and the calendar moved on. Morale carries
@@ -2489,7 +2499,11 @@ export function mount(root, params) {
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
       scored: myScore, conceded: theirScore, online: !!online,
       possession: online && online.seat === 1 ? pa : ph, weekend: !!params.weekend,
+      sub: params.fives ? 'fives' : params.clash ? 'clash' : null,
     });
+    // v80: evolutions move on with every Ultimate XI match the squad plays
+    const evoDone = !spectating && params.homeSquad && (params.ultimate || params.fives || params.clash || params.weekend)
+      ? recordEvoMatch(match, online ? online.seat : 0, (params.homeSquad.xi || []).map((p) => p.id)) : [];
     if (div?.objectivesDone?.length) progress.onObjective(div.objectivesDone.length);
     if (prog.tiers) toast(`Season Pass: tier up! +${prog.tiers}`, 'good');
     refreshCoins();
@@ -2536,6 +2550,13 @@ export function mount(root, params) {
               ? `<ul class="dr-objs">${div.objectivesDone.map((t) => `<li>✓ ${t}</li>`).join('')}</ul>`
               : ''}
           </div>` : ''}
+        ${sub ? `
+          <div class="div-result ${sub.won ? 'up' : ''}">
+            <span class="dr-kicker">${params.fives ? 'Quickfire Fives' : 'Squad Clash'}</span>
+            <b>${sub.won ? 'Win' : sub.drew ? 'Draw' : 'Defeat'}</b>
+            <span class="dr-reward">${params.fives ? `◈ ${sub.apex.toLocaleString()}` : `+${sub.pts} clash points`}</span>
+          </div>` : ''}
+        ${evoDone.length ? `<ul class="dr-objs evo-done">${evoDone.map((e) => `<li>✦ ${e.track}: stage ${e.stage} complete</li>`).join('')}</ul>` : ''}
         ${mgr ? `
           <div class="gm-stats mgr-ft">
             <div><b>${Math.round(mgr.morale * 100)}</b><span>Team morale</span><b>${Math.round(mgr.perf * 100)}</b></div>
