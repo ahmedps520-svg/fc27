@@ -365,6 +365,8 @@ export class Match {
     // Authentic unless asked otherwise, so a mode that has not thought about it
     // gets the football one rather than the esports one.
     this.preset = PRESETS[opts.preset] || PRESETS.authentic;
+    // v84 hotfix: how quickly a person's player answers the stick (0–1, Settings → Controls)
+    this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7;
     this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null };
     /* Out-of-bounds ledger. `bounds()` already rules on every ball that leaves
      * the pitch — throw-in, corner, goal kick, goal — but it ruled silently:
@@ -882,6 +884,45 @@ export class Match {
    * speed at his own acceleration. A quick, balanced player cuts; a big one
    * carries on past you.
    */
+  /**
+   * The person's player (v84 hotfix). The v79 model below — a turn rate that
+   * shrinks with speed, a planted foot for a sharp change — is right for the
+   * CPU's players and was wrong for the one under a thumb: a 180° at a jog
+   * took 1.7 s, swinging out wide, and the player felt like a brick. Here the
+   * velocity chases the stick directly, so any direction, straight back
+   * included, is where the player goes within a few frames; the only weight
+   * left is a slight softening at full sprint. `responsiveness` (Settings →
+   * Controls, 0–1) scales the rates.
+   */
+  driveHuman(p, dx, dy, dt, factor = 1) {
+    if (p.slide > 0 || p.downT > 0) return;
+    const m = Math.min(1, Math.hypot(dx, dy));
+    const tired = 0.9 + p.stamina * 0.1;
+    const speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.6 : 1);
+    const L = Math.hypot(dx, dy) || 1;
+    // analogue, but generous: half a push is already full speed (a thumb on
+    // glass rarely goes further); only a light touch walks
+    const push = Math.max(0.35, Math.min(1, (m - 0.08) / 0.42));
+    const tx = m > 0.001 ? (dx / L) * speed * push : 0;
+    const ty = m > 0.001 ? (dy / L) * speed * push : 0;
+    const R = this.responsiveness;
+    const cur = Math.hypot(p.vx, p.vy);
+    const sprinting = factor > 1.05;
+    // momentum builds over a sustained sprint and fades over a quarter second, so
+    // a turn out of a flat-out run carries a little weight all the way round
+    const frac = sprinting ? Math.min(1, cur / (p.maxSpeed * factor)) : 0;
+    p.humanMom = (p.humanMom || 0) + (frac - (p.humanMom || 0)) * (1 - Math.exp(-(frac > (p.humanMom || 0) ? 2.5 : 4) * dt));
+    /* jog: 16–34 per second (a full 180 in ~0.07–0.14 s); at the top of a
+       sprint 30–65% of that — about 0.2 s at the default — which is all the
+       momentum there is */
+    const base = 16 + 18 * R;
+    const rate = m > 0.001 ? base * (1 - p.humanMom * p.humanMom * (0.7 - 0.35 * R)) : base * 1.2;   // letting go stops him quickly too
+    const k = 1 - Math.exp(-rate * dt);
+    p.vx += (tx - p.vx) * k;
+    p.vy += (ty - p.vy) * k;
+    p.planted = false;
+  }
+
   drive(p, dx, dy, dt, factor = 1) {
     if (p.slide > 0 || p.downT > 0) return;
     const m = Math.hypot(dx, dy);
@@ -1059,7 +1100,7 @@ export class Match {
       ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd }
       : { x: raw.x, y: fwd };
 
-    this.drive(p, aim.x, aim.y, dt, input.held('sprint') ? 1.24 : 1);
+    this.driveHuman(p, aim.x, aim.y, dt, input.held('sprint') ? 1.24 : 1);
 
     if (input.pressed('switch')) this.cycleActive(c);
 

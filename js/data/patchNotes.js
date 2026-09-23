@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v84',
+    date: '2026-09-23',
+    tag: 'Hotfix',
+    title: 'Your player answers the stick again',
+    lede: 'The player you control turned like a brick, swung out wide instead of going back the way you pushed, and the arrow keys did nothing. All fixed.',
+    entries: [
+      {
+        head: 'Movement',
+        summary: 'Your player now goes where you push, at once: a 180 at a jog in under a tenth of a second (it was 1.6 s), out of a flat-out sprint in about 0.1 s (it was 1.7 s), and straight back toward the camera when you pull back — it used to curve off sideways.',
+        detail: 'The weight a sprint carries is kept as a slight softening at full speed. The CPU\'s players keep their own heavier model. A half push on a touch stick is already full speed; a light touch walks.',
+      },
+      {
+        head: 'Controls',
+        summary: 'Settings → Button map has a Responsiveness slider: higher turns sharper, lower carries more weight at a sprint. On a keyboard the arrow keys move your player (they used to be player two\'s only).',
+        detail: 'The controller stick\'s deadzone is rescaled, so just past it is a gentle push rather than a jump.',
+      },
+    ],
+  },
+  {
     version: 'v83',
     date: '2026-09-23',
     tag: 'Broadcast',
