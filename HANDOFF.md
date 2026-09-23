@@ -15,6 +15,70 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v86 — bug pass: everyone turns, fixed sim step, subs, navigation
+**Everyone turns (the CPU's "brick").** `drive()` capped the target heading at
+`omega·dt` and then blended the whole velocity 15% of the way towards it
+(`k = dt·accel`). The two compounded, so the CPU's real turn rate was about
+`omega·k` ≈ 1 rad/s: an eight-metre circle at a sprint. It was also
+frame-rate dependent (twice as sharp at 30 fps). A loose ball inside that
+circle was orbited indefinitely; the new sim fuzzer (`tests/tmp/simfuzz.mjs`)
+found two street1 players circling one for over ten seconds. Fixed properly:
+the velocity is *rotated* by the capped turn and only the speed is eased. A
+target inside the turning circle (`2·(v/omega)·|sin da| > dist`) makes him ease
+off to the speed at which the turn reaches it. The user asked for all players
+to feel light, not only the controlled one, and for a deliberate retune.
+
+| CPU (drive) | v85 | v86 |
+|---|---|---|
+| 180° at a jog | 1.18 s | 0.23 s |
+| 180° at a sprint | 1.65 s | 0.47 s |
+| 90° at a sprint | 0.92 s | 0.15 s |
+| reach a point 4 m to the side at a sprint | never (orbits) | 0.43 s |
+
+(The person's player, `driveHuman`, still turns a sprint 180° in 0.12 s: quicker
+than the CPU, as required. Tested in `responsiveness.test.mjs`.)
+
+**The retune (deliberate, measured, sweep re-baselined).** With agile
+defenders there were more challenges, so fouls went 4.7 → 11 a match, free kicks
+5 → 12 and penalties 0.10 → 0.4. Agile attackers reached shooting range more,
+so shots went 11.8 → 15.5. Three new TUNE knobs, each measured with a copy of
+the sweep over 60–120 matches on both seeds:
+- `tackleRate 0.6`: how often the CPU commits to a challenge in range.
+- `boxCare 0.35`: foul chance for a tackle, trip or shove *inside the
+  defender's own box* (nobody dives in there). This fixed the penalty rate.
+- `shotRate 0.7`: the open-play shot hazard. It saturates (a man in range
+  shoots within frames anyway), so it moves shots less than you'd expect.
+
+Result, golden seed 12345: goals 2.22, shots 14.2, conversion 15.6%, fouls
+8.4, yellows 1.7, penalties 0.22. Before this change: 1.95 / 11.8 / 16.5% /
+4.7 / 1.3 / 0.10. The shots target in the sweep printout is now "11-15":
+conversion fell towards the real ~11%, so more shots are needed to keep goals
+in the 2-3 band. Corners (1.7) and throw-ins (5) remain well under real-scaled,
+as before this change; not touched here. Re-tune with a copy of the sweep, not
+by feel.
+
+**Fixed sim step.** play.js now runs `match.update(1/60)` from an accumulator
+(up to 4 steps a frame), so every device plays the match the sweep measures.
+Presses reach the sim through `SimLatch` (input.js): edges are collected
+between steps and cleared after each, so a press is never lost on a 120 Hz
+frame with no step and never doubled on a frame with two. The UI (pause, menus)
+still reads the raw `Input` every frame. Tested in `simlatch.test.mjs`.
+
+**Substitutions.** Once off, off: `substitute()` refuses a player who has come
+off (`cameOff(id)`, from `pst[id].off`). The CPU's injury sub picked "best on
+the bench", which was often the injured man it had just taken off, and sent
+him back on healed. The pause menu greys those players out and marks them
+OFF. The figure is rebuilt when a substitute comes on (`simpleRig` /
+`modelRig` in renderGL, keyed by `rig.refId`), so he no longer wears the
+replaced player's face, hair, build and name. Sweep moved by noise only (goals
+1.95 → 1.97) and was re-baselined. Tested in `subs.test.mjs`.
+
+**Navigation.** `navigate()` keeps a sequence number. A screen that navigates
+while still mounting used to have its cleanup assigned over the new screen's,
+which leaked the new screen's listeners and left the old screen's timers
+running (quick match's 900 ms pad poll threw on a missing `#tsSeatH`). Found
+by the new random-click monkey (`tests/tmp/monkey.mjs`, desktop and phone).
+
 ### v85 — the land round every ground
 Reported: "the city backdrop has no streets, mountains don't look like mountains,
 and there are no trees or rocks". The old skyline boxes, ridge cones, dunes and
@@ -3400,20 +3464,11 @@ which silently removed the wallet pills from the header.
 
 ## Found in an audit, not yet fixed
 
-- **A substituted player keeps the old man's face.** `substitute()` swaps
-  `p.ref`, but the scanned-model rig in `renderGL.js` was built once from the
-  *original* `ref` — skin, hair, height, socks and boots are baked into it. Bring
-  on a visibly different player and he runs out wearing the previous one's
-  appearance. Fixing it means rebuilding the rig mid-match (expensive) or making
-  the per-player traits live uniforms.
 - **`js/game/net.js` is a complete Verlet cloth simulation for goal netting that
   nothing imports.** It was in the service worker's precache list *twice*, so
   every install downloaded it for nothing; that is now removed. The file is kept
   because it works and the nets are still static — wiring it up is a real visual
   improvement waiting to be picked up.
-- **A benched player comes back on fresh.** Stamina lives on the pitch object,
-  not the card, so subbing a tired player off and straight back on restores him.
-  Bounded by `MAX_SUBS`, so it is an oddity rather than an exploit.
 
 ### One tackle, not two
 There used to be two tackle methods in `sim.js`, `tackle(p, sliding)` split on

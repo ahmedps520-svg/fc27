@@ -10715,7 +10715,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -11180,7 +11180,7 @@
       let team = this.teams[teamIdx];
       if (!team || team.subsLeft <= 0) return !1;
       let p = team.players[pitchIdx], incoming = (_a = team.bench) == null ? void 0 : _a[benchIdx];
-      return !p || !incoming || p.role === "GK" && incoming.position !== "GK" ? !1 : (this.tally(p, "dist", 0), this.pst[p.ref.id].off = this.t, team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.downT = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.tally(p, "dist", 0), this.pst[incoming.id] && (this.pst[incoming.id].on = this.t), this.cue("whistle"), !0);
+      return !p || !incoming || this.cameOff(incoming.id) || p.role === "GK" && incoming.position !== "GK" ? !1 : (this.tally(p, "dist", 0), this.pst[p.ref.id].off = this.t, team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.downT = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.tally(p, "dist", 0), this.pst[incoming.id] && (this.pst[incoming.id].on = this.t), this.cue("whistle"), !0);
     }
     /* ----------------------------- movement ---------------------------- */
     /**
@@ -11249,8 +11249,11 @@
           let want = Math.atan2(wy, wx), have = Math.atan2(cy, cx), da = want - have;
           for (; da > Math.PI; ) da -= Math.PI * 2;
           for (; da < -Math.PI; ) da += Math.PI * 2;
-          let maxTurn = (p.turn || 9) * (1.6 - 0.9 * frac) * dt, a = have + clamp2(da, -maxTurn, maxTurn);
-          tx = Math.cos(a) * speed, ty = Math.sin(a) * speed;
+          let omega = (p.turn || 9) * (1.6 - 0.9 * frac), maxTurn = omega * dt, a = have + clamp2(da, -maxTurn, maxTurn), side = Math.abs(Math.sin(da)), v = speed;
+          side > 0.05 && m < 2 * (cur / omega) * side && (v = Math.min(speed, Math.max(1.5, m * omega / (2 * side))));
+          let k2 = Math.min(1, dt * (v > cur ? p.accel || 9 : 11)), nv = cur + (v - cur) * k2;
+          p.vx = Math.cos(a) * nv, p.vy = Math.sin(a) * nv;
+          return;
         }
       }
       let faster = tx * tx + ty * ty > cur * cur, k = Math.min(1, dt * (faster ? p.accel || 9 : 11));
@@ -11289,7 +11292,7 @@
       let dt = this._dt || 1 / 60;
       if (carrier) {
         let def = carrier === a ? b : a, cs = Math.hypot(carrier.vx, carrier.vy), ds = Math.hypot(def.vx, def.vy), beaten = (def.x - carrier.x) * (carrier.dirX || 0) + (def.y - carrier.y) * (carrier.dirY || 0) < 0.3;
-        if (cs > ds + 0.6 && beaten && def.downT <= 0 && Math.random() < (0.7 + this.aggressionOf(def) * 1.6) * dt) {
+        if (cs > ds + 0.6 && beaten && def.downT <= 0 && Math.random() < (0.7 + this.aggressionOf(def) * 1.6) * (this.inPenaltyArea(carrier, def.team) ? TUNE.boxCare : 1) * dt) {
           this.fouls[def.team] += 1, this.cue("foul", def), carrier.downT = 1.2, carrier.downMax = 1.2, carrier.stumble = Math.max(carrier.stumble, 1.6), this.aggressionOf(def) > 0.75 && def.cards < 1 && Math.random() < 0.3 && (def.cards += 1, this.cue("card", def), this.bookings.push({ team: def.team, name: def.ref.name, minute: this.minute() })), this.inPenaltyArea(carrier, def.team) ? this.awardPenalty(1 - def.team, def) : this.awardFreeKick(1 - def.team, carrier, def);
           return;
         }
@@ -11303,7 +11306,7 @@
         }
       }
       let [weak, strong] = sa < sb ? [a, b] : [b, a], edge = Math.abs(sa - sb) / 100;
-      weak.stumble <= 0 && Math.random() < (0.35 + edge * 2.2) * dt && (weak.stumble = 0.3 + edge, this.cue("jostle", weak), carrier === weak && (ball.owner = null, ball.lastTouch = weak, ball.noTouch = 0.12, ball.vx = weak.vx * 0.9 + (strong.dirX || 0) * 1.5, ball.vy = weak.vy * 0.9 + (strong.dirY || 0) * 1.5, weak.touchLock = 0.35, strong.dirX * weak.dirX + strong.dirY * weak.dirY > 0.55 && (strong.x - weak.x) * weak.dirX + (strong.y - weak.y) * weak.dirY < 0 && Math.random() < 0.35 + this.aggressionOf(strong) * 0.4 - ((_a = strong.tr) != null && _a.rock ? 0.2 : 0) && (this.fouls[strong.team] += 1, this.cue("foul", strong), weak.downT = 0.9, weak.downMax = 0.9, this.inPenaltyArea(weak, strong.team) ? this.awardPenalty(1 - strong.team, strong) : this.awardFreeKick(1 - strong.team, weak, strong))));
+      weak.stumble <= 0 && Math.random() < (0.35 + edge * 2.2) * dt && (weak.stumble = 0.3 + edge, this.cue("jostle", weak), carrier === weak && (ball.owner = null, ball.lastTouch = weak, ball.noTouch = 0.12, ball.vx = weak.vx * 0.9 + (strong.dirX || 0) * 1.5, ball.vy = weak.vy * 0.9 + (strong.dirY || 0) * 1.5, weak.touchLock = 0.35, strong.dirX * weak.dirX + strong.dirY * weak.dirY > 0.55 && (strong.x - weak.x) * weak.dirX + (strong.y - weak.y) * weak.dirY < 0 && Math.random() < (0.35 + this.aggressionOf(strong) * 0.4 - ((_a = strong.tr) != null && _a.rock ? 0.2 : 0)) * (this.inPenaltyArea(weak, strong.team) ? TUNE.boxCare : 1) && (this.fouls[strong.team] += 1, this.cue("foul", strong), weak.downT = 0.9, weak.downMax = 0.9, this.inPenaltyArea(weak, strong.team) ? this.awardPenalty(1 - strong.team, strong) : this.awardFreeKick(1 - strong.team, weak, strong))));
     }
     /**
      * While a keeper is holding the ball, opponents are kept out of a ring around
@@ -11933,7 +11936,7 @@
           b.owner = p, b.lastTouch = p;
       else {
         p.stumble = 0.45 + frac * 0.7;
-        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1);
+        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1) * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1);
         Math.random() < chance && (this.fouls[p.team] += 1, this.cue("foul", p), owner.downT = 1.1 + frac * 0.9, owner.downMax = owner.downT, owner.vx = p.dirX * 3.4, owner.vy = p.dirY * 3.4, owner.stumble = Math.max(owner.stumble, owner.downT + 0.5), !owner.injured && Math.random() < 0.125 && this.injure(owner), frac > 0.82 && p.cards < 1 && (p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() })), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : this.awardFreeKick(1 - p.team, owner, p));
       }
     }
@@ -11941,13 +11944,18 @@
     injure(p) {
       p.injured = !0, p.maxSpeed *= 0.62, p.stumble = Math.max(p.stumble, 0.9), this.injuries.push({ team: p.team, name: p.ref.name, id: p.ref.id, minute: this.minute() }), this.cue("injury", p);
     }
+    /** Has this player already been substituted off in this match? */
+    cameOff(id) {
+      var _a, _b, _c;
+      return ((_c = (_b = (_a = this.pst) == null ? void 0 : _a[id]) == null ? void 0 : _b.off) != null ? _c : null) !== null;
+    }
     /** The CPU brings an injured man off at the next dead ball, if it can. */
     autoSubInjured(teamIdx) {
       let team = this.teams[teamIdx];
       if (team.isHuman || team.subsLeft <= 0) return;
       let i = team.players.findIndex((q) => q.injured && q.role !== "GK");
       if (i < 0) return;
-      let bench = team.bench.map((r, j) => [r, j]).filter(([r]) => r && r.position !== "GK").sort((a, b) => b[0].overall - a[0].overall);
+      let bench = team.bench.map((r, j) => [r, j]).filter(([r]) => r && r.position !== "GK" && !this.cameOff(r.id)).sort((a, b) => b[0].overall - a[0].overall);
       if (!bench.length) return;
       let p = team.players[i];
       this.substitute(teamIdx, i, bench[0][1]) && (p.injured = !1, this.cue("sub", p));
@@ -12188,7 +12196,7 @@
           return;
         }
         let commit = 2.3 + agg * 1.6;
-        b.owner && b.owner.team !== p.team && dist(p, b.owner) < commit && Math.random() < (1.4 + agg * 2.2) * this.aiSkillFor(p.team) * press * dt && this.tackle(p);
+        b.owner && b.owner.team !== p.team && dist(p, b.owner) < commit && Math.random() < (1.4 + agg * 2.2) * TUNE.tackleRate * this.aiSkillFor(p.team) * press * dt && this.tackle(p);
         return;
       }
       p.runT = (p.runT || Math.random() * 4) + dt;
@@ -12331,7 +12339,7 @@
         return;
       }
       let sc = Math.max(0.55, SCALE);
-      if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc) && Math.random() < (3.3 - toGoal / (22 * sc)) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+      if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc) && Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
         let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q2) => q2.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team), post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
         this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0, 1) }, 0.55 + Math.random() * 0.45, {
           loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,

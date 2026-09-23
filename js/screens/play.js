@@ -2,7 +2,7 @@ import { getState, update } from '../state.js';
 import { getClub, WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
-import { Input, promptFor, lastDevice } from '../game/input.js';
+import { Input, SimLatch, promptFor, lastDevice } from '../game/input.js';
 import {
   draw, makeCamera, groundBasis, replayCamera, resolveQuality,
   orbitCamera, walkoutCamera,
@@ -1804,6 +1804,11 @@ export function mount(root, params) {
     }
   };
 
+  const SIM_STEP = 1 / 60;
+  let simAcc = 0;
+  const latches = new Map();
+  const latchFor = (inp) => { let l = latches.get(inp); if (!l) { l = new SimLatch(inp); latches.set(inp, l); } return l; };
+
   const step = (now) => {
     const raw = (now - last) / 1000;
     const dt = Math.min(0.034, raw);
@@ -1814,6 +1819,7 @@ export function mount(root, params) {
     if (!loading) countFrame(now, raw);
     updateStamina();
     for (const inp of inputs) inp.poll(dt);
+    for (const inp of inputs) latchFor(inp).absorb();
     updateTouchContext();
     if (loading) tickLoading(now);
     /* When is the world actually stopped?
@@ -1965,7 +1971,17 @@ export function mount(root, params) {
         // guest: the world arrives over the wire rather than being computed
         view.update(dt);
       } else {
-        match.update(dt, inputs);
+        /* v86: fixed 1/60 s steps, whatever the display does — the match a
+           30 fps phone plays is the one the balance sweep measured, and the
+           CPU turns as sharply there as on a 144 Hz monitor */
+        simAcc = Math.min(simAcc + dt, SIM_STEP * 4);
+        const seats = inputs.map(latchFor);
+        let n = 0;
+        while (simAcc >= SIM_STEP - 1e-6 && n < 4) {
+          match.update(SIM_STEP, seats);
+          for (const st of seats) st.clear();
+          simAcc -= SIM_STEP; n += 1;
+        }
       }
       camRig.update(match, dt, cam);
       // a slide just started tears a divot (v78; the renderer paints m.divots)
@@ -2418,13 +2434,15 @@ export function mount(root, params) {
             <span class="sub-head">Bench</span>
             ${bench.length ? bench.map((r, i) => {
               // a keeper may only be replaced by a keeper, so the rest grey out
-              const ok = !gkOnly || r.position === 'GK';
+              // and a man who has already come off cannot go back on
+              const used = match.cameOff(r.id);
+              const ok = (!gkOnly || r.position === 'GK') && !used;
               return `
                 <button class="sub-row ${ok ? '' : 'is-off'}" data-subon="${i}"
                         ${subFrom === null || !ok || team.subsLeft <= 0 ? 'disabled' : ''}>
                   <b>${r.overall}</b>
                   <span class="sub-name">${r.short}</span>
-                  <em>${r.position}</em>
+                  <em>${used ? 'OFF' : r.position}</em>
                 </button>`;
             }).join('') : '<p class="p-note">Nobody named on the bench.</p>'}
           </div>
