@@ -73,7 +73,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v93';
+export const APP_VERSION = 'v94';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -173,6 +173,9 @@ export function navigate(name, params = {}) {
   }
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
+  // v93: a screen that was listening for a controller button (Settings, the
+  // side select) never leaves the menu's pad driver switched off behind it
+  document.body.classList.remove('pad-capture');
   /* Overlays that were appended to <body> — a pack reveal opened from the
    * locker, a card detail — belong to the screen that opened them. Leaving
    * that screen mid-reveal used to leave the overlay sitting over every

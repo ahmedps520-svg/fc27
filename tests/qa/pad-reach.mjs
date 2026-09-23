@@ -233,6 +233,19 @@ if (!process.argv.includes('--explore')) {
     await page.evaluate(async () => { const { update } = await import('/js/state.js'); update((st) => { if (st.settings.controls) st.settings.controls.pad = {}; }); (await import('/js/game/input.js')).setBindings({ keys: {}, pad: {} }); });
     return bound === 3 ? '' : `Lob was bound to ${bound} (A is 0)`;
   });
+  await feature('leaving Settings mid-rebind does not leave the controller dead', async () => {
+    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await focusOnly('[data-bind=pad:lob]'))) return 'could not focus the Lob pad binding';
+    await press(A); await page.waitForTimeout(400);
+    // leave without pressing anything (a mouse on the back button, say)
+    await page.evaluate(async () => { (await import('/js/app.js')).navigate('menu'); });
+    await page.waitForTimeout(500);
+    const before = await page.evaluate(() => window.__padMenu.focus());
+    await press(DPAD.right, 120); await page.waitForTimeout(300);
+    const after = await page.evaluate(() => window.__padMenu.focus());
+    const stuck = await page.evaluate(() => document.body.classList.contains('pad-capture'));
+    return !stuck && after !== before ? '' : `the ring did not move (${before} → ${after}), pad-capture ${stuck}`;
+  });
   await feature('in a match: D-pad up raises the quick tactic, and unplugging the pad pauses', async () => {
     if (!(await via(['go:quick', '#kickOff']))) return 'could not start a match from Quick Match';
     await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase, null, { timeout: 120000 });

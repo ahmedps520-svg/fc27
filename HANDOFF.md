@@ -15,6 +15,22 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v94 — fix: a controller left dead after leaving Settings mid-rebind
+Found through CI: v90 and v91's `pad-reach` runs failed on the rebind check.
+The test pressed Y for 70 ms, which fell between the capture's per-frame
+samples on CI's slow software renderer; that was fixed separately, test-only.
+The failure then cascaded, because Settings was left listening:
+`body.pad-capture` stayed on, the menu pad driver stood down, and every later
+pad step failed. That is a real bug. A player who starts a pad rebind and
+leaves Settings with the mouse, a tap or Back has a dead controller
+everywhere.
+- Settings' `mount` now returns a cleanup that stops a pending capture
+  (`mountRebind` returns it).
+- `navigate()` removes `pad-capture` on every screen change, so no screen can
+  leave the driver off behind it.
+- `pad-reach` checks it: start a pad rebind, navigate away without a press,
+  and the ring still moves on the D-pad.
+
 ### v93 — R15 balance audit, part 1: packs, earning rates, a month of play
 `tools/economy-audit.mjs` (new, kept) reads the real tables: `PACKS` and
 `openPack` (1,500 seeded openings each), `DIVISIONS` and `matchApex`,
