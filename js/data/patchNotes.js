@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v89',
+    date: '2026-09-23',
+    tag: 'Controller',
+    title: 'Play the whole game from the sofa',
+    lede: 'Every screen now works with just a controller: menus, tabs, sliders, typing, pack reveals and building your line-up.',
+    entries: [
+      {
+        head: 'Everywhere',
+        summary: 'A confirms and B goes back (and closes pop-ups such as release notes or save choices). The bumpers switch tabs, the right stick scrolls, and Start takes you home.',
+        detail: 'Every card, pitch slot, listing and drill can now be selected. To build a line-up, press A on a pitch slot, then A on the card that goes in it.',
+      },
+      {
+        head: 'Typing and sliders',
+        summary: 'Press A on a text box to type with an on-screen keyboard: A types, X deletes, Y switches to capitals, Start finishes and B cancels. Left and right move a slider.',
+        detail: 'Number boxes get a number pad. Messages between players are still preset phrases only.',
+      },
+      {
+        head: 'Quick actions and buttons',
+        summary: 'X and Y do the obvious thing on busy screens, for example skipping a pack reveal, searching the market or changing the sort order. A badge shows which button does what while a controller is in use.',
+        detail: 'Button names match your controller: PlayStation symbols, Xbox letters, or plain numbers for pads that name neither.',
+      },
+    ],
+  },
+  {
     version: 'v88',
     date: '2026-09-23',
     tag: 'Fixes',

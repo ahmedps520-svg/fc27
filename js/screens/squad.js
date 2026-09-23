@@ -865,7 +865,7 @@ export function render() {
             <h2>Collection <small>${s.club.collection.length}</small></h2>
             <label class="field inline">
               <span>Sort</span>
-              <select id="collSort">
+              <select id="collSort" data-pad="y">
                 ${[['rating', 'Rating'], ['position', 'Position'], ['value', 'Value'], ['name', 'Name']]
                   .map(([v, l]) => `<option value="${v}" ${sortBy === v ? 'selected' : ''}>${l}</option>`).join('')}
               </select>
@@ -1772,7 +1772,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
       <div class="walkout" id="walkout"></div>
       <div class="pack-foot">
         <span id="packCounter">${pulls.length > 1 ? `Best of ${pulls.length}` : 'Your pull'}</span>
-        <button class="btn" id="packNext">Skip</button>
+        <button class="btn" id="packNext" data-pad="x">Skip</button>
       </div>
     </div>`;
 

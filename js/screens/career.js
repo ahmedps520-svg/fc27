@@ -465,7 +465,7 @@ function transfersHTML(car) {
         <select id="tmPos">${['all', 'GK', 'DF', 'MF', 'FW'].map((p) => `<option ${market.pos === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
         <select id="tmLeague"><option ${market.league === 'all' ? 'selected' : ''}>all</option>
           ${leagues.map((l) => `<option ${market.league === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <select id="tmSort">${[['value', 'By value'], ['ovr', 'By rating'], ['age', 'By age']]
+        <select id="tmSort" data-pad="y">${[['value', 'By value'], ['ovr', 'By rating'], ['age', 'By age']]
           .map(([v, l]) => `<option value="${v}" ${market.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       </div>
       <div class="cq-rows">

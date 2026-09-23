@@ -12565,8 +12565,11 @@
   typeof window < "u" && window.addEventListener && (window.addEventListener("keydown", () => setDevice("keyboard"), !0), window.addEventListener("pointerdown", (e) => {
     e.pointerType === "touch" ? setDevice("touch") : e.pointerType === "mouse" && setDevice("keyboard");
   }, !0), window.addEventListener("gamepadconnected", (e) => {
-    PAD_KIND = /sony|dualsense|dualshock|playstation|054c/i.test(e.gamepad.id) ? "ps" : "xbox";
+    PAD_KIND = padKindOf(e.gamepad.id);
   }));
+  function padKindOf(id = "") {
+    return /sony|dualsense|dualshock|playstation|054c/i.test(id) ? "ps" : /xbox|xinput|microsoft|045e/i.test(id) ? "xbox" : "generic";
+  }
   var TOGGLES = { sprint: !1 };
   var Input = class {
     /**

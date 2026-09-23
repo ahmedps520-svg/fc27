@@ -283,7 +283,7 @@ export function marketView() {
         <input name="minOvr" type="number" min="40" max="99" placeholder="Min OVR" value="${mf.minOvr}">
         <input name="maxPrice" type="number" min="0" step="100" placeholder="Max price" value="${mf.maxPrice}">
         <select name="sort"><option value="ovr" ${mf.sort === 'ovr' ? 'selected' : ''}>Best first</option><option value="price" ${mf.sort === 'price' ? 'selected' : ''}>Cheapest first</option></select>
-        <button class="btn ghost" type="submit">Search</button>
+        <button class="btn ghost" type="submit" data-pad="y">Search</button>
       </form>
       <div class="mkt-list" id="mktList">
         ${mResults.slice(0, 30).map((l) => `<button class="mkt-row ${l.id === mSel ? 'on' : ''}" data-listing="${l.id}" style="--rar:${RARITY[l.p.rarity]?.color || '#ccc'}">

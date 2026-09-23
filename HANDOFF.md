@@ -15,6 +15,46 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v89 — R15 controller support, part 1: every screen by pad
+`js/padMenu.js` is the front-end driver.
+- **What the ring moves over.** It now includes inputs, sliders and every
+  `data-*` click target the screens delegate on (slots, players, listings,
+  drills and so on; the list came from `grep closest('[data-`).
+  Wrappers that contain other stops are skipped, except card-like elements
+  (`CARDLIKE`).
+- **Modal layers own the ring.** `modalLayer()` picks the on-screen keyboard,
+  or the known modal classes anywhere in the document (the release notes
+  mount inside `#screen`), or else the last big fixed child of `<body>` that
+  holds a button. B closes the layer (its close control, or Escape).
+- **Buttons.**
+  - LB/RB step the first visible tab strip (`.tabs`, `[role=tablist]` or
+    `.seg` with one `.on`).
+  - X/Y press `[data-pad="x"|"y"]`, with a glyph badge while a pad is in
+    use. Assigned so far: pack Skip = X, market Search = Y, collection and
+    transfer sort = Y.
+  - The right stick scrolls; left/right move a focused slider.
+- **Text entry.** A on a text field opens `components/osk.js` (the on-screen
+  keyboard). It is not chat: player-to-player text stays preset phrases.
+- **Glyphs.** `padKindOf(id)` picks PlayStation, Xbox or generic (numbers).
+- **Cost.** The list is built only on input, or every 250 ms to follow the
+  layout. Building it every tick cost 10 ms a tick on Grounds at 4× CPU; idle
+  now shows no long tasks.
+
+`tests/qa/pad-reach.mjs` is **in CI now** (about 1 minute) and fails if a
+controller can't reach a screen or a control. It uses a simulated Gamepad API:
+- Declared routes from the menu to all 14 screens, each walked with the D-pad
+  and A (`ROUTES`). Add a route when you add a screen.
+- On every screen, every control is checked as reachable on the pad driver's
+  focus graph (`__padMenu.peek`).
+- Feature checks: RB switches tab; a card goes into the line-up (slot, then
+  card); a slider moves; a name is typed with the keyboard; B closes a modal.
+- `--explore` runs the full breadth-first walk (tens of minutes; for finding
+  routes nobody listed).
+
+Next (v90): the in-match controller scheme, deadzone and sensitivity settings,
+rumble, hot-plug auto-pause, and a layout screen with remapping. Then (v91)
+four controllers in local play with a side-select screen.
+
 ### v88 — fixes from the first post-release play session
 New standing practice: after every release, play one full match each on phone
 touch, desktop keyboard and a simulated controller
