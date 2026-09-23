@@ -13,7 +13,7 @@ import { getState, update } from './state.js';
 export const LANGS = { en: 'English', ar: 'العربية' };
 
 const AR = {
-  'menu.today': 'اليوم', 'menu.trophies': 'الجوائز', 'menu.career': 'المسيرة', 'menu.settings': 'الإعدادات',
+  'menu.today': 'اليوم', 'menu.trophies': 'الجوائز', 'menu.career': 'المسيرة', 'menu.street': 'الشارع', 'menu.skills': 'المهارات', 'menu.settings': 'الإعدادات',
   'menu.ultimate': 'التشكيلة المثالية', 'menu.ultimate.blurb': 'ابنِ · ارتقِ · اكسب', 'menu.open': 'افتح ←',
   'menu.kickoff': 'انطلاق', 'menu.kickoff.blurb': 'مباشرة إلى المباراة', 'menu.play': 'العب ←',
   'menu.disclaimer': 'أسماء اللاعبين والمدربين وأندية وضع المسيرة تعود لأشخاص وأندية حقيقيين وتُستخدم دون تأييد أو ارتباط؛ أندية التشكيلة المثالية وجميع المسابقات خيالية. الشعارات والصور مرسومة وليست تشابهاً.',
@@ -46,7 +46,7 @@ const AR = {
 };
 
 const EN = {
-  'menu.today': 'Today', 'menu.trophies': 'Trophies', 'menu.career': 'Career', 'menu.settings': 'Settings',
+  'menu.today': 'Today', 'menu.trophies': 'Trophies', 'menu.career': 'Career', 'menu.street': 'Street', 'menu.skills': 'Skills', 'menu.settings': 'Settings',
   'menu.ultimate': 'Ultimate XI', 'menu.ultimate.blurb': 'Build · rank up · rewards', 'menu.open': 'Open →',
   'menu.kickoff': 'Kick Off', 'menu.kickoff.blurb': 'Straight into a match', 'menu.play': 'Play →',
   'menu.disclaimer': 'Player, manager and Career Mode club names are those of real people and clubs, used without endorsement or affiliation; Ultimate XI clubs and all competitions are fictional. Badges and portraits are drawn and are not likenesses.',

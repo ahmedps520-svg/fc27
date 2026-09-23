@@ -15,6 +15,60 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v82 — new modes (Round 12)
+**Sweep byte-identical** (seeds 12345, 777): every addition is gated on a
+field spec or an option that the 11-a-side sweep never sets.
+- **Fields** (`js/game/field.js`): `futsal` is 42x25 with `kickIn` (restarts
+  along the floor, `vz = 0`) and `ball { bounce: 0.2, drag: 0.982 }`; the sim
+  now reads bounce/drag from `FIELD.ball`. `street1/3/4/5` carry
+  `walls: true, street: true`.
+- **Sim** (`js/game/sim.js`): `SHAPES4/3/1` and `smallFrom(xi, n)` for small
+  sides; `walls()` rebounds the ball (e = 0.62, the goal mouth open) and counts
+  `wallHits`; `styleOf(team)` / `styleEvent` — skills +25/+40, off the wall
+  +10, chained x5 at most, a goal 100 + 50 x chain; street restarts wait 2.5 s
+  for a person and at most 0.5 s for the CPU. Practice: `park(team)` sends
+  everyone but the keeper off the pitch (a wall is un-parked for a free kick),
+  `noOffside`. Parties: `opts.seats` makes one controller per seat; a
+  controller with `ai` set is a dropped seat the CPU drives.
+- **Street** (`js/data/street.js` venues, `js/game/streetDressing.js` court
+  texture + cage, `js/streetMode.js` baller/crews/tour/cosmetics,
+  `js/screens/street.js`). renderGL: `STREET` venues skip the bowl, boards,
+  banks, tifo and pylons and use the court texture. Beach sand overrides the
+  ball (bounce 0.14, drag 0.972). Boss beaten → his best player joins the
+  crew and his cosmetic unlocks.
+- **Parties** (`server/party.js`, `js/net/party.js`, `js/net/partySquads.js`,
+  `js/screens/partyPanel.js`): coop2 / duo / pro5. The server stamps each
+  guest `in` with its seat (`sq`) and fans the host's snapshots out; drops are
+  held 45 s (`evt dropped/resumed`, `partyRejoin`); a host drop ends the party.
+  Co-op results are recorded once per match on both accounts
+  (`store.recordCoop`, `profile.coop`). Pro payloads pass `cleanPro` (name,
+  position, six numbers) or are dropped. No free text: only a party code.
+- **Skills** (`js/game/drills.js`, `js/screens/skills.js`): four drills, the
+  shootout, the practice arena. `/api/skills` GET/POST with per-game ceilings
+  (`SKILL_MAX` slalom 1600, freekicks 750, crossing 900, passing 12000).
+  Practice set pieces skip the kickoff before staging (it would undo them).
+  A running drill sets `body.in-drill`, which hides the top bar (the stage is
+  fixed inside a transformed screen and the bar covered its Quit button).
+- **Input** (`js/game/input.js`): `ACTIONS`, `setBindings` /
+  `getBindings` (saved in `settings.controls`, applied at boot), `keyMapFor`,
+  `padMapFor`, `promptFor(action, device)`, `lastDevice` / `onDeviceChange`,
+  `padGlyph` (Xbox / PlayStation by pad id). HINTS and set-piece text use the
+  prompts. Split touch (`buildSplitTouch`) for two players on a coarse-pointer
+  screen at least 900 px wide.
+- **Watch**: a street 1v1 (`field: 'street1'`, no keepers).
+- **Tests**: `tests/unit/new-modes.test.mjs` (8), `tests/unit/party.test.mjs`
+  (party relay with five real sockets: 2v2, drop + reconnect, pro5 3v2, host
+  drop, co-op season, dedupe; skill boards), a QA `party` flow (co-op with
+  two browsers, then 2v2 with four), `street`/`skills` in the layout scan,
+  `tests/visual/r12-shots.mjs`. The QA bot now gives each browser its own
+  `x-forwarded-for`, because it registers more accounts than the per-address
+  limit (5/hour) allows.
+- **Known, honest**: futsal still stops a lot — about 50 restarts in a
+  2-minute match even after widening the court to 42x25; the CPU's small-sided
+  passing goes out of play too often. Worth a look at the AI's pass range for
+  small fields rather than a bigger court. Street games run about 4-6 goals
+  in 2 minutes; the watch 1v1 about 5 per minute.
+
 ### v81 — career depth (Round 11)
 **Sweep byte-identical** (seeds 12345, 777). The sim gained counting only:
 `Match.pst[cardId]` (passes, shots, won tackles, saves, distance, on/off

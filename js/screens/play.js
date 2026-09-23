@@ -2,7 +2,7 @@ import { getState, update } from '../state.js';
 import { getClub } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
-import { Input } from '../game/input.js';
+import { Input, promptFor, lastDevice } from '../game/input.js';
 import {
   draw, makeCamera, groundBasis, replayCamera, resolveQuality,
   orbitCamera, walkoutCamera,
@@ -13,6 +13,7 @@ import { settleFives, settleClash, noteDivisionResult } from '../modes.js';
 import { recordEvoMatch } from '../evolutions.js';
 import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
+import { settleStreet } from '../streetMode.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
@@ -86,6 +87,34 @@ function sideOf(params, which) {
  * weather come from the fixture and the day, so the same ground is seen in
  * every light; Kick Off can force either through `params.atmo`.
  */
+/** v82: split-screen touch for local two-player on a tablet. */
+function buildSplitTouch(root, inputs) {
+  const host = document.createElement('div');
+  host.className = 'gm-split';
+  host.innerHTML = [0, 1].map((i) => `
+    <div class="split-half ${i ? 'right' : 'left'}" data-seat="${i}">
+      <div class="split-zone"><div class="tstick" hidden><span class="ts-base"></span><i></i></div></div>
+      <div class="split-btns">${[['pass', 'PASS · TACKLE'], ['shoot', 'SHOOT'], ['sprint', 'SPRINT'], ['switch', 'SWITCH']].map(([a, l]) => `<button class="tbtn" data-act="${a}"><b>${l}</b></button>`).join('')}</div>
+      <span class="split-tag">P${i + 1}</span>
+    </div>`).join('');
+  root.querySelector('.gm-root, #gmRoot')?.appendChild(host) || root.appendChild(host);
+  host.querySelectorAll('.split-half').forEach((half) => {
+    const inp = inputs[+half.dataset.seat]; if (!inp) return;
+    const zone = half.querySelector('.split-zone'); const stick = half.querySelector('.tstick'); const nub = stick.querySelector('i');
+    const R = 48; let id = null;
+    const move = (e) => { if (e.pointerId !== id) return; const r = stick.getBoundingClientRect(); const dx = e.clientX - (r.left + r.width / 2); const dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy) || 1; const cl = Math.min(1, m / R); inp.setTouchVec((dx / m) * cl, (dy / m) * cl); nub.style.transform = `translate(${(dx / m) * cl * R}px, ${(dy / m) * cl * R}px)`; };
+    const end = (e) => { if (e.pointerId !== id) return; id = null; stick.hidden = true; inp.setTouchVec(0, 0); nub.style.transform = ''; };
+    zone.addEventListener('pointerdown', (e) => { if (id !== null) return; id = e.pointerId; zone.setPointerCapture(e.pointerId); const zr = zone.getBoundingClientRect(); stick.style.left = `${e.clientX - zr.left}px`; stick.style.top = `${e.clientY - zr.top}px`; stick.hidden = false; move(e); });
+    zone.addEventListener('pointermove', move); zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
+    half.querySelectorAll('[data-act]').forEach((b) => {
+      const a = b.dataset.act;
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); inp.setTouchButton(a, true); b.classList.add('is-down'); try { b.setPointerCapture(e.pointerId); } catch { /* fine */ } });
+      const up = () => { inp.setTouchButton(a, false); b.classList.remove('is-down'); };
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+    });
+  });
+}
+
 /** A finished Match as the Manager Career's record of it (names, not card ids). */
 function careerExtra(match, side, possession) {
   const nm = (id) => String(id).replace(/^cr-/, '');
@@ -129,7 +158,7 @@ function venueOf(params) {
   const stadium = mine
     ? builderDef(design, { clubName: sq?.name || (car ? home?.name : (getState().club.identity?.name || 'Ultimate XI')), short: sq?.short || (car ? home?.short : (getState().club.identity?.short || 'XI')),
       capacity: car ? groundCapacity(car) : null, fill: car ? groundFill(car) : 0.86 })
-    : (params.venueId && STADIUM_BY_ID[params.venueId]) || stadiumFor(home, { showpiece });
+    : params.venueDef || (params.venueId && STADIUM_BY_ID[params.venueId]) || stadiumFor(home, { showpiece });   // v82: a street venue brings its own definition
   const day = Math.floor(Date.now() / 86_400_000);
   const seed = params.atmoSeed || `${params.homeId}|${params.awayId}|${day}|${params.career?.week ?? ''}`;
   /* v78: where in the season this is. A Career match knows its week; any other
@@ -220,6 +249,14 @@ export function render(params) {
         ${EMOTES.map((e) => `<button data-emote="${e.id}" title="${e.en}">${e.icon}</button>`).join('')}
       </div>
 
+      <!-- v82: the practice arena's set-piece bench -->
+      <div class="gm-practice" id="gmPractice" hidden>
+        <button class="btn sm" data-prac="freekick">Free kick here</button>
+        <button class="btn sm" data-prac="penalty">Penalty</button>
+        <button class="btn sm" data-prac="corner">Corner</button>
+        <button class="btn sm ghost" data-prac="reset">Reset</button>
+      </div>
+
       <!-- "X has queued a pause" — mirrored on both screens by the host -->
       <div class="gm-queue" id="gmQueue" hidden></div>
 
@@ -296,6 +333,8 @@ export function mount(root, params) {
   const localInput = new Input({ pad: 0, keys: 'primary' });
   let inputs;
   let remote = null;
+  let remotes = null;   // v82: party host — a RemoteInput per seat
+  if (online && online.team == null) online.team = online.seat;
   if (online) {
     // The host drives seat 0 and receives seat 1 over the wire; the guest holds
     // seat 1 locally and streams it up. Both keep the seats in the same order so
@@ -303,6 +342,8 @@ export function mount(root, params) {
     // The guest never simulates, so it only needs its own seat locally.
     remote = online.host ? new RemoteInput() : null;
     inputs = online.host ? [localInput, remote] : [localInput];
+    // v82: a party host takes one input per guest seat, routed by the seat the server stamps
+    if (online.party && online.host) { remotes = online.party.seats.map((st, i) => (i === 0 ? null : new RemoteInput())); inputs = [localInput, ...remotes.slice(1)]; }
   } else {
     inputs = [localInput];
     if (twoUp) inputs.push(new Input({ pad: 1, keys: 'secondary' }));
@@ -332,7 +373,12 @@ export function mount(root, params) {
     awaySquad: params.awaySquad || null,
     // v80: Quickfire Fives plays on a small pitch with five a side
     field: params.field || 'full',
+    // v82: a party brings one seat per person, in the server's order
+    seats: online?.party ? online.party.seats.map((st) => ({ team: st.team })) : undefined,
   });
+  // v82: pro five-a-side — every person is locked to their own pro
+  if (online?.party?.locks) for (const [seat, id] of Object.entries(online.party.locks)) { const c = match.controllers[+seat]; if (c) { c.lockId = id; match.locked = true; } }
+  if (match.locked) match.lockSeats();
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
   /* The camera rig (game/camera.js): presets, springs, set-piece angles, the
@@ -340,6 +386,8 @@ export function mount(root, params) {
   const camBounds = venueBounds(match.venue?.stadium);
   // v81: a Player Career match locks the stick and the camera to your footballer
   if (params.pro) match.lockPlayer(params.pro.cardId);
+  // v82: the practice arena — the other side is only its keeper, and there is no offside
+  if (params.practice) match.park(1);
   const camRig = createCameraRig({ settings: params.pro ? { ...(getState().settings.camera || {}), preset: 'lock' } : getState().settings.camera, bounds: camBounds });
   window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
   window.__apexCam = camRig;             // the camera regression shots switch presets through this
@@ -452,7 +500,9 @@ export function mount(root, params) {
     const key = `${sp.kind}:${secs}`;
     if (key === spShown) return;
     spShown = key;
-    const [title, how] = SP_TEXT[sp.kind] || ['Set piece', ''];
+    const [title, how0] = SP_TEXT[sp.kind] || ['Set piece', ''];
+    // v82: name the buttons on the device in hand (touch already shows the words on its buttons)
+    const how = lastDevice() === 'touch' ? how0 : how0.replace(/\b(SHOOT|CROSS|SHORT|THROW|LONG)\b/g, (w) => `${w} (${promptFor({ SHOOT: 'shoot', CROSS: 'cross', SHORT: 'pass', THROW: 'pass', LONG: 'through' }[w])})`);
     spEl.hidden = false;
     spEl.innerHTML = `<b>${title}</b><span>${how}</span><i class="sp-clock">${secs}</i>`;
   };
@@ -461,10 +511,11 @@ export function mount(root, params) {
    * Three matches of rotating tips for the new controls, then never again. */
   const hintsEl = root.querySelector('#gmHints');
   const HINTS = [
-    'SKILL (hold H / L2) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating',
+    // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
+    () => `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`,
     'Keys 1–5 or the flag button switch quick tactics, from Park the bus to All-out attack',
-    'LOB (U / Select) — chip it over the defence to a runner',
-    'Hold PASS or SHOOT for more power · CURL with E while shooting',
+    () => `LOB (${promptFor('lob')}) — chip it over the defence to a runner`,
+    () => `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting`,
     'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
     'Pause at any stoppage for Substitutions and Team Management',
   ];
@@ -792,7 +843,7 @@ export function mount(root, params) {
     match.online = true;
     // Only the host's clock is authoritative, so the guest must not tick its own.
     if (online.host) {
-      netOffs.push(net.on('in', (m) => remote.accept(m)));
+      netOffs.push(net.on('in', (m) => (remotes ? remotes[m.sq]?.accept(m) : remote.accept(m))));
       netOffs.push(net.on('evt', (m) => { if (m.k === 'pausereq') requestPause(m.name || online.oppName); }));
     } else {
       netOffs.push(net.on('snap', (m) => {
@@ -826,7 +877,7 @@ export function mount(root, params) {
       finish();
     }));
     // try to go direct; the relay carries the match until (and unless) it works
-    if (!spectating) startP2P(online);
+    if (!spectating && !online.party) startP2P(online);   // a party goes through the hub: one host, many guests
     /* Reconnects. The hub holds a dropped player's seat for a grace period.
      * Their opponent gets 'dropped' and the match pauses through the same
      * synchronised pause a menu uses, with the grace as its countdown; a
@@ -834,6 +885,13 @@ export function mount(root, params) {
      * mid-match is no longer the end of it: the socket retries on its own,
      * re-authenticates, and the hub hands the seat back with 'rejoined'. */
     netOffs.push(net.on('evt', (m) => {
+      // v82: in a party one person dropping does not stop everybody — the CPU takes the seat until they are back
+      if (online.party && (m.k === 'dropped' || m.k === 'resumed')) {
+        const c = match.controllers[m.seat];
+        if (c && online.host) c.ai = m.k === 'dropped';
+        if (!ended) toast(m.k === 'dropped' ? `${m.name || 'A player'} dropped — the CPU has their seat` : `${m.name || 'A player'} is back`, m.k === 'dropped' ? 'warn' : 'good');
+        return;
+      }
       if (m.k === 'dropped' && !ended) {
         if (online.host) { requestPause(m.name || online.oppName); syncLeft = Math.max(syncLeft, m.grace || 45); }
         showQueueBanner(`${m.name || 'Opponent'} lost connection — holding the match…`);
@@ -845,6 +903,10 @@ export function mount(root, params) {
         toast(`${m.name || 'Opponent'} is back`, 'good');
       }
     }));
+    if (online.party) {
+      netOffs.push(net.on('partyEnded', () => { if (!ended) { ended = true; finish(); } }));
+      netOffs.push(net.on('partyRecorded', () => { if (!ended) { ended = true; finish(); } }));
+    }
     netOffs.push(net.on('closed', () => {
       if (!ended) toast('Connection lost — reconnecting…', 'warn');
     }));
@@ -1348,7 +1410,11 @@ export function mount(root, params) {
   /* Career: the manager holds no stick, so the entire player touch layer —
    * stick zone, action buttons, contextual labels — must not exist. The wheel
    * and the walk arrows are the whole touch surface of a career match. */
-  if (window.matchMedia('(pointer: coarse)').matches && mode !== 'career') {
+  /* v82: two people, one tablet — each half of the screen is one player's:
+     a stick that lands under the thumb, and four buttons on the inside edge. */
+  const splitTouch = twoUp && window.matchMedia('(pointer: coarse)').matches && window.innerWidth >= 900;
+  if (splitTouch) buildSplitTouch(root, inputs);
+  if (window.matchMedia('(pointer: coarse)').matches && mode !== 'career' && !splitTouch) {
     touchWrap.hidden = false;
     const zone = root.querySelector('#stickZone');
     const stick = root.querySelector('#stick');
@@ -1848,7 +1914,11 @@ export function mount(root, params) {
         if (match.phase === 'goal' && lastPhase !== 'goal') captureGoal();
         recordFrame();
       }
-      if (match.phase === 'end') { ended = true; finish(); }
+      if (match.phase === 'end') {
+        // v82: the whistle goes out with a last picture, so every guest sees the end the host saw
+        if (online?.host) sendMatch(encodeSnapshot(match));
+        ended = true; finish();
+      }
 
       // drain the sim's audio cues
       const outgoing = [];
@@ -1927,7 +1997,7 @@ export function mount(root, params) {
       hintTimer -= dt;
       if (hintTimer <= 0) {
         hintTimer = 7;
-        if (hintIdx < HINTS.length) { hintsEl.hidden = false; hintsEl.textContent = HINTS[hintIdx++]; }
+        if (hintIdx < HINTS.length) { hintsEl.hidden = false; const hn = HINTS[hintIdx++]; hintsEl.textContent = typeof hn === 'function' ? hn() : hn; }
         else hintsEl.hidden = true;
       }
     }
@@ -2192,7 +2262,7 @@ export function mount(root, params) {
   };
 
   const panelFor = (id) => {
-    const team = match.teams[online ? online.seat : (match.human ?? mgr?.side ?? 0)];
+    const team = match.teams[online ? online.team : (match.human ?? mgr?.side ?? 0)];
     if (id === 'team') {
       const seg = (key, opts) => `
         <div class="p-row">
@@ -2460,13 +2530,16 @@ export function mount(root, params) {
       .sort((x, y) => x[1].minute - y[1].minute);
 
     // Online, "my" side depends on which seat this machine holds.
-    const meIdx = online ? online.seat : 0;
+    const meIdx = online ? online.team : 0;
     const mine = match.teams[meIdx].score;
     const theirs = match.teams[1 - meIdx].score;
     // offered once: after the shootout there is nothing left to settle
-    const drawnKickOff = mine === theirs && !online && !params.ultimate && !params.pro && !shootoutResult;
+    const drawnKickOff = mine === theirs && !online && !params.ultimate && !params.pro && !params.street && !params.skills && !shootoutResult;
 
-    if (online && !spectating) {
+    if (online?.party) {
+      // v82: only the host's simulation has a result; the co-op season takes it (server/party.js)
+      if (online.host) net.send({ t: 'partyResult', scored: match.teams[0].score, conceded: match.teams[1].score });
+    } else if (online && !spectating) {
       // A walkover still counts: the player who stayed takes the points.
       const scored = oppGone ? Math.max(mine, theirs + 1) : mine;
       const conceded = oppGone ? theirs : theirs;
@@ -2485,6 +2558,7 @@ export function mount(root, params) {
     let div = null;
     let sub = null;   // v80: a Fives or Squad Clash settlement
     let proLine = null;   // v81: my Player Career line
+    let streetRes = null; // v82: a street match's stars and style
     if (spectating) {
       // nothing to bank: it was somebody else's match
     } else if (params.fives) {
@@ -2496,9 +2570,14 @@ export function mount(root, params) {
         scored: online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score,
         conceded: online ? theirs : a.score,
         // possession is reported home-first, and "mine" depends on the seat
-        possession: online && online.seat === 1 ? pa : ph,
+        possession: online && online.team === 1 ? pa : ph,
       });
       noteDivisionResult((online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score) > (online ? theirs : a.score));
+    } else if (params.street) {
+      // v82: the street pays for the result and for the style it was won with
+      const st = match.styleOf(0);
+      streetRes = settleStreet({ venueId: params.street.venueId, game: params.street.game, scored: h.score, conceded: a.score, style: st.points });
+      streetRes.style = st;
     } else if (params.pro) {
       /* Player Career: my rating out of ten from the match itself; the score
          goes back in fixture order (my side was fielded as the home team). */
@@ -2529,7 +2608,7 @@ export function mount(root, params) {
     const prog = spectating ? {} : progress.onMatch({
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
       scored: myScore, conceded: theirScore, online: !!online,
-      possession: online && online.seat === 1 ? pa : ph, weekend: !!params.weekend,
+      possession: online && online.team === 1 ? pa : ph, weekend: !!params.weekend,
       sub: params.fives ? 'fives' : params.clash ? 'clash' : null,
     });
     // v80: evolutions move on with every Ultimate XI match the squad plays
@@ -2587,6 +2666,14 @@ export function mount(root, params) {
             <b>${sub.won ? 'Win' : sub.drew ? 'Draw' : 'Defeat'}</b>
             <span class="dr-reward">${params.fives ? `◈ ${sub.apex.toLocaleString()}` : `+${sub.pts} clash points`}</span>
           </div>` : ''}
+        ${streetRes ? `
+          <div class="div-result ${streetRes.won ? 'up' : ''}">
+            <span class="dr-kicker">Street · ${'★'.repeat(streetRes.stars)}${'☆'.repeat(3 - streetRes.stars)}</span>
+            <b>${streetRes.style.points} style</b>
+            <span class="dr-reward">${streetRes.style.skills} skills · ${streetRes.style.walls} off the wall · ${streetRes.style.stylish} stylish goals · +${streetRes.xp} XP · ◈ ${streetRes.apex}</span>
+            ${streetRes.recruit ? `<span class="dr-ladder">${streetRes.recruit} joins your crew</span>` : ''}
+            ${streetRes.unlocked.length ? `<span class="dr-ladder">Unlocked: ${streetRes.unlocked.join(', ')}</span>` : ''}
+          </div>` : ''}
         ${proLine ? `
           <div class="div-result ${proLine.rating >= 7 ? 'up' : proLine.rating < 6 ? 'down' : ''}">
             <span class="dr-kicker">${proLine.motm ? 'Player of the match' : 'Your rating'}</span>
@@ -2637,7 +2724,7 @@ export function mount(root, params) {
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
       if (o === 'clip') { recordClip(); return; }
-      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.pro) { navigate('pro'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);
@@ -2675,7 +2762,7 @@ export function mount(root, params) {
    * for a formation change.
    */
   function makeSub(pitchIdx, benchIdx) {
-    const teamIdx = online ? online.seat : match.human;
+    const teamIdx = online ? online.team : match.human;
     if (online && !online.host) {
       net.send({ t: 'evt', k: 'sub', team: teamIdx, pitchIdx, benchIdx });
       toast('Substitution sent', 'info');
@@ -2697,7 +2784,7 @@ export function mount(root, params) {
    * the host, since the host owns the simulation.
    */
   function setShape(key, val) {
-    const team = online ? online.seat : (match.human ?? mgr?.side ?? 0);
+    const team = online ? online.team : (match.human ?? mgr?.side ?? 0);
     if (key === 'formation') match.applyFormation(team, val);
     else if (key === 'role') { const [i, r] = val; const pl = match.teams[team].players[i]; if (pl) pl.tRole = r; match.teams[team].tactics.roles[i] = r; }
     else match.setTactic(team, key, val);
@@ -2720,6 +2807,24 @@ export function mount(root, params) {
       else if (m.key === 'role') { const pl = match.teams[m.team].players[m.val?.[0]]; if (pl) pl.tRole = m.val[1]; }
       else match.setTactic(m.team, m.key, m.val);
     }));
+  }
+
+  // v82: practice — stage a set piece where the controlled player stands
+  if (params.practice) {
+    const bar = root.querySelector('#gmPractice');
+    bar.hidden = false;
+    const stage = (kind) => {
+      const me = match.playerOf(match.controllers[0]) || match.teams[0].players[9];
+      if (kind === 'penalty') match.awardPenalty(0, null);
+      else if (kind === 'corner') match.startCorner(0, Math.random() < 0.5 ? 0 : PITCH.h, match.teams[0].dir > 0 ? PITCH.w : 0);
+      else if (kind === 'freekick') match.awardFreeKick(0, { x: me.x, y: me.y }, null);
+      else { match.resetPositions(0); match.startPlay(); }
+      match.park(1);
+    };
+    bar.addEventListener('click', (e) => { const b = e.target.closest('[data-prac]'); if (b) stage(b.dataset.prac); });
+    const f = params.practice.focus;
+    // practice has no kickoff to wait for: skip it, then stage the set piece
+    if (f && f !== 'free') setTimeout(() => { if (ended) return; if (match.phase === 'kickoff') match.startPlay(); stage(f); }, 1200);
   }
 
   root.querySelector('#gmPause').addEventListener('click', () => {

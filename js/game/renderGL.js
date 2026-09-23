@@ -12,6 +12,7 @@ import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
 import { groundProfile } from '../data/grounds.js';
 import { dressGround } from './groundDressing.js';
+import { dressStreet, courtTexture } from './streetDressing.js';
 import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
 import { pickAwayHex } from '../kits.js';
 
@@ -132,7 +133,10 @@ function specFromDef(def, seed) {
 function profileFields(def) {
   const pr = groundProfile(def, def.host || null);
   return {
-    klass: pr.klass,
+    klass: def.street ? 'street' : pr.klass,
+    // v82: a street cage carries its surface and its walls
+    street: def.street ? { surface: def.surface, cage: def.cage, sand: !!def.sand } : null,
+    cage: def.street ? def.cage : null,
     landscape: def.landscape || pr.landscape,
     floodlights: pr.floodlights,
     goalStyle: pr.goalStyle,
@@ -1192,7 +1196,10 @@ export function createRenderer(canvas, match, quality, models = false) {
   let turfHeight = null;                 // the blade height map the parallax walks through
   // v78: how far through the season (wear), how well the lines are kept, winter
   const seasonWear = Math.max(0, Math.min(1, match.venue?.seasonWear ?? 0.15));
-  const turfMap = pitchTexture(!lo, VENUE.pattern, wet, { seasonWear, lineFade: VENUE.grass?.lineFade || 0, frost, snow });
+  const STREET = VENUE.klass === 'street';
+  const turfMap = STREET
+    ? courtTexture(VENUE.street.surface, { circle: FIELD.circle, spot: FIELD.spot, boxW: FIELD.boxW, boxHalf: FIELD.boxHalf, goalHalf: FIELD.goalHalf })
+    : pitchTexture(!lo, VENUE.pattern, wet, { seasonWear, lineFade: VENUE.grass?.lineFade || 0, frost, snow });
   const turfMat = new THREE.MeshStandardMaterial({
     // v78: snow is white but not a light source — under floodlights a full-albedo pitch blooms the whole frame out
     color: snow ? new THREE.Color().setScalar(LIGHT.flood > 0 ? 0.5 : 0.82) : 0xffffff,
@@ -1402,7 +1409,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   let tufts = null;
   // v78: blade length and density are the ground's — a community pitch is shaggier and thinner; snow buries them
   const GL_LEN = VENUE.grass?.length || 1;
-  if (!lo && !potato && !snow) {
+  if (!lo && !potato && !snow && !STREET) {
     const N = Math.round((ultra ? 30000 : med ? 10000 : 18000) * (VENUE.grass?.density || 1));
     /* v78: a tuft is a fan of five tapered blades, not two crossed cards —
        close up in the Dynamic and Pro cameras a rectangle reads as a scrap
@@ -1617,7 +1624,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   // end as an 80-unit tower behind each goal. They are gone rather than fixed —
   // the ends read better empty, and the touchline runs already carry the sponsors.
   // v78: the near run has a gap on the halfway line where the tunnel comes out
-  const boards = [
+  const boards = STREET ? [] : [
     [(-10 + PITCH.w / 2 - 2) / 2, -MARGIN + 1.2, PITCH.w / 2 - 2 + 10, 0],
     [(PITCH.w / 2 + 2 + PITCH.w + 10) / 2, -MARGIN + 1.2, PITCH.w / 2 - 2 + 10, 0],
     [PITCH.w / 2, PITCH.h + MARGIN - 1.2, PITCH.w + 20, Math.PI],
@@ -1844,7 +1851,7 @@ export function createRenderer(canvas, match, quality, models = false) {
      fence (groundDressing.js builds those). */
   const COMMUNITY = VENUE.klass === 'community';
   const COMM_LEN = 46;
-  const banks = COMMUNITY
+  const banks = STREET ? [] : COMMUNITY
     ? [{ rot: 0, cx: PITCH.w / 2, cy: PITCH.h + MARGIN, len: COMM_LEN }]
     : [
       { rot: 0, cx: PITCH.w / 2, cy: PITCH.h + MARGIN, len: PITCH.w + 44 },
@@ -1961,7 +1968,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * Only the two *far* corners. The near touchline is deliberately open (the
    * camera lives there), so closing the near corners would put terracing in
    * front of the lens. */
-  if (VENUE.bowl && !COMMUNITY) {
+  if (VENUE.bowl && !COMMUNITY && !STREET) {
     const stepH = (SBZ - STAND_FRONT_Z) / TERRACE_ROWS;
     for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
       const g = new THREE.Group();
@@ -2015,7 +2022,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     const shellH = SBZ + GAP_Z + 2;
     const blocks = [];
     // three sides (the near touchline stays open for the camera)
-    const sides = COMMUNITY ? [] : [
+    const sides = COMMUNITY || STREET ? [] : [
       { x0: -outer, x1: PITCH.w + outer, y: PITCH.h + outer, along: 'x' },
       { x: -outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
       { x: PITCH.w + outer, y0: -MARGIN, y1: PITCH.h + outer, along: 'y' },
@@ -2141,7 +2148,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * or it fades on its own). Drawn on a canvas, so it is whatever the club
    * is, and never a photograph of anything. */
   let tifoMesh = null;
-  if (!potato && !COMMUNITY) {
+  if (!potato && !COMMUNITY && !STREET) {
     const c = document.createElement('canvas');
     c.width = 1024; c.height = 256;
     const g = c.getContext('2d');
@@ -2306,7 +2313,7 @@ export function createRenderer(canvas, match, quality, models = false) {
        like. A lit roof rim has no masts at all. The *lights* are identical
        either way: they are the scene's main illumination at night and were
        tuned carefully, so only the mast varies; by day they are simply off. */
-    if (VENUE.pylons !== 'rim' && VENUE.pylons !== 'side') {   // side masts are built by groundDressing.js
+    if (VENUE.pylons !== 'rim' && VENUE.pylons !== 'side' && !STREET) {   // side masts are built by groundDressing.js
       const mastH = VENUE.tallPylons ? 34 : Math.max(8, 36 - RZ2);
       const mast = new THREE.Mesh(
         new THREE.CylinderGeometry(0.5, VENUE.tallPylons ? 0.9 : 0.7, mastH, 8), pylonMat);
@@ -2459,7 +2466,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   const rows = potato ? 3 : quality === 'low' ? 8 : ultra ? 22 : med ? 11 : 14;
   const step = potato ? 3.0 : quality === 'low' ? 1.5 : ultra ? 0.62 : med ? 1.2 : 0.95;
   const seats = [];
-  const bankDefs = COMMUNITY
+  const bankDefs = STREET ? [] : COMMUNITY
     ? [{ kind: 'far', from: PITCH.w / 2 - COMM_LEN / 2 + 1, to: PITCH.w / 2 + COMM_LEN / 2 - 1 }]
     : [
       { kind: 'far', from: -22, to: PITCH.w + 22 },
@@ -2525,7 +2532,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * by arc length so the density matches the straight banks rather than
    * bunching up on the inside rows. `face` is the angle that turns a figure —
    * authored facing +Y — to look back at the corner's centre. */
-  if (VENUE.bowl && !COMMUNITY) {
+  if (VENUE.bowl && !COMMUNITY && !STREET) {
     for (const [cx, cy, from] of [[0, PITCH.h, Math.PI / 2], [PITCH.w, PITCH.h, 0]]) {
       for (let r = 0; r < rows; r++) {
         const t = r / (rows - 1);
@@ -2885,7 +2892,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * v78: flags, dugouts, the tunnel, the people who work the match, fences and
    * banks at the small grounds, side masts, the suburbs, puddles, snow, the
    * half-time groundstaff and sprinklers, and flares. groundDressing.js. */
-  const dressing = dressGround({
+  const dressing = STREET ? dressStreet({ scene, VENUE, atmo, lo }) : dressGround({
     scene, VENUE, match, atmo, LIGHT, lo, potato, ultra, surfaceAt, MARGIN, SD, GAP_D, rand: mulberry(venueSeed ^ 0xd7e55),
   });
   {

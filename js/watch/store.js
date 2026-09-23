@@ -196,3 +196,12 @@ export function fivesResult(scored, conceded) {
   f.last = { scored, conceded, at: Date.now() };
   writeLocal(); push();
 }
+
+/** v82: a street 1v1 on the wrist. */
+export function soloResult(scored, conceded) {
+  const f = state.club.watchSolo || (state.club.watchSolo = { played: 0, won: 0, drawn: 0, lost: 0, best: 0 });
+  f.played += 1;
+  if (scored > conceded) f.won += 1; else if (scored === conceded) f.drawn += 1; else f.lost += 1;
+  f.best = Math.max(f.best, scored);
+  writeLocal(); push();
+}

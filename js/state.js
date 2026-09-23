@@ -98,6 +98,8 @@ const defaults = () => ({
   meta: { reset: RESET_TAG }, // which wipe this save has already been through
   career: null,               // set once a career is started
   pro: null,                  // v81: the Player Career, once a player is created
+  street: null,               // v82: the Street mode: your baller, crew, tour, cosmetics
+  skills: null,               // v82: skill-game bests
   ultimate: freshUltimate(),  // Ultimate XI progression
 });
 

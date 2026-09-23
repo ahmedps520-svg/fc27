@@ -10068,6 +10068,10 @@
     // set once a career is started
     pro: null,
     // v81: the Player Career, once a player is created
+    street: null,
+    // v82: the Street mode: your baller, crew, tour, cosmetics
+    skills: null,
+    // v82: skill-game bests
     ultimate: freshUltimate()
     // Ultimate XI progression
   });
@@ -10534,7 +10538,14 @@
   var PITCH = { w: 105, h: 68 }, FIELDS = {
     full: { id: "full", w: 105, h: 68, goalHalf: 5.5, goalHeight: 2.44, boxW: 16.5, boxHalf: 20, sixW: 5.5, sixHalf: 9.16, spot: 11, circle: 9.15, players: 11, walls: !1, offside: !0 },
     fives: { id: "fives", w: 60, h: 38, goalHalf: 2.5, goalHeight: 2.2, boxW: 8, boxHalf: 10, sixW: 3, sixHalf: 5, spot: 7, circle: 5, players: 5, walls: !1, offside: !1 },
-    futsal: { id: "futsal", w: 40, h: 20, goalHalf: 1.5, goalHeight: 2, boxW: 6, boxHalf: 7.5, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 5, walls: !1, offside: !1 }
+    // futsal (v82): kick-ins, and a smaller, heavier ball that barely bounces and rolls true
+    futsal: { id: "futsal", w: 42, h: 25, goalHalf: 1.5, goalHeight: 2, boxW: 6, boxHalf: 7.5, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 5, walls: !1, offside: !1, kickIn: !0, ball: { bounce: 0.2, drag: 0.982 } },
+    // the street cages (v82): walls all round, play off them; goals are small and there is no offside
+    // the watch's street 1v1 (v82): a tiny walled court, one each, no keepers
+    street1: { id: "street1", w: 24, h: 15, goalHalf: 1, goalHeight: 1.2, boxW: 3, boxHalf: 4, sixW: 0, sixHalf: 0, spot: 4, circle: 2, players: 1, walls: !0, offside: !1, street: !0 },
+    street3: { id: "street3", w: 34, h: 22, goalHalf: 1.5, goalHeight: 1.5, boxW: 5, boxHalf: 6, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 3, walls: !0, offside: !1, street: !0 },
+    street4: { id: "street4", w: 40, h: 24, goalHalf: 1.7, goalHeight: 1.6, boxW: 5.5, boxHalf: 7, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 4, walls: !0, offside: !1, street: !0 },
+    street5: { id: "street5", w: 46, h: 28, goalHalf: 1.9, goalHeight: 1.8, boxW: 6, boxHalf: 8, sixW: 0, sixHalf: 0, spot: 6.5, circle: 3.5, players: 5, walls: !0, offside: !1, street: !0 }
   }, CY = 34, GOAL_HALF = 5.5, GOAL_HEIGHT = 2.44, BOX = { w: 16.5, half: 20 }, FIELD = { ...FIELDS.full }, SCALE = 1;
   function setField(spec = "full") {
     let f = typeof spec == "string" ? FIELDS[spec] || FIELDS.full : { ...FIELDS.full, ...spec };
@@ -10662,7 +10673,21 @@
       { x: 0.46, y: 0.5, role: "MID" },
       { x: 0.72, y: 0.5, role: "FWD" }
     ]
-  }, FIVES_NAMES = Object.keys(SHAPES5), shapesFor = () => FIELD.players === 5 ? SHAPES5 : SHAPES, defaultShape = () => FIELD.players === 5 ? SHAPES5["1-2-1"] : SHAPES["4-4-2"], SHAPE = SHAPES["4-4-2"], ROLE_OF = {
+  }, FIVES_NAMES = Object.keys(SHAPES5), SHAPES4 = {
+    "1-2": [{ x: 0.05, y: 0.5, role: "GK" }, { x: 0.28, y: 0.5, role: "DEF" }, { x: 0.58, y: 0.26, role: "FWD" }, { x: 0.58, y: 0.74, role: "FWD" }],
+    "2-1": [{ x: 0.05, y: 0.5, role: "GK" }, { x: 0.26, y: 0.3, role: "DEF" }, { x: 0.26, y: 0.7, role: "DEF" }, { x: 0.62, y: 0.5, role: "FWD" }],
+    diamond: [{ x: 0.05, y: 0.5, role: "GK" }, { x: 0.26, y: 0.5, role: "DEF" }, { x: 0.46, y: 0.5, role: "MID" }, { x: 0.68, y: 0.5, role: "FWD" }]
+  }, SHAPES3 = {
+    "1-1": [{ x: 0.05, y: 0.5, role: "GK" }, { x: 0.3, y: 0.5, role: "DEF" }, { x: 0.62, y: 0.5, role: "FWD" }],
+    split: [{ x: 0.05, y: 0.5, role: "GK" }, { x: 0.45, y: 0.28, role: "MID" }, { x: 0.45, y: 0.72, role: "MID" }]
+  }, SHAPES1 = { solo: [{ x: 0.3, y: 0.5, role: "FWD" }] }, SMALL = { 5: [SHAPES5, "1-2-1"], 4: [SHAPES4, "1-2"], 3: [SHAPES3, "1-1"], 1: [SHAPES1, "solo"] }, shapesFor = () => {
+    var _a;
+    return ((_a = SMALL[FIELD.players]) == null ? void 0 : _a[0]) || SHAPES;
+  }, defaultShape = () => {
+    let s = SMALL[FIELD.players];
+    return s ? s[0][s[1]] : SHAPES["4-4-2"];
+  };
+  var SHAPE = SHAPES["4-4-2"], ROLE_OF = {
     GK: "GK",
     CB: "DEF",
     LB: "DEF",
@@ -10687,7 +10712,18 @@
       if (xi.length >= 11) break;
       used.has(p) || (xi.push(p), used.add(p));
     }
-    return FIELD.players === 5 ? fivesFrom(xi) : xi.slice(0, 11);
+    return FIELD.players < 11 ? smallFrom(xi, FIELD.players) : xi.slice(0, 11);
+  }
+  function smallFrom(xi, n) {
+    if (n === 5) return fivesFrom(xi);
+    let role = (p) => ROLE_OF[p.position] || "MID";
+    if (n === 1) return [xi.filter((p) => role(p) !== "GK").sort((a, b) => b.overall - a.overall)[0] || xi[0]];
+    let gk = xi.filter((p) => role(p) === "GK").sort((a, b) => b.overall - a.overall)[0], rest = xi.filter((p) => p !== gk).sort((a, b) => b.overall - a.overall), want = n === 4 ? ["DEF", "FWD", "FWD"] : ["DEF", "FWD"], out = [gk];
+    for (let r of want) {
+      let i = rest.findIndex((p) => role(p) === r || r === "FWD" && role(p) === "MID");
+      out.push(i >= 0 ? rest.splice(i, 1)[0] : rest.shift());
+    }
+    return out.filter(Boolean).slice(0, n);
   }
   function fivesFrom(xi) {
     let role = (p) => ROLE_OF[p.position] || "MID", by = (r) => xi.filter((p) => role(p) === r).sort((a, b) => b.overall - a.overall), out = [by("GK")[0], by("DEF")[0], ...by("MID").slice(0, 2), by("FWD")[0]];
@@ -10728,8 +10764,8 @@
     return clamp2(base + back + (h % 1e3 / 1e3 - 0.5) * 0.24, 0.02, 1);
   }
   function makeTeam(clubId, side, isHuman, custom = null) {
-    var _a, _b, _c;
-    let club = getClub(clubId), n = FIELD.players, xi = ((_a = custom == null ? void 0 : custom.xi) == null ? void 0 : _a.length) === n ? custom.xi : ((_b = custom == null ? void 0 : custom.xi) == null ? void 0 : _b.length) === 11 && n === 5 ? fivesFrom(custom.xi) : pickXI(clubId), SHAPE2 = defaultShape(), dir = side === 0 ? 1 : -1, players = xi.map((ref, i) => {
+    var _a, _b, _c, _d;
+    let club = getClub(clubId), n = FIELD.players, xi = ((_a = custom == null ? void 0 : custom.xi) == null ? void 0 : _a.length) === n ? custom.xi : ((_b = custom == null ? void 0 : custom.xi) == null ? void 0 : _b.length) > n && n < 11 ? smallFrom(custom.xi, n) : pickXI(clubId), SHAPE2 = defaultShape(), dir = side === 0 ? 1 : -1, players = xi.map((ref, i) => {
       var _a2, _b2, _c2;
       let s = SHAPE2[i], sx = side === 0 ? s.x : 1 - s.x, sy = side === 0 ? s.y : 1 - s.y;
       return {
@@ -10786,7 +10822,7 @@
       onTarget: 0,
       poss: 0,
       scorers: [],
-      formation: n === 5 ? "1-2-1" : "4-4-2",
+      formation: ((_d = SMALL[n]) == null ? void 0 : _d[1]) || "4-4-2",
       // a custom squad may bring an instruction with it — the Apex Division uses
       // this to make the CPU press and push up the higher you climb
       tactics: { ...defaultTactics(), ...(custom == null ? void 0 : custom.tactics) || {} },
@@ -10800,19 +10836,24 @@
     return id && team.players.find((p) => p.ref.id === id && p.role !== "GK" && !p.injured) || null;
   }, Match = class {
     constructor(homeId, awayId, opts = {}) {
-      var _a, _b, _c;
+      var _a, _b, _c, _d;
       setField(opts.field || "full"), this.field = FIELD.id, this.mode = opts.mode || "single", this.human = opts.human === null ? null : (_a = opts.human) != null ? _a : 0, this.teams = [
         makeTeam(homeId, 0, this.human === 0, opts.homeSquad || null),
         makeTeam(awayId, 1, this.human === 1, opts.awaySquad || null)
       ];
       let last2 = FIELD.players - 1;
-      this.human === null ? this.controllers = [] : this.mode === "versus" ? (this.controllers = [
+      if ((_b = opts.seats) != null && _b.length) {
+        let used = [0, 0];
+        this.controllers = opts.seats.map((st) => ({ team: st.team, activeIdx: Math.max(1, last2 - used[st.team]++), charge: 0, passCharge: 0 }));
+        for (let t of [0, 1]) opts.seats.some((st) => st.team === t) && (this.teams[t].isHuman = !0);
+      } else this.human === null ? this.controllers = [] : this.mode === "versus" ? (this.controllers = [
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 1, activeIdx: last2, charge: 0, passCharge: 0 }
       ], this.teams[1].isHuman = !0) : this.mode === "coop" ? this.controllers = [
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
-      ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -10902,6 +10943,16 @@
     playerOf(c) {
       return c ? this.teams[c.team].players[c.activeIdx] : null;
     }
+    /** Street style (v82): points for skills and wall play, chained when they come quickly. Counting only. */
+    styleOf(side) {
+      let t = this.teams[side];
+      return t.style || (t.style = { points: 0, skills: 0, walls: 0, goals: 0, stylish: 0, chain: 0, last: -99 });
+    }
+    styleEvent(p, kind, pts) {
+      if (!FIELD.street || !p) return;
+      let st = this.styleOf(p.team);
+      st[kind] += 1, st.chain = this.t - st.last < 5 ? Math.min(5, st.chain + 1) : 1, st.last = this.t, st.points += pts * st.chain;
+    }
     /** Count something a player did (v81). */
     tally(p, k, n = 1) {
       var _a;
@@ -10919,7 +10970,7 @@
       return Math.round((end - r.on) / Math.max(1, this.duration) * 90);
     }
     isControlled(p) {
-      return this.controllers.some((c) => this.playerOf(c) === p);
+      return this.controllers.some((c) => !c.ai && this.playerOf(c) === p);
     }
     minute() {
       return Math.min(90, Math.floor(this.t / this.duration * 90));
@@ -10958,7 +11009,7 @@
     update(dt, input) {
       var _a, _b;
       if (this.phase === "end") return;
-      this.locked && this.lockSeats();
+      this.locked && this.lockSeats(), this.parkedAny && this.repark();
       for (let team of this.teams)
         for (let p of team.players)
           p.downT > 0 && (p.downT = Math.max(0, p.downT - dt), p.vx *= 0.82, p.vy *= 0.82);
@@ -11025,7 +11076,21 @@
       for (let team of this.teams)
         for (let p of team.players)
           this.integrate(p, dt), this.fatigue(p, dt);
-      this.separate(), this.updateBall(dt), this.switchOnPossession(), this.locked && this.lockSeats();
+      this.separate(), this.updateBall(dt), this.switchOnPossession(), this.locked && this.lockSeats(), this.parkedAny && this.repark();
+    }
+    /**
+     * Practice (v82): take players out of the game entirely — the practice arena
+     * parks the opposition bar the keeper. A parked man stands far off the
+     * pitch and is put back there every step, so no AI, tackle or pickup ever
+     * reaches him. Offside goes with them.
+     */
+    park(teamIdx, test = (p) => p.role !== "GK") {
+      for (let p of this.teams[teamIdx].players) test(p) && (p.parked = !0);
+      this.parkedAny = !0, this.noOffside = !0, this.repark();
+    }
+    repark() {
+      if (this.phase !== "freekick")
+        for (let t of this.teams) for (let p of t.players) p.parked && (p.x = -300, p.y = -300, p.vx = p.vy = 0);
     }
     /**
      * Player lock (v81, the Player Career): a seat with `lockId` only ever
@@ -11227,6 +11292,7 @@
     /** Drive one seat's player. Called once per controller per frame. */
     handleSeat(c, dt, input) {
       var _a, _b, _c;
+      if (c.ai || c.benched) return;
       let p = this.playerOf(c);
       if (!p) return;
       let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
@@ -11343,7 +11409,7 @@
     }
     /* ------------------------------- ball ------------------------------ */
     updateBall(dt) {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e, _f, _g;
       let b = this.ball;
       if (b.owner) {
         let o = b.owner;
@@ -11380,8 +11446,8 @@
         }
       } else
         b.dip = 0, b.knuckle = 0;
-      b.px = b.x, b.py = b.y, b.pz = b.z, b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * 0.42, b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
-      let damp = Math.pow(b.z > 0.4 ? 0.9985 : 0.986, dt * 60);
+      b.px = b.x, b.py = b.y, b.pz = b.z, b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * ((_b = (_a = FIELD.ball) == null ? void 0 : _a.bounce) != null ? _b : 0.42), b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
+      let damp = Math.pow(b.z > 0.4 ? 0.9985 : (_d = (_c = FIELD.ball) == null ? void 0 : _c.drag) != null ? _d : 0.986, dt * 60);
       if (b.vx *= damp, b.vy *= damp, b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5 && (b.vx = 0, b.vy = 0), b.noTouch = Math.max(0, (b.noTouch || 0) - dt), b.noTouch > 0) {
         this.bounds();
         return;
@@ -11392,7 +11458,7 @@
           for (let p of team.players) {
             if (p.touchLock > 0) continue;
             let r = p.role === "GK" ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5) : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
-            if ((_a = p.tr) != null && _a.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
+            if ((_e = p.tr) != null && _e.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
               let outward = b.y < CY ? -b.vy : b.vy;
               Math.min(b.y, PITCH.h - b.y) < 1.6 && outward > 1.5 && (r *= 0.45);
             }
@@ -11437,8 +11503,8 @@
             return;
           }
           if (attacking && b.z > 0.85) {
-            let jump = 2.25 + (((_b = best.tr) == null ? void 0 : _b.aerial) || 0) * 0.3 + (best.ref.stats.physical - 70) / 100, timing = clamp2(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
-            b.lastTouch = best, this.cue("header"), this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28, { loft: 0.2, placed: !0, sloppy: 1 - timing + ((_c = best.tr) != null && _c.aerial ? -0.2 : 0) });
+            let jump = 2.25 + (((_f = best.tr) == null ? void 0 : _f.aerial) || 0) * 0.3 + (best.ref.stats.physical - 70) / 100, timing = clamp2(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
+            b.lastTouch = best, this.cue("header"), this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28, { loft: 0.2, placed: !0, sloppy: 1 - timing + ((_g = best.tr) != null && _g.aerial ? -0.2 : 0) });
             return;
           }
           if (attacking && b.z > 0.42 && b.z <= 0.85 && toGoal9 < 17 && Math.random() < 0.7) {
@@ -11506,24 +11572,35 @@
       let b = this.ball;
       if (!b.inNet && this.hitFrame()) return;
       let attackerSide = b.lastTouch ? b.lastTouch.team : 0;
-      if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
-        b.shotBy && (this.cue("shotWide", b.shotBy), b.shotBy = null), this.startThrowIn(1 - attackerSide, b.x, b.y), this.markStoppage("throwin");
-        return;
-      }
-      if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
-        let leftGoal = b.x < 0.4;
-        if (Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
-          this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
+      if (!(FIELD.walls && this.walls())) {
+        if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
+          b.shotBy && (this.cue("shotWide", b.shotBy), b.shotBy = null), this.startThrowIn(1 - attackerSide, b.x, b.y), this.markStoppage("throwin");
           return;
         }
-        let defending = leftGoal ? 0 : 1;
-        if (b.shotBy && b.shotBy.team !== defending && (this.cue("shotWide", b.shotBy), b.shotBy = null), b.lastTouch && b.lastTouch.team === defending) {
-          this.startCorner(1 - defending, b.y < CY ? 0 : PITCH.h, leftGoal ? 0 : PITCH.w), this.markStoppage("corner");
-          return;
+        if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
+          let leftGoal = b.x < 0.4;
+          if (Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
+            this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
+            return;
+          }
+          let defending = leftGoal ? 0 : 1;
+          if (b.shotBy && b.shotBy.team !== defending && (this.cue("shotWide", b.shotBy), b.shotBy = null), b.lastTouch && b.lastTouch.team === defending) {
+            this.startCorner(1 - defending, b.y < CY ? 0 : PITCH.h, leftGoal ? 0 : PITCH.w), this.markStoppage("corner");
+            return;
+          }
+          let side = this.teams[defending], gk = side.players.find((p) => p.role === "GK") || side.players[0];
+          b.x = clamp2(b.x, 3, PITCH.w - 3), b.y = clamp2(b.y, 6, PITCH.h - 6), b.z = 0, gk.x = leftGoal ? 6 : PITCH.w - 6, gk.y = b.y, b.vx = b.vy = b.vz = 0, b.owner = gk, b.lastTouch = gk, gk.holdT = 0, this.markStoppage("goalkick");
         }
-        let side = this.teams[defending], gk = side.players.find((p) => p.role === "GK") || side.players[0];
-        b.x = clamp2(b.x, 3, PITCH.w - 3), b.y = clamp2(b.y, 6, PITCH.h - 6), b.z = 0, gk.x = leftGoal ? 6 : PITCH.w - 6, gk.y = b.y, b.vx = b.vy = b.vz = 0, b.owner = gk, b.lastTouch = gk, gk.holdT = 0, this.markStoppage("goalkick");
       }
+    }
+    /**
+     * The street cage (v82): the ball comes back off the walls instead of going
+     * out. Between the posts it is still a goal. A carried ball is simply held
+     * at the wall. Returns true when the wall dealt with it.
+     */
+    walls() {
+      let b = this.ball, e = 0.62, hit = !1, inMouth = Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT;
+      return b.y < 0.4 ? (b.y = 0.4, b.vy = Math.abs(b.vy) * e, hit = !0) : b.y > PITCH.h - 0.4 && (b.y = PITCH.h - 0.4, b.vy = -Math.abs(b.vy) * e, hit = !0), inMouth || (b.x < 0.4 ? (b.x = 0.4, b.vx = Math.abs(b.vx) * e, hit = !0) : b.x > PITCH.w - 0.4 && (b.x = PITCH.w - 0.4, b.vx = -Math.abs(b.vx) * e, hit = !0)), hit ? (b.owner && (b.vx = b.owner.vx, b.vy = b.owner.vy), b.shotBy && (this.cue("shotWide", b.shotBy), b.shotBy = null), this.wallHits = (this.wallHits || 0) + 1, b.lastTouch && !b.owner && this.styleEvent(b.lastTouch, "walls", 10), this.cue("wall"), !0) : !1;
     }
     /** Record a dead-ball restart. Called by bounds() and scoreGoal, read by whoever polls. */
     markStoppage(kind) {
@@ -11569,6 +11646,10 @@
       var _a;
       this.markStoppage("goal");
       let team = this.teams[side];
+      if (FIELD.street) {
+        let st = this.styleOf(side), hot = this.t - st.last < 6;
+        st.points += 100 + (hot ? 50 * st.chain : 0), st.goals += 1, hot && st.chain >= 2 && (st.stylish += 1), st.chain = 0;
+      }
       team.score++, (this.ball.shotBy && this.ball.shotBy.team === side || !this.ball.shotBy && ((_a = this.ball.lastTouch) == null ? void 0 : _a.team) === side) && team.onTarget++, this.ball.shotBy = null;
       let scorer = this.ball.lastTouch && this.ball.lastTouch.team === side ? this.ball.lastTouch : null, assist = this.ball.passer && this.ball.passer.team === side && this.ball.passer !== scorer ? this.ball.passer : null;
       scorer && team.scorers.push({ name: scorer.ref.name, id: scorer.ref.id, assist: (assist == null ? void 0 : assist.ref.id) || null, assistName: (assist == null ? void 0 : assist.ref.name) || null, minute: this.minute() }), this.feed.unshift("".concat(this.minute(), "'  ").concat(team.short, " — ").concat(scorer ? scorer.ref.name : "own goal")), this.banner = "GOAL", this.goalTeam = side, this.phase = "goal", this.phaseT = 4.2, this.cue("goal"), this.cue("net"), this.pendingKickoff = 1 - side, this.celebrant = scorer, this.celebT = 0, this.scorerName = scorer ? scorer.ref.name : "Own goal";
@@ -11855,7 +11936,7 @@
       var _a;
       if (p.skillT > 0 || p.stumble > 0 || p.stamina < 0.15) return;
       let skill = p.ref.stats.dribbling / 100, b = this.ball, hasBall = b.owner === p, am = aim ? Math.hypot(aim.x, aim.y) : 0, lateral = am > 0.2 ? (aim.x * p.dirY - aim.y * p.dirX) / am : 0, along = am > 0.2 ? (aim.x * p.dirX + aim.y * p.dirY) / am : 0, foe = this.nearestTo(1 - p.team, p), foeAhead = foe && dist(p, foe) < 2.4 && (foe.x - p.x) * p.dirX + (foe.y - p.y) * p.dirY > 0.8, dir = am <= 0.2 ? "none" : Math.abs(lateral) > Math.abs(along) ? "side" : along > 0 ? "fwd" : "back", move = pickSkill(dir, mod, p.stars || 1, foeAhead);
-      p.skillKind = move.id, p.stamina = Math.max(0, p.stamina - 0.04);
+      p.skillKind = move.id, hasBall && this.styleEvent(p, "skills", 25 + (foeAhead ? 15 : 0)), p.stamina = Math.max(0, p.stamina - 0.04);
       let over = Math.max(0, move.stars - 2) * 0.05, okP = clamp2(0.5 + skill * 0.48 + (((_a = p.tr) == null ? void 0 : _a.trickster) || 0) * 0.08 - over + ((p.stars || 1) - move.stars) * 0.03, 0.3, 0.97);
       if (hasBall && Math.random() > okP) {
         p.skillT = 0.2, p.stumble = 0.35, this.release(p, p.dirX * 6, p.dirY * 6), this.cue("skill", p);
@@ -11919,7 +12000,7 @@
       let sp = this.setPiece;
       if (this.setPiece = null, this.phase = "play", this.banner = "", !sp) return;
       let p = sp.taker;
-      this.ball.owner = p, p.touchLock = 0, this.pass(p, { x: this.teams[p.team].dir, y: (CY - p.y) / PITCH.h }, !1, 0.3), this.ball.vz = 3.2, this.ball.z = 1.6;
+      this.ball.owner = p, p.touchLock = 0, this.pass(p, { x: this.teams[p.team].dir, y: (CY - p.y) / PITCH.h }, !1, 0.3), FIELD.kickIn ? (this.ball.vz = 0, this.ball.z = 0) : (this.ball.vz = 3.2, this.ball.z = 1.6);
     }
     /**
      * Common set-piece bookkeeping. A person taking it gets a generous window
@@ -11929,9 +12010,9 @@
     beginSetPiece(kind, team, taker, aiDelay) {
       let mine = (c) => {
         var _a;
-        return c.team === team && (!c.lockId || c.lockId === ((_a = taker == null ? void 0 : taker.ref) == null ? void 0 : _a.id));
+        return c.team === team && !c.ai && (!c.lockId || c.lockId === ((_a = taker == null ? void 0 : taker.ref) == null ? void 0 : _a.id));
       }, human = this.controllers.some(mine);
-      if (this.phaseT = human ? kind === "throwin" ? 6 : 9 : aiDelay + (this.teams[team].tactics.tempo === "slow" ? 1.4 : 0), human) {
+      if (this.phaseT = human ? kind === "throwin" ? 6 : 9 : aiDelay + (this.teams[team].tactics.tempo === "slow" ? 1.4 : 0), FIELD.street && (this.phaseT = human ? 2.5 : Math.min(this.phaseT, 0.5)), human) {
         let c = this.controllers.find(mine);
         c && (c.activeIdx = this.teams[team].players.indexOf(taker));
       }
@@ -12160,11 +12241,12 @@
       return own + (t.dir > 0 ? second : -second);
     }
     isOffside(q, lineX = null) {
+      if (this.noOffside) return !1;
       let atk = this.teams[q.team], line = lineX != null ? lineX : this.offsideLine(1 - q.team), beyond = (q.x - line) * atk.dir > 0.25, pastBall = (q.x - this.ball.x) * atk.dir > 0, theirHalf = (q.x - PITCH.w / 2) * atk.dir > 0;
       return beyond && pastBall && theirHalf;
     }
     noteOffside(passer) {
-      if (this.phase !== "play" || !FIELD.offside) {
+      if (this.phase !== "play" || !FIELD.offside || this.noOffside) {
         this.offsideWatch = null;
         return;
       }
@@ -12174,7 +12256,7 @@
     }
     /** The side with the ball keeps its forwards level with the last defender (AI). */
     onsideX(team, x, slack = 0) {
-      if (!FIELD.offside) return x;
+      if (!FIELD.offside || this.noOffside) return x;
       let lim = this.offsideLine(1 - team.side) - team.dir * (0.8 - slack), ballLim = this.ball.x, cap2 = team.dir > 0 ? Math.max(lim, ballLim) : Math.min(lim, ballLim);
       return team.dir > 0 ? Math.min(x, cap2) : Math.max(x, cap2);
     }
@@ -12394,7 +12476,34 @@
     7: "sprint",
     8: "lob",
     9: "pause"
-  }, ACTIONS = ["pass", "shoot", "cross", "through", "lob", "skill", "switch", "curl", "sprint", "pause"], Input = class {
+  }, ACTIONS = ["pass", "shoot", "cross", "through", "lob", "skill", "switch", "curl", "sprint", "pause"], OVERRIDE = { keys: {}, pad: {} };
+  function laid(base, over) {
+    let out = { ...base };
+    for (let [action, code] of Object.entries(over)) {
+      for (let [k, v] of Object.entries(out)) {
+        let acts = Array.isArray(v) ? v : [v];
+        if (acts.includes(action)) {
+          let rest = acts.filter((a) => a !== action);
+          rest.length ? out[k] = rest.length === 1 ? rest[0] : rest : delete out[k];
+        }
+      }
+      out[code] = action;
+    }
+    return out;
+  }
+  var keyMapFor = (set = "primary") => set === "primary" ? laid(KEYSETS.primary, OVERRIDE.keys) : KEYSETS[set], padMapFor = () => laid(PAD_ACTIONS, OVERRIDE.pad);
+  var LAST = typeof matchMedia == "function" && matchMedia("(pointer: coarse)").matches ? "touch" : "keyboard", PAD_KIND = "xbox", deviceFns = /* @__PURE__ */ new Set(), setDevice = (d2) => {
+    if (d2 !== LAST) {
+      LAST = d2;
+      for (let fn of deviceFns) fn(d2);
+    }
+  };
+  typeof window < "u" && window.addEventListener && (window.addEventListener("keydown", () => setDevice("keyboard"), !0), window.addEventListener("pointerdown", (e) => {
+    e.pointerType === "touch" ? setDevice("touch") : e.pointerType === "mouse" && setDevice("keyboard");
+  }, !0), window.addEventListener("gamepadconnected", (e) => {
+    PAD_KIND = /sony|dualsense|dualshock|playstation|054c/i.test(e.gamepad.id) ? "ps" : "xbox";
+  }));
+  var Input = class {
     /**
      * @param {{pad?: number|null, keys?: 'primary'|'secondary'}} opts
      *   pad  index to bind to, or null to grab the first connected one
@@ -12402,7 +12511,7 @@
      */
     constructor(opts = {}) {
       var _a;
-      this.padIndex = (_a = opts.pad) != null ? _a : null, this.keyMap = KEYSETS[opts.keys || "primary"], this.moveMap = MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
+      this.padIndex = (_a = opts.pad) != null ? _a : null, this.keyMap = keyMapFor(opts.keys || "primary"), this.padMap = (opts.keys || "primary") === "primary" ? padMapFor() : PAD_ACTIONS, this.moveMap = MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
         e.repeat || (this.keys.add(e.code), (this.keyMap[e.code] || this.moveMap[e.code]) && e.preventDefault());
       }, this._up = (e) => this.keys.delete(e.code), this._blur = () => this.keys.clear(), window.addEventListener("keydown", this._down), window.addEventListener("keyup", this._up), window.addEventListener("blur", this._blur);
     }
@@ -12431,9 +12540,12 @@
         let a = this.keyMap[code];
         a && fire(a);
       }
-      if (this.pad)
-        for (let [i, a] of Object.entries(PAD_ACTIONS))
-          (_e = this.pad.buttons[i]) != null && _e.pressed && fire(a);
+      if (this.pad) {
+        let any = !1;
+        for (let [i, a] of Object.entries(this.padMap))
+          (_e = this.pad.buttons[i]) != null && _e.pressed && (fire(a), any = !0);
+        (any || Math.hypot(this.pad.axes[0] || 0, this.pad.axes[1] || 0) > 0.5) && setDevice("pad");
+      }
       for (let a of this.touchButtons) this.now.add(a);
       for (let a of ACTIONS)
         this.heldFor[a] = this.now.has(a) ? this.heldFor[a] + dt : 0;
@@ -14034,6 +14146,10 @@
     let f = state2.club.watchFives || (state2.club.watchFives = { played: 0, won: 0, drawn: 0, lost: 0 });
     f.played += 1, scored > conceded ? f.won += 1 : scored === conceded ? f.drawn += 1 : f.lost += 1, f.last = { scored, conceded, at: Date.now() }, writeLocal(), push();
   }
+  function soloResult(scored, conceded) {
+    let f = state2.club.watchSolo || (state2.club.watchSolo = { played: 0, won: 0, drawn: 0, lost: 0, best: 0 });
+    f.played += 1, scored > conceded ? f.won += 1 : scored === conceded ? f.drawn += 1 : f.lost += 1, f.best = Math.max(f.best, scored), writeLocal(), push();
+  }
 
   // js/data/cardValue.js
   function roundValue(v) {
@@ -14087,7 +14203,7 @@
     })(), "\n    ").concat((() => {
       let ev = activeEvent();
       return ev ? '<div class="w-ev" style="--ev:'.concat(ev.theme || "#22c55e", '"><span>This week</span><b>').concat(ev.name, "</b></div>") : "";
-    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div id="wGuild"></div>\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, '</b></div>\n      <div class="w-row"><span>Market price</span><b>◈ ').concat(guideValue(best).toLocaleString(), "</b></div>") : "", "\n    ").concat((() => {
+    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div id="wGuild"></div>\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, '</b></div>\n      <div class="w-row"><span>Market price</span><b>◈ ').concat(guideValue(best).toLocaleString(), "</b></div>") : "", "\n    ").concat(s.club.watchSolo ? '<div class="w-row"><span>Street 1v1</span><b>'.concat(s.club.watchSolo.won, "W ").concat(s.club.watchSolo.lost, "L</b></div>") : "", "\n    ").concat((() => {
       let f = s.club.fives, w = s.club.watchFives;
       if (!f && !w) return "";
       let last2 = [f == null ? void 0 : f.last, w == null ? void 0 : w.last].filter(Boolean).sort((a, b) => b.at - a.at)[0];
@@ -14108,7 +14224,7 @@
   }, level = "normal";
   function playScreen() {
     let clubs = WORLD.clubs;
-    shell('\n    <p class="w-title">Kick Off · 60 seconds</p>\n    <div class="w-chips">'.concat(Object.entries(LEVELS).map(([id, l]) => '<button class="w-chip '.concat(level === id ? "on" : "", '" data-level="').concat(id, '">').concat(l.label, "</button>")).join(""), '</div>\n    <button class="w-btn" data-pens>⚽ Penalties</button>\n    <button class="w-btn" data-fives>⚡ Quickfire Fives</button>\n    <p class="w-sub" style="margin-top:8px">Pick an opponent. Drag to run, tap KICK.</p>\n    ').concat(clubs.map((c) => '\n      <button class="w-btn ghost" data-club="'.concat(c.id, '" style="text-align:left">\n        ').concat(c.short, " · ").concat(c.name, "\n      </button>")).join(""), "\n  ")), app.querySelectorAll("[data-level]").forEach((el) => el.addEventListener("click", () => {
+    shell('\n    <p class="w-title">Kick Off · 60 seconds</p>\n    <div class="w-chips">'.concat(Object.entries(LEVELS).map(([id, l]) => '<button class="w-chip '.concat(level === id ? "on" : "", '" data-level="').concat(id, '">').concat(l.label, "</button>")).join(""), '</div>\n    <button class="w-btn" data-pens>⚽ Penalties</button>\n    <button class="w-btn" data-fives>⚡ Quickfire Fives</button>\n    <button class="w-btn" data-solo>🏀 Street 1v1</button>\n    <p class="w-sub" style="margin-top:8px">Pick an opponent. Drag to run, tap KICK.</p>\n    ').concat(clubs.map((c) => '\n      <button class="w-btn ghost" data-club="'.concat(c.id, '" style="text-align:left">\n        ').concat(c.short, " · ").concat(c.name, "\n      </button>")).join(""), "\n  ")), app.querySelectorAll("[data-level]").forEach((el) => el.addEventListener("click", () => {
       buzz2(), level = el.dataset.level, playScreen();
     })), app.querySelector("[data-pens]").addEventListener("click", () => {
       buzz2(14);
@@ -14122,6 +14238,12 @@
       playMatch(app, opp.id, (reward, stats) => {
         reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins")), fivesResult((stats == null ? void 0 : stats.goals) | 0, (stats == null ? void 0 : stats.conceded) | 0), tab = "play", render();
       }, level, { field: "fives" });
+    }), app.querySelector("[data-solo]").addEventListener("click", () => {
+      buzz2(14);
+      let opp = clubs[1 + Math.floor(Math.random() * (clubs.length - 1))];
+      playMatch(app, opp.id, (reward, stats) => {
+        reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins")), soloResult((stats == null ? void 0 : stats.goals) | 0, (stats == null ? void 0 : stats.conceded) | 0), tab = "play", render();
+      }, level, { field: "street1" });
     }), app.querySelectorAll("[data-club]").forEach((el) => el.addEventListener("click", () => {
       buzz2(14), playMatch(app, el.dataset.club, (reward, stats) => {
         reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins"), stats.level === "hard" && report("hardwin")), tab = "play", render();

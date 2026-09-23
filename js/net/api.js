@@ -137,3 +137,7 @@ export const guildBoard = () => call('/api/guild/board');
 export const friends = () => call('/api/friends');
 export const friendAction = (body) => call('/api/friends', { method: 'POST', body });
 export const liveMatches = () => call('/api/live');
+
+/* v82: skill-game boards */
+export const skillBoard = (game) => call(`/api/skills?game=${encodeURIComponent(game)}`);
+export const postSkill = (game, score) => call('/api/skills', { method: 'POST', body: { game, score } });

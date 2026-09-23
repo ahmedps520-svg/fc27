@@ -20,7 +20,14 @@ export const PITCH = { w: 105, h: 68 };
 export const FIELDS = {
   full: { id: 'full', w: 105, h: 68, goalHalf: 5.5, goalHeight: 2.44, boxW: 16.5, boxHalf: 20, sixW: 5.5, sixHalf: 9.16, spot: 11, circle: 9.15, players: 11, walls: false, offside: true },
   fives: { id: 'fives', w: 60, h: 38, goalHalf: 2.5, goalHeight: 2.2, boxW: 8, boxHalf: 10, sixW: 3, sixHalf: 5, spot: 7, circle: 5, players: 5, walls: false, offside: false },
-  futsal: { id: 'futsal', w: 40, h: 20, goalHalf: 1.5, goalHeight: 2, boxW: 6, boxHalf: 7.5, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 5, walls: false, offside: false },
+  // futsal (v82): kick-ins, and a smaller, heavier ball that barely bounces and rolls true
+  futsal: { id: 'futsal', w: 42, h: 25, goalHalf: 1.5, goalHeight: 2, boxW: 6, boxHalf: 7.5, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 5, walls: false, offside: false, kickIn: true, ball: { bounce: 0.2, drag: 0.982 } },
+  // the street cages (v82): walls all round, play off them; goals are small and there is no offside
+  // the watch's street 1v1 (v82): a tiny walled court, one each, no keepers
+  street1: { id: 'street1', w: 24, h: 15, goalHalf: 1.0, goalHeight: 1.2, boxW: 3, boxHalf: 4, sixW: 0, sixHalf: 0, spot: 4, circle: 2, players: 1, walls: true, offside: false, street: true },
+  street3: { id: 'street3', w: 34, h: 22, goalHalf: 1.5, goalHeight: 1.5, boxW: 5, boxHalf: 6, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 3, walls: true, offside: false, street: true },
+  street4: { id: 'street4', w: 40, h: 24, goalHalf: 1.7, goalHeight: 1.6, boxW: 5.5, boxHalf: 7, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 4, walls: true, offside: false, street: true },
+  street5: { id: 'street5', w: 46, h: 28, goalHalf: 1.9, goalHeight: 1.8, boxW: 6, boxHalf: 8, sixW: 0, sixHalf: 0, spot: 6.5, circle: 3.5, players: 5, walls: true, offside: false, street: true },
 };
 
 /** The live values. */
