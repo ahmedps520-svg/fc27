@@ -551,6 +551,7 @@ export function mount(root, params) {
     () => `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting`,
     'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
     'Pause at any stoppage for Substitutions and Team Management',
+    () => `Defending: ${promptFor('shoot')} slides in · hold ${promptFor('jockey')} to jockey · hold ${promptFor('press')} to send a team-mate to press`,
   ];
   let hintIdx = 0;
   let hintTimer = 0;
@@ -1587,9 +1588,11 @@ export function mount(root, params) {
      * off-ball branch already treats pass/through/cross/shoot as interchangeable
      * tackle triggers, which is what keyboard and pad already ride on, so touch
      * takes the same path rather than a parallel one that could drift from it. */
+    /* v90: the full defending set on touch too — the shoot slot slides in,
+       skill is held to jockey, and cross is held to send a team-mate to press. */
     const DEFENDING = {
-      pass: ['pass', 'TACKLE'], through: ['switch', 'SWITCH'], cross: [null, ''],
-      shoot: [null, ''], sprint: ['sprint', 'SPRINT'], skill: [null, ''], lob: [null, ''],
+      pass: ['pass', 'TACKLE'], through: ['switch', 'SWITCH'], cross: ['press', 'PRESS'],
+      shoot: ['shoot', 'SLIDE'], sprint: ['sprint', 'SPRINT'], skill: ['jockey', 'JOCKEY'], lob: [null, ''],
     };
 
     const buttons = [...root.querySelectorAll('.tbtn')].map((el) => {
@@ -1865,6 +1868,7 @@ export function mount(root, params) {
     updateStamina();
     for (const inp of inputs) inp.poll(dt);
     for (const inp of inputs) latchFor(inp).absorb();
+    dpadTactics?.();
     updateTouchContext();
     if (loading) tickLoading(now);
     /* When is the world actually stopped?
@@ -2065,6 +2069,7 @@ export function mount(root, params) {
             : c.name === 'tackle' || c.name === 'foul' ? 'tackle' : c.name === 'header' ? 'header' : null;
           if (act) { c.arg._act = act; c.arg._actT = 0.55; }
         }
+        rumbleCue(c);
         mgrCue(c.name);
         commentCue(c.name, c.arg);
         director?.cue(c.name, c.arg);
@@ -2300,6 +2305,41 @@ export function mount(root, params) {
   });
   const onTacKey = (e) => { const n = Number(e.key); if (n >= 1 && n <= 5 && !e.repeat) setTactic(QUICK_TACTICS[n - 1].id); };
   window.addEventListener('keydown', onTacKey);
+  /* v90: quick tactics on the D-pad — up is a step more attacking, down a step
+     more defensive, right straight to all-out attack, left to park the bus. */
+  let dpadWas = [false, false, false, false];
+  const dpadTactics = () => {
+    const pad = input?.pad; if (!pad || myTeam === null || paused || ended) { dpadWas = [false, false, false, false]; return; }
+    const now = [12, 13, 14, 15].map((i) => !!pad.buttons[i]?.pressed);
+    const was = dpadWas; dpadWas = now;
+    const hitD = (k) => now[k] && !was[k];
+    if (!(hitD(0) || hitD(1) || hitD(2) || hitD(3))) return;
+    const cur = QUICK_TACTICS.findIndex((q) => q.id === (match.teams[myTeam].tactics.quick || 'balanced'));
+    const to = hitD(0) ? Math.min(QUICK_TACTICS.length - 1, cur + 1) : hitD(1) ? Math.max(0, cur - 1) : hitD(3) ? QUICK_TACTICS.length - 1 : 0;
+    if (to !== cur) setTactic(QUICK_TACTICS[to].id);
+  };
+  /* v90: rumble — a goal shakes every pad; a shot, a slide, a foul, a save
+     or a header only the pad of the person whose player it was. */
+  const RUMBLE = { goal: [520, 1, 0.7], post: [220, 0.7, 0.5], shot: [110, 0.35, 0.5], slide: [160, 0.6, 0.3], foul: [200, 0.8, 0.4], save: [140, 0.4, 0.4], header: [90, 0.3, 0.4], volley: [120, 0.4, 0.5], bicycle: [160, 0.6, 0.6] };
+  const rumbleCue = (c) => {
+    if (!getState().settings.rumble) return;
+    const fx = RUMBLE[c.name]; if (!fx) return;
+    if (c.name === 'goal' || c.name === 'post') { for (const inp of inputs) inp.rumble?.(...fx); return; }
+    const who = c.arg && typeof c.arg === 'object' && c.arg.ref ? c.arg : null; if (!who) return;
+    match.controllers.forEach((ct, i) => { if (match.playerOf(ct) === who) inputs[i]?.rumble?.(...fx); });
+  };
+  /* v90: hot-plug. A controller dropping out pauses an offline match (the
+     player has lost their hands); one arriving is announced. */
+  const onPadGone = (e) => {
+    if (online || ended || loading) return;
+    if (inputs.some((inp) => inp.pad && inp.pad.index === e.gamepad.index) || lastDevice() === 'pad') {
+      if (!paused) setPaused(true);
+      toast('Controller disconnected — paused', 'warn');
+    }
+  };
+  const onPadBack = (e) => { if (!ended) toast(`Controller connected${e.gamepad?.id ? '' : ''}`, 'info'); };
+  window.addEventListener('gamepaddisconnected', onPadGone);
+  window.addEventListener('gamepadconnected', onPadBack);
   const fsBtn = root.querySelector('#gmFs');
   // iPhone has no Fullscreen API — hide the control rather than offer a dead button
   if (!fullscreenSupported()) fsBtn.hidden = true;
@@ -3052,6 +3092,7 @@ export function mount(root, params) {
     stopClip();
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onCamKey); window.removeEventListener('keydown', onTacKey);
+    window.removeEventListener('gamepaddisconnected', onPadGone); window.removeEventListener('gamepadconnected', onPadBack);
     document.removeEventListener('fullscreenchange', onFsChange);
     try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); stopHighlightsBed(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
     try { pregame?.destroy(); director?.destroy(); } catch { /* the broadcast layer is DOM only */ }

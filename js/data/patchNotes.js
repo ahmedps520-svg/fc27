@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v90',
+    date: '2026-09-23',
+    tag: 'Controller',
+    title: 'The full controller scheme',
+    lede: 'Defending gets its own buttons, the right stick does skill moves and switching, the D-pad changes tactics, and you can tune the sticks and the vibration.',
+    entries: [
+      {
+        head: 'Defending',
+        summary: 'Shoot now slide-tackles when you do not have the ball, and pass or cross is a standing tackle. Hold the skill trigger to jockey (shadow the carrier without diving in) and hold the through-ball button to send a team-mate to press.',
+        detail: 'A slide reaches further than a standing tackle, but if you miss you are down for longer, and a late slide is a clearer foul. The CPU\'s players are unchanged: these are your controls, not theirs. On a keyboard, G jockeys and F sends a team-mate; on touch, the SLIDE, JOCKEY and PRESS buttons appear while you defend.',
+      },
+      {
+        head: 'Right stick and D-pad',
+        summary: 'Flick the right stick for a skill move that way when you have the ball, or to switch to the team-mate that way when you do not. The D-pad changes tactics: up is more attacking, down more defensive, right is all-out attack and left parks the bus.',
+        detail: 'On a pad with sticks the D-pad no longer moves your player; the left stick does. A pad without sticks still moves with its D-pad.',
+      },
+      {
+        head: 'Feel and settings',
+        summary: 'New in Settings: stick deadzone and response curve, and vibration on goals, shots and tackles. Pulling the controller out pauses the match.',
+        detail: 'Vibration only goes to the controller whose player made the tackle or took the shot; a goal shakes every controller. On controllers with pressure-sensitive buttons, a lighter press charges a shot or pass more slowly. The Controller layout panel in Settings lists the whole scheme in your controller\'s own button names.',
+      },
+      {
+        head: 'Fixes',
+        summary: 'Choosing a controller button to remap no longer binds the A button you pressed to choose it.',
+        detail: 'A handful of server tests that failed now and then have been fixed: two tests could end up on the same port.',
+      },
+    ],
+  },
+  {
     version: 'v89',
     date: '2026-09-23',
     tag: 'Controller',

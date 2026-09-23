@@ -57,6 +57,10 @@ const defaults = () => ({
     sprintToggle: false,        // sprint: hold (false) or tap to toggle
     shootAssist: 0,             // 0 off | 1 auto-timed power on shots
     passAssist: 1,              // 0 manual | 1 assisted | 2 full
+    // v90: controller
+    padDeadzone: 0.22,          // 0.05–0.45 of the stick's travel ignored
+    padCurve: 1,                // response curve: <1 quicker off centre, >1 finer near it
+    rumble: true,               // vibration on goals, shots and tackles where the pad supports it
   },
   club: {                     // Squad Builder progress
     // Two balances. Apex is the one you earn and spend. Ultimate is the

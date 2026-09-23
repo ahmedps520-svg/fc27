@@ -10020,8 +10020,15 @@
       // sprint: hold (false) or tap to toggle
       shootAssist: 0,
       // 0 off | 1 auto-timed power on shots
-      passAssist: 1
+      passAssist: 1,
       // 0 manual | 1 assisted | 2 full
+      // v90: controller
+      padDeadzone: 0.22,
+      // 0.05–0.45 of the stick's travel ignored
+      padCurve: 1,
+      // response curve: <1 quicker off centre, >1 finer near it
+      rumble: !0
+      // vibration on goals, shots and tackles where the pad supports it
     },
     club: {
       // Squad Builder progress
@@ -11344,24 +11351,34 @@
     /* ------------------------------ human ------------------------------ */
     /** Drive one seat's player. Called once per controller per frame. */
     handleSeat(c, dt, input) {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e, _f, _g, _h;
       if (c.ai || c.benched) return;
       let p = this.playerOf(c);
       if (!p) return;
-      let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
-      if (this.driveHuman(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
-        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge), !1, this.assist.pass), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
+      let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd }, owns = this.ball.owner === p, carrier = this.ball.owner && this.ball.owner.team !== p.team ? this.ball.owner : null, jockey = !owns && carrier && input.held("jockey");
+      if (this.driveHuman(p, aim.x, aim.y, dt, jockey ? 0.62 : input.held("sprint") ? 1.24 : 1), jockey) {
+        let jx = carrier.x - p.x, jy = carrier.y - p.y, jd = Math.hypot(jx, jy) || 1;
+        p.dirX = jx / jd, p.dirY = jy / jd;
+      }
+      input.pressed("switch") && this.cycleActive(c);
+      let r = ((_a = input.rstick) == null ? void 0 : _a.call(input)) || { x: 0, y: 0 }, rm = Math.hypot(r.x, r.y);
+      if (rm > 0.72 && (c.rPrev || 0) < 0.35) {
+        let rAim = B ? { x: B.rx * r.x + B.fx * -r.y, y: B.ry * r.x + B.fy * -r.y } : { x: r.x, y: -r.y };
+        owns ? this.skillMove(p, rAim, input.held("sprint") ? "sprint" : null) : this.switchToward(c, p, rAim);
+      }
+      if (c.rPrev = rm, owns) {
+        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7 * (0.6 + 0.4 * ((_c = (_b = input.value) == null ? void 0 : _b.call(input, "pass")) != null ? _c : 1)))), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge), !1, this.assist.pass), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
         else if (input.pressed("lob") && !input.held("skill")) this.pass(p, aim, !0, 0.55, !0);
         else if (input.pressed("cross")) {
           let back = aim.x * this.teams[p.team].dir < -0.35;
           this.cross(p, aim, back ? "cutback" : input.held("curl") ? "driven" : "floated");
         }
-        let g = (_a = input.takeGesture) == null ? void 0 : _a.call(input);
+        let g = (_d = input.takeGesture) == null ? void 0 : _d.call(input);
         if (g) {
           let gAim = B ? { x: B.rx * g.x + B.fx * -g.y, y: B.ry * g.x + B.fy * -g.y } : { x: g.x, y: -g.y };
           this.skillMove(p, Math.hypot(g.x, g.y) > 0.2 ? gAim : null, g.mod);
         }
-        if (input.held("skill") && (c.skillMod = input.held("sprint") ? "sprint" : input.held("curl") ? "curl" : input.held("lob") ? "lob" : c.skillMod || null), input.released("skill") && (this.skillMove(p, aim, c.skillMod || null), c.skillMod = null), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85)), input.released("shoot")) {
+        if (input.held("skill") && (c.skillMod = input.held("sprint") ? "sprint" : input.held("curl") ? "curl" : input.held("lob") ? "lob" : c.skillMod || null), input.released("skill") && (this.skillMove(p, aim, c.skillMod || null), c.skillMod = null), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85 * (0.6 + 0.4 * ((_f = (_e = input.value) == null ? void 0 : _e.call(input, "shoot")) != null ? _f : 1)))), input.released("shoot")) {
           let curled = input.held("curl"), chip = input.held("lob");
           if (this.assist.shoot) {
             let gx = this.teams[p.team].dir > 0 ? PITCH.w : 0, dist2 = Math.hypot(gx - p.x, CY - p.y);
@@ -11374,8 +11391,21 @@
           }), c.charge = 0;
         }
       } else
-        c.charge = 0, c.passCharge = 0, (input.pressed("pass") || input.pressed("through") || input.pressed("cross") || input.pressed("shoot")) && this.tackle(p);
-      this.charge = ((_b = this.controllers[0]) == null ? void 0 : _b.charge) || 0, this.passCharge = ((_c = this.controllers[0]) == null ? void 0 : _c.passCharge) || 0;
+        c.charge = 0, c.passCharge = 0, c.jockey = input.held("jockey"), c.press2 = input.held("press"), input.pressed("shoot") && !c.jockey ? this.tackle(p, { slide: !0 }) : (input.pressed("pass") || input.pressed("cross")) && !c.jockey && this.tackle(p);
+      this.charge = ((_g = this.controllers[0]) == null ? void 0 : _g.charge) || 0, this.passCharge = ((_h = this.controllers[0]) == null ? void 0 : _h.passCharge) || 0;
+    }
+    /** v90: right-stick switching — the team-mate the flick points at (bearing first, then distance). */
+    switchToward(c, from, dir) {
+      if (!c || c.lockId) return;
+      let dm = Math.hypot(dir.x, dir.y) || 1, taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o)), best = null, bestScore = -1 / 0;
+      for (let q of this.teams[c.team].players) {
+        if (q === from || q.role === "GK" || taken.includes(q)) continue;
+        let dx = q.x - from.x, dy = q.y - from.y, d2 = Math.hypot(dx, dy) || 1, align = (dx * dir.x + dy * dir.y) / (d2 * dm);
+        if (align < 0.5) continue;
+        let score = align * 2 - d2 / 40;
+        score > bestScore && (bestScore = score, best = q);
+      }
+      best && (c.activeIdx = this.teams[c.team].players.indexOf(best), this.cue("switch", best));
     }
     /** L1 / R1 — jump to whoever is closest to the ball, skipping the other seat's man. */
     cycleActive(c = this.controllers[0]) {
@@ -11394,8 +11424,8 @@
      */
     applyFormation(teamIdx, name2) {
       var _a, _b, _c;
-      let shape = shapesFor()[name2];
-      if (!shape || shape.length !== this.teams[teamIdx].players.length) return;
+      let shape2 = shapesFor()[name2];
+      if (!shape2 || shape2.length !== this.teams[teamIdx].players.length) return;
       let team = this.teams[teamIdx], used = /* @__PURE__ */ new Set(), take = (role) => {
         let best = null, bestScore = -1;
         for (let p of team.players) {
@@ -11407,7 +11437,7 @@
         }
         return best || (best = team.players.find((p) => !used.has(p))), used.add(best), best;
       };
-      for (let slot of shape) {
+      for (let slot of shape2) {
         let p = take(slot.role);
         if (p) {
           p.role = slot.role;
@@ -11937,10 +11967,16 @@
      * so a reckless committal costs you twice: the whistle, and the time spent
      * picking yourself up.
      */
-    tackle(p) {
+    /**
+     * `slide` (v90, people only — the CPU never asks for it, so the balance
+     * sweep is untouched): a slide tackle. Longer reach and a longer lunge, and
+     * he is on the grass for longer if he misses; a clean one wins it from
+     * further away, a late one is a clearer foul.
+     */
+    tackle(p, { slide = !1 } = {}) {
       var _a;
-      let b = this.ball, owner = b.owner, REACH = 3.1;
-      if (p.slide = 0.42, p.vx = p.dirX * p.maxSpeed * 1.7, p.vy = p.dirY * p.maxSpeed * 1.7, !owner || owner.team === p.team) return;
+      let b = this.ball, owner = b.owner, REACH = slide ? 4.3 : 3.1;
+      if (p.slide = slide ? 0.8 : 0.42, p.vx = p.dirX * p.maxSpeed * (slide ? 2.05 : 1.7), p.vy = p.dirY * p.maxSpeed * (slide ? 2.05 : 1.7), slide && this.cue("slide", p), !owner || owner.team === p.team) return;
       if (owner.role === "GK") {
         p.stumble = 0.35;
         return;
@@ -11960,7 +11996,7 @@
           b.owner = p, b.lastTouch = p;
       else {
         p.stumble = 0.45 + frac * 0.7;
-        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1) * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1);
+        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1) * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1) * (slide ? 1.3 : 1);
         Math.random() < chance && (this.fouls[p.team] += 1, this.cue("foul", p), owner.downT = 1.1 + frac * 0.9, owner.downMax = owner.downT, owner.vx = p.dirX * 3.4, owner.vy = p.dirY * 3.4, owner.stumble = Math.max(owner.stumble, owner.downT + 0.5), !owner.injured && Math.random() < 0.125 && this.injure(owner), frac > 0.82 && p.cards < 1 && (p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() })), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : this.awardFreeKick(1 - p.team, owner, p));
       }
     }
@@ -12180,6 +12216,16 @@
       }
       return best;
     }
+    /** v90: the team-mate a person's Press sends: nearest the ball who is not a person's player. */
+    pressMate(side) {
+      let mine = this.controllers.filter((k) => k.team === side).map((k) => this.playerOf(k)), best = null, bestD = 1 / 0;
+      for (let q of this.teams[side].players) {
+        if (q.role === "GK" || mine.includes(q)) continue;
+        let d2 = dist(q, this.ball);
+        d2 < bestD && (bestD = d2, best = q);
+      }
+      return best;
+    }
     /** Second-closest outfielder — the extra presser when pressing is set high. */
     secondNearest(side, pt) {
       let first = this.nearestTo(side, pt, !0), best = null, bestD = 1 / 0;
@@ -12211,6 +12257,10 @@
       let b = this.ball, team = this.teams[p.team];
       if (b.owner === p) return this.thinkOnBall(p, dt);
       let weHave = b.owner && b.owner.team === p.team, press = this.pressingOf(p.team), isChaser = this.chasers[p.team] === p || ((_a = this.chasers2) == null ? void 0 : _a[p.team]) === p, target = this.shapeTarget(p), goalX = team.dir > 0 ? PITCH.w : 0, triggered = this.pressTrigger && this.pressTrigger.team === p.team && this.t - this.pressTrigger.t < 1.4 && dist(p, b) < 16;
+      if (b.owner && b.owner.team !== p.team && this.controllers.some((k) => k.team === p.team && k.press2) && this.pressMate(p.team) === p) {
+        this.moveTo(p, b.owner.x, b.owner.y, dt, 1.1);
+        return;
+      }
       if (!weHave && (isChaser || triggered || !b.owner && dist(p, b) < 14 * press)) {
         this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
         let agg = this.aggressionOf(p), opp = this.teams[1 - p.team];
@@ -12487,7 +12537,13 @@
   };
 
   // js/game/input.js
-  var KEYSETS = {
+  var PAD_DEAD = 0.22, PAD_CURVE = 1;
+  var shape = (ax, ay) => {
+    let am = Math.hypot(ax, ay);
+    if (am <= PAD_DEAD) return [0, 0];
+    let t = Math.pow(Math.min(1, (am - PAD_DEAD) / (1 - PAD_DEAD)), PAD_CURVE);
+    return [ax / am * t, ay / am * t];
+  }, KEYSETS = {
     primary: {
       Space: "pass",
       KeyJ: "cross",
@@ -12498,6 +12554,8 @@
       KeyQ: "switch",
       KeyE: ["switch", "curl"],
       KeyI: "curl",
+      KeyG: "jockey",
+      KeyF: "press",
       ShiftLeft: "sprint",
       Escape: "pause",
       KeyP: "pause"
@@ -12533,14 +12591,15 @@
     0: "pass",
     1: "shoot",
     2: "cross",
-    3: "through",
+    3: ["through", "press"],
+    // LT: skill combos with the ball, jockey without it (v90); Y held without it is the second-man press
     4: "switch",
     5: ["switch", "curl"],
-    6: "skill",
+    6: ["skill", "jockey"],
     7: "sprint",
     8: "lob",
     9: "pause"
-  }, ACTIONS = ["pass", "shoot", "cross", "through", "lob", "skill", "switch", "curl", "sprint", "pause"], OVERRIDE = { keys: {}, pad: {} };
+  }, ACTIONS = ["pass", "shoot", "cross", "through", "lob", "skill", "switch", "curl", "sprint", "pause", "jockey", "press"], OVERRIDE = { keys: {}, pad: {} };
   function laid(base, over) {
     let out = { ...base };
     for (let [action, code] of Object.entries(over)) {
@@ -12588,19 +12647,17 @@
     }
     /** Call once per frame before reading anything. */
     poll(dt = 0) {
-      var _a, _b, _c, _d, _e;
+      var _a, _b, _c, _d, _e, _f;
       let live2 = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
       this.pad = this.padIndex === null ? live2[0] || null : live2[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
       let x = 0, y = 0;
       for (let [code, v] of Object.entries(this.moveMap))
         this.keys.has(code) && (x += v[0], y += v[1]);
       if (this.pad) {
-        let ax = this.pad.axes[0] || 0, ay = this.pad.axes[1] || 0, am = Math.hypot(ax, ay);
-        if (am > 0.22) {
-          let k = Math.min(1, (am - 0.22) / 0.78) / am;
-          x += ax * k, y += ay * k;
-        }
-        (_a = this.pad.buttons[12]) != null && _a.pressed && (y -= 1), (_b = this.pad.buttons[13]) != null && _b.pressed && (y += 1), (_c = this.pad.buttons[14]) != null && _c.pressed && (x -= 1), (_d = this.pad.buttons[15]) != null && _d.pressed && (x += 1);
+        let ax = this.pad.axes[0] || 0, ay = this.pad.axes[1] || 0, [sx, sy] = shape(ax, ay);
+        x += sx, y += sy, (((_a = this.pad.axes) == null ? void 0 : _a.length) || 0) < 2 && ((_b = this.pad.buttons[12]) != null && _b.pressed && (y -= 1), (_c = this.pad.buttons[13]) != null && _c.pressed && (y += 1), (_d = this.pad.buttons[14]) != null && _d.pressed && (x -= 1), (_e = this.pad.buttons[15]) != null && _e.pressed && (x += 1));
+        let [rx, ry] = shape(this.pad.axes[2] || 0, this.pad.axes[3] || 0);
+        this.rvec = { x: rx, y: ry };
       }
       x += this.touchVec.x, y += this.touchVec.y;
       let mag = Math.hypot(x, y);
@@ -12615,7 +12672,7 @@
       if (this.pad) {
         let any = !1;
         for (let [i, a] of Object.entries(this.padMap))
-          (_e = this.pad.buttons[i]) != null && _e.pressed && (fire(a), any = !0);
+          (_f = this.pad.buttons[i]) != null && _f.pressed && (fire(a), any = !0);
         (any || Math.hypot(this.pad.axes[0] || 0, this.pad.axes[1] || 0) > 0.5) && setDevice("pad");
       }
       for (let a of this.touchButtons) this.now.add(a);
@@ -12628,6 +12685,26 @@
     }
     axis() {
       return this.vec;
+    }
+    /** v90: the right stick (pads only). */
+    rstick() {
+      return this.pad ? this.rvec || { x: 0, y: 0 } : { x: 0, y: 0 };
+    }
+    /** v90: how hard an action's button is pressed, 0–1 (1 for keys, taps and digital buttons). */
+    value(a) {
+      var _a, _b, _c;
+      if (!this.pad) return this.now.has(a) ? 1 : 0;
+      let v = 0;
+      for (let [i, act] of Object.entries(this.padMap)) (Array.isArray(act) ? act : [act]).includes(a) && (v = Math.max(v, (_c = (_a = this.pad.buttons[i]) == null ? void 0 : _a.value) != null ? _c : (_b = this.pad.buttons[i]) != null && _b.pressed ? 1 : 0));
+      return this.now.has(a) ? Math.max(v, 1e-3) : 0;
+    }
+    /** The pad itself, for rumble (v90). */
+    rumble(ms, strong = 0.6, weak = 0.4) {
+      var _a, _b, _c;
+      try {
+        (_c = (_b = (_a = this.pad) == null ? void 0 : _a.vibrationActuator) == null ? void 0 : _b.playEffect) == null || _c.call(_b, "dual-rumble", { duration: ms, strongMagnitude: strong, weakMagnitude: weak });
+      } catch {
+      }
     }
     moving() {
       return Math.hypot(this.vec.x, this.vec.y) > 0.14;

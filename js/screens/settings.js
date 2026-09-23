@@ -1,6 +1,6 @@
 import { getState, update, resetAll, replaceSave } from '../state.js';
 import { listBackups, exportSave, parseSaveFile } from '../saveSafety.js';
-import { ACTIONS, bindingOf, keyLabel, padGlyph, setBindings, getBindings, setToggles } from '../game/input.js';
+import { ACTIONS, bindingOf, keyLabel, padGlyph, padKind, setBindings, getBindings, setToggles, setPadTuning } from '../game/input.js';
 import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
@@ -287,6 +287,16 @@ export function render() {
         <div><b>Responsiveness</b><span>How quickly your player answers the stick. Higher turns sharper; lower carries more weight at a sprint.</span></div>
         <input type="range" id="respRange" min="0" max="100" step="5" value="${Math.round((s.responsiveness ?? 0.7) * 100)}" aria-label="Responsiveness">
       </div>
+      <div class="setting-row">
+        <div><b>Stick deadzone</b><span>How far the stick moves before it counts. Raise it if your player drifts on his own.</span></div>
+        <input type="range" id="padDead" min="5" max="45" step="1" value="${Math.round((s.padDeadzone ?? 0.22) * 100)}" aria-label="Stick deadzone">
+      </div>
+      <div class="setting-row">
+        <div><b>Stick response</b><span>Left: quick off the centre. Right: finer control near it.</span></div>
+        <input type="range" id="padCurve" min="50" max="200" step="10" value="${Math.round((s.padCurve ?? 1) * 100)}" aria-label="Stick response">
+      </div>
+      <div class="setting-row"><div><b>Vibration</b><span>Goals, shots and tackles, on controllers that can rumble.</span></div>
+        <button class="switch ${s.rumble !== false ? 'on' : ''}" id="rumbleTgl" role="switch" aria-checked="${s.rumble !== false}"><i></i></button></div>
       <p class="hint">Choose a control, then press the key or controller button you want for it. Prompts in a match follow whatever you last used — keyboard, controller or touch.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
         <div class="bind-row"><span>${BIND_NAMES[a] || a}</span>
@@ -296,16 +306,8 @@ export function render() {
     </section>
 
     <section class="panel glass about">
-      <header class="panel-head"><h2>Controls</h2></header>
-      <div class="ctrl-grid">
-        ${[['✕ / Space', 'Pass — hold for a longer ball'], ['◯ / K', 'Shoot — hold for power'],
-           ['◯+R1 / K+I', 'Curl it up and bend'], ['□ / J', 'Cross'],
-           ['△ / L', 'Through ball'], ['Any of the above', 'Tackle — one committed lunge, off the ball'],
-           ['L1 · R1 / Q', 'Switch player'], ['R2 / Shift', 'Sprint'], ['Options / Esc', 'Pause'],
-           ['□ + stick back', 'Cut-back from the byline'], ['□ + R1 / J+I', 'Driven cross'], ['1 – 5 / ⚑', 'Quick tactics'],
-           ['L2 / H (hold)', 'Skill move — point the stick, add a modifier, let go']]
-          .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
-      </div>
+      <header class="panel-head"><h2>Controller layout</h2></header>
+      <div class="ctrl-grid">${controllerLayout()}</div>
       <h3 class="skills-head">Skill moves <small>stars on each card show which a player can do · on touch, swipe the SKILL button (long swipe = sprint, curved = curl, with SPRINT held = lob)</small></h3>
       <div class="ctrl-grid skills-grid">
         ${skillList().map((m) => `<div><b>${'★'.repeat(m.stars)} ${m.name}</b><span>${m.combo}</span></div>`).join('')}
@@ -320,12 +322,45 @@ export function render() {
     <button class="dev-dot" id="devDot" aria-label="Developer">·</button>`;
 }
 
+/** v90: the whole scheme, from the live bindings, in the glyphs of the pad in use. */
+function controllerLayout() {
+  const kind = padKind();
+  const k = (a) => { const b = bindingOf(a); return b.key ? keyLabel(b.key) : '—'; };
+  const p = (a) => { const b = bindingOf(a); return b.pad != null ? padGlyph(b.pad, kind) : '—'; };
+  const both = (a) => `${p(a)} / ${k(a)}`;
+  const G = (i) => padGlyph(i, kind);
+  const rows = [
+    ['With the ball', null],
+    [both('pass'), 'Pass — hold for a longer ball; a lighter press on an analogue button charges slower'],
+    [both('shoot'), 'Shoot — hold for power'],
+    [`${both('shoot')} + ${p('curl')}`, 'Finesse: curl it and bend'],
+    [`${both('shoot')} + ${p('lob')}`, 'Chip the keeper'],
+    [both('cross'), 'Cross — stick back for a cut-back, with ' + p('curl') + ' for a driven one'],
+    [both('through'), 'Through ball'], [both('lob'), 'Lob'],
+    [`Right stick flick`, 'Skill move that way (with ' + p('sprint') + ' for the sprinting version)'],
+    [`${both('skill')} (hold)`, 'Skill combo — point the stick, add a modifier, let go'],
+    [both('sprint'), 'Sprint'],
+    ['Without the ball', null],
+    [`${p('pass')} or ${p('cross')} / ${k('pass')}`, 'Standing tackle'],
+    [both('shoot'), 'Slide tackle — longer reach, and you are down if you miss'],
+    [`${both('jockey')} (hold)`, 'Jockey — shadow the carrier, square on, no lunge'],
+    [`${both('press')} (hold)`, 'Team-mate press — send the nearest team-mate at the ball'],
+    [`Right stick flick`, 'Switch to the team-mate that way'], [both('switch'), 'Switch to the player nearest the ball'],
+    ['Any time', null],
+    [`${G(12)} ${G(13)} / 1 – 5`, 'Quick tactics — up more attacking, down more defensive'],
+    [`${G(15)} · ${G(14)}`, 'All-out attack · Park the bus'],
+    [both('pause'), 'Pause'],
+    ['Left stick', 'Aim a set piece, then its button to take it'],
+  ];
+  return rows.map(([a, b]) => (b === null ? `<h4 class="ctrl-head">${a}</h4>` : `<div><b>${a}</b><span>${b}</span></div>`)).join('');
+}
+
 /** A labelled segmented control bound to one setting (v83). */
 function segRow(label, key, opts, cur) {
   return `<div class="setting-row"><div><b>${label}</b></div><div class="seg seg-wrap">${opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-setseg="${key}:${v}">${l}</button>`).join('')}</div></div>`;
 }
 
-const BIND_NAMES = { pass: 'Pass / tackle', shoot: 'Shoot', cross: 'Cross', through: 'Through ball', lob: 'Lob', skill: 'Skill move', switch: 'Switch player', sprint: 'Sprint', pause: 'Pause' };
+const BIND_NAMES = { pass: 'Pass / tackle', shoot: 'Shoot / slide tackle', cross: 'Cross / tackle', through: 'Through ball', lob: 'Lob', skill: 'Skill move', switch: 'Switch player', sprint: 'Sprint', pause: 'Pause', jockey: 'Jockey (hold, defending)', press: 'Team-mate press (hold, defending)' };
 
 /** v82: rebinding — the next key or pad button pressed becomes the control. */
 function mountRebind(root) {
@@ -333,13 +368,22 @@ function mountRebind(root) {
   let stop = null;
   const save = (b) => { setBindings(b); update((s) => { s.settings.controls = b; }); };
   root.querySelector('#bindReset')?.addEventListener('click', () => { save({ keys: {}, pad: {} }); navigate('settings'); });
+  // v90: stick tuning and vibration
+  const tune = () => { const st = getState().settings; setPadTuning({ deadzone: st.padDeadzone, curve: st.padCurve }); };
+  root.querySelector('#padDead')?.addEventListener('change', (e) => { const v = Number(e.target.value) / 100; update((st) => { st.settings.padDeadzone = v; }); tune(); });
+  root.querySelector('#padCurve')?.addEventListener('change', (e) => { const v = Number(e.target.value) / 100; update((st) => { st.settings.padCurve = v; }); tune(); });
+  root.querySelector('#rumbleTgl')?.addEventListener('click', (e) => {
+    const on = getState().settings.rumble === false; update((st) => { st.settings.rumble = on; });
+    e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-checked', String(on));
+    if (on) for (const pd of (navigator.getGamepads?.() || [])) try { pd?.vibrationActuator?.playEffect?.('dual-rumble', { duration: 180, strongMagnitude: 0.6, weakMagnitude: 0.4 }); } catch { /* none */ }
+  });
   root.querySelectorAll('[data-bind]').forEach((btn) => btn.addEventListener('click', () => {
     stop?.();
     const [kind, action] = btn.dataset.bind.split(':');
     out.textContent = kind === 'key' ? `Press a key for ${BIND_NAMES[action]} (Esc cancels)…` : `Press a controller button for ${BIND_NAMES[action]}…`;
     btn.classList.add('is-listening');
     let raf = 0;
-    const done = () => { removeEventListener('keydown', onKey, true); cancelAnimationFrame(raf); btn.classList.remove('is-listening'); stop = null; };
+    const done = () => { removeEventListener('keydown', onKey, true); cancelAnimationFrame(raf); btn.classList.remove('is-listening'); document.body.classList.remove('pad-capture'); stop = null; };
     const onKey = (e) => {
       if (kind !== 'key') return;
       e.preventDefault(); e.stopPropagation();
@@ -347,15 +391,21 @@ function mountRebind(root) {
       if (e.code === 'Escape') { out.textContent = ''; return; }
       const b = getBindings(); b.keys[action] = e.code; save(b); navigate('settings');
     };
+    /* v90: wait for every button to come up first — chosen with a pad, the A
+       that pressed this button was still down and bound itself at once */
+    let armed = false;
     const poll = () => {
       const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+      const anyDown = pads.some((pd) => pd.buttons.some((x) => x.pressed));
+      if (!armed) { armed = !anyDown; raf = requestAnimationFrame(poll); return; }
       for (const pd of pads) {
         const i = pd.buttons.findIndex((x) => x.pressed);
         if (i >= 0 && i < 12) { done(); const b = getBindings(); b.pad[action] = i; save(b); navigate('settings'); return; }
       }
       raf = requestAnimationFrame(poll);
     };
-    if (kind === 'key') addEventListener('keydown', onKey, true); else raf = requestAnimationFrame(poll);
+    // the menu's pad driver stands down while a button is being chosen (padMenu.js)
+    if (kind === 'key') addEventListener('keydown', onKey, true); else { document.body.classList.add('pad-capture'); raf = requestAnimationFrame(poll); }
     stop = done;
   }));
 }

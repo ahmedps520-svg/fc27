@@ -1123,11 +1123,29 @@ export class Match {
       ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd }
       : { x: raw.x, y: fwd };
 
-    this.driveHuman(p, aim.x, aim.y, dt, input.held('sprint') ? 1.24 : 1);
+    const owns = this.ball.owner === p;
+    /* v90: jockey — held while the other side has it: slower, square on to
+       the carrier, feet under him, so the stick shadows rather than chases */
+    const carrier = this.ball.owner && this.ball.owner.team !== p.team ? this.ball.owner : null;
+    const jockey = !owns && carrier && input.held('jockey');
+    this.driveHuman(p, aim.x, aim.y, dt, jockey ? 0.62 : input.held('sprint') ? 1.24 : 1);
+    if (jockey) {
+      const jx = carrier.x - p.x; const jy = carrier.y - p.y; const jd = Math.hypot(jx, jy) || 1;
+      p.dirX = jx / jd; p.dirY = jy / jd;
+    }
 
     if (input.pressed('switch')) this.cycleActive(c);
 
-    const owns = this.ball.owner === p;
+    /* v90: the right stick. A flick (pushed hard from rest) is a skill move
+       that way with the ball, and a switch to the team-mate that way without it. */
+    const r = input.rstick?.() || { x: 0, y: 0 };
+    const rm = Math.hypot(r.x, r.y);
+    if (rm > 0.72 && (c.rPrev || 0) < 0.35) {
+      const rAim = B ? { x: B.rx * r.x + B.fx * -r.y, y: B.ry * r.x + B.fy * -r.y } : { x: r.x, y: -r.y };
+      if (owns) this.skillMove(p, rAim, input.held('sprint') ? 'sprint' : null);
+      else this.switchToward(c, p, rAim);
+    }
+    c.rPrev = rm;
 
     if (owns) {
       /* Pass charges the same way a shot does: hold for a longer, harder ball,
@@ -1137,7 +1155,7 @@ export class Match {
        *
        * A tap still has to be instant to the player's eye, and it is: release
        * follows press by one frame, so the ball leaves on the next tick. */
-      if (input.held('pass')) c.passCharge = Math.min(1, c.passCharge + dt / 0.7);
+      if (input.held('pass')) c.passCharge = Math.min(1, c.passCharge + (dt / 0.7) * (0.6 + 0.4 * (input.value?.('pass') ?? 1)));   // v90: a lighter press on an analogue button charges slower
       if (input.released('pass')) {
         // A tap is one frame of hold, which on its own would be a 3-yard nudge.
         // The floor keeps a quick pass playing exactly as it always did; the
@@ -1165,7 +1183,7 @@ export class Match {
         c.skillMod = input.held('sprint') ? 'sprint' : input.held('curl') ? 'curl' : input.held('lob') ? 'lob' : (c.skillMod || null);
       }
       if (input.released('skill')) { this.skillMove(p, aim, c.skillMod || null); c.skillMod = null; }
-      if (input.held('shoot')) c.charge = Math.min(1, c.charge + dt / 0.85);
+      if (input.held('shoot')) c.charge = Math.min(1, c.charge + (dt / 0.85) * (0.6 + 0.4 * (input.value?.('shoot') ?? 1)));
       if (input.released('shoot')) {
         // R1 held with the shot whips it up and bends it; the lob button held
         // with it chips the keeper — a soft, high, dipping ball
@@ -1188,12 +1206,34 @@ export class Match {
     } else {
       c.charge = 0;
       c.passCharge = 0;      // losing the ball mid-hold must not bank a pass
-      if (input.pressed('pass') || input.pressed('through') || input.pressed('cross') || input.pressed('shoot')) {
-        this.tackle(p);
-      }
+      /* v90: the defending set. Shoot slides in; pass or cross is the
+         standing challenge; jockey (held) shadows the carrier, slower and
+         facing him, and never lunges; press (held) sends the nearest
+         team-mate to close the carrier down alongside you. */
+      c.jockey = input.held('jockey');
+      c.press2 = input.held('press');
+      if (input.pressed('shoot') && !c.jockey) this.tackle(p, { slide: true });
+      else if ((input.pressed('pass') || input.pressed('cross')) && !c.jockey) this.tackle(p);
     }
     this.charge = this.controllers[0]?.charge || 0;
     this.passCharge = this.controllers[0]?.passCharge || 0;
+  }
+
+  /** v90: right-stick switching — the team-mate the flick points at (bearing first, then distance). */
+  switchToward(c, from, dir) {
+    if (!c || c.lockId) return;
+    const dm = Math.hypot(dir.x, dir.y) || 1;
+    const taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o));
+    let best = null; let bestScore = -Infinity;
+    for (const q of this.teams[c.team].players) {
+      if (q === from || q.role === 'GK' || taken.includes(q)) continue;
+      const dx = q.x - from.x; const dy = q.y - from.y; const d = Math.hypot(dx, dy) || 1;
+      const align = (dx * dir.x + dy * dir.y) / (d * dm);
+      if (align < 0.5) continue;
+      const score = align * 2 - d / 40;
+      if (score > bestScore) { bestScore = score; best = q; }
+    }
+    if (best) { c.activeIdx = this.teams[c.team].players.indexOf(best); this.cue('switch', best); }
   }
 
   /** L1 / R1 — jump to whoever is closest to the ball, skipping the other seat's man. */
@@ -2329,14 +2369,21 @@ export class Match {
    * so a reckless committal costs you twice: the whistle, and the time spent
    * picking yourself up.
    */
-  tackle(p) {
+  /**
+   * `slide` (v90, people only — the CPU never asks for it, so the balance
+   * sweep is untouched): a slide tackle. Longer reach and a longer lunge, and
+   * he is on the grass for longer if he misses; a clean one wins it from
+   * further away, a late one is a clearer foul.
+   */
+  tackle(p, { slide = false } = {}) {
     const b = this.ball;
     const owner = b.owner;
-    const REACH = 3.1;
+    const REACH = slide ? 4.3 : 3.1;
 
-    p.slide = 0.42;
-    p.vx = p.dirX * p.maxSpeed * 1.7;
-    p.vy = p.dirY * p.maxSpeed * 1.7;
+    p.slide = slide ? 0.8 : 0.42;
+    p.vx = p.dirX * p.maxSpeed * (slide ? 2.05 : 1.7);
+    p.vy = p.dirY * p.maxSpeed * (slide ? 2.05 : 1.7);
+    if (slide) this.cue('slide', p);
 
     if (!owner || owner.team === p.team) return;
     // A keeper with the ball in their hands cannot be challenged — walking in
@@ -2396,7 +2443,8 @@ export class Match {
       // v79: re-tuned against real foul counts (about one in four challenges from
       // the edge of his reach is a foul); a Rock at the Back is cleaner
       const chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * (p.tr?.rock ? 1 - 0.3 * p.tr.rock : 1)
-        * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1);      // v86: nobody dives in in his own box
+        * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1)       // v86: nobody dives in in his own box
+        * (slide ? 1.3 : 1);                                            // v90: a late slide is a clearer foul
       if (Math.random() < chance) {
         this.fouls[p.team] += 1;
         this.cue('foul', p);
@@ -2788,6 +2836,17 @@ export class Match {
     return best;
   }
 
+  /** v90: the team-mate a person's Press sends: nearest the ball who is not a person's player. */
+  pressMate(side) {
+    const mine = this.controllers.filter((k) => k.team === side).map((k) => this.playerOf(k));
+    let best = null; let bestD = Infinity;
+    for (const q of this.teams[side].players) {
+      if (q.role === 'GK' || mine.includes(q)) continue;
+      const d = dist(q, this.ball); if (d < bestD) { bestD = d; best = q; }
+    }
+    return best;
+  }
+
   /** Second-closest outfielder — the extra presser when pressing is set high. */
   secondNearest(side, pt) {
     const first = this.nearestTo(side, pt, true);
@@ -2858,6 +2917,12 @@ export class Match {
 
     // ---- pressing the ball -------------------------------------------------
     const triggered = this.pressTrigger && this.pressTrigger.team === p.team && this.t - this.pressTrigger.t < 1.4 && dist(p, b) < 16;
+    /* v90: second-man press — a person holding Press sends the nearest free
+       team-mate to close the carrier down (only ever set by a person's seat) */
+    if (b.owner && b.owner.team !== p.team && this.controllers.some((k) => k.team === p.team && k.press2) && this.pressMate(p.team) === p) {
+      this.moveTo(p, b.owner.x, b.owner.y, dt, 1.1);
+      return;
+    }
     if (!weHave && (isChaser || triggered || (!b.owner && dist(p, b) < 14 * press))) {
       this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
       /* Going in. How close they insist on being before they commit, and how

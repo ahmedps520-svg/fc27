@@ -11,7 +11,7 @@ import { isRealConflict, chooseSave } from './components/saveConflict.js';
 import { backupNow } from './saveSafety.js';
 import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
-import { setBindings, setToggles } from './game/input.js';
+import { setBindings, setToggles, setPadTuning } from './game/input.js';
 import { applyLanguage } from './i18n.js';
 
 /* v87: code-split. The title screen and the menu ship with the boot; every
@@ -73,7 +73,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v89';
+export const APP_VERSION = 'v90';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -363,6 +363,7 @@ crashGuard.install();
 loadState();
 setBindings(getState().settings.controls);   // v82: the player's own button map
 setToggles({ sprint: !!getState().settings.sprintToggle });   // v87: hold or toggle
+setPadTuning({ deadzone: getState().settings.padDeadzone, curve: getState().settings.padCurve });   // v90: stick deadzone and response
 applyTheme();
 /* Live content: the copy the save remembers is adopted first so the week's
  * event is known offline, then the server's file replaces it when it lands. */
