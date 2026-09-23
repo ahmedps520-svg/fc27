@@ -224,7 +224,11 @@ if (!process.argv.includes('--explore')) {
     if (!(await via(ROUTES.settings))) return 'could not reach Settings';
     if (!(await focusOnly('[data-bind=pad:lob]'))) return 'could not focus the Lob pad binding';
     await press(A); await page.waitForTimeout(250);
-    await press(3); await page.waitForTimeout(700);             // Y
+    // wait until Settings is listening, then hold Y across several frames: the capture
+    // samples once a frame, and CI's software renderer draws few of them
+    await page.waitForSelector('.is-listening', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    await press(3, 600); await page.waitForTimeout(900);          // Y
     const bound = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).settings?.controls?.pad?.lob);
     await page.evaluate(async () => { const { update } = await import('/js/state.js'); update((st) => { if (st.settings.controls) st.settings.controls.pad = {}; }); (await import('/js/game/input.js')).setBindings({ keys: {}, pad: {} }); });
     return bound === 3 ? '' : `Lob was bound to ${bound} (A is 0)`;
