@@ -10000,8 +10000,10 @@
       // full | short | off — the pre-match show
       broadcastGfx: !0,
       // straps, boards, pop-ups, momentum bar
-      menuTheme: "auto"
+      menuTheme: "auto",
       // auto | off | nationalDay | ramadan | winter
+      responsiveness: 0.7
+      // v84 hotfix: how quickly your player answers the stick (0–1)
     },
     club: {
       // Squad Builder progress
@@ -10866,7 +10868,7 @@
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
       ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
-      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -11219,6 +11221,23 @@
      * speed at his own acceleration. A quick, balanced player cuts; a big one
      * carries on past you.
      */
+    /**
+     * The person's player (v84 hotfix). The v79 model below — a turn rate that
+     * shrinks with speed, a planted foot for a sharp change — is right for the
+     * CPU's players and was wrong for the one under a thumb: a 180° at a jog
+     * took 1.7 s, swinging out wide, and the player felt like a brick. Here the
+     * velocity chases the stick directly, so any direction, straight back
+     * included, is where the player goes within a few frames; the only weight
+     * left is a slight softening at full sprint. `responsiveness` (Settings →
+     * Controls, 0–1) scales the rates.
+     */
+    driveHuman(p, dx, dy, dt, factor = 1) {
+      if (p.slide > 0 || p.downT > 0) return;
+      let m = Math.min(1, Math.hypot(dx, dy)), tired = 0.9 + p.stamina * 0.1, speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.6 : 1), L3 = Math.hypot(dx, dy) || 1, push2 = Math.max(0.35, Math.min(1, (m - 0.08) / 0.42)), tx = m > 1e-3 ? dx / L3 * speed * push2 : 0, ty = m > 1e-3 ? dy / L3 * speed * push2 : 0, R = this.responsiveness, cur = Math.hypot(p.vx, p.vy), frac = factor > 1.05 ? Math.min(1, cur / (p.maxSpeed * factor)) : 0;
+      p.humanMom = (p.humanMom || 0) + (frac - (p.humanMom || 0)) * (1 - Math.exp(-(frac > (p.humanMom || 0) ? 2.5 : 4) * dt));
+      let base = 16 + 18 * R, rate = m > 1e-3 ? base * (1 - p.humanMom * p.humanMom * (0.7 - 0.35 * R)) : base * 1.2, k = 1 - Math.exp(-rate * dt);
+      p.vx += (tx - p.vx) * k, p.vy += (ty - p.vy) * k, p.planted = !1;
+    }
     drive(p, dx, dy, dt, factor = 1) {
       if (p.slide > 0 || p.downT > 0) return;
       let m = Math.hypot(dx, dy), tired = 0.82 + p.stamina * 0.18, speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.45 : 1), cur = Math.hypot(p.vx, p.vy), tx = m > 1e-3 ? dx / m * speed : 0, ty = m > 1e-3 ? dy / m * speed : 0;
@@ -11309,7 +11328,7 @@
       let p = this.playerOf(c);
       if (!p) return;
       let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
-      if (this.drive(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
+      if (this.driveHuman(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
         if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge)), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
         else if (input.pressed("lob") && !input.held("skill")) this.pass(p, aim, !0, 0.55, !0);
         else if (input.pressed("cross")) {
@@ -12524,7 +12543,7 @@
      */
     constructor(opts = {}) {
       var _a;
-      this.padIndex = (_a = opts.pad) != null ? _a : null, this.keyMap = keyMapFor(opts.keys || "primary"), this.padMap = (opts.keys || "primary") === "primary" ? padMapFor() : PAD_ACTIONS, this.moveMap = MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
+      this.padIndex = (_a = opts.pad) != null ? _a : null, this.keyMap = keyMapFor(opts.keys || "primary"), this.padMap = (opts.keys || "primary") === "primary" ? padMapFor() : PAD_ACTIONS, this.moveMap = opts.arrows ? { ...MOVE_SETS.primary, ...MOVE_SETS.secondary } : MOVE_SETS[opts.keys || "primary"], this.keys = /* @__PURE__ */ new Set(), this.touchVec = { x: 0, y: 0 }, this.touchButtons = /* @__PURE__ */ new Set(), this.pad = null, this.padName = "", this.vec = { x: 0, y: 0 }, this.now = /* @__PURE__ */ new Set(), this.was = /* @__PURE__ */ new Set(), this.heldFor = Object.fromEntries(ACTIONS.map((a) => [a, 0])), this._down = (e) => {
         e.repeat || (this.keys.add(e.code), (this.keyMap[e.code] || this.moveMap[e.code]) && e.preventDefault());
       }, this._up = (e) => this.keys.delete(e.code), this._blur = () => this.keys.clear(), window.addEventListener("keydown", this._down), window.addEventListener("keyup", this._up), window.addEventListener("blur", this._blur);
     }
@@ -12540,8 +12559,12 @@
       for (let [code, v] of Object.entries(this.moveMap))
         this.keys.has(code) && (x += v[0], y += v[1]);
       if (this.pad) {
-        let ax = this.pad.axes[0] || 0, ay = this.pad.axes[1] || 0;
-        Math.hypot(ax, ay) > 0.22 && (x += ax, y += ay), (_a = this.pad.buttons[12]) != null && _a.pressed && (y -= 1), (_b = this.pad.buttons[13]) != null && _b.pressed && (y += 1), (_c = this.pad.buttons[14]) != null && _c.pressed && (x -= 1), (_d = this.pad.buttons[15]) != null && _d.pressed && (x += 1);
+        let ax = this.pad.axes[0] || 0, ay = this.pad.axes[1] || 0, am = Math.hypot(ax, ay);
+        if (am > 0.22) {
+          let k = Math.min(1, (am - 0.22) / 0.78) / am;
+          x += ax * k, y += ay * k;
+        }
+        (_a = this.pad.buttons[12]) != null && _a.pressed && (y -= 1), (_b = this.pad.buttons[13]) != null && _b.pressed && (y += 1), (_c = this.pad.buttons[14]) != null && _c.pressed && (x -= 1), (_d = this.pad.buttons[15]) != null && _d.pressed && (x += 1);
       }
       x += this.touchVec.x, y += this.touchVec.y;
       let mag = Math.hypot(x, y);

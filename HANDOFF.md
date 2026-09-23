@@ -15,6 +15,43 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v84 — hotfix: the controlled player's movement
+Reported: "doesn't move backwards, doesn't run properly and barely turns".
+Reproduced through the real `Input` class for keyboard, the touch vector and
+a stubbed gamepad (`tests/unit/responsiveness.test.mjs`), on an empty pitch:
+
+| | v83 | v84 |
+|---|---|---|
+| standstill → 90% sprint speed | 0.18 s | 0.07 s |
+| 180° at a jog (to 80% speed back) | 1.58 s | 0.07 s |
+| 180° at a sprint | 1.70 s | 0.12 s |
+| 90° at a jog | 0.88 s | 0.05 s |
+| back from standing, 0.5 s | 3.8 m | 4.2 m |
+| browser, keyboard, sprint 180 (match time) | 781 ms | 102 ms |
+| browser, "back" alignment with the camera | −0.07 (sideways) | 1.00 |
+
+- **Cause**: the v79 `drive()` (heading turns at `p.turn` rad/s, shrinking
+  with speed; a "planted foot" brake for a sharp change over 70% speed) was
+  used for the person's player too. A reversal swung round in a wide arc,
+  so pulling back sent the player sideways.
+- **Fix**: `Match.driveHuman` — the velocity chases the stick with an
+  exponential blend at 16–34/s (by `responsiveness`, default 0.7), softened
+  to 30–65% of that by a smoothed sprint momentum (`p.humanMom`, builds at
+  2.5/s, fades at 4/s). Only `handleSeat` calls it; the CPU keeps `drive()`,
+  so the **sweep is byte-identical**. Analogue: half a push is full speed,
+  a light touch walks (min 35%). Pad deadzone (0.22) is now radial and
+  rescaled. Arrow keys move in solo play (`Input({ arrows })`; they were only
+  in the player-two set). `settings.responsiveness` + a slider in Settings →
+  Button map; `Match` option `responsiveness`.
+- Checked and not involved: animation root motion (the rig pins the hips to
+  the sim position every frame), fatigue (now 0.9–1.0 for a person),
+  per-frame rates (all rates are per second via `exp(-rate*dt)`). The
+  frame-time governor and the rest of R14 were not in this build — they are
+  parked in `git stash` ("R14 WIP") and come back after the hotfix.
+- Tests: 8 in `responsiveness.test.mjs` — every device with and without the
+  ball, analogue mapping, the person quicker than the CPU model, and the
+  slider honoured.
+
 ### v83 — broadcast presentation (Round 13)
 **Sweep byte-identical**: nothing in the broadcast writes to the match. The
 new code lives in `js/broadcast/` and play.js only calls into it.

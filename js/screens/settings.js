@@ -251,6 +251,10 @@ export function render() {
 
     <section class="panel glass" id="rebind">
       <header class="panel-head"><h2>Button map</h2><button class="btn ghost sm" id="bindReset">Defaults</button></header>
+      <div class="setting-row">
+        <div><b>Responsiveness</b><span>How quickly your player answers the stick. Higher turns sharper; lower carries more weight at a sprint.</span></div>
+        <input type="range" id="respRange" min="0" max="100" step="5" value="${Math.round((s.responsiveness ?? 0.7) * 100)}" aria-label="Responsiveness">
+      </div>
       <p class="hint">Choose a control, then press the key or controller button you want for it. Prompts in a match follow whatever you last used — keyboard, controller or touch.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
         <div class="bind-row"><span>${BIND_NAMES[a] || a}</span>
@@ -352,6 +356,10 @@ export function mount(root) {
     root.querySelectorAll('[data-speed]').forEach((x) => x.classList.toggle('on', x === b));
   });
 
+  root.querySelector('#respRange')?.addEventListener('change', (e) => {
+    const v = Math.max(0, Math.min(1, Number(e.target.value) / 100));
+    update((st) => { st.settings.responsiveness = v; });
+  });
   const toggle = (el, key) => el.addEventListener('click', () => {
     const next = !getState().settings[key];
     update((s) => { s.settings[key] = next; });

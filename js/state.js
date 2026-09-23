@@ -45,6 +45,7 @@ const defaults = () => ({
     pregame: 'full',            // full | short | off — the pre-match show
     broadcastGfx: true,         // straps, boards, pop-ups, momentum bar
     menuTheme: 'auto',          // auto | off | nationalDay | ramadan | winter
+    responsiveness: 0.7,        // v84 hotfix: how quickly your player answers the stick (0–1)
   },
   club: {                     // Squad Builder progress
     // Two balances. Apex is the one you earn and spend. Ultimate is the

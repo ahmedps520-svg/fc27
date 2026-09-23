@@ -107,7 +107,8 @@ export class Input {
     this.padIndex = opts.pad ?? null;
     this.keyMap = keyMapFor(opts.keys || 'primary');
     this.padMap = (opts.keys || 'primary') === 'primary' ? padMapFor() : PAD_ACTIONS;
-    this.moveMap = MOVE_SETS[opts.keys || 'primary'];
+    // v84 hotfix: alone at the keyboard, the arrow keys move too (they were player 2's only)
+    this.moveMap = opts.arrows ? { ...MOVE_SETS.primary, ...MOVE_SETS.secondary } : MOVE_SETS[opts.keys || 'primary'];
     this.keys = new Set();
     this.touchVec = { x: 0, y: 0 };
     this.touchButtons = new Set();
@@ -156,7 +157,9 @@ export class Input {
     if (this.pad) {
       const ax = this.pad.axes[0] || 0;
       const ay = this.pad.axes[1] || 0;
-      if (Math.hypot(ax, ay) > DEAD) { x += ax; y += ay; }
+      // v84: a radial deadzone, rescaled — just past it is a gentle push, not a lurch from nothing to 0.22
+      const am = Math.hypot(ax, ay);
+      if (am > DEAD) { const k = Math.min(1, (am - DEAD) / (1 - DEAD)) / am; x += ax * k; y += ay * k; }
       if (this.pad.buttons[12]?.pressed) y -= 1;
       if (this.pad.buttons[13]?.pressed) y += 1;
       if (this.pad.buttons[14]?.pressed) x -= 1;

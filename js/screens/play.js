@@ -336,7 +336,7 @@ export function mount(root, params) {
 
   // Seat 1 takes pad 0 and the WASD set; seat 2 takes pad 1 and the arrow/numpad
   // set, so a second person can join with a pad or just the other half of the keyboard.
-  const localInput = new Input({ pad: 0, keys: 'primary' });
+  const localInput = new Input({ pad: 0, keys: 'primary', arrows: !twoUp });
   let inputs;
   let remote = null;
   let remotes = null;   // v82: party host — a RemoteInput per seat
@@ -366,6 +366,7 @@ export function mount(root, params) {
   const useModels = quality === 'high' || quality === 'ultra' || quality === 'cinema';
 
   const match = new Match(params.homeId, params.awayId, {
+    responsiveness: getState().settings.responsiveness ?? 0.7,   // v84 hotfix
     duration: params.duration || 240,
     skill: params.skill || 1,
     // the manager holds no stick: career matches are AI against AI, influenced
