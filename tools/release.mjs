@@ -59,12 +59,27 @@ const walk = (dir, out = []) => {
   }
   return out;
 };
-const SKIP = [/^js\/package\.json$/, /^js\/vendor\/three\.LICENSE/, /^js\/vendor\/three\.webgpu\.js$/, /^js\/vendor\/jsm\/(?!postprocessing|shaders|loaders\/GLTFLoader|utils\/SkeletonUtils)/, /\.md$/, /^js\/watch\/(?!bundle\.js)/];
+const SKIP = [/^js\/package\.json$/, /^js\/vendor\/three\.LICENSE/, /^js\/vendor\/three\.webgpu\.js$/, /^js\/vendor\/jsm\/(?!postprocessing|shaders|loaders\/GLTFLoader|utils\/SkeletonUtils|utils\/BufferGeometryUtils)/, /\.md$/, /^js\/watch\/(?!bundle\.js)/];
 const wanted = [...walk('js'), ...walk('styles')].filter((f) => !SKIP.some((r) => r.test(f)));
 for (const f of wanted) if (!listed.has(f)) problems.push(`sw.js: precache list is missing ./${f}`);
 for (const f of listed) {
   if (f.endsWith('/')) continue;
   try { statSync(path.join(ROOT, f)); } catch { problems.push(`sw.js: precache lists ./${f}, which does not exist`); }
+}
+/* v87: and every module a precached module imports — statically or with
+ * import() — is precached too. The directory walk above skips most of
+ * vendor/jsm, which is how utils/BufferGeometryUtils.js went unlisted and a
+ * match could not start offline. */
+for (const f of listed) {
+  if (!f.endsWith('.js') || f.startsWith('js/watch/')) continue;
+  let src; try { src = rd(f); } catch { continue; }
+  const specs = [...src.matchAll(/(?:^|[\s;])(?:import|export)\s[^'";]*?from\s*['"](\.{1,2}\/[^'"]+)['"]/gm), ...src.matchAll(/import\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g), ...src.matchAll(/^import\s*['"](\.{1,2}\/[^'"]+)['"]/gm)].map((m) => m[1]);
+  for (const spec of specs) {
+    const target = path.posix.normalize(path.posix.join(path.posix.dirname(f), spec));
+    // the WebGPU beta's 1.6 MB engine is opt-in and online-only by choice
+    if (target === 'js/vendor/three.webgpu.js') continue;
+    if (!listed.has(target)) problems.push(`sw.js: ./${f} imports ./${target}, which is not precached (it would fail offline)`);
+  }
 }
 
 /* ---- watch bundle ---- */

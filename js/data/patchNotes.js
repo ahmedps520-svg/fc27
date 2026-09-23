@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v87',
+    date: '2026-09-23',
+    tag: 'Performance',
+    title: 'Faster, steadier, for everyone',
+    lede: 'The game starts about four times faster, holds its frame rate better on slower phones, keeps your save safe, and gains a full set of accessibility options.',
+    entries: [
+      {
+        head: 'Starts faster',
+        summary: 'A first launch on a phone now reaches the title screen in about 1.7 seconds on 4G (it was about 7). Each mode downloads the first time you open it, and after that everything opens instantly, including offline.',
+        detail: 'The first download is less than half the size it was (461 KB against 1,092 KB, 45 requests against 116). The loading bar now shows real progress (the ground built, the players in, the graphics ready) with tips to read while you wait.',
+      },
+      {
+        head: 'Holds its frame rate',
+        summary: 'When a device starts to struggle, the game quietly turns effects down before the frame rate drops, and turns them back up when it recovers.',
+        detail: 'Players far from the camera or behind it animate at a lower rate, and a memory leak that grew with every match is fixed. Battery mode (Settings) caps the game at 30 fps with a lighter picture.',
+      },
+      {
+        head: 'Accessibility',
+        summary: 'New in Settings: text size, colour-vision filters for the match, subtitles for all commentary, a one-handed touch layout, sprint as hold or toggle, shooting and passing assists, and full keyboard and controller navigation with a clear focus ring.',
+        detail: 'Every switch has a label for screen readers, and reduced motion now applies everywhere. The assists only ever help people: the CPU plays by the same rules as before.',
+      },
+      {
+        head: 'Your save is safe',
+        summary: 'Download your save to a file, restore it or an automatic backup from Settings, and choose which save to keep if your cloud save and this device disagree.',
+        detail: 'A damaged save is set aside and the newest backup is used instead, and the game tells you once that it did. The server checks every request more strictly and limits how fast requests can arrive.',
+      },
+    ],
+  },
+  {
     version: 'v86',
     date: '2026-09-23',
     tag: 'Fixes',

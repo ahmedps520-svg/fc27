@@ -97,6 +97,10 @@ export function promptFor(action, device = LAST) {
   return b.key ? keyLabel(b.key) : action;
 }
 
+/* v87: hold-vs-toggle, from Settings */
+const TOGGLES = { sprint: false };
+export function setToggles(t = {}) { TOGGLES.sprint = !!t.sprint; }
+
 export class Input {
   /**
    * @param {{pad?: number|null, keys?: 'primary'|'secondary'}} opts
@@ -184,6 +188,17 @@ export class Input {
       if (any || Math.hypot(this.pad.axes[0] || 0, this.pad.axes[1] || 0) > 0.5) setDevice('pad');
     }
     for (const a of this.touchButtons) this.now.add(a);
+    /* v87: sprint as a toggle. A press latches it on and the next press off;
+       letting go of the stick for a second also drops it, so it never runs
+       a player off on his own. */
+    if (TOGGLES.sprint) {
+      const raw = this.now.has('sprint');
+      if (raw && !this.sprintRaw) this.sprintLatch = !this.sprintLatch;
+      this.sprintRaw = raw;
+      this.sprintIdle = Math.hypot(x, y) < 0.14 ? (this.sprintIdle || 0) + dt : 0;
+      if (this.sprintIdle > 1) this.sprintLatch = false;
+      if (this.sprintLatch) this.now.add('sprint'); else this.now.delete('sprint');
+    }
 
     for (const a of ACTIONS) {
       this.heldFor[a] = this.now.has(a) ? this.heldFor[a] + dt : 0;

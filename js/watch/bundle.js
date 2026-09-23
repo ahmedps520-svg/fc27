@@ -10002,8 +10002,26 @@
       // straps, boards, pop-ups, momentum bar
       menuTheme: "auto",
       // auto | off | nationalDay | ramadan | winter
-      responsiveness: 0.7
+      responsiveness: 0.7,
       // v84 hotfix: how quickly your player answers the stick (0–1)
+      // v87: performance and accessibility
+      battery: !1,
+      // 30 fps cap, lighter picture
+      governor: !0,
+      // drop effects before frames drop
+      textScale: 1,
+      // 0.9 | 1 | 1.15 | 1.3
+      colorFilter: "none",
+      // none | protan | deutan | tritan (in-match)
+      oneHanded: !1,
+      // touch: every control on one side
+      oneHandedSide: "right",
+      sprintToggle: !1,
+      // sprint: hold (false) or tap to toggle
+      shootAssist: 0,
+      // 0 off | 1 auto-timed power on shots
+      passAssist: 1
+      // 0 manual | 1 assisted | 2 full
     },
     club: {
       // Squad Builder progress
@@ -10851,7 +10869,7 @@
     return id && team.players.find((p) => p.ref.id === id && p.role !== "GK" && !p.injured) || null;
   }, Match = class {
     constructor(homeId, awayId, opts = {}) {
-      var _a, _b, _c, _d;
+      var _a, _b, _c, _d, _e, _f;
       setField(opts.field || "full"), this.field = FIELD.id, this.mode = opts.mode || "single", this.human = opts.human === null ? null : (_a = opts.human) != null ? _a : 0, this.teams = [
         makeTeam(homeId, 0, this.human === 0, opts.homeSquad || null),
         makeTeam(awayId, 1, this.human === 1, opts.awaySquad || null)
@@ -10868,7 +10886,7 @@
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
       ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
-      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -11332,7 +11350,7 @@
       if (!p) return;
       let raw = input.axis(), B = this.basis, fwd = -raw.y, aim = B ? { x: B.rx * raw.x + B.fx * fwd, y: B.ry * raw.x + B.fy * fwd } : { x: raw.x, y: fwd };
       if (this.driveHuman(p, aim.x, aim.y, dt, input.held("sprint") ? 1.24 : 1), input.pressed("switch") && this.cycleActive(c), this.ball.owner === p) {
-        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge)), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
+        if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7)), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge), !1, this.assist.pass), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
         else if (input.pressed("lob") && !input.held("skill")) this.pass(p, aim, !0, 0.55, !0);
         else if (input.pressed("cross")) {
           let back = aim.x * this.teams[p.team].dir < -0.35;
@@ -11345,6 +11363,10 @@
         }
         if (input.held("skill") && (c.skillMod = input.held("sprint") ? "sprint" : input.held("curl") ? "curl" : input.held("lob") ? "lob" : c.skillMod || null), input.released("skill") && (this.skillMove(p, aim, c.skillMod || null), c.skillMod = null), input.held("shoot") && (c.charge = Math.min(1, c.charge + dt / 0.85)), input.released("shoot")) {
           let curled = input.held("curl"), chip = input.held("lob");
+          if (this.assist.shoot) {
+            let gx = this.teams[p.team].dir > 0 ? PITCH.w : 0, dist2 = Math.hypot(gx - p.x, CY - p.y);
+            c.charge = chip ? 0.5 : Math.max(0.42, Math.min(0.92, 0.3 + dist2 / 38));
+          }
           this.shoot(p, aim, Math.max(0.28, c.charge), {
             loft: chip ? 2.6 : curled ? 0.9 : 1,
             curl: curled ? 46 : 0,
@@ -11828,17 +11850,19 @@
       var _a;
       return 1 - (1 - ((_a = p.stamina) != null ? _a : 1)) * 0.3 - (p.injured ? 0.25 : 0);
     }
-    pass(p, aim, through, power = 0.35, lob = !1) {
+    pass(p, aim, through, power = 0.35, lob = !1, assist = 1) {
       var _a, _b, _c, _d;
       this.tally(p, "passes");
-      let team = this.teams[p.team], reach = 14 + power * 44, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
+      let team = this.teams[p.team], reach = 14 + power * 44 + (assist === 2 ? 10 : 0), alignW = assist === 2 ? 0.9 : 2.6, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
       ax /= am, ay /= am;
       let best = null, bestScore = -1 / 0;
       for (let t of team.players) {
         if (t === p) continue;
         let dx2 = t.x - p.x, dy2 = t.y - p.y, d3 = Math.hypot(dx2, dy2);
         if (d3 < 3 || d3 > reach) continue;
-        let align = dx2 / d3 * ax + dy2 / d3 * ay, forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * 2.6 - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
+        let align = dx2 / d3 * ax + dy2 / d3 * ay;
+        if (assist === 0 && align < 0.94) continue;
+        let forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * alignW - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
         score > bestScore && (bestScore = score, best = t);
       }
       if (this.cue("pass"), this.ball.passer = p, !best) {
@@ -12543,6 +12567,7 @@
   }, !0), window.addEventListener("gamepadconnected", (e) => {
     PAD_KIND = /sony|dualsense|dualshock|playstation|054c/i.test(e.gamepad.id) ? "ps" : "xbox";
   }));
+  var TOGGLES = { sprint: !1 };
   var Input = class {
     /**
      * @param {{pad?: number|null, keys?: 'primary'|'secondary'}} opts
@@ -12591,6 +12616,10 @@
         (any || Math.hypot(this.pad.axes[0] || 0, this.pad.axes[1] || 0) > 0.5) && setDevice("pad");
       }
       for (let a of this.touchButtons) this.now.add(a);
+      if (TOGGLES.sprint) {
+        let raw = this.now.has("sprint");
+        raw && !this.sprintRaw && (this.sprintLatch = !this.sprintLatch), this.sprintRaw = raw, this.sprintIdle = Math.hypot(x, y) < 0.14 ? (this.sprintIdle || 0) + dt : 0, this.sprintIdle > 1 && (this.sprintLatch = !1), this.sprintLatch ? this.now.add("sprint") : this.now.delete("sprint");
+      }
       for (let a of ACTIONS)
         this.heldFor[a] = this.now.has(a) ? this.heldFor[a] + dt : 0;
     }

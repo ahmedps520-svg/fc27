@@ -142,7 +142,30 @@ function tick(dt) {
   paint(list);
 }
 
+/* v87: the keyboard version. Arrow keys move real focus by the same screen
+ * geometry (Tab still walks the DOM order); Enter and Space are the browser's
+ * own activation. Not while typing, not in a match, not with a modifier. */
+function onKey(e) {
+  if (!/^Arrow(Up|Down|Left|Right)$/.test(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (document.body.classList.contains('in-game')) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable || t.closest?.('[role=slider]'))) return;
+  const list = items().filter((el) => el.tabIndex >= 0 || el.matches('button, a[href], select'));
+  if (!list.length) return;
+  const cur = list.indexOf(document.activeElement);
+  focusIdx = cur >= 0 ? cur : 0;
+  if (cur >= 0) {
+    // screen directions, in either language: the step is geometric
+    const [dx, dy] = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] }[e.key];
+    step(list, dx, dy);
+  }
+  e.preventDefault();
+  list[focusIdx]?.focus({ preventScroll: false });
+  list[focusIdx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
 export function startPadMenu() {
+  window.addEventListener('keydown', onKey);
   // A timer rather than requestAnimationFrame: this is input polling, it does not
   // need to be frame-synced, and it keeps working when the window is not
   // compositing (occluded, background, embedded preview).

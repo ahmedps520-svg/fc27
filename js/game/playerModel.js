@@ -308,6 +308,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     root, mixer, actions, hips, trait, isGK,
     current: null,
     offset: startAt,
+    index,              // v87: staggers the animation LOD so skipped players are not all skipped on the same frame
   };
 }
 
@@ -330,7 +331,7 @@ export function flagAction(p, act, seconds = 0.6) {
  * Place and animate one player for this frame.
  * @param {number} dt seconds since the last frame
  */
-export function poseRig(rig, p, dt) {
+export function poseRig(rig, p, dt, every = 1) {
   const speed = Math.hypot(p.vx, p.vy);
   const want = actionFor(rig, speed, p);
 
@@ -378,7 +379,12 @@ export function poseRig(rig, p, dt) {
     rig.current = want;
   }
 
-  rig.mixer.update(dt);
+  /* v87: animation LOD. A far or off-screen player's skeleton is advanced
+     every `every` frames with the time it missed, so the pose is right when it
+     is next drawn close; position and heading below are set every frame. */
+  rig._acc = (rig._acc || 0) + dt;
+  rig._n = ((rig._n || 0) + 1) % 1024;
+  if (every <= 1 || (rig._n + (rig.index || 0)) % every === 0) { rig.mixer.update(rig._acc); rig._acc = 0; }
 
   // The clips walk the character across the floor; the match decides where a
   // player is, so the root motion is cancelled by pinning the hips to the spot

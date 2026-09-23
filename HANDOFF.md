@@ -15,6 +15,64 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v87 — Round 14: performance, stability, accessibility
+Built earlier as the "R14 WIP" stash, paused for the v84 hotfix, the v85
+landscapes and the v86 bug pass, then re-applied on top of them. Its own
+"v84" labels became v87. Conflicts were merged by hand in sim.js (assists +
+responsiveness), renderGL.js (the substitute-rig swap + animation LOD),
+play.js (SimLatch + governor), settings.js and state.js. **app.js merged
+without a conflict marker but declared `token` twice** (the stash's lazy-load
+`navToken` and v86's navigation guard). Unit tests can't see that; the boot
+test caught it. v86's mount guard now reuses `navToken`.
+
+What is in it:
+- **Code-split**: title and menu ship with the boot; every other screen is
+  a dynamic import behind `SCREENS` loaders, with a spinner if the chunk is
+  slow. Patch notes load only when the card is shown.
+- **Frame governor** (game/governor.js): drops effects (post chain, shadow
+  updates, resolution) before the frame rate drops, and restores them.
+  **Battery mode**: 30 fps cap, light picture. **Animation LOD** for model
+  rigs: far or behind-camera players pose every 2–4 frames, staggered.
+- **The leak**: shared module-level geometries, materials and kit textures
+  are now disposed with the renderer.
+- **Real loading bar** (`gl.progress`) with tips.
+- **Stability**: save fuzz (corrupt, old, huge) and server fuzz unit tests.
+  Damaged saves are set aside and the newest backup is used, with a one-time
+  notice. Export/import and restore from backup live in Settings. A
+  cloud-save conflict chooser keeps the loser as a backup. Server has token
+  buckets, validation on every endpoint, own-property account lookups, and
+  Weekend League results only for the window open now.
+- **Accessibility**: text size S/M/L/XL, colour-vision filters (SVG,
+  in-match), subtitles, one-handed touch layout, sprint hold/toggle, shoot
+  timing assist and pass assist 0/1/2 (people only; the CPU never reads
+  them, so the sweep is identical), keyboard focus ring everywhere,
+  switch labels, reduced motion everywhere. New tests: `a11y-scan.mjs`,
+  `qa/offline.mjs`, `qa/soak.mjs`, all in CI (soak at 20 matches).
+
+**WebWorker for the sim: measured, not done.** The sim costs 0.062 ms a step
+median, 0.29 ms p99, 1.07 ms p99.9 (57,600 steps, `tests/tmp/simcost.mjs`).
+Even at 6× CPU throttle that is about 2 ms against a 16.7 ms frame. Rendering is
+the whole cost, and a worker would put a snapshot round-trip between
+the sim and the renderer, the replay tape, subs and tactics for no frame-time
+gain. Revisit only if the p99 grows past about 3 ms.
+
+Before (v86 on main) → after, same machine:
+
+| | v86 | v87 |
+|---|---|---|
+| cold boot, 4× CPU, typical 4G | 6,991 ms | 1,719 ms |
+| cold boot, 4× CPU, Slow 4G | 6,900 ms | 3,538 ms |
+| warm boot | 1,301 ms | 1,147 ms |
+| boot download | 1,092 KB, 116 requests | 461 KB, 45 requests |
+| precache (gz) | 2,501 KB | 2,417 KB |
+| heap after 20 matches | 58.9 MB (+2.43/match) | 14.7 MB (+0.12/match) |
+| gl-fps Low/Med/High/Ultra | 1.7 / 1.0 / 0.5 / 0.1 | 1.7 / 1.4 / 0.6 / 0.1 |
+
+Soak (`qa/soak.mjs --seed 7`, random modes and settings): 184 matches before
+the harness's hour ran out (futsal 33, final 30, versus 29, fives 27, practice
+24, quick 21, street 20). 0 page errors, heap 16.9 → 18.2 MB and flat. Also
+green: unit 180, sweep identical, smoke, QA, layout, a11y scan, offline QA.
+
 ### v86 — bug pass: everyone turns, fixed sim step, subs, navigation
 **Everyone turns (the CPU's "brick").** `drive()` capped the target heading at
 `omega·dt` and then blended the whole velocity 15% of the way towards it

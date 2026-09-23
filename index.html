@@ -31,15 +31,20 @@
   <link rel="modulepreload" href="js/data/careerDb.js" />
   <link rel="modulepreload" href="js/screens/splash.js" />
   <link rel="modulepreload" href="js/screens/menu.js" />
-  <link rel="modulepreload" href="js/screens/squad.js" />
-  <link rel="modulepreload" href="js/screens/play.js" />
-  <link rel="modulepreload" href="js/screens/career.js" />
   <link rel="modulepreload" href="js/tutorial.js" />
   <link rel="modulepreload" href="js/audio.js" />
   <!-- the menu backdrop, fetched at low priority while the splash is up -->
-  <link rel="preload" as="image" href="assets/keyart.jpg" fetchpriority="low" />
+  <link rel="preload" as="image" href="assets/keyart.webp" type="image/webp" fetchpriority="low" />
 </head>
 <body>
+  <!-- v87: colour-vision filters for the match picture (Settings → Accessibility).
+       Daltonize-style corrections: the information a protan, deutan or tritan
+       eye loses is shifted into the channels it keeps. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <filter id="cbProtan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  -0.255 1.255 0 0 0  0.303 -0.545 1.242 0 0  0 0 0 1 0"/></filter>
+    <filter id="cbDeutan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  -0.438 1.438 0 0 0  0.262 -0.563 1.300 0 0  0 0 0 1 0"/></filter>
+    <filter id="cbTritan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1.050 -0.382 0.332 0 0  0 1.234 -0.234 0 0  0 0 1 0 0  0 0 0 1 0"/></filter>
+  </svg>
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-orb one" aria-hidden="true"></div>
   <div class="bg-orb two" aria-hidden="true"></div>

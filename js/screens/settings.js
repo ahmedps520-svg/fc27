@@ -1,5 +1,6 @@
-import { getState, update, resetAll } from '../state.js';
-import { ACTIONS, bindingOf, keyLabel, padGlyph, setBindings, getBindings } from '../game/input.js';
+import { getState, update, resetAll, replaceSave } from '../state.js';
+import { listBackups, exportSave, parseSaveFile } from '../saveSafety.js';
+import { ACTIONS, bindingOf, keyLabel, padGlyph, setBindings, getBindings, setToggles } from '../game/input.js';
 import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
@@ -170,10 +171,7 @@ export function render() {
           ${Object.entries(LANGS).map(([v, l]) => `<button class="${(s.lang || 'en') === v ? 'on' : ''}" data-lang="${v}" lang="${v}">${l}</button>`).join('')}
         </div>
       </div>
-      <div class="setting-row">
-        <div><b>${t('settings.largeText')}</b><span>${t('settings.largeText.sub')}</span></div>
-        <button class="switch ${s.largeText ? 'on' : ''}" id="largeTgl" role="switch" aria-checked="${!!s.largeText}"><i></i></button>
-      </div>
+      ${segRow(t('settings.largeText'), 'textScale', [['0.9', 'S'], ['1', 'M'], ['1.15', 'L'], ['1.3', 'XL']], String(s.textScale && s.textScale !== 1 ? s.textScale : s.largeText ? 1.15 : 1))}
       <div class="setting-row">
         <div><b>${t('settings.colorSafe')}</b><span>${t('settings.colorSafe.sub')}</span></div>
         <button class="switch ${s.colorSafeKits ? 'on' : ''}" id="colorSafeTgl" role="switch" aria-checked="${!!s.colorSafeKits}"><i></i></button>
@@ -182,6 +180,30 @@ export function render() {
         <div><b>${t('settings.reduceMotion')}</b></div>
         <button class="switch ${s.reduceMotion ? 'on' : ''}" id="motionTgl" role="switch"
                 aria-checked="${s.reduceMotion}"><i></i></button>
+      </div>
+      ${segRow('Colour vision filter (in a match)', 'colorFilter', [['none', 'Off'], ['protan', 'Protan'], ['deutan', 'Deutan'], ['tritan', 'Tritan']], s.colorFilter || 'none')}
+      <div class="setting-row">
+        <div><b>One-handed touch</b><span>Every match control on one side of the screen.</span></div>
+        <button class="switch ${s.oneHanded ? 'on' : ''}" id="oneHandTgl" role="switch" aria-checked="${!!s.oneHanded}"><i></i></button>
+      </div>
+      ${segRow('One-handed side', 'oneHandedSide', [['left', 'Left'], ['right', 'Right']], s.oneHandedSide || 'right')}
+      <div class="setting-row">
+        <div><b>Sprint</b><span>Hold the button, or tap once to run and again to stop.</span></div>
+        <div class="seg"><button class="${s.sprintToggle ? '' : 'on'}" data-setseg="sprintToggle:">Hold</button><button class="${s.sprintToggle ? 'on' : ''}" data-setseg="sprintToggle:1">Toggle</button></div>
+      </div>
+      ${segRow('Shot timing assist', 'shootAssist', [['0', 'Off'], ['1', 'On — power from distance']], String(s.shootAssist || 0))}
+      ${segRow('Pass assist', 'passAssist', [['0', 'Manual'], ['1', 'Assisted'], ['2', 'Full']], String(s.passAssist ?? 1))}
+    </section>
+
+    <section class="panel glass" id="perfSet">
+      <header class="panel-head"><h2>Performance</h2></header>
+      <div class="setting-row">
+        <div><b>Battery saver</b><span>30 fps, a lighter picture, fewer effects — for long sessions on a phone.</span></div>
+        <button class="switch ${s.battery ? 'on' : ''}" id="batteryTgl" role="switch" aria-checked="${!!s.battery}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>Keep the frame rate</b><span>Drops effects, then resolution, when a match starts to stutter — and brings them back when it can.</span></div>
+        <button class="switch ${s.governor !== false ? 'on' : ''}" id="govTgl" role="switch" aria-checked="${s.governor !== false}"><i></i></button>
       </div>
     </section>
 
@@ -243,6 +265,16 @@ export function render() {
       <div class="setting-row">
         <div><b>${st.club.collection.length} cards · ${st.club.packsOpened} packs</b></div>
       </div>
+      <div class="setting-row">
+        <div><b>Back up</b><span>Download your whole save as a file.</span></div>
+        <button class="btn ghost" id="exportBtn">Download</button>
+      </div>
+      <div class="setting-row">
+        <div><b>Restore from a file</b><span>What it replaces is backed up first.</span></div>
+        <label class="btn ghost" for="importFile">Choose file<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+      </div>
+      ${listBackups().length ? `<div class="setting-row sv-backups"><div><b>Automatic backups</b><span>One a day, the last three kept on this device.</span></div>
+        <div class="sv-list">${listBackups().map((b, i) => `<button class="btn ghost sm" data-restore="${i}">${new Date(b.at).toLocaleDateString()}${b.manual ? ' · before a restore' : ''}</button>`).join('')}</div></div>` : ''}
       <div class="setting-row">
         <div><b>Reset save</b></div>
         <button class="btn ghost danger" id="resetBtn">Reset</button>
@@ -360,6 +392,33 @@ export function mount(root) {
     const v = Math.max(0, Math.min(1, Number(e.target.value) / 100));
     update((st) => { st.settings.responsiveness = v; });
   });
+  // v87: backup and restore
+  root.querySelector('#exportBtn')?.addEventListener('click', () => {
+    const blob = new Blob([exportSave(getState(), APP_VERSION)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `apex-xi-save-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Save downloaded', 'good');
+  });
+  root.querySelector('#importFile')?.addEventListener('change', async (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const parsed = parseSaveFile(await f.text());
+    if (parsed.error) { toast(parsed.error, 'warn'); return; }
+    if (!confirm('Replace your current save with this file? Your current save is backed up first.')) return;
+    if (replaceSave(parsed.save)) { toast('Save restored', 'good'); navigate('menu'); } else toast('That save could not be restored', 'warn');
+  });
+  root.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => {
+    const bk = listBackups()[Number(b.dataset.restore)];
+    const parsed = bk && parseSaveFile(bk.data);
+    if (!parsed || parsed.error) { toast('That backup cannot be read', 'warn'); return; }
+    if (!confirm(`Go back to the backup from ${new Date(bk.at).toLocaleString()}? Your current save is backed up first.`)) return;
+    if (replaceSave(parsed.save)) { toast('Backup restored', 'good'); navigate('menu'); }
+  }));
+  // v87: every switch is named by its row, for screen readers
+  root.querySelectorAll('.switch').forEach((sw) => {
+    if (!sw.getAttribute('aria-label')) sw.setAttribute('aria-label', sw.closest('.setting-row')?.querySelector('b')?.textContent?.trim() || 'Toggle');
+  });
   const toggle = (el, key) => el.addEventListener('click', () => {
     const next = !getState().settings[key];
     update((s) => { s.settings[key] = next; });
@@ -378,19 +437,20 @@ export function mount(root) {
   toggleOn(root.querySelector('#subsTgl'), 'subtitles');
   toggleOn(root.querySelector('#bcGfxTgl'), 'broadcastGfx');
   root.querySelectorAll('[data-setseg]').forEach((b) => b.addEventListener('click', () => {
-    const [key, val] = b.dataset.setseg.split(':');
-    update((s) => { s.settings[key] = val; });
+    const [key, raw] = b.dataset.setseg.split(':');
+    const NUM = { textScale: 1, shootAssist: 1, passAssist: 1 };
+    const val = key === 'sprintToggle' ? raw === '1' : NUM[key] ? Number(raw) : raw;
+    update((s) => { s.settings[key] = val; if (key === 'textScale') s.settings.largeText = val > 1; });
+    if (key === 'textScale') applyLanguage();
+    if (key === 'sprintToggle') setToggles({ sprint: val });
     root.querySelectorAll(`[data-setseg^="${key}:"]`).forEach((x) => x.classList.toggle('on', x === b));
   }));
   toggle(root.querySelector('#motionTgl'), 'reduceMotion');
   toggle(root.querySelector('#fpsTgl'), 'showFps');
   toggle(root.querySelector('#colorSafeTgl'), 'colorSafeKits');
-  root.querySelector('#largeTgl').addEventListener('click', (e) => {
-    const next = !getState().settings.largeText;
-    update((st) => { st.settings.largeText = next; });
-    e.currentTarget.classList.toggle('on', next);
-    applyLanguage();
-  });
+  toggle(root.querySelector('#oneHandTgl'), 'oneHanded');
+  toggle(root.querySelector('#batteryTgl'), 'battery');
+  toggleOn(root.querySelector('#govTgl'), 'governor');
   root.querySelector('#rendererSeg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-renderer]');
     if (!b) return;

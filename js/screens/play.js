@@ -3,6 +3,7 @@ import { getClub, WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input, SimLatch, promptFor, lastDevice } from '../game/input.js';
+import { createGovernor, loadFor } from '../game/governor.js';
 import {
   draw, makeCamera, groundBasis, replayCamera, resolveQuality,
   orbitCamera, walkoutCamera,
@@ -52,6 +53,18 @@ import { CY } from '../game/field.js';
  * second time you see it. Half of these are true and half are jokes, which is
  * the correct ratio for a loading screen.
  */
+const LOADING_TIPS = [
+  'Hold pass for a longer ball; a tap plays it short.',
+  'Hold the curl button as you shoot to bend it round the keeper.',
+  'Pull the stick back when you cross from the byline for a cut-back.',
+  'Quick tactics are on 1–5, or the flag button on touch.',
+  'Hold skill, point the stick, add sprint, curl or lob, and let go.',
+  'Settings → Broadcast turns the commentary, subtitles and pre-match show up or down.',
+  'Battery saver in Settings caps a match at 30 fps for long sessions.',
+  'A through ball\'s weight is the hold: tap to lead a runner, hold to send him.',
+  'Pass assist and shot timing assist live in Settings → Accessibility.',
+  'In the practice arena, stage a free kick wherever your player stands.',
+];
 const LOADING_LINES = [
   'Loading packages',
   'Loading models',
@@ -325,6 +338,10 @@ export function render(params) {
 export function mount(root, params) {
   const shell = root.querySelector('#gmRoot');
   const canvas = root.querySelector('#gmCanvas');
+  // v87: accessibility — a colour-vision filter on the picture, and the one-handed touch layout
+  { const st = getState().settings;
+    if (st.colorFilter && st.colorFilter !== 'none') canvas.classList.add(`cb-${st.colorFilter}`);
+    if (st.oneHanded) shell.classList.add('one-hand', `one-hand-${st.oneHandedSide === 'left' ? 'left' : 'right'}`); }
   const mode = params.mode || 'single';
   const online = params.online || null;
   /* A spectator is a guest that never speaks: the host's snapshots pour in
@@ -367,6 +384,7 @@ export function mount(root, params) {
 
   const match = new Match(params.homeId, params.awayId, {
     responsiveness: getState().settings.responsiveness ?? 0.7,   // v84 hotfix
+    assist: { shoot: getState().settings.shootAssist, pass: getState().settings.passAssist ?? 1 },
     duration: params.duration || 240,
     skill: params.skill || 1,
     // the manager holds no stick: career matches are AI against AI, influenced
@@ -1305,6 +1323,12 @@ export function mount(root, params) {
   // match still runs if a machine or driver refuses a GL context.
   let running = true;   // false once the screen is torn down; every async tail checks it
   let gl = null;
+  /* v87: the frame governor drops effects before the frame rate drops
+     (game/governor.js); battery mode caps the match at 30 fps and starts light. */
+  const battery = !!getState().settings.battery;
+  const governor = createGovernor({ start: battery ? 3 : 0, down: battery ? 45 : 38, up: battery ? 36 : 21 });
+  window.__apexGov = governor;
+  let lastDraw = 0;
   let ctx = null;
   /* The renderer — and three.js under it, 1.3 MB of it — is loaded here and
    * not at boot. Nothing before this screen draws a triangle, so the menu,
@@ -1320,6 +1344,8 @@ export function mount(root, params) {
     gl = await m.createRenderer(canvas, match, quality, useModels);
     if (!running) { try { gl.dispose(); } catch { /* torn down while the GPU device was coming up */ } gl = null; return; }
     window.__apexGL = gl; window.__apexMatch = match; window.__apexDbg = () => ({ walkout, phase: match.phase, minute: match.minute(), paused, loading, ended }); // the perf harness reads renderer.info through this
+    // v87: battery mode starts light (no post chain, frozen shadows, 80% resolution)
+    if (gl.setLoad && governor.level()) gl.setLoad(loadFor(governor.level()));
     resize();
     gl.ready.then(() => { assetsReady = true; });
   }).catch((err) => {
@@ -1368,7 +1394,8 @@ export function mount(root, params) {
    * six-second stall on one machine only is a desync with a nice animation on
    * top. So online keeps the veil — the model pop is worth hiding either way —
    * but only for as long as the assets genuinely take. */
-  const LOAD_MS = online ? 0 : 5000 + Math.random() * 2000;
+  // v87: a shorter floor now the pre-match show carries the build-up (was 5–7 s)
+  const LOAD_MS = online ? 0 : 3000 + Math.random() * 1000;
   const LOAD_CEILING = 22000;
   const loadEl = root.querySelector('#gmLoad');
   const loadFill = root.querySelector('#gmLoadFill');
@@ -1377,7 +1404,9 @@ export function mount(root, params) {
   const loadStart = performance.now();
   let assetsReady = false;                  // set by the renderer load above, either path
 
-  const lines = LOADING_LINES.slice().sort(() => Math.random() - 0.5);
+  // v87: tips between the flavour lines — something useful to read while it loads
+  const tips = LOADING_TIPS.slice().sort(() => Math.random() - 0.5);
+  const lines = LOADING_LINES.slice().sort(() => Math.random() - 0.5).flatMap((l, i) => (i % 2 === 1 && tips[i >> 1] ? [l, `Tip: ${tips[i >> 1]}`] : [l]));
   let lineIdx = 0;
   loadText.textContent = lines[0];
   const lineTimer = setInterval(() => {
@@ -1390,8 +1419,11 @@ export function mount(root, params) {
     const elapsed = now - loadStart;
     // Creeps towards 96% on the clock and only completes when the assets are
     // in, so a long download reads as "nearly there" rather than as a hang.
-    const clock = Math.min(1, elapsed / LOAD_MS);
-    const pct = assetsReady ? Math.max(clock, 0.96) : clock * 0.96;
+    // v87: the bar is the real thing — what the renderer has loaded and compiled —
+    // held back only by the short floor, so it never races ahead of either
+    const clock = LOAD_MS ? Math.min(1, elapsed / LOAD_MS) : 1;
+    const real = assetsReady ? 1 : Math.min(0.96, gl?.progress ?? 0.1);
+    const pct = Math.min(real, Math.max(clock, 0.05));
     loadFill.style.width = `${(pct * 100).toFixed(1)}%`;
     if (elapsed < LOAD_MS) return false;
     if (!assetsReady && elapsed < LOAD_CEILING) return false;
@@ -1453,7 +1485,9 @@ export function mount(root, params) {
     if (match.venue?.stadium && !online) {
       const st = match.venue.stadium;
       const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
-      announce(`Welcome to ${st.name}. Today's match: ${match.teams[0].name} against ${match.teams[1].name}. Attendance ${gate.toLocaleString()}.`);
+      const pa = `Welcome to ${st.name}. Today's match: ${match.teams[0].name} against ${match.teams[1].name}. Attendance ${gate.toLocaleString()}.`;
+      announce(pa);
+      director?.desk.caption('pa', pa);
     }
     // the clock restarts here, or the match opens having "missed" the wait
     last = performance.now();
@@ -1792,6 +1826,14 @@ export function mount(root, params) {
   let frameErrors = 0;
   const frame = (now) => {
     if (!running) return;
+    // battery mode: a 30 fps cap (the sim keeps real time; it just draws half as often)
+    if (battery && now - lastDraw < 31) { raf = requestAnimationFrame(frame); return; }
+    const took = lastDraw ? now - lastDraw : 16.7;
+    lastDraw = now;
+    if (!loading && gl?.setLoad && getState().settings.governor !== false) {
+      const lvl = governor.sample(took);
+      if (lvl !== null) gl.setLoad(loadFor(lvl));
+    }
     try {
       step(now);
     } catch (err) {
@@ -2157,7 +2199,7 @@ export function mount(root, params) {
       goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
       chant('goal', 1);
-      if (t && match.scorerName && match.scorerName !== 'Own goal') announce(`Goal for ${t.name}. ${match.scorerName}.`);
+      if (t && match.scorerName && match.scorerName !== 'Own goal') announce(`Goal for ${t.name}. ${match.scorerName}.`);   // (the desk's goal call carries the subtitle)
       if (t && director) { const lastGoal = t.scorers[t.scorers.length - 1]; director.goal({ team: match.teams.indexOf(t), scorerId: lastGoal?.id, scorerName: match.scorerName, own: !!lastGoal?.own || match.scorerName === 'Own goal' }); }
       gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
       void goalCard.offsetWidth;

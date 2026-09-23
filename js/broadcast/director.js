@@ -39,7 +39,12 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
   const slots = match.teams.map((t) => t.players.map((p) => p.ref?.id));
   let prevPhase = match.phase; let strapArmed = false; let strapCool = 0; let momT = 0; let lastStatMin = 0; let statIdx = 0; let subT = 0;
 
-  const ctxBase = () => ({ venue, derby: derby || '', weather: atmo.weather || 'clear', score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute() });
+  // every placeholder has a sensible default, so no line ever reads "the shape of will tell us"
+  const ctxBase = () => ({
+    venue, derby: derby || '', weather: atmo.weather || 'clear', score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(),
+    team: match.teams[0].name, opp: match.teams[1].name, player: 'him', goals: 1, dist: 20, poss: match.possession?.()[0] ?? 50,
+    keeper: match.teams[1].players.find((p) => p.role === 'GK')?.ref.name || 'the keeper',
+  });
   const say = (speaker, text, prio) => { if (text) desk.say(speaker, text, prio); };
   const co = (key, ctx, delay = 1800) => {
     if (Math.random() > (CO_CHANCE[key] ?? 0.15)) return;

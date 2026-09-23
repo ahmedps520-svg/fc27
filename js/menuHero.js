@@ -11,7 +11,7 @@
  */
 import { getState } from './state.js';
 import { getPlayer, WORLD } from './data/generator.js';
-import { resolveQuality } from './game/render3d.js';
+import { resolveQuality } from './game/quality.js';
 
 let active = null;
 

@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v86';
+const CACHE = 'apexxi-v87';
 
 const ASSETS = [
   './',
@@ -117,6 +117,10 @@ const ASSETS = [
   './js/streetMode.js',
   './js/game/landscape.js',
   './js/seasonal.js',
+  './js/saveSafety.js',
+  './js/components/saveConflict.js',
+  './js/game/quality.js',
+  './js/game/governor.js',
   './js/broadcast/context.js',
   './js/broadcast/director.js',
   './js/broadcast/graphics.js',
@@ -146,6 +150,7 @@ const ASSETS = [
   './js/vendor/three.module.js',
   './js/vendor/jsm/loaders/GLTFLoader.js',
   './js/vendor/jsm/utils/SkeletonUtils.js',
+  './js/vendor/jsm/utils/BufferGeometryUtils.js',
   './js/vendor/jsm/postprocessing/EffectComposer.js',
   './js/vendor/jsm/postprocessing/RenderPass.js',
   './js/vendor/jsm/postprocessing/ShaderPass.js',
@@ -157,7 +162,7 @@ const ASSETS = [
   './js/vendor/jsm/shaders/LuminosityHighPassShader.js',
   './js/vendor/jsm/shaders/OutputShader.js',
 
-  './assets/keyart.jpg',
+  './assets/keyart.webp',
 
   './icons/icon-192.png',
   './icons/icon-512.png',

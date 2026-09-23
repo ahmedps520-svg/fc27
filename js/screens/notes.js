@@ -1,6 +1,9 @@
 import { getState, update } from '../state.js';
-import { LATEST } from '../data/patchNotes.js';
 import { sfx } from '../audio.js';
+import { APP_VERSION } from '../app.js';
+// v87: the notes themselves (47 KB) load only when the card is shown; the
+// version check needs just APP_VERSION, which the release tool keeps equal to
+// the top entry of data/patchNotes.js.
 
 /**
  * The update card, shown over the menu the first time a player opens a build.
@@ -17,11 +20,11 @@ import { sfx } from '../audio.js';
 
 /** Has this build already been announced on this device? */
 export function notesPending() {
-  return getState().flags.notesSeen !== LATEST.version;
+  return getState().flags.notesSeen !== APP_VERSION;
 }
 
 function markSeen() {
-  update((s) => { s.flags.notesSeen = LATEST.version; });
+  update((s) => { s.flags.notesSeen = APP_VERSION; });
 }
 
 /** Exported so a first launch can retire the card without ever showing it —
@@ -81,15 +84,22 @@ function cardHTML(rel) {
  * @returns {() => void} cleanup, safe to call twice
  */
 export function showNotes(host) {
-  const rel = LATEST;
   const wrap = document.createElement('div');
   wrap.className = 'np-layer';
-  wrap.innerHTML = cardHTML(rel);
-  host.appendChild(wrap);
   markSeen();
-  requestAnimationFrame(() => wrap.classList.add('in'));
-
   let closed = false;
+  import('../data/patchNotes.js').then(({ LATEST }) => {
+    if (closed) return;
+    wrap.innerHTML = cardHTML(LATEST);
+    host.appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add('in'));
+    wrap.querySelector('#npClose').addEventListener('click', close);
+    wrap.querySelector('#npGo').addEventListener('click', close);
+    wrap.querySelector('#npScrim').addEventListener('click', close);
+    // the link opens a tab of its own; the card stays put behind it
+    window.addEventListener('keydown', onKey);
+  });
+
   const close = () => {
     if (closed) return;
     closed = true;
@@ -99,12 +109,5 @@ export function showNotes(host) {
     window.removeEventListener('keydown', onKey);
   };
   const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') close(); };
-
-  wrap.querySelector('#npClose').addEventListener('click', close);
-  wrap.querySelector('#npGo').addEventListener('click', close);
-  wrap.querySelector('#npScrim').addEventListener('click', close);
-  // the link opens a tab of its own; the card stays put behind it
-  window.addEventListener('keydown', onKey);
-
   return close;
 }

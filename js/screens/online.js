@@ -7,6 +7,8 @@
 import { partyHTML, mountParty } from './partyPanel.js';
 import '../net/party.js';
 import { getState, adoptCloudSave, cloudWins, save, update } from '../state.js';
+import { isRealConflict, chooseSave } from '../components/saveConflict.js';
+import { backupNow } from '../saveSafety.js';
 import { pend } from '../progress.js';
 import { WORLD, getPlayer } from '../data/generator.js';
 import * as api from '../net/api.js';
@@ -193,7 +195,13 @@ export function mountSignIn(root, after) {
       // Conflict: local progress vs whatever the account already holds. Keep the
       // fuller one rather than silently wiping a career.
       const local = getState();
-      if (cloudWins(d.save, local, { orEqual: true })) {
+      // v87: two real, different saves — the player chooses; the other is backed up
+      let useCloud;
+      if (isRealConflict(d.save, local)) {
+        useCloud = (await chooseSave(local, d.save)) === 'cloud';
+        backupNow(JSON.stringify(useCloud ? local : d.save));
+      } else useCloud = cloudWins(d.save, local, { orEqual: true });
+      if (useCloud) {
         adoptCloudSave(d.save);
       } else {
         save();                       // push the local copy up as the new truth

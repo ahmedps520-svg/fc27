@@ -1091,6 +1091,9 @@ export function createRenderer(canvas, match, quality, models = false) {
     powerPreference: 'high-performance',
   });
   const dpr = window.devicePixelRatio || 1;
+  // v87: what the frame governor has taken away (see game/governor.js)
+  let load = { post: true, shadows: true, netSteps: null, scale: 1 };
+  let lastSize = null;
   const wantRatio = potato
     ? Math.min(0.8, dpr)                     // sub-native and stretched: the potato win
     : cinema
@@ -2960,7 +2963,9 @@ export function createRenderer(canvas, match, quality, models = false) {
    * match used to start on the built-in figures and swap to the scanned ones
    * mid-play, so the first ten seconds looked like a different, worse game. */
   let markReady;
-  const ready = new Promise((res) => { markReady = res; });
+  // v87: real progress for the loading bar — scene built, models in, shaders compiled
+  let progress = 0.35;
+  const ready = new Promise((res) => { markReady = () => { progress = 1; res(); }; });
 
   /* Compile every shader before the match is allowed to start.
    *
@@ -2983,6 +2988,7 @@ export function createRenderer(canvas, match, quality, models = false) {
    * promise, so this is free: the wait was there anyway.
    */
   const warmUp = () => {
+    progress = Math.max(progress, 0.7);
     try {
       const done = renderer.compileAsync
         ? renderer.compileAsync(scene, camera)
@@ -3335,6 +3341,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     get info() { return renderer.info; },
     /** The scene graph, for the perf harness to switch parts off and time the rest. */
     get scene() { return scene; },
+    /** 0–1: how much of what the loading screen waits on has arrived. */
+    get progress() { return progress; },
     get engine() { return `three.js r${THREE.REVISION}`; },
     resize(w, h) {
       /* Recompute the ratio, because the budget is a function of the size and
@@ -3345,7 +3353,8 @@ export function createRenderer(canvas, match, quality, models = false) {
        * The composer has to be told separately: it captured the ratio at
        * construction and multiplies its own targets by that copy, so leaving it
        * behind would resize the canvas and not the buffers it draws into. */
-      const r = safeRatio(renderer, wantRatio, { w, h });
+      lastSize = { w, h };
+      const r = safeRatio(renderer, wantRatio, { w, h }) * load.scale;
       if (r !== renderer.getPixelRatio()) {
         renderer.setPixelRatio(r);
         composer?.setPixelRatio(r);
@@ -3365,6 +3374,15 @@ export function createRenderer(canvas, match, quality, models = false) {
       afterimage?.prev.setSize(Math.round(w * px), Math.round(h * px));
       reflect?.rt.setSize(Math.round(w * px * 0.5), Math.round(h * px * 0.5));
     },
+    /** v87: the frame governor's knobs (game/governor.js loadFor). */
+    setLoad(next) {
+      const scaleChanged = next.scale !== load.scale;
+      load = { ...load, ...next };
+      renderer.shadowMap.autoUpdate = load.shadows;
+      if (!load.shadows) renderer.shadowMap.needsUpdate = true;   // one last map, then frozen
+      if (scaleChanged && lastSize) this.resize(lastSize.w, lastSize.h);
+    },
+    get load() { return { ...load }; },
     /** Replay mode: depth of field and motion blur on the post chain. */
     setReplay(on) {
       replayMode = on ? 1 : 0;
@@ -3541,7 +3559,17 @@ export function createRenderer(canvas, match, quality, models = false) {
               rig.mixer.stopAllAction(); scene.remove(rig.root);
               rig = modelRig(p, t, rig.index); scene.add(rig.root); modelRigs.set(p, rig);
             }
-            if (rig) { poseRig(rig, p, dt); rig.root.position.z += surfaceAt(p.x, p.y); }
+            if (rig) {
+              // v87: animation LOD — distance from the lens, and whether he is in front of it at all
+              const dx = p.x - cam.x; const dy = p.y - cam.y;
+              const d2 = dx * dx + dy * dy;
+              const ahead = dx * (cam.tx - cam.x) + dy * (cam.ty - cam.y) > 0;
+              let every = !ahead ? 4 : d2 > 70 * 70 ? 3 : d2 > 45 * 45 ? 2 : 1;
+              if (!load.shadows && every > 1) every += 1;          // the governor is already shedding work
+              if (replayMode) every = 1;                           // a replay is the one time everything is looked at
+              poseRig(rig, p, dt, every);
+              rig.root.position.z += surfaceAt(p.x, p.y);
+            }
             continue;
           }
           const rig = rigs.get(p);
@@ -3629,7 +3657,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       const nd = Math.min(dt || 1 / 60, 1 / 30);
       for (const n of nets) {
-        n.cloth.step(nd, potato ? 1 : quality === 'low' ? 2 : ultra ? 6 : 3);
+        n.cloth.step(nd, load.netSteps || (potato ? 1 : quality === 'low' ? 2 : ultra ? 6 : 3));
         n.geo.attributes.position.needsUpdate = true;
       }
 
@@ -3649,7 +3677,7 @@ export function createRenderer(canvas, match, quality, models = false) {
          passes and reset here, once a frame, so the counters mean the frame. */
       renderer.info.autoReset = false;
       renderer.info.reset();
-      if (reflect) {
+      if (reflect && load.post) {
         // the mirrored view: same lens, position and aim flipped in z
         const mc = reflect.mirrorCam;
         mc.fov = camera.fov; mc.aspect = camera.aspect; mc.near = camera.near; mc.far = camera.far;
@@ -3666,7 +3694,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         renderer.setRenderTarget(null);
         turf.visible = true; if (rainMesh) rainMesh.visible = true;
       }
-      if (composer) composer.render();
+      if (composer && load.post) composer.render();
       else renderer.render(scene, camera);
     },
     dispose() {
@@ -3678,11 +3706,38 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       modelRigs.clear();
       canvas.removeEventListener('webglcontextlost', onLost);
+      canvas.removeEventListener('webglcontextrestored', onRestored);
+      /* v87: the leak. Geometries, materials and kit textures shared at module
+       * level (the body parts, the kit cache) are handed to every match's
+       * renderer, and three.js hangs a 'dispose' listener on each for each
+       * renderer that uploads it — so a shared geometry kept every old
+       * renderer, its context, canvas and whole scene alive: about 2 MB a
+       * match. Disposing everything the scene used fires those listeners and
+       * lets the old renderer go; the shared pieces simply upload again next
+       * match. */
+      try {
+        const geos = new Set(); const mats = new Set(); const texs = new Set();
+        const takeTex = (v) => { if (v && v.isTexture) texs.add(v); };
+        scene.traverse((o) => {
+          if (o.geometry) geos.add(o.geometry);
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            if (!m) continue;
+            mats.add(m);
+            for (const v of Object.values(m)) takeTex(v);
+            if (m.uniforms) for (const u of Object.values(m.uniforms)) takeTex(u?.value);
+          }
+        });
+        takeTex(scene.background); takeTex(scene.environment);
+        for (const g of geos) g.dispose();
+        for (const m of mats) m.dispose();
+        for (const t of texs) t.dispose();
+      } catch { /* a half-built scene still goes */ }
       composer?.dispose?.();
       afterimage?.prev.dispose();
       reflect?.rt.dispose();
       pmrem?.dispose();
       renderer.dispose();
+      try { renderer.forceContextLoss(); } catch { /* already lost */ }
     },
   };
 }

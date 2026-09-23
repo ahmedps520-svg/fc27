@@ -144,3 +144,13 @@ test('the playlist and the two voices', () => {
   const ar = pickVoices(vs, 'ar'); assert.equal(ar.pbp.name, 'C'); assert.equal(ar.co.name, 'C');
   assert.deepEqual(pickVoices([], 'ar'), { pbp: null, co: null });
 });
+
+test('no commentary line is left with a hole in it when the context is the default one', () => {
+  const base = { venue: 'V', derby: 'the A–B derby', weather: 'rain', score: '1–0', minute: 10, team: 'A', opp: 'B', player: 'him', goals: 1, dist: 20, poss: 50, keeper: 'K', tactic: 'a shape' };
+  for (const bank of [COMMENTARY, CO, CONTEXT, AR.pbp, AR.co, AR.context]) {
+    for (const [key, pool] of Object.entries(bank)) for (let i = 0; i < pool.length; i++) {
+      const line = pool[i].replace(/\{(\w+)\}/g, (_, k) => base[k] ?? '');
+      assert.ok(!/\s{2,}|\s[.,!?]|of will|for\s*$/.test(line.replace(/\s+—/g, ' —')) || /\.\.\./.test(line), `${key}[${i}]: "${line}"`);
+    }
+  }
+});
