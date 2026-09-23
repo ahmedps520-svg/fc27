@@ -1,6 +1,20 @@
 /* Unified input: DualSense / any standard gamepad, keyboard, and touch. */
 
 const DEAD = 0.22;
+/* v90: stick tuning from Settings → Controller: the deadzone (how far the
+   stick moves before it counts) and the response curve (below 1 is quicker
+   off the centre, above 1 gives finer control near it). */
+let PAD_DEAD = DEAD; let PAD_CURVE = 1;
+export function setPadTuning({ deadzone = DEAD, curve = 1 } = {}) {
+  PAD_DEAD = Math.max(0.05, Math.min(0.45, Number(deadzone) || DEAD));
+  PAD_CURVE = Math.max(0.5, Math.min(2, Number(curve) || 1));
+}
+const shape = (ax, ay) => {
+  const am = Math.hypot(ax, ay);
+  if (am <= PAD_DEAD) return [0, 0];
+  const t = Math.pow(Math.min(1, (am - PAD_DEAD) / (1 - PAD_DEAD)), PAD_CURVE);
+  return [(ax / am) * t, (ay / am) * t];
+};
 
 // A binding may fire more than one action — R1 switches players off the ball and
 // doubles as the curl modifier while shooting.
@@ -9,6 +23,7 @@ const KEYSETS = {
   primary: {
     Space: 'pass', KeyJ: 'cross', KeyK: 'shoot', KeyL: 'through', KeyU: 'lob', KeyH: 'skill',
     KeyQ: 'switch', KeyE: ['switch', 'curl'], KeyI: 'curl',
+    KeyG: 'jockey', KeyF: 'press',
     ShiftLeft: 'sprint',
     Escape: 'pause', KeyP: 'pause',
   },
@@ -32,11 +47,12 @@ const MOVE_SETS = {
 
 // Standard gamepad mapping — on a DualSense: 0 ✕, 1 ○, 2 □, 3 △, 4 L1, 5 R1, 6 L2, 7 R2, 9 Options.
 const PAD_ACTIONS = {
-  0: 'pass', 1: 'shoot', 2: 'cross', 3: 'through',
-  4: 'switch', 5: ['switch', 'curl'], 6: 'skill', 7: 'sprint', 8: 'lob', 9: 'pause',
+  0: 'pass', 1: 'shoot', 2: 'cross', 3: ['through', 'press'],
+  // LT: skill combos with the ball, jockey without it (v90); Y held without it is the second-man press
+  4: 'switch', 5: ['switch', 'curl'], 6: ['skill', 'jockey'], 7: 'sprint', 8: 'lob', 9: 'pause',
 };
 
-export const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'lob', 'skill', 'switch', 'curl', 'sprint', 'pause'];
+export const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'lob', 'skill', 'switch', 'curl', 'sprint', 'pause', 'jockey', 'press'];
 
 /* ---------------------------------------------------------------- *
  * v82: rebinding and prompts
@@ -97,7 +113,7 @@ const PAD_GLYPH = {
 };
 export const padGlyph = (i, kind = PAD_KIND) => PAD_GLYPH[kind][i] ?? `B${i}`;
 export const keyLabel = (code) => (code || '').replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Num ').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'R-Shift').replace('Space', 'Space').replace('Escape', 'Esc');
-const TOUCH_WORD = { pass: 'PASS', shoot: 'SHOOT', cross: 'CROSS', through: 'THROUGH', lob: 'LOB', skill: 'SKILL', switch: 'SWITCH', curl: 'CURL', sprint: 'SPRINT', pause: '❚❚' };
+const TOUCH_WORD = { pass: 'PASS', shoot: 'SHOOT', cross: 'CROSS', through: 'THROUGH', lob: 'LOB', skill: 'SKILL', switch: 'SWITCH', curl: 'CURL', sprint: 'SPRINT', pause: '❚❚', jockey: 'JOCKEY', press: 'PRESS' };
 /** What to press for an action on the device in use: "K", "○", or "SHOOT". */
 export function promptFor(action, device = LAST) {
   const b = bindingOf(action);
@@ -171,12 +187,17 @@ export class Input {
       const ax = this.pad.axes[0] || 0;
       const ay = this.pad.axes[1] || 0;
       // v84: a radial deadzone, rescaled — just past it is a gentle push, not a lurch from nothing to 0.22
-      const am = Math.hypot(ax, ay);
-      if (am > DEAD) { const k = Math.min(1, (am - DEAD) / (1 - DEAD)) / am; x += ax * k; y += ay * k; }
-      if (this.pad.buttons[12]?.pressed) y -= 1;
-      if (this.pad.buttons[13]?.pressed) y += 1;
-      if (this.pad.buttons[14]?.pressed) x -= 1;
-      if (this.pad.buttons[15]?.pressed) x += 1;
+      const [sx, sy] = shape(ax, ay); x += sx; y += sy;
+      /* v90: the D-pad is quick tactics in a match (play.js reads it); it
+         only moves the player on a pad that has no stick at all */
+      if ((this.pad.axes?.length || 0) < 2) {
+        if (this.pad.buttons[12]?.pressed) y -= 1;
+        if (this.pad.buttons[13]?.pressed) y += 1;
+        if (this.pad.buttons[14]?.pressed) x -= 1;
+        if (this.pad.buttons[15]?.pressed) x += 1;
+      }
+      const [rx, ry] = shape(this.pad.axes[2] || 0, this.pad.axes[3] || 0);
+      this.rvec = { x: rx, y: ry };
     }
     x += this.touchVec.x;
     y += this.touchVec.y;
@@ -215,6 +236,19 @@ export class Input {
   }
 
   axis() { return this.vec; }
+  /** v90: the right stick (pads only). */
+  rstick() { return this.pad ? (this.rvec || { x: 0, y: 0 }) : { x: 0, y: 0 }; }
+  /** v90: how hard an action's button is pressed, 0–1 (1 for keys, taps and digital buttons). */
+  value(a) {
+    if (!this.pad) return this.now.has(a) ? 1 : 0;
+    let v = 0;
+    for (const [i, act] of Object.entries(this.padMap)) if ((Array.isArray(act) ? act : [act]).includes(a)) v = Math.max(v, this.pad.buttons[i]?.value ?? (this.pad.buttons[i]?.pressed ? 1 : 0));
+    return this.now.has(a) ? Math.max(v, 0.001) : 0;
+  }
+  /** The pad itself, for rumble (v90). */
+  rumble(ms, strong = 0.6, weak = 0.4) {
+    try { this.pad?.vibrationActuator?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: weak }); } catch { /* not supported */ }
+  }
   moving() { return Math.hypot(this.vec.x, this.vec.y) > 0.14; }
   held(a) { return this.now.has(a); }
   pressed(a) { return this.now.has(a) && !this.was.has(a); }
@@ -261,4 +295,6 @@ export class SimLatch {
   released(a) { return this.up.has(a); }
   heldTime(a) { return this.inner.heldTime?.(a) ?? 0; }
   takeGesture() { return this.inner.takeGesture?.() ?? null; }
+  rstick() { return this.inner.rstick?.() || { x: 0, y: 0 }; }
+  value(a) { return this.inner.value?.(a) ?? (this.held(a) ? 1 : 0); }
 }

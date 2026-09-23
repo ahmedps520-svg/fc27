@@ -218,6 +218,33 @@ if (!process.argv.includes('--explore')) {
     const after = await page.$eval('#acctName', (e) => e.value).catch(() => before);
     return after.length === before.length + 2 ? '' : `typed "${before}" → "${after}"`;
   });
+  await feature('rebinding a button with the pad takes the next press, not the A that chose it', async () => {
+    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await focusOnly('[data-bind=pad:lob]'))) return 'could not focus the Lob pad binding';
+    await press(A); await page.waitForTimeout(250);
+    await press(3); await page.waitForTimeout(700);             // Y
+    const bound = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).settings?.controls?.pad?.lob);
+    await page.evaluate(async () => { const { update } = await import('/js/state.js'); update((st) => { if (st.settings.controls) st.settings.controls.pad = {}; }); (await import('/js/game/input.js')).setBindings({ keys: {}, pad: {} }); });
+    return bound === 3 ? '' : `Lob was bound to ${bound} (A is 0)`;
+  });
+  await feature('in a match: D-pad up raises the quick tactic, and unplugging the pad pauses', async () => {
+    if (!(await via(['go:quick', '#kickOff']))) return 'could not start a match from Quick Match';
+    await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase, null, { timeout: 120000 });
+    await page.waitForTimeout(800);
+    const tac = () => page.evaluate(() => { const m = window.__apexMatch; return m.teams[m.controllers[0].team].tactics.quick || 'balanced'; });
+    const t0 = await tac();
+    // held across several frames: software GL draws a match at a frame or two a second
+    await press(DPAD.up, 1600); await page.waitForTimeout(1200);
+    const t1 = await tac();
+    if (t1 === t0) return `the tactic stayed ${t0}`;
+    await page.evaluate(() => { const p = window.__simPad; p.connected = false; window.dispatchEvent(Object.assign(new Event('gamepaddisconnected'), { gamepad: p })); });
+    await page.waitForTimeout(500);
+    const paused = await page.evaluate(() => document.getElementById('gmOverlay')?.classList.contains('is-pause'));
+    await page.evaluate(() => { window.__simPad.connected = true; });
+    await page.evaluate(async () => { (await import('/js/app.js')).navigate('menu'); });
+    await page.waitForTimeout(500);
+    return paused ? '' : `unplugging did not pause (tactic went ${t0} → ${t1})`;
+  });
   await feature('B closes a modal (the release notes)', async () => {
     await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('apexxi.save.v1')); s.flags.notesSeen = 'v1'; localStorage.setItem('apexxi.save.v1', JSON.stringify(s)); });
     await page.goto(`${server.url}/`); await page.waitForSelector('#startBtn'); await page.waitForTimeout(400);

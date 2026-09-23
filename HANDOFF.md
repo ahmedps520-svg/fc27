@@ -15,6 +15,57 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v90 — R15 controller support, part 2: the in-match scheme
+None of it is reachable by the CPU (the sweep is identical); it's all in
+`handleSeat` and the input layer.
+- **Defending** (sim.js):
+  - `tackle(p, { slide })`: the slide reaches 4.3 m (standing 3.1), lunges
+    at 2.05× top speed, keeps him down for 0.8 s, and multiplies the foul
+    chance by 1.3. Called with no options it is byte-for-byte the CPU's
+    tackle, dice included.
+  - Buttons: shoot = slide, pass or cross = standing tackle. `jockey` (held)
+    means 0.62× speed, facing the carrier, no lunge. `press` (held) sets
+    `c.press2`; `think()` sends `pressMate(side)`, the nearest free
+    non-person team-mate, at the carrier.
+- **Right stick** (`input.rstick()`): a flick (from under 0.35 to over 0.72)
+  is `skillMove` with the ball, or `switchToward` without it (bearing first,
+  then distance).
+- **Pad map**: Y = through / press; LT = skill / jockey. On the keyboard,
+  G = jockey and F = press.
+- **D-pad**: no longer movement on a pad with axes. `play.js dpadTactics()`
+  steps `QUICK_TACTICS`: up more attacking, down more defensive, right
+  all-out attack, left park the bus.
+- **Stick tuning** `setPadTuning({ deadzone, curve })`: a radial deadzone,
+  then the power curve. Settings `padDeadzone` (0.22) and `padCurve` (1).
+- **Analogue power**: charge rate × (0.6 + 0.4 × `input.value(a)`). It is 1
+  on keys and digital buttons, so nothing changes unless a button reports
+  pressure.
+- **Rumble**: `input.rumble(ms, strong, weak)` through `vibrationActuator`.
+  A goal or post goes to every pad; a shot, slide, foul, save, header,
+  volley or bicycle only to the seat whose player it was. Settings `rumble`.
+- **Hot-plug**: `gamepaddisconnected` pauses an offline match (toast);
+  `gamepadconnected` is announced.
+- **Settings**: a "Controller layout" panel generated from the live bindings
+  in the pad's own glyphs, plus deadzone and response sliders and a vibration
+  switch.
+- **Remap fix**: the pad capture now waits for every button to come up (the
+  A that chose the row used to bind itself). The menu driver stands down
+  during capture (`body.pad-capture`) but keeps tracking held buttons.
+- **Touch** while defending: SLIDE (shoot slot), JOCKEY (skill), PRESS
+  (cross). A new hint lists the defending set.
+- **Bug found by the new test, my own**: `dpadTactics` updated its "was held"
+  copy before comparing. Fixed before release.
+- **Test flake fixed**: `tests/smoke/server.mjs` picked random ports in
+  8400–8799. Parallel unit files sometimes collided and a test talked to
+  another file's server ("fetch failed", a different test each run). It now
+  takes an OS-assigned free port and refuses to talk to a server that isn't
+  its own child.
+
+Tests: `tests/unit/controller.test.mjs` (6) covers slide reach, button roles,
+jockey speed and facing, press, right-stick switch and skill, D-pad, deadzone,
+curve and right stick. `pad-reach.mjs` adds rebinding by pad and an in-match
+check (D-pad raises the tactic, unplugging pauses).
+
 ### v89 — R15 controller support, part 1: every screen by pad
 `js/padMenu.js` is the front-end driver.
 - **What the ring moves over.** It now includes inputs, sliders and every
