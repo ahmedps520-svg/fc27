@@ -58,7 +58,15 @@ Match.prototype.cross = function wrappedCross(p, aim) {
   return realCross.call(this, p, aim);
 };
 
-const total = { goals: 0, shots: 0, onTarget: 0, poss: 0 };
+const total = { goals: 0, shots: 0, onTarget: 0, poss: 0, fouls: 0, yellows: 0, corner: 0, throwin: 0, goalkick: 0, freekick: 0, penalty: 0, offside: 0 };
+/* v79: every restart, counted where the sim rules on it. */
+const realMark = Match.prototype.markStoppage;
+Match.prototype.markStoppage = function wrappedMark(kind) {
+  if (kind in total) total[kind] += 1;
+  return realMark.call(this, kind);
+};
+const realPen = Match.prototype.awardPenalty;
+Match.prototype.awardPenalty = function wrappedPen(...a) { total.penalty += 1; return realPen.apply(this, a); };
 /* The original ten clubs, always. v68 grew the world to twenty; the sweep
  * keeps measuring the same fixtures with the same squads so its goldens mean
  * the same thing before and after — the new league is content, not balance. */
@@ -79,6 +87,9 @@ for (let i = 0; i < N; i++) {
   total.shots += m.teams[0].shots + m.teams[1].shots;
   total.onTarget += m.teams[0].onTarget + m.teams[1].onTarget;
   total.poss += m.possession()[0];
+  total.fouls += m.fouls[0] + m.fouls[1];
+  total.yellows += m.bookings.length;
+  total.offside += m.offsides ? m.offsides[0] + m.offsides[1] : 0;
 }
 
 const per = (v) => (v / N).toFixed(2);
@@ -89,3 +100,18 @@ console.log(`  on target    ${per(total.onTarget)}`);
 console.log(`  conversion   ${((total.goals / total.shots) * 100).toFixed(1)}%`);
 console.log(`  home poss    ${per(total.poss)}%`);
 console.log(`  crosses      ${per(crosses)}        (${per(crossesWithTarget)} with a man in the box)`);
+/* Restarts and discipline, beside what a real match of the same number of
+ * shots would have: real top-flight football averages about 25 shots, 22
+ * fouls, 10 corners, 44 throw-ins, 17 goal kicks, 4 offsides and 3.8 yellows
+ * a match, so each line shows the real count scaled to this sweep's shots. */
+const scale = (total.shots / N) / 25;
+const vs = (k, real) => `${per(total[k]).padEnd(7)} (real, scaled to these shots: ${(real * scale).toFixed(1)})`;
+console.log(`  on target %  ${((total.onTarget / total.shots) * 100).toFixed(1)}%       (real ~34%)`);
+console.log(`  fouls        ${vs('fouls', 22)}`);
+console.log(`  yellows      ${vs('yellows', 3.8)}`);
+console.log(`  corners      ${vs('corner', 10)}`);
+console.log(`  throw-ins    ${vs('throwin', 44)}`);
+console.log(`  goal kicks   ${vs('goalkick', 17)}`);
+console.log(`  offsides     ${vs('offside', 4)}`);
+console.log(`  free kicks   ${per(total.freekick)}`);
+console.log(`  penalties    ${per(total.penalty)}`);

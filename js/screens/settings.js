@@ -1,4 +1,5 @@
 import { getState, update, resetAll } from '../state.js';
+import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
@@ -234,8 +235,14 @@ export function render() {
         ${[['✕ / Space', 'Pass — hold for a longer ball'], ['◯ / K', 'Shoot — hold for power'],
            ['◯+R1 / K+I', 'Curl it up and bend'], ['□ / J', 'Cross'],
            ['△ / L', 'Through ball'], ['Any of the above', 'Tackle — one committed lunge, off the ball'],
-           ['L1 · R1 / Q', 'Switch player'], ['R2 / Shift', 'Sprint'], ['Options / Esc', 'Pause']]
+           ['L1 · R1 / Q', 'Switch player'], ['R2 / Shift', 'Sprint'], ['Options / Esc', 'Pause'],
+           ['□ + stick back', 'Cut-back from the byline'], ['□ + R1 / J+I', 'Driven cross'], ['1 – 5 / ⚑', 'Quick tactics'],
+           ['L2 / H (hold)', 'Skill move — point the stick, add a modifier, let go']]
           .map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('')}
+      </div>
+      <h3 class="skills-head">Skill moves <small>stars on each card show which a player can do · on touch, swipe the SKILL button (long swipe = sprint, curved = curl, with SPRINT held = lob)</small></h3>
+      <div class="ctrl-grid skills-grid">
+        ${skillList().map((m) => `<div><b>${'★'.repeat(m.stars)} ${m.name}</b><span>${m.combo}</span></div>`).join('')}
       </div>
       <p class="disclaimer">${WORLD.clubs.length} clubs · ${WORLD.players.length} players.
         Every player card names a real footballer with their real nationality, and Career

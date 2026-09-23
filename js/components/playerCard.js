@@ -1,4 +1,5 @@
 import { RARITY } from '../data/pools.js';
+import { traitHTML, skillStars } from '../data/traits.js';
 import { getClub } from '../data/generator.js';
 import { crestSVG, flagSVG } from './crest.js';
 import { faceSVG } from './face.js';
@@ -96,6 +97,7 @@ export function playerCard(p, opts = {}) {
         <div class="pc-rating">
           <b class="pc-ovr">${p.overall}</b>
           <span class="pc-pos">${p.position}</span>
+          ${size === 'mini' ? '' : `<span class="pc-stars" title="Skill moves">${'★'.repeat(skillStars(p))}</span>`}
         </div>
         <div class="pc-badges">
           ${crest}
@@ -104,6 +106,7 @@ export function playerCard(p, opts = {}) {
       </header>
       <div class="pc-portrait">${faceSVG(p, size === 'full' ? 96 : size === 'mini' ? 52 : size === 'showcase' ? 110 : 66, r.color)}</div>
       <div class="pc-name">${p.name}</div>
+      ${size === 'mini' ? '' : `<div class="pc-traits">${traitHTML(p, { max: size === 'full' || size === 'showcase' ? 3 : 1 })}</div>`}
       ${size === 'full' ? `<div class="pc-radar-wrap">${radarSVG(p.stats, 168)}</div>` : ''}
       ${size === 'mini' ? '' : size === 'showcase' ? statRow(p.stats) : statBars(p.stats)}
       <footer class="pc-foot">

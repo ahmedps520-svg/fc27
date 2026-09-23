@@ -15,6 +15,67 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v79 — gameplay feel and AI (Round 9)
+**Sweep re-baselined deliberately** — this round rebuilds the football. The
+sweep now also reports restarts and discipline beside real top-flight
+averages scaled to the sweep's shots (real: 25 shots, 22 fouls, 10 corners,
+44 throw-ins, 17 goal kicks, 4 offsides, 3.8 yellows a match):
+
+| per match (seed 12345 / 777) | v78 | v79 | real, scaled |
+|---|---|---|---|
+| goals | 2.12 / 2.05 | 1.95 / 2.03 | — |
+| shots | 12.95 | 11.83 / 11.62 | — |
+| on target | 76 % | 45 % | ~34 % |
+| fouls | 1.85 | 4.73 | 10.4 |
+| yellows | 0.28 | 1.30 | 1.8 |
+| corners | 1.47 | 2.08 | 4.7 |
+| throw-ins | 0.25 | 8.87 | 20.8 |
+| goal kicks | 0.53 | 3.78 | 8.0 |
+| offsides | — | 0.60 | 1.9 |
+
+Every restart is now between ~30 % and ~75 % of the real rate (it was
+1–30 %); the rest is the AI still keeping the ball on the grass more than
+people do. Sim cost 0.05 → 0.07 ms a step.
+- **Momentum** (`drive`): per-player `accel`, `turn` (rad/s, far less at a
+  sprint), a plant-and-brake (`p.planted`) when asked to reverse above 70 %
+  speed; keepers exempt. **Duels** (`separate` → `duel`): opponents share
+  the separation push by `strength`; a contested ball can knock the weaker
+  man off it; a push from behind or a trip on a beaten defender is a foul;
+  pinned on the touchline the ball often goes out off one of them.
+- **Ball**: first touch (`control`, speed, height, a man close) can be
+  heavy → loose ball + a press trigger; driven/ground passes, through-ball
+  lead 5–17 m by hold, pressure and distance error, Pinged Pass; shots aim
+  at a corner (CPU), dip (power > 0.75) and knuckle (Cannon / long range);
+  spread ×1.5; crosses `floated | driven | cutback` (CPU picks, human: stick
+  back = cut-back, curl held = driven) with crossing error and blocks;
+  volleys (0.42–0.85 m), timed headers (Aerial Threat), bicycle kicks
+  (4★+); defenders head crosses clear, sometimes behind; clearances; won
+  tackles poke it loose 55 %; keepers catch less, parries tipped round go
+  behind (`noTouch` 0.6); dive reach and speed by rating.
+- **Offside**: `offsideLine`, `isOffside`, `noteOffside` on every pass and
+  cross; the next receiver in the watch set is flagged → indirect free
+  kick; `offsides[]`. AI forwards keep level (`onsideX`) except a third of
+  runs that go early; the back line holds flat when defending.
+- **Bugs fixed**: a dribble could carry the ball over the goal line (owned
+  balls were never bounds-checked) and a shot from there was released
+  inside the net and given; throw-ins were taken from outside the line and
+  counted twice; a goal from a cross was not "on target".
+- **Traits** (`js/data/traits.js`): 12 original traits dealt from the card
+  (max 3, elite "+" only on 86+), skill stars 1–5; sim reads `p.tr`.
+- **Tactics** (`js/game/tactics.js`): defensive styles, build-ups, width,
+  line, 15 roles with in/out-of-possession offsets and behaviour flags
+  (overlap, runs, target…), five quick tactics, `adaptFor` (half-time and
+  last fifth: all-out / see it out with `tempo: 'slow'` — keeper holds,
+  corner-flag shielding, slower restarts). `decisionQuality` = difficulty.
+  Pressing triggers on heavy touches and back passes; third-man runs.
+  Pause → Team Management has all of it; `setQuickTactic`, keys 1–5, ⚑.
+  Ultimate XI saves `club.tactics`; roles validated against slot role.
+- **Skill moves** (`js/game/skills.js`): 13 moves, star-gated, picked by
+  stick direction relative to facing + modifier held during a skill hold
+  (fires on release; the lob pass is swallowed); touch: swipe the SKILL
+  button (`input.setGesture`). Settings → Controls lists them.
+- **Tests**: `tests/unit/gameplay.test.mjs`; sweep reports restarts.
+
 ### v78 — grounds and pitch realism (Round 8)
 **Sweep untouched** (no sim change): byte-identical on 12345 and 777.
 - **Ground data** (`js/data/grounds.js`, new): `groundClass` by capacity —
