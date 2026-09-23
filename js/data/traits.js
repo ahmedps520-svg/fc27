@@ -32,6 +32,14 @@ export const TRAITS = {
 export function traitsOf(ref) {
   if (!ref) return [];
   if (ref._traits) return ref._traits;
+  // v80: an evolution can teach a trait — it goes first, and never twice
+  if (ref.extraTraits?.length) {
+    const base = traitsOf({ ...ref, extraTraits: null });
+    const extra = ref.extraTraits.filter((id) => TRAITS[id] && !base.some((t) => t.id === id)).map((id) => ({ id, elite: false }));
+    const res = [...extra, ...base].slice(0, 4);
+    try { Object.defineProperty(ref, '_traits', { value: res, enumerable: false, configurable: true }); } catch { /* frozen */ }
+    return res;
+  }
   const s = ref.stats || {};
   const pos = ref.position || 'CM';
   const ovr = ref.overall || 60;

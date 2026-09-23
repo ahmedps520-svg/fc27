@@ -18,6 +18,42 @@
  */
 export const RELEASES = [
   {
+    version: 'v80',
+    date: '2026-09-23',
+    tag: 'Ultimate XI',
+    title: 'Promo cards, Evolutions, Quickfire Fives, a transfer market and a squad hub',
+    lede: 'Ultimate XI grows up: In-Forms and a Team of the Week from the world\'s own matches, three weekly campaigns, Icons in three tiers, '
+        + 'cards you evolve by playing, five-a-side on a small pitch, a week of curated squads to beat, a real market, a binder of sets, '
+        + 'daily and weekly tasks with a club level — and a squad hub that builds your team for you. Every bit of it earned by playing.',
+    entries: [
+      {
+        head: 'Cards',
+        summary: 'In-Form cards for the players who shone in the world\'s round of matches, a Team of the Week, and a weekly campaign — Future Stars, Heroes of the Desert or Winter Legends — each with its own animated design. Icons now come in Early, Peak and Prime.',
+        detail: 'Promo cards are versions of a real card: you can own both, but only field one of them. The campaign, In-Form and Legends Vault packs promise their promo slot and show its odds on the pack.',
+      },
+      {
+        head: 'Evolutions',
+        summary: 'Six tracks — Pace Merchant, Engine Room Graduate, Wall Builder, Clinical Upgrade, Last Line and Rising Talent. Pick a card that fits, play with him, and each stage adds stats, sometimes a signature trait, and a stage of glow to the card. Three can run at once.',
+        detail: 'Stages count goals, assists, wins, clean sheets and appearances in any Ultimate XI match: Division, Fives, Squad Clash or the Weekend League.',
+      },
+      {
+        head: 'New ways to play',
+        summary: 'Quickfire Fives: your keeper and four outfielders, two and a half minutes on a small pitch, paid on the spot. Squad Clash: twelve curated squads a week at the difficulty you choose, ranked and paid weekly. Division wins now pay weekly too, and the Weekend League asks for ten qualification points first.',
+        detail: 'Qualification points: a Division or Fives win is one, a Squad Clash win two. Once you have played a weekend match you stay in for that weekend.',
+      },
+      {
+        head: 'Market and binder',
+        summary: 'A transfer market with filters, buy-now and bids, a price range on every card so nothing trades at a silly price, and a fourteen-day price graph. The binder keeps every card you have ever owned and pays for finished sets.',
+        detail: 'The market is offline and honest: the other side is the market itself, refreshed every four hours. Sales pay 5% tax. There is no real money anywhere in the game.',
+      },
+      {
+        head: 'Squad hub and objectives',
+        summary: 'Chemistry lines between neighbours on the pitch, a manager whose nation or league adds chemistry, a rating and chemistry breakdown, five saved squads and a Build me a squad button. Three daily and five weekly tasks, and a club level that pays at every level up to 100.',
+        detail: 'On the watch: Quickfire Fives on the wrist, your Fives record, and the market price of your best card.',
+      },
+    ],
+  },
+  {
     version: 'v79',
     date: '2026-09-23',
     tag: 'Gameplay',

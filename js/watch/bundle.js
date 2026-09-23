@@ -9756,8 +9756,150 @@
       }
     return players;
   }
-  var WORLD = buildWorld(), getPlayer = (id) => WORLD.playersById[id], getClub = (id) => id ? WORLD.clubsById[id] : null;
+  var WORLD = buildWorld(), variantResolver = null;
+  function setVariantResolver(fn) {
+    variantResolver = fn;
+  }
+  var getPlayer = (id) => WORLD.playersById[id] || (variantResolver && id ? variantResolver(id) : void 0), getClub = (id) => id ? WORLD.clubsById[id] : null;
   var rosterOf = (clubId) => WORLD.clubsById[clubId].roster.map(getPlayer);
+
+  // js/data/promos.js
+  var WEEK = 6048e5, weekNow = (now = Date.now()) => Math.floor(now / WEEK), DESERT = ["Saudi Arabia", "Qatar", "United Arab Emirates", "Iraq", "Egypt", "Morocco", "Algeria", "Tunisia", "Jordan", "Oman", "Kuwait", "Bahrain", "Libya"], CAMPAIGNS = [
+    {
+      id: "future",
+      name: "Future Stars",
+      blurb: "The best of the next generation, quicker and trickier.",
+      colors: ["#19e3ff", "#6a1bff"],
+      eligible: (p) => p.age <= 21 && p.overall >= 70 && p.position !== "GK",
+      boost: 6,
+      stats: { pace: 6, dribbling: 6, shooting: 4, passing: 3, physical: 2, defending: 2 }
+    },
+    {
+      id: "desert",
+      name: "Heroes of the Desert",
+      blurb: "The Gulf and North Africa's finest, boosted hard.",
+      colors: ["#f0b048", "#6b2b0e"],
+      eligible: (p) => DESERT.includes(p.nation) && p.overall >= 66,
+      boost: 8,
+      stats: { pace: 5, dribbling: 5, shooting: 6, passing: 5, physical: 6, defending: 5 }
+    },
+    {
+      id: "winter",
+      name: "Winter Legends",
+      blurb: "The old heads: stronger, wiser, harder to beat.",
+      colors: ["#d8f1ff", "#1f3f66"],
+      eligible: (p) => p.age >= 30 && p.overall >= 76,
+      boost: 5,
+      stats: { pace: 1, dribbling: 3, shooting: 4, passing: 6, physical: 6, defending: 6 }
+    }
+  ], campaignNow = (now = Date.now()) => CAMPAIGNS[weekNow(now) % CAMPAIGNS.length];
+  var ICON_TIERS = [
+    { id: "early", name: "Early", drop: 7 },
+    { id: "peak", name: "Peak", drop: 4 },
+    { id: "prime", name: "Prime", drop: 0 }
+  ], PROMO_RARITY = {
+    inform: { label: "In-Form", color: "#7cff6b", glow: "rgba(124,255,107,.6)" },
+    totw: { label: "Team of the Week", color: "#ffe066", glow: "rgba(255,224,102,.7)" },
+    future: { label: "Future Stars", color: "#19e3ff", glow: "rgba(25,227,255,.7)" },
+    desert: { label: "Heroes of the Desert", color: "#f0b048", glow: "rgba(240,176,72,.7)" },
+    winter: { label: "Winter Legends", color: "#d8f1ff", glow: "rgba(216,241,255,.7)" }
+  };
+  Object.assign(RARITY, PROMO_RARITY);
+  var cap = (v) => Math.max(1, Math.min(99, Math.round(v)));
+  function derive(base, id, { boost = 0, stats = {}, rarity, promo = null, label = null, tier = null }) {
+    var _a;
+    let st = {};
+    for (let [k, v] of Object.entries(base.stats)) st[k] = cap(v + ((_a = stats[k]) != null ? _a : boost * 0.8));
+    return {
+      ...base,
+      id,
+      baseId: base.id,
+      overall: cap(base.overall + boost),
+      stats: st,
+      rarity,
+      promo,
+      promoLabel: label,
+      iconTier: tier,
+      value: Math.round((base.value || 1e6) * (1 + Math.max(0, boost) * 0.18)),
+      sbc: !1
+    };
+  }
+  function mulberry(a) {
+    return () => {
+      a |= 0, a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      return t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t, ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var weekCache = /* @__PURE__ */ new Map();
+  function weekPerformers(week = weekNow()) {
+    if (weekCache.has(week)) return weekCache.get(week);
+    let r = mulberry(week * 7919 + 17), clubs = WORLD.clubs.slice();
+    for (let i = clubs.length - 1; i > 0; i--) {
+      let j = Math.floor(r() * (i + 1));
+      [clubs[i], clubs[j]] = [clubs[j], clubs[i]];
+    }
+    let scores = [];
+    for (let i = 0; i + 1 < clubs.length; i += 2) {
+      let [a, b] = [clubs[i], clubs[i + 1]], squad = (c) => c.roster.map((id) => WORLD.playersById[id]).filter(Boolean).sort((x, y) => y.overall - x.overall).slice(0, 11), sa = squad(a), sb = squad(b), str = (s) => s.reduce((t, p) => t + p.overall, 0) / Math.max(1, s.length), goals = (s, o) => Math.max(0, Math.round((str(s) - str(o)) / 6 + r() * 3.2 - 0.6)), ga = goals(sa, sb), gb = goals(sb, sa);
+      for (let [s, gf, gc] of [[sa, ga, gb], [sb, gb, ga]]) {
+        let rate = new Map(s.map((p) => [p, 5.8 + (p.overall - 70) / 25 + r() * 1.3])), pick = (w) => {
+          let tot = s.reduce((t, p) => t + w(p), 0), x = r() * tot;
+          for (let p of s)
+            if (x -= w(p), x <= 0) return p;
+          return s[0];
+        };
+        for (let g = 0; g < gf; g++) {
+          let sc = pick((p) => (["ST", "LW", "RW", "CAM"].includes(p.position) ? 3 : p.position === "GK" ? 0 : 1) * p.stats.shooting);
+          rate.set(sc, rate.get(sc) + 1);
+          let as = pick((p) => (p === sc || p.position === "GK" ? 0 : 1) * p.stats.passing);
+          rate.set(as, rate.get(as) + 0.5);
+        }
+        if (gc === 0) for (let p of s) ["GK", "CB", "LB", "RB", "CDM"].includes(p.position) && rate.set(p, rate.get(p) + 0.8);
+        if (gf > gc) for (let p of s) rate.set(p, rate.get(p) + 0.3);
+        for (let [p, v] of rate) scores.push({ p, rating: Math.min(10, v) });
+      }
+    }
+    scores.sort((x, y) => y.rating - x.rating);
+    let need = { GK: 1, DEF: 4, MID: 3, FWD: 3 }, line = (p) => p.position === "GK" ? "GK" : ["CB", "LB", "RB"].includes(p.position) ? "DEF" : ["CDM", "CM", "CAM", "LM", "RM"].includes(p.position) ? "MID" : "FWD", totw = [], inform = [];
+    for (let sc of scores) {
+      if (sc.p.rarity === "icon" || sc.p.rarity === "star" || sc.p.sbc) continue;
+      let l = line(sc.p);
+      if (need[l] > 0 ? (need[l] -= 1, totw.push(sc)) : inform.length < 24 && inform.push(sc), inform.length >= 24 && Object.values(need).every((n) => n <= 0)) break;
+    }
+    let res = { week, totw, inform };
+    return weekCache.set(week, res), weekCache.size > 16 && weekCache.delete(weekCache.keys().next().value), res;
+  }
+  function resolve(id) {
+    let [kind, a, baseId] = String(id).split(":"), base = baseId && WORLD.playersById[baseId];
+    if (!base) return;
+    let card;
+    if (kind === "pr") {
+      let c = CAMPAIGNS.find((x) => x.id === a);
+      if (!c || !c.eligible(base)) return;
+      card = derive(base, id, { boost: c.boost, stats: c.stats, rarity: c.id, promo: c.id, label: c.name });
+    } else if (kind === "if" || kind === "tw") {
+      let week = Number(a);
+      if (!Number.isFinite(week)) return;
+      card = derive(base, id, { boost: kind === "tw" ? 4 : 2, rarity: kind === "tw" ? "totw" : "inform", promo: kind, label: kind === "tw" ? "Team of the Week ".concat(week % 52 + 1) : "In-Form · week ".concat(week % 52 + 1) });
+    } else if (kind === "ic") {
+      let t = ICON_TIERS.find((x) => x.id === a);
+      if (!t || base.rarity !== "icon") return;
+      card = derive(base, id, { boost: -t.drop, rarity: "icon", label: "".concat(t.name, " Icon"), tier: t.id });
+    } else return;
+    return WORLD.playersById[id] = card, card;
+  }
+  setVariantResolver(resolve);
+  function campaignCards(c = campaignNow()) {
+    return WORLD.players.filter((p) => !p.sbc && p.rarity !== "icon" && p.rarity !== "star" && c.eligible(p)).map((p) => resolve("pr:".concat(c.id, ":").concat(p.id))).filter(Boolean);
+  }
+  function weekCards(kind = "inform", week = weekNow()) {
+    let w = weekPerformers(week);
+    return (kind === "totw" ? w.totw : w.inform).map((x) => resolve("".concat(kind === "totw" ? "tw" : "if", ":").concat(week, ":").concat(x.p.id))).filter(Boolean);
+  }
+  function iconTierCards(tier) {
+    return tier === "prime" ? (WORLD.icons || []).map((id) => WORLD.playersById[id]).filter(Boolean) : (WORLD.icons || []).map((id) => resolve("ic:".concat(tier, ":").concat(id))).filter(Boolean);
+  }
 
   // js/data/objectives.js
   var L = (id, metric, text, need, apex, pack, extra = {}) => ({ id, metric, text, need, apex, pack, ...extra }), LADDER = [
@@ -10004,6 +10146,11 @@
 
   // js/data/packs.js
   var WEEK_NATIONS = ["France", "Brazil", "England", "Spain", "Argentina", "Germany", "Italy", "Portugal", "Netherlands", "Saudi Arabia", "Morocco", "Belgium"], nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 6048e5) % WEEK_NATIONS.length], PACKS = [
+    /* v80: the promo shelf. Each promises one card of its kind in the first slot,
+       on top of gold filler, and says exactly what that slot can be. */
+    { id: "campaign", cat: "promo", name: "Campaign", cost: 25e3, size: 3, variant: "campaign", odds: { bronze: 0, silver: 0, gold: 0.9, special: 0.1 }, floor: "gold", note: "3 cards · 1 campaign card", promise: "1 guaranteed card from this week's campaign", variantOdds: [["Campaign card", 1]] },
+    { id: "inform", cat: "promo", name: "In-Form", cost: 18e3, size: 3, variant: "inform", odds: { bronze: 0, silver: 0, gold: 0.92, special: 0.08 }, floor: "gold", note: "3 cards · 1 in-form", promise: "1 guaranteed In-Form (1 in 8 is Team of the Week)", variantOdds: [["In-Form", 0.875], ["Team of the Week", 0.125]] },
+    { id: "vault", cat: "limited", name: "Legends Vault", cost: 12e4, size: 1, limited: !0, variant: "icontier", odds: { bronze: 0, silver: 0, gold: 0, special: 1 }, note: "1 Icon · any tier", promise: "1 guaranteed Icon — Early, Peak or Prime", variantOdds: [["Early Icon (92)", 0.7], ["Peak Icon (95)", 0.25], ["Prime Icon (99)", 0.05]] },
     { id: "bronze", cat: "free", name: "Bronze", cost: 0, size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0 }, note: "4 cards" },
     /* v73: SBC fodder. Six cheap bodies — bronzes and silvers — for the quick
        SBCs, priced so a pack is always worth less than the challenge it feeds. */
@@ -10204,7 +10351,7 @@
       promise: "1 guaranteed Icon · best odds in the game"
     }
   ], FREE_MS = 360 * 60 * 1e3;
-  var packTone = (p) => p.tone || p.guarantee || p.id, RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, star: 4, icon: 5 };
+  var packTone = (p) => p.tone || p.guarantee || p.id, RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, star: 4, icon: 5 };
   function rollRarity(odds) {
     let r = Math.random(), acc = 0;
     for (let [rarity, chance] of Object.entries(odds))
@@ -10238,7 +10385,14 @@
       (x.p.rarity === "bronze" || x.p.rarity === "silver") && (pulls[i] = draw2(Math.random() < 0.6 ? "special" : "gold"));
     });
     let wantPos = pack.forcePosition || (needGK ? "GK" : null);
-    if (wantPos && !pulls.some((x) => x.p.position === wantPos) && (pulls[0] = draw2(rollRarity(pack.odds), (p) => p.position === wantPos)), pack.guarantee) {
+    if (wantPos && !pulls.some((x) => x.p.position === wantPos) && (pulls[0] = draw2(rollRarity(pack.odds), (p) => p.position === wantPos)), pack.variant) {
+      let r = Math.random(), pool = [];
+      if (pack.variant === "campaign" ? pool = campaignCards(campaignNow()) : pack.variant === "inform" ? pool = r < 0.125 ? weekCards("totw", weekNow()) : weekCards("inform", weekNow()) : pack.variant === "icontier" && (pool = iconTierCards(r < 0.7 ? "early" : r < 0.95 ? "peak" : "prime")), pool.length) {
+        let fresh = pool.filter((p2) => !seen.has(p2.id)), sorted = (fresh.length ? fresh : pool).slice().sort((a, b) => a.overall - b.overall), p = sorted[Math.floor(Math.pow(Math.random(), 1.8) * sorted.length)], dup = seen.has(p.id);
+        seen.add(p.id), pulls[0] = { p, dup };
+      }
+    }
+    if (pack.guarantee) {
       let lo = wantPos ? 1 : 0, at = lo + Math.floor(Math.random() * Math.max(1, pulls.length - lo));
       pulls[at] = draw2(pack.guarantee);
     }
@@ -10247,9 +10401,32 @@
   var dupValue = (p) => Math.max(50, Math.round(price(p) / 25e3));
 
   // js/data/traits.js
+  var TRAITS = {
+    finesse: { name: "Finesse Finisher", short: "FIN", blurb: "Curled shots bend more and find the corner more often." },
+    engine: { name: "Engine", short: "ENG", blurb: "Tires far more slowly and keeps sprinting late on." },
+    rock: { name: "Rock at the Back", short: "RCK", blurb: "Wins more tackles, gives away fewer fouls and holds his ground in a shoulder duel." },
+    quick: { name: "Quick Step", short: "QST", blurb: "Explosive over the first few metres and turns sharper at speed." },
+    sweeper: { name: "Sweeper Keeper", short: "SWK", blurb: "Comes off his line to clear through balls and dives further." },
+    pinged: { name: "Pinged Pass", short: "PNG", blurb: "Long passes and switches arrive quicker and truer." },
+    aerial: { name: "Aerial Threat", short: "AER", blurb: "Times his jump for headers and wins more of them." },
+    trickster: { name: "Trickster", short: "TRK", blurb: "Skill moves come off more often and unlock the harder ones." },
+    anchor: { name: "Anchor", short: "ANC", blurb: "Reads play: intercepts passes into the space in front of the defence." },
+    cannon: { name: "Cannon", short: "CAN", blurb: "Hits the ball harder from distance, with the odd knuckling strike." },
+    velvet: { name: "Velvet Touch", short: "VEL", blurb: "Kills a fast pass dead — almost never a heavy first touch." },
+    deadball: { name: "Dead Ball", short: "DBL", blurb: "Free kicks and corners curl and dip on to the target." }
+  };
   function traitsOf(ref) {
+    var _a;
     if (!ref) return [];
     if (ref._traits) return ref._traits;
+    if ((_a = ref.extraTraits) != null && _a.length) {
+      let base = traitsOf({ ...ref, extraTraits: null }), res2 = [...ref.extraTraits.filter((id) => TRAITS[id] && !base.some((t) => t.id === id)).map((id) => ({ id, elite: !1 })), ...base].slice(0, 4);
+      try {
+        Object.defineProperty(ref, "_traits", { value: res2, enumerable: !1, configurable: !0 });
+      } catch {
+      }
+      return res2;
+    }
     let s = ref.stats || {}, pos = ref.position || "CM", ovr = ref.overall || 60, out = [], add = (id, score, eliteAt) => out.push({ id, score, elite: score >= eliteAt });
     if (pos === "GK")
       add("sweeper", (s.pace || 50) + (s.passing || 50) * 0.6, 150), (s.passing || 0) > 75 && add("pinged", s.passing + 20, 108);
@@ -10351,8 +10528,19 @@
     return null;
   }
 
+  // js/game/field.js
+  var PITCH = { w: 105, h: 68 }, FIELDS = {
+    full: { id: "full", w: 105, h: 68, goalHalf: 5.5, goalHeight: 2.44, boxW: 16.5, boxHalf: 20, sixW: 5.5, sixHalf: 9.16, spot: 11, circle: 9.15, players: 11, walls: !1, offside: !0 },
+    fives: { id: "fives", w: 60, h: 38, goalHalf: 2.5, goalHeight: 2.2, boxW: 8, boxHalf: 10, sixW: 3, sixHalf: 5, spot: 7, circle: 5, players: 5, walls: !1, offside: !1 },
+    futsal: { id: "futsal", w: 40, h: 20, goalHalf: 1.5, goalHeight: 2, boxW: 6, boxHalf: 7.5, sixW: 0, sixHalf: 0, spot: 6, circle: 3, players: 5, walls: !1, offside: !1 }
+  }, CY = 34, GOAL_HALF = 5.5, GOAL_HEIGHT = 2.44, BOX = { w: 16.5, half: 20 }, FIELD = { ...FIELDS.full }, SCALE = 1;
+  function setField(spec = "full") {
+    let f = typeof spec == "string" ? FIELDS[spec] || FIELDS.full : { ...FIELDS.full, ...spec };
+    return PITCH.w = f.w, PITCH.h = f.h, CY = f.h / 2, GOAL_HALF = f.goalHalf, GOAL_HEIGHT = f.goalHeight, BOX.w = f.boxW, BOX.half = f.boxHalf, Object.assign(FIELD, f), SCALE = f.w / 105, FIELD;
+  }
+
   // js/game/sim.js
-  var PITCH = { w: 105, h: 68 }, GOAL_HALF = 5.5, CY = PITCH.h / 2, BOX_W = 16.5, BOX_HALF = 20, PRESETS = {
+  var PRESETS = {
     authentic: {
       id: "authentic",
       name: "Authentic",
@@ -10450,7 +10638,29 @@
       { x: 0.66, y: 0.38, role: "FWD" },
       { x: 0.66, y: 0.62, role: "FWD" }
     ]
-  }, FORMATION_NAMES = Object.keys(SHAPES), SHAPE = SHAPES["4-4-2"], ROLE_OF = {
+  }, FORMATION_NAMES = Object.keys(SHAPES), SHAPES5 = {
+    "1-2-1": [
+      { x: 0.05, y: 0.5, role: "GK" },
+      { x: 0.24, y: 0.5, role: "DEF" },
+      { x: 0.46, y: 0.22, role: "MID" },
+      { x: 0.46, y: 0.78, role: "MID" },
+      { x: 0.7, y: 0.5, role: "FWD" }
+    ],
+    "2-2": [
+      { x: 0.05, y: 0.5, role: "GK" },
+      { x: 0.26, y: 0.3, role: "DEF" },
+      { x: 0.26, y: 0.7, role: "DEF" },
+      { x: 0.62, y: 0.3, role: "FWD" },
+      { x: 0.62, y: 0.7, role: "FWD" }
+    ],
+    "2-1-1": [
+      { x: 0.05, y: 0.5, role: "GK" },
+      { x: 0.24, y: 0.3, role: "DEF" },
+      { x: 0.24, y: 0.7, role: "DEF" },
+      { x: 0.46, y: 0.5, role: "MID" },
+      { x: 0.72, y: 0.5, role: "FWD" }
+    ]
+  }, FIVES_NAMES = Object.keys(SHAPES5), shapesFor = () => FIELD.players === 5 ? SHAPES5 : SHAPES, defaultShape = () => FIELD.players === 5 ? SHAPES5["1-2-1"] : SHAPES["4-4-2"], SHAPE = SHAPES["4-4-2"], ROLE_OF = {
     GK: "GK",
     CB: "DEF",
     LB: "DEF",
@@ -10463,7 +10673,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, GOAL_HEIGHT = 2.44, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -10475,7 +10685,15 @@
       if (xi.length >= 11) break;
       used.has(p) || (xi.push(p), used.add(p));
     }
-    return xi.slice(0, 11);
+    return FIELD.players === 5 ? fivesFrom(xi) : xi.slice(0, 11);
+  }
+  function fivesFrom(xi) {
+    let role = (p) => ROLE_OF[p.position] || "MID", by = (r) => xi.filter((p) => role(p) === r).sort((a, b) => b.overall - a.overall), out = [by("GK")[0], by("DEF")[0], ...by("MID").slice(0, 2), by("FWD")[0]];
+    for (let p of xi.slice().sort((a, b) => b.overall - a.overall)) {
+      if (out.filter(Boolean).length >= 5) break;
+      out.includes(p) || (out[out.findIndex((q) => !q)] = p);
+    }
+    return out.filter(Boolean).slice(0, 5);
   }
   function attributesOf(ref) {
     let st = ref.stats, tr = {};
@@ -10508,10 +10726,10 @@
     return clamp2(base + back + (h % 1e3 / 1e3 - 0.5) * 0.24, 0.02, 1);
   }
   function makeTeam(clubId, side, isHuman, custom = null) {
-    var _a, _b;
-    let club = getClub(clubId), xi = ((_a = custom == null ? void 0 : custom.xi) == null ? void 0 : _a.length) === 11 ? custom.xi : pickXI(clubId), dir = side === 0 ? 1 : -1, players = xi.map((ref, i) => {
-      var _a2, _b2, _c;
-      let s = SHAPE[i], sx = side === 0 ? s.x : 1 - s.x, sy = side === 0 ? s.y : 1 - s.y;
+    var _a, _b, _c;
+    let club = getClub(clubId), n = FIELD.players, xi = ((_a = custom == null ? void 0 : custom.xi) == null ? void 0 : _a.length) === n ? custom.xi : ((_b = custom == null ? void 0 : custom.xi) == null ? void 0 : _b.length) === 11 && n === 5 ? fivesFrom(custom.xi) : pickXI(clubId), SHAPE2 = defaultShape(), dir = side === 0 ? 1 : -1, players = xi.map((ref, i) => {
+      var _a2, _b2, _c2;
+      let s = SHAPE2[i], sx = side === 0 ? s.x : 1 - s.x, sy = side === 0 ? s.y : 1 - s.y;
       return {
         ref,
         num: i + 1,
@@ -10541,14 +10759,14 @@
            referee books people for (see `tackle`). Seeded off the card, so the
            same footballer is the same nuisance every match. */
         aggression: aggressionOf(ref),
-        tRole: (((_c = ROLES[(_b2 = (_a2 = custom == null ? void 0 : custom.tactics) == null ? void 0 : _a2.roles) == null ? void 0 : _b2[i]]) == null ? void 0 : _c.pos) === s.role ? custom.tactics.roles[i] : null) || defaultRole(ref, s),
+        tRole: (((_c2 = ROLES[(_b2 = (_a2 = custom == null ? void 0 : custom.tactics) == null ? void 0 : _a2.roles) == null ? void 0 : _b2[i]]) == null ? void 0 : _c2.pos) === s.role ? custom.tactics.roles[i] : null) || defaultRole(ref, s),
         // v79: what he does inside his slot
         downT: 0,
         // seconds spent on the grass after being fouled
         cards: 0
         // yellows
       };
-    }), onPitch = new Set(xi.map((r) => r.id)), bench = ((_b = custom == null ? void 0 : custom.bench) != null && _b.filter(Boolean).length ? custom.bench.filter(Boolean) : null) || rosterOf(clubId).filter((r) => !onPitch.has(r.id)).sort((a, b) => b.overall - a.overall).slice(0, BENCH_SIZE);
+    }), onPitch = new Set(xi.map((r) => r.id)), bench = ((_c = custom == null ? void 0 : custom.bench) != null && _c.filter(Boolean).length ? custom.bench.filter(Boolean) : null) || rosterOf(clubId).filter((r) => !onPitch.has(r.id)).sort((a, b) => b.overall - a.overall).slice(0, BENCH_SIZE);
     return {
       clubId,
       club,
@@ -10566,7 +10784,7 @@
       onTarget: 0,
       poss: 0,
       scorers: [],
-      formation: "4-4-2",
+      formation: n === 5 ? "1-2-1" : "4-4-2",
       // a custom squad may bring an instruction with it — the Apex Division uses
       // this to make the CPU press and push up the higher you climb
       tactics: { ...defaultTactics(), ...(custom == null ? void 0 : custom.tactics) || {} }
@@ -10575,16 +10793,18 @@
   var Match = class {
     constructor(homeId, awayId, opts = {}) {
       var _a, _b, _c;
-      this.mode = opts.mode || "single", this.human = opts.human === null ? null : (_a = opts.human) != null ? _a : 0, this.teams = [
+      setField(opts.field || "full"), this.field = FIELD.id, this.mode = opts.mode || "single", this.human = opts.human === null ? null : (_a = opts.human) != null ? _a : 0, this.teams = [
         makeTeam(homeId, 0, this.human === 0, opts.homeSquad || null),
         makeTeam(awayId, 1, this.human === 1, opts.awaySquad || null)
-      ], this.human === null ? this.controllers = [] : this.mode === "versus" ? (this.controllers = [
-        { team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
-        { team: 1, activeIdx: 10, charge: 0, passCharge: 0 }
+      ];
+      let last2 = FIELD.players - 1;
+      this.human === null ? this.controllers = [] : this.mode === "versus" ? (this.controllers = [
+        { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
+        { team: 1, activeIdx: last2, charge: 0, passCharge: 0 }
       ], this.teams[1].isHuman = !0) : this.mode === "coop" ? this.controllers = [
-        { team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
-        { team: 0, activeIdx: 9, charge: 0, passCharge: 0 }
-      ] : this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+        { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
+        { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
+      ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }], this.duration = (_b = opts.duration) != null ? _b : 240, this.skill = (_c = opts.skill) != null ? _c : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -10693,7 +10913,7 @@
         for (let p of team.players)
           half && p.x > PITCH.w / 2 - 2 && (p.x = PITCH.w / 2 - 2 - (p.role === "FWD" ? 3 : 8)), !half && p.x < PITCH.w / 2 + 2 && (p.x = PITCH.w / 2 + 2 + (p.role === "FWD" ? 3 : 8));
       }
-      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD") || takers.find((p) => p.role === "MID") || takers[10];
+      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD") || takers.find((p) => p.role === "MID") || takers[takers.length - 1];
       taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6, taker.y = CY, this.kickoffTaker = taker, this.selectForKickoff(), Object.assign(this.ball, {
         x: PITCH.w / 2,
         y: CY,
@@ -11004,8 +11224,8 @@
      */
     applyFormation(teamIdx, name2) {
       var _a, _b, _c;
-      let shape = SHAPES[name2];
-      if (!shape) return;
+      let shape = shapesFor()[name2];
+      if (!shape || shape.length !== this.teams[teamIdx].players.length) return;
       let team = this.teams[teamIdx], used = /* @__PURE__ */ new Set(), take = (role) => {
         let best = null, bestScore = -1;
         for (let p of team.players) {
@@ -11124,7 +11344,7 @@
         for (let team of this.teams)
           for (let p of team.players) {
             if (p.touchLock > 0) continue;
-            let r = p.role === "GK" ? p.diveT > 0 ? 2.6 : 1.68 : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
+            let r = p.role === "GK" ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5) : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
             if ((_a = p.tr) != null && _a.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
               let outward = b.y < CY ? -b.vy : b.vy;
               Math.min(b.y, PITCH.h - b.y) < 1.6 && outward > 1.5 && (r *= 0.45);
@@ -11186,7 +11406,7 @@
               return;
             }
           }
-          b.owner = best, b.lastTouch = best, best.holdT = 0;
+          b.passer && b.passer.team !== best.team && (b.passer = null), b.owner = best, b.lastTouch = best, best.holdT = 0;
         }
       }
       this.bounds();
@@ -11303,8 +11523,8 @@
       this.markStoppage("goal");
       let team = this.teams[side];
       team.score++, (this.ball.shotBy && this.ball.shotBy.team === side || !this.ball.shotBy && ((_a = this.ball.lastTouch) == null ? void 0 : _a.team) === side) && team.onTarget++, this.ball.shotBy = null;
-      let scorer = this.ball.lastTouch && this.ball.lastTouch.team === side ? this.ball.lastTouch : null;
-      scorer && team.scorers.push({ name: scorer.ref.name, minute: this.minute() }), this.feed.unshift("".concat(this.minute(), "'  ").concat(team.short, " — ").concat(scorer ? scorer.ref.name : "own goal")), this.banner = "GOAL", this.goalTeam = side, this.phase = "goal", this.phaseT = 4.2, this.cue("goal"), this.cue("net"), this.pendingKickoff = 1 - side, this.celebrant = scorer, this.celebT = 0, this.scorerName = scorer ? scorer.ref.name : "Own goal";
+      let scorer = this.ball.lastTouch && this.ball.lastTouch.team === side ? this.ball.lastTouch : null, assist = this.ball.passer && this.ball.passer.team === side && this.ball.passer !== scorer ? this.ball.passer : null;
+      scorer && team.scorers.push({ name: scorer.ref.name, id: scorer.ref.id, assist: (assist == null ? void 0 : assist.ref.id) || null, assistName: (assist == null ? void 0 : assist.ref.name) || null, minute: this.minute() }), this.feed.unshift("".concat(this.minute(), "'  ").concat(team.short, " — ").concat(scorer ? scorer.ref.name : "own goal")), this.banner = "GOAL", this.goalTeam = side, this.phase = "goal", this.phaseT = 4.2, this.cue("goal"), this.cue("net"), this.pendingKickoff = 1 - side, this.celebrant = scorer, this.celebT = 0, this.scorerName = scorer ? scorer.ref.name : "Own goal";
       let goalX = team.dir > 0 ? PITCH.w : 0, from = scorer || this.ball;
       this.celebSpot = {
         x: goalX - team.dir * 12,
@@ -11397,7 +11617,7 @@
         if (best2) {
           this.cue("cutback", p), this.noteOffside(p);
           let dx2 = best2.x + best2.vx * 0.5 - p.x, dy2 = best2.y + best2.vy * 0.5 - p.y, dd = Math.hypot(dx2, dy2) || 1, sp = clamp2(dd * 1.2 + 10, 14, 30);
-          this.release(p, dx2 / dd * sp, dy2 / dd * sp);
+          this.release(p, dx2 / dd * sp, dy2 / dd * sp), this.ball.passer = p;
           return;
         }
         kind = "driven";
@@ -11424,7 +11644,7 @@
       let cerr = (1.1 - p.ref.stats.passing / 100) * 14 * (kind === "driven" ? 0.7 : 1);
       tx += team.dir * (Math.random() * 1.3 - 0.3) * cerr, ty += (Math.random() - 0.5) * cerr;
       let dx = tx - p.x, dy = ty - p.y, D = Math.hypot(dx, dy) || 1, T = kind === "driven" ? clamp2(D / 27, 0.45, 1.3) : clamp2(D / 20, 0.6, 1.9);
-      this.cue("cross");
+      this.cue("cross"), this.ball.passer = p;
       let blocker = this.teams[1 - p.team].players.find((q) => q.role !== "GK" && dist(q, p) < 2.6 && (q.x - p.x) * (tx - p.x) + (q.y - p.y) * (ty - p.y) > 0);
       if (blocker && Math.random() < 0.45) {
         this.cue("block", blocker);
@@ -11456,7 +11676,7 @@
         let align = dx2 / d3 * ax + dy2 / d3 * ay, forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * 2.6 - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
         score > bestScore && (bestScore = score, best = t);
       }
-      if (this.cue("pass"), !best) {
+      if (this.cue("pass"), this.ball.passer = p, !best) {
         let punt = (16 + power * 22) * this.preset.passSpeed;
         this.release(p, ax * punt, ay * punt);
         return;
@@ -11492,7 +11712,7 @@
      */
     shoot(p, aim, power, opts = {}) {
       var _a, _b, _c;
-      let { loft = 1, curl = 0, placed = !1, chip = !1, sloppy = 0 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), finesse = curl ? 1 - 0.22 * (((_a = p.tr) == null ? void 0 : _a.finesse) || 0) : 1, spread = ((1.05 - acc) * 0.34 + d2 / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5;
+      let { loft = 1, curl = 0, placed = !1, chip = !1, sloppy = 0 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), finesse = curl ? 1 - 0.22 * (((_a = p.tr) == null ? void 0 : _a.finesse) || 0) : 1, spread = ((1.05 - acc) * 0.34 + d2 / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
       {
         let angle = Math.atan2(GOAL_HALF * 2 * Math.abs(dx), d2 * d2 - GOAL_HALF * GOAL_HALF) || 0.01, foe = this.nearestTo(1 - p.team, p), close = foe && dist(p, foe) < 2 ? 0.66 : 1, xg = clamp2(0.92 * Math.exp(-d2 / 11) * Math.min(1, angle / 0.9) * close, 0.02, 0.8);
         team.xg = (team.xg || 0) + xg, xg >= 0.25 && (team.bigChances = (team.bigChances || 0) + 1, this.cue("bigChance", p));
@@ -11698,7 +11918,7 @@
     /** Is `pt` inside the box that `defending` is protecting? */
     inPenaltyArea(pt, defending) {
       let goalX = this.teams[defending].dir > 0 ? 0 : PITCH.w;
-      return Math.abs(pt.x - goalX) < BOX_W && Math.abs(pt.y - CY) < BOX_HALF;
+      return Math.abs(pt.x - goalX) < BOX.w && Math.abs(pt.y - CY) < BOX.half;
     }
     /**
      * Set a penalty. Everyone but the taker and the keeper leaves the box, the
@@ -11706,7 +11926,7 @@
      * which is what a manager would do and saves inventing a taker order.
      */
     awardPenalty(attacking, conceded) {
-      let atk = this.teams[attacking], goalX = atk.dir > 0 ? PITCH.w : 0, spotX = goalX + (atk.dir > 0 ? -11 : 11), b = this.ball;
+      let atk = this.teams[attacking], goalX = atk.dir > 0 ? PITCH.w : 0, spotX = goalX + (atk.dir > 0 ? -FIELD.spot : FIELD.spot), b = this.ball;
       Object.assign(b, {
         x: spotX,
         y: CY,
@@ -11774,7 +11994,7 @@
     }
     shapeTarget(p) {
       var _a, _b, _c, _d;
-      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = ((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
+      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = (((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16) * SCALE, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
       if (role) {
         let adj = weHave ? role.has : role.not;
         x += team.dir * adj.fwd;
@@ -11891,7 +12111,7 @@
       return beyond && pastBall && theirHalf;
     }
     noteOffside(passer) {
-      if (this.phase !== "play") {
+      if (this.phase !== "play" || !FIELD.offside) {
         this.offsideWatch = null;
         return;
       }
@@ -11901,12 +12121,13 @@
     }
     /** The side with the ball keeps its forwards level with the last defender (AI). */
     onsideX(team, x, slack = 0) {
-      let lim = this.offsideLine(1 - team.side) - team.dir * (0.8 - slack), ballLim = this.ball.x, cap = team.dir > 0 ? Math.max(lim, ballLim) : Math.min(lim, ballLim);
-      return team.dir > 0 ? Math.min(x, cap) : Math.max(x, cap);
+      if (!FIELD.offside) return x;
+      let lim = this.offsideLine(1 - team.side) - team.dir * (0.8 - slack), ballLim = this.ball.x, cap2 = team.dir > 0 ? Math.max(lim, ballLim) : Math.min(lim, ballLim);
+      return team.dir > 0 ? Math.min(x, cap2) : Math.max(x, cap2);
     }
     /** Defenders never collapse onto their own keeper — hold a line off the goal. */
     holdLine(team, x) {
-      let gx = team.dir > 0 ? 0 : PITCH.w, MIN = 7.5 * this.preset.discipline;
+      let gx = team.dir > 0 ? 0 : PITCH.w, MIN = 7.5 * this.preset.discipline * Math.max(0.45, SCALE);
       return team.dir > 0 ? Math.max(x, gx + MIN) : Math.min(x, gx - MIN);
     }
     /**
@@ -11942,7 +12163,8 @@
         this.clear(p);
         return;
       }
-      if (toGoal < 31 && (pressure > 1.7 || toGoal < 16) && Math.random() < (3.3 - toGoal / 22) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+      let sc = Math.max(0.55, SCALE);
+      if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc) && Math.random() < (3.3 - toGoal / (22 * sc)) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
         let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q2) => q2.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team), post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
         this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0, 1) }, 0.55 + Math.random() * 0.45, {
           loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
@@ -11951,8 +12173,8 @@
         });
         return;
       }
-      let wide = p.y < 20 || p.y > PITCH.h - 20;
-      if (wide && Math.abs(goalX - p.x) < 32 && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt && team.players.some((t) => t !== p && t.role !== "GK" && Math.abs(t.x - goalX) < 22)) {
+      let wideM = 20 * (PITCH.h / 68), wide = p.y < wideM || p.y > PITCH.h - wideM;
+      if (wide && Math.abs(goalX - p.x) < 32 * SCALE && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt && team.players.some((t) => t !== p && t.role !== "GK" && Math.abs(t.x - goalX) < 22)) {
         let kind = Math.abs(goalX - p.x) < 9 && Math.random() < 0.5 ? "cutback" : Math.random() < 0.35 ? "driven" : "floated";
         this.cross(p, null, kind);
         return;
@@ -12002,12 +12224,12 @@
       }
       let dx = b.x - goalX, dy = b.y - CY, d2 = Math.hypot(dx, dy) || 1, closing = b.vx * inward < -1, standOff = clamp2(d2 * 0.18, 1.6, 5.5), tx = goalX + inward * standOff, ty = CY + dy * (standOff / d2), urgency = 1.06;
       if (!b.owner && closing && d2 < 30) {
-        p.readId !== b.shotId && (p.readId = b.shotId, p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6, p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22), p.reactT = Math.max(0, (p.reactT || 0) - dt);
+        p.readId !== b.shotId && (p.readId = b.shotId, p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5)), p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22), p.reactT = Math.max(0, (p.reactT || 0) - dt);
         let t = (tx - b.x) / b.vx;
         if (p.reactT <= 0 && t > 0 && t < 2.2) {
           let cross = b.y + b.vy * t + p.readErr;
           ty = cross, urgency = 1.12;
-          let gap = cross - p.y, reach = 3.2 + (p.ref.overall - 70) * 0.06 + (((_b = p.tr) == null ? void 0 : _b.sweeper) || 0) * 0.35;
+          let gap = cross - p.y, reach = (3.2 + (p.ref.overall - 70) * 0.06 + (((_b = p.tr) == null ? void 0 : _b.sweeper) || 0) * 0.35) * Math.min(1, 0.35 + 0.65 * GOAL_HALF / 5.5);
           p.diveT <= 0 && t < 0.62 && Math.abs(gap) > 0.85 && Math.abs(gap) < reach && (p.diveT = 0.75, p.diveDir = Math.sign(gap), p.diveHigh = b.z + b.vz * t > 1.15, p.vy = p.diveDir * (8.6 + p.ref.stats.defending * 0.03 + (p.ref.overall - 70) * 0.05), p.vx = inward * -0.8);
         }
       } else d2 < 13 && b.owner && b.owner.team !== p.team && (tx = goalX + inward * clamp2(d2 * 0.34, 2, 5.5), ty = b.y, urgency = 1.1);
@@ -12015,7 +12237,7 @@
         p.diveT -= dt, p.vx *= 0.94, p.vy *= 0.965;
         return;
       }
-      ty = clamp2(ty, CY - GOAL_HALF - 2.5, CY + GOAL_HALF + 2.5), tx = team.dir > 0 ? clamp2(tx, 1, BOX_W - 2) : clamp2(tx, PITCH.w - BOX_W + 2, PITCH.w - 1), this.moveTo(p, tx, ty, dt, urgency);
+      ty = clamp2(ty, CY - GOAL_HALF - 2.5, CY + GOAL_HALF + 2.5), tx = team.dir > 0 ? clamp2(tx, 1, BOX.w - 2) : clamp2(tx, PITCH.w - BOX.w + 2, PITCH.w - 1), this.moveTo(p, tx, ty, dt, urgency);
     }
     /**
      * Where a keeper steers a parry.
@@ -12063,7 +12285,7 @@
       }
       return b.owner = null, b.lastTouch = gk, b.shotBy = null, b.noTouch = Math.max(b.noTouch || 0, 0.18), gk.touchLock = tipRound ? 0.8 : 0.35, this.parries = (this.parries || 0) + 1, !1;
     }
-  }, BOX = { w: BOX_W, half: BOX_HALF };
+  };
 
   // js/game/input.js
   var KEYSETS = {
@@ -12231,7 +12453,7 @@
   }
 
   // js/game/render3d.js
-  var CY2 = PITCH.h / 2, GOAL_H = 2.44, NEAR = 0.6, MARGIN = 6, rgb = (hex) => {
+  var NEAR = 0.6, MARGIN = 6, rgb = (hex) => {
     let n = parseInt(hex.replace("#", ""), 16);
     return [n >> 16 & 255, n >> 8 & 255, n & 255];
   };
@@ -12247,7 +12469,7 @@
       y: -30,
       z: 17,
       tx: PITCH.w / 2,
-      ty: CY2 * 0.82,
+      ty: CY * 0.82,
       tz: 0,
       hfov: 48
     };
@@ -12400,7 +12622,7 @@
     [232, 232, 236],
     [70, 54, 46]
   ];
-  function mulberry(seed) {
+  function mulberry2(seed) {
     return () => {
       seed |= 0, seed = seed + 1831565813 | 0;
       let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
@@ -12408,7 +12630,7 @@
     };
   }
   function buildCrowd() {
-    let rand = mulberry(97531), rows = 13, fans = [], bank = (kind, from, to, step) => {
+    let rand = mulberry2(97531), rows = 13, fans = [], bank = (kind, from, to, step) => {
       for (let r = 0; r < rows; r++) {
         let t = r / (rows - 1), depth = MARGIN + t * STAND_DEPTH, z = STAND_FRONT_Z + t * (STAND_BACK_Z - STAND_FRONT_Z) + 0.35;
         for (let u = from; u < to; u += step) {
@@ -12556,64 +12778,64 @@
         ctx,
         V,
         PITCH.w / 2 + Math.cos(a0) * 9.15,
-        CY2 + Math.sin(a0) * 9.15,
+        CY + Math.sin(a0) * 9.15,
         PITCH.w / 2 + Math.cos(a1) * 9.15,
-        CY2 + Math.sin(a1) * 9.15,
+        CY + Math.sin(a1) * 9.15,
         lw,
         LINE
       );
     }
     for (let side of [0, 1]) {
       let gx = side === 0 ? 0 : PITCH.w, inw = side === 0 ? 1 : -1, bx = gx + inw * BOX.w;
-      groundLine(ctx, V, gx, CY2 - BOX.half, bx, CY2 - BOX.half, lw, LINE), groundLine(ctx, V, gx, CY2 + BOX.half, bx, CY2 + BOX.half, lw, LINE), groundLine(ctx, V, bx, CY2 - BOX.half, bx, CY2 + BOX.half, lw, LINE);
+      groundLine(ctx, V, gx, CY - BOX.half, bx, CY - BOX.half, lw, LINE), groundLine(ctx, V, gx, CY + BOX.half, bx, CY + BOX.half, lw, LINE), groundLine(ctx, V, bx, CY - BOX.half, bx, CY + BOX.half, lw, LINE);
       let sx = gx + inw * 5.5;
-      groundLine(ctx, V, gx, CY2 - 9.16, sx, CY2 - 9.16, lw, LINE), groundLine(ctx, V, gx, CY2 + 9.16, sx, CY2 + 9.16, lw, LINE), groundLine(ctx, V, sx, CY2 - 9.16, sx, CY2 + 9.16, lw, LINE);
+      groundLine(ctx, V, gx, CY - 9.16, sx, CY - 9.16, lw, LINE), groundLine(ctx, V, gx, CY + 9.16, sx, CY + 9.16, lw, LINE), groundLine(ctx, V, sx, CY - 9.16, sx, CY + 9.16, lw, LINE);
     }
   }
   function drawGoals(ctx, V, quality) {
     let post = [242, 244, 250];
     for (let side of [0, 1]) {
       let gx = side === 0 ? 0 : PITCH.w, inw = side === 0 ? -1 : 1;
-      if (box(ctx, V, gx, CY2 - GOAL_HALF, GOAL_H / 2, 0.09, 0.09, GOAL_H / 2, 1, 0, post), box(ctx, V, gx, CY2 + GOAL_HALF, GOAL_H / 2, 0.09, 0.09, GOAL_H / 2, 1, 0, post), box(ctx, V, gx, CY2, GOAL_H, 0.09, GOAL_HALF, 0.09, 1, 0, post), quality === "low") continue;
+      if (box(ctx, V, gx, CY - GOAL_HALF, GOAL_HEIGHT / 2, 0.09, 0.09, GOAL_HEIGHT / 2, 1, 0, post), box(ctx, V, gx, CY + GOAL_HALF, GOAL_HEIGHT / 2, 0.09, 0.09, GOAL_HEIGHT / 2, 1, 0, post), box(ctx, V, gx, CY, GOAL_HEIGHT, 0.09, GOAL_HALF, 0.09, 1, 0, post), quality === "low") continue;
       let back = gx + inw * 1.9;
       poly(ctx, V, [
         back,
-        CY2 - GOAL_HALF,
+        CY - GOAL_HALF,
         0,
         back,
-        CY2 + GOAL_HALF,
+        CY + GOAL_HALF,
         0,
         back,
-        CY2 + GOAL_HALF,
-        GOAL_H * 0.86,
+        CY + GOAL_HALF,
+        GOAL_HEIGHT * 0.86,
         back,
-        CY2 - GOAL_HALF,
-        GOAL_H * 0.86
+        CY - GOAL_HALF,
+        GOAL_HEIGHT * 0.86
       ], "rgba(226,236,250,.16)"), poly(ctx, V, [
         gx,
-        CY2 - GOAL_HALF,
-        GOAL_H,
+        CY - GOAL_HALF,
+        GOAL_HEIGHT,
         back,
-        CY2 - GOAL_HALF,
-        GOAL_H * 0.86,
+        CY - GOAL_HALF,
+        GOAL_HEIGHT * 0.86,
         back,
-        CY2 - GOAL_HALF,
+        CY - GOAL_HALF,
         0,
         gx,
-        CY2 - GOAL_HALF,
+        CY - GOAL_HALF,
         0
       ], "rgba(226,236,250,.11)"), poly(ctx, V, [
         gx,
-        CY2 + GOAL_HALF,
-        GOAL_H,
+        CY + GOAL_HALF,
+        GOAL_HEIGHT,
         back,
-        CY2 + GOAL_HALF,
-        GOAL_H * 0.86,
+        CY + GOAL_HALF,
+        GOAL_HEIGHT * 0.86,
         back,
-        CY2 + GOAL_HALF,
+        CY + GOAL_HALF,
         0,
         gx,
-        CY2 + GOAL_HALF,
+        CY + GOAL_HALF,
         0
       ], "rgba(226,236,250,.11)");
     }
@@ -13236,7 +13458,7 @@
     let h = 4 + Math.round(st.size * 10), [a, b] = st.seats || ["#1c3f6e", "#14335c"];
     g.fillStyle = b, g.fillRect(8, 2, W - 16, h), g.fillRect(2, 2, 6, H - 4), g.fillRect(W - 8, 2, 6, H - 4), g.fillStyle = a, g.fillRect(8, 2, W - 16, 2), g.fillRect(2, 2, 6, 2), g.fillRect(W - 8, 2, 6, 2), st.bowl && (g.fillStyle = b, g.beginPath(), g.arc(8, 2 + h, h, Math.PI, Math.PI * 1.5), g.lineTo(8, 2), g.fill(), g.beginPath(), g.arc(W - 8, 2 + h, h, Math.PI * 1.5, Math.PI * 2), g.lineTo(W - 8, 2), g.fill()), st.roof && st.roof !== "none" && (g.fillStyle = "#e5e7eb", g.fillRect(8, 1, W - 16, 1)), g.fillStyle = "#2e8845", g.fillRect(9, 3 + h, W - 18, H - 5 - h), g.strokeStyle = "rgba(255,255,255,.6)", g.lineWidth = 1, g.strokeRect(10.5, 4.5 + h, W - 21, H - 8 - h);
   }
-  function playMatch(app2, awayId, onDone, level2 = "normal") {
+  function playMatch(app2, awayId, onDone, level2 = "normal", opts = {}) {
     let lv = LEVELS[level2] || LEVELS.normal, homeClub = WORLD.clubs[0], awayClub = WORLD.clubsById[awayId] || WORLD.clubs[1], ground = stadiumFor(awayClub);
     app2.innerHTML = '\n    <div class="w-match">\n      <canvas id="wPitch"></canvas>\n      <div class="w-venue"><canvas id="wThumb" width="64" height="22"></canvas><span>'.concat(ground.name, '</span></div>\n      <div class="w-hud"><span id="wClock">0\'</span><b id="wScore">0 – 0</b></div>\n      <div class="w-comm" id="wComm" hidden></div>\n      <div class="w-sp" id="wSp" hidden></div>\n      <button class="w-kick" id="wKick">KICK</button>\n    </div>'), drawThumb(app2.querySelector("#wThumb"), ground);
     let canvas = app2.querySelector("#wPitch"), ctx = canvas.getContext("2d", { alpha: !1 }), clockEl = app2.querySelector("#wClock"), scoreEl = app2.querySelector("#wScore"), commEl = app2.querySelector("#wComm"), spEl = app2.querySelector("#wSp"), commT = 0, lastComm = -9, WATCH_CUES = { goal: "goal", save: "save", post: "post", bigChance: "bigChance", cornerKick: "cornerKick", freekick: "freekick", penaltyAwarded: "penaltyAwarded", injury: "injury", shotWide: "shotWide" }, commentate = (c) => {
@@ -13254,7 +13476,7 @@
         keeper: gk ? gk.ref.short : "the keeper"
       });
       line && (commEl.textContent = line, commEl.hidden = !1, commT = 3);
-    }, match = new Match(HOME_ID, awayId, { duration: DURATION, mode: "single", human: 0, preset: "authentic", skill: lv.skill }), input = new Input({ keys: "primary" }), cam = makeCamera(), tighten = () => {
+    }, match = new Match(HOME_ID, awayId, { duration: DURATION, mode: "single", human: 0, preset: "authentic", skill: lv.skill, field: opts.field || "full" }), input = new Input({ keys: "primary" }), cam = makeCamera(), tighten = () => {
       let b = match.ball;
       cam.x = Math.max(12, Math.min(PITCH.w - 12, b.x)), cam.y = b.y - 21, cam.z = 11.5, cam.tx = cam.x, cam.ty = b.y + 3, cam.hfov = 33;
     };
@@ -13329,7 +13551,7 @@
       let panel = document.createElement("div");
       panel.className = "w-end", panel.innerHTML = '\n      <div>\n        <p class="w-title">'.concat(won ? "Win" : h.score === a.score ? "Draw" : "Loss", '</p>\n        <div class="w-big">').concat(h.score, " – ").concat(a.score, '</div>\n        <p class="w-sub">+◈ ').concat(reward.toLocaleString(), '</p>\n        <button class="w-btn" id="wBack">Done</button>\n      </div>'), app2.querySelector(".w-match").appendChild(panel), panel.querySelector("#wBack").addEventListener("click", () => {
         var _a2;
-        cancelAnimationFrame(raf), window.removeEventListener("resize", onResize), (_a2 = input.destroy) == null || _a2.call(input), onDone(reward, { goals: h.score, won, level: level2 });
+        cancelAnimationFrame(raf), window.removeEventListener("resize", onResize), (_a2 = input.destroy) == null || _a2.call(input), onDone(reward, { goals: h.score, conceded: match.teams[1].score, won, level: level2, field: opts.field || "full" });
       });
     }
   }
@@ -13755,6 +13977,17 @@
       return null;
     }
   }
+  function fivesResult(scored, conceded) {
+    let f = state2.club.watchFives || (state2.club.watchFives = { played: 0, won: 0, drawn: 0, lost: 0 });
+    f.played += 1, scored > conceded ? f.won += 1 : scored === conceded ? f.drawn += 1 : f.lost += 1, f.last = { scored, conceded, at: Date.now() }, writeLocal(), push();
+  }
+
+  // js/data/cardValue.js
+  function roundValue(v) {
+    let x = Math.max(150, v);
+    return x >= 1e4 ? Math.round(x / 500) * 500 : x >= 1e3 ? Math.round(x / 50) * 50 : Math.round(x / 10) * 10;
+  }
+  var valueFromPrice = (pr) => roundValue((pr || 0) / 2500), guideValue = (p) => p ? valueFromPrice(Math.round((p.value || 0) / 1e3) * 1e3) : 0;
 
   // js/watch/app.js
   var app = document.getElementById("wApp"), tab = "club", buzz2 = (ms = 8) => {
@@ -13788,7 +14021,7 @@
   }
   function clubScreen() {
     var _a;
-    let s = save(), coll = s.club.collection || [], cards = coll.map((id) => WORLD.playersById[id]).filter(Boolean).sort((a, b) => b.overall - a.overall), best = cards[0], packs = s.club.packs || [], bonus = claimBonus();
+    let s = save(), coll = s.club.collection || [], cards = coll.map((id) => getPlayer(id)).filter(Boolean).sort((a, b) => b.overall - a.overall), best = cards[0], packs = s.club.packs || [], bonus = claimBonus();
     bonus && (earn(bonus), buzz2([10, 30, 10]));
     let objs = objectives();
     shell('\n    <p class="w-title">'.concat(name() || "Your club", '</p>\n    <div class="w-card">\n      <div class="w-big">◈ ').concat((s.club.apex || 0).toLocaleString(), '</div>\n      <div class="w-sub">Apex balance').concat(bonus ? ' · <b class="w-up">+'.concat(bonus, " streak</b>") : "", "</div>\n    </div>\n    ").concat((() => {
@@ -13801,7 +14034,12 @@
     })(), "\n    ").concat((() => {
       let ev = activeEvent();
       return ev ? '<div class="w-ev" style="--ev:'.concat(ev.theme || "#22c55e", '"><span>This week</span><b>').concat(ev.name, "</b></div>") : "";
-    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div id="wGuild"></div>\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, "</b></div>") : "", "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
+    })(), '\n    <div class="w-row"><span>Day streak</span><b>🔥 ').concat(streak(), '</b></div>\n    <p class="w-title" style="margin-top:8px">Today</p>\n    ').concat(objs.map((o) => '\n      <div class="w-obj '.concat(o.done ? "done" : "", '">\n        <span>').concat(o.text, "</span>\n        <b>").concat(o.done ? "✓" : "".concat(o.have, "/").concat(o.n), '</b>\n        <i style="width:').concat(Math.round(100 * o.have / o.n), '%"></i>\n      </div>')).join(""), '\n    <div id="wGuild"></div>\n    <div class="w-row"><span>Cards</span><b>').concat(coll.length, '</b></div>\n    <div class="w-row"><span>Packs waiting</span><b>').concat(packs.length, "</b></div>\n    ").concat(best ? '<div class="w-row"><span>Best card</span><b>'.concat(best.overall, " ").concat(best.short, '</b></div>\n      <div class="w-row"><span>Market price</span><b>◈ ').concat(guideValue(best).toLocaleString(), "</b></div>") : "", "\n    ").concat((() => {
+      let f = s.club.fives, w = s.club.watchFives;
+      if (!f && !w) return "";
+      let last2 = [f == null ? void 0 : f.last, w == null ? void 0 : w.last].filter(Boolean).sort((a, b) => b.at - a.at)[0];
+      return '\n      <p class="w-title" style="margin-top:8px">Quickfire Fives</p>\n      <div class="w-row"><span>Record</span><b>'.concat(((f == null ? void 0 : f.won) | 0) + ((w == null ? void 0 : w.won) | 0), "W ").concat(((f == null ? void 0 : f.drawn) | 0) + ((w == null ? void 0 : w.drawn) | 0), "D ").concat(((f == null ? void 0 : f.lost) | 0) + ((w == null ? void 0 : w.lost) | 0), "L</b></div>\n      ").concat(last2 ? '<div class="w-row"><span>Last</span><b>'.concat(last2.scored, " – ").concat(last2.conceded, "</b></div>") : "");
+    })(), "\n    ").concat(cards.length ? '<p class="w-title" style="margin-top:8px">Squad</p>\n      <div class="w-grid">'.concat(cards.slice(0, 12).map((p) => {
       var _a2;
       return '\n        <div class="w-mini" style="--rar:'.concat(((_a2 = RARITY[p.rarity]) == null ? void 0 : _a2.color) || "#888", '">\n          <b>').concat(p.overall, "</b><span>").concat(p.position, "</span><em>").concat(p.short, "</em>\n        </div>");
     }).join(""), "</div>") : "", '\n    <div class="w-row"><span>Synced</span><b>').concat(syncLabel(), "</b></div>\n  ")), guild().then((g) => {
@@ -13817,7 +14055,7 @@
   }, level = "normal";
   function playScreen() {
     let clubs = WORLD.clubs;
-    shell('\n    <p class="w-title">Kick Off · 60 seconds</p>\n    <div class="w-chips">'.concat(Object.entries(LEVELS).map(([id, l]) => '<button class="w-chip '.concat(level === id ? "on" : "", '" data-level="').concat(id, '">').concat(l.label, "</button>")).join(""), '</div>\n    <button class="w-btn" data-pens>⚽ Penalties</button>\n    <p class="w-sub" style="margin-top:8px">Pick an opponent. Drag to run, tap KICK.</p>\n    ').concat(clubs.map((c) => '\n      <button class="w-btn ghost" data-club="'.concat(c.id, '" style="text-align:left">\n        ').concat(c.short, " · ").concat(c.name, "\n      </button>")).join(""), "\n  ")), app.querySelectorAll("[data-level]").forEach((el) => el.addEventListener("click", () => {
+    shell('\n    <p class="w-title">Kick Off · 60 seconds</p>\n    <div class="w-chips">'.concat(Object.entries(LEVELS).map(([id, l]) => '<button class="w-chip '.concat(level === id ? "on" : "", '" data-level="').concat(id, '">').concat(l.label, "</button>")).join(""), '</div>\n    <button class="w-btn" data-pens>⚽ Penalties</button>\n    <button class="w-btn" data-fives>⚡ Quickfire Fives</button>\n    <p class="w-sub" style="margin-top:8px">Pick an opponent. Drag to run, tap KICK.</p>\n    ').concat(clubs.map((c) => '\n      <button class="w-btn ghost" data-club="'.concat(c.id, '" style="text-align:left">\n        ').concat(c.short, " · ").concat(c.name, "\n      </button>")).join(""), "\n  ")), app.querySelectorAll("[data-level]").forEach((el) => el.addEventListener("click", () => {
       buzz2(), level = el.dataset.level, playScreen();
     })), app.querySelector("[data-pens]").addEventListener("click", () => {
       buzz2(14);
@@ -13825,6 +14063,12 @@
       playPens(app, { oppShort: opp.short, onEvent: (ev) => report(ev) }, (reward) => {
         reward && earn(reward), tab = "play", render();
       });
+    }), app.querySelector("[data-fives]").addEventListener("click", () => {
+      buzz2(14);
+      let opp = clubs[1 + Math.floor(Math.random() * (clubs.length - 1))];
+      playMatch(app, opp.id, (reward, stats) => {
+        reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins")), fivesResult((stats == null ? void 0 : stats.goals) | 0, (stats == null ? void 0 : stats.conceded) | 0), tab = "play", render();
+      }, level, { field: "fives" });
     }), app.querySelectorAll("[data-club]").forEach((el) => el.addEventListener("click", () => {
       buzz2(14), playMatch(app, el.dataset.club, (reward, stats) => {
         reward && earn(reward), report("match"), stats != null && stats.goals && report("goal", stats.goals), stats != null && stats.won && (report("win"), stat("wins"), stats.level === "hard" && report("hardwin")), tab = "play", render();

@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v79';
+const CACHE = 'apexxi-v80';
 
 const ASSETS = [
   './',
@@ -40,6 +40,7 @@ const ASSETS = [
   './js/components/crest.js',
   './js/components/screenHead.js',
   './js/game/sim.js',
+  './js/game/field.js',
   './js/game/input.js',
   './js/game/render3d.js',
   './js/game/renderGL.js',
@@ -66,6 +67,7 @@ const ASSETS = [
   './js/screens/today.js',
   './js/screens/trophies.js',
   './js/screens/weekend.js',
+  './js/screens/uxiHub.js',
   './js/progress.js',
   './js/live.js',
   './js/weekend.js',
@@ -93,12 +95,20 @@ const ASSETS = [
   './js/world.js',
   './js/data/stadiums.js',
   './js/evolve.js',
+  './js/evolutions.js',
+  './js/market.js',
+  './js/binder.js',
+  './js/modes.js',
+  './js/tasks.js',
+  './js/squadHub.js',
   './js/careerV2.js',
   './js/data/commentary.js',
   './js/data/achievements.js',
   './js/data/season.js',
   './js/data/liveDefault.js',
   './js/data/chemistry.js',
+  './js/data/promos.js',
+  './js/data/cardValue.js',
   './events.json',
 
   './js/net/api.js',

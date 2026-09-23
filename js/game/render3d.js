@@ -9,8 +9,8 @@ import { PITCH, GOAL_HALF, BOX } from './sim.js';
  * generated procedurally (no external models or textures).
  * ------------------------------------------------------------------ */
 
-const CY = PITCH.h / 2;
-const GOAL_H = 2.44;
+import { CY } from './field.js';
+import { GOAL_HEIGHT as GOAL_H } from './field.js';
 const NEAR = 0.6;
 const MARGIN = 6;                    // pitch edge to the front of the stands
 

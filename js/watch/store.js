@@ -187,3 +187,12 @@ export async function guild() {
     return guildCache.view;
   } catch { return null; }
 }
+
+/** v80: a Quickfire Fives result played on the wrist. The phone's own Fives record syncs in as `club.fives`. */
+export function fivesResult(scored, conceded) {
+  const f = state.club.watchFives || (state.club.watchFives = { played: 0, won: 0, drawn: 0, lost: 0 });
+  f.played += 1;
+  if (scored > conceded) f.won += 1; else if (scored === conceded) f.drawn += 1; else f.lost += 1;
+  f.last = { scored, conceded, at: Date.now() };
+  writeLocal(); push();
+}

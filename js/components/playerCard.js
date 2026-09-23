@@ -89,7 +89,7 @@ export function playerCard(p, opts = {}) {
      </span>`;
 
   return `
-    <article class="pcard pc-${size} rar-${p.rarity}${selected ? ' is-selected' : ''}"
+    <article class="pcard pc-${size} rar-${p.rarity}${selected ? ' is-selected' : ''}${opts.evo ? ` evo-${opts.evo}` : ''}"
              data-player="${p.id}" style="--rar:${r.color};--rar-glow:${r.glow}" tabindex="0"
              aria-label="${p.name}, ${p.position}, rated ${p.overall}">
       <div class="pc-sheen"></div>
@@ -114,7 +114,9 @@ export function playerCard(p, opts = {}) {
         <span class="pc-meta">${p.nation} · ${p.age}y · ${p.foot === 'L' ? 'Left' : 'Right'} foot</span>
       </footer>
       ${chemPip}
-      <span class="pc-rar-tag">${r.label}</span>
+      <span class="pc-rar-tag">${p.iconTier ? `${p.iconTier[0].toUpperCase()}${p.iconTier.slice(1)} Icon` : r.label}</span>
+      ${p.iconTier ? `<span class="pc-tier">${p.iconTier.toUpperCase()}</span>` : ''}
+      ${p.promoLabel && size !== 'mini' ? `<span class="pc-promo">${p.promoLabel}</span>` : ''}
       ${action}
     </article>`;
 }

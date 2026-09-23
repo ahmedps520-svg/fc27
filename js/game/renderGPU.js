@@ -18,9 +18,9 @@
 import { loadWebGPU } from './gpu.js';
 import { PITCH, GOAL_HALF } from './sim.js';
 
-const CY = PITCH.h / 2;
+import { CY } from './field.js';
 const MARGIN = 6;
-const GOAL_H = 2.44;
+import { GOAL_HEIGHT as GOAL_H } from './field.js';
 const hexOf = (c) => parseInt(String(c).replace('#', ''), 16);
 
 /** The look of the day, cut down from renderGL's lightingFor. */

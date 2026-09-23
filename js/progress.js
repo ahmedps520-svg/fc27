@@ -13,6 +13,7 @@
  * they earned and why, and the hub has a reason to exist.
  */
 import { getState, update } from './state.js';
+import { levelFromXP, levelReward, bump as bumpTask } from './tasks.js';
 import { WORLD } from './data/generator.js';
 import { ACHIEVEMENTS, evaluateAll } from './data/achievements.js';
 import { XP, TIER_XP, TIERS } from './data/season.js';
@@ -44,6 +45,17 @@ export function addXP(s, n, why = '') {
   }
   const before = Math.floor(s.club.season.xp / TIER_XP);
   s.club.season.xp += n;
+  // v80: the club level counts every XP point for good, and pays each level as it comes
+  if (n > 0) {
+    const lb = levelFromXP(s.club.xpTotal || 0).level;
+    s.club.xpTotal = (s.club.xpTotal || 0) + n;
+    const la = levelFromXP(s.club.xpTotal).level;
+    for (let l = lb + 1; l <= la; l++) {
+      const r = levelReward(l);
+      s.club.apex += r.apex; for (const pk of r.packs) s.club.packs.push(pk);
+      pend(s, { kind: 'level', title: `Club level ${l}`, sub: r.text, apex: 0 });
+    }
+  }
   const after = Math.min(TIERS, Math.floor(s.club.season.xp / TIER_XP));
   peak(s, 'bestTier', after);
   if (n) s.club.xpLog = [...(s.club.xpLog || []).slice(-9), { n, why, at: Date.now() }];
@@ -96,10 +108,13 @@ function checkAchievements(s) {
  * A match has finished. `mode`: 'single' | 'ultimate' | 'career' | 'weekend'
  * | 'online'. Scores are from the player's point of view.
  */
-export function onMatch({ mode, scored, conceded, online = false, possession = 50, weekend = false }) {
+export function onMatch({ mode, scored, conceded, online = false, possession = 50, weekend = false, sub = null }) {
   const won = scored > conceded;
   const drew = scored === conceded;
   let tiers = 0;
+  // v80: the daily and weekly tasks
+  bumpTask('played'); if (won) bumpTask('win'); bumpTask('goal', scored); if (conceded === 0) bumpTask('clean');
+  if (sub === 'fives') bumpTask('fives'); if (sub === 'clash') bumpTask('clash');
   update((s) => {
     bump(s, 'matches'); if (won) bump(s, 'wins');
     bump(s, 'goals', scored);
@@ -128,6 +143,7 @@ export function onMatch({ mode, scored, conceded, online = false, possession = 5
 
 /** Packs opened: `drawn` is the openPack result, `pack` the pack def. */
 export function onPack(pack, drawn) {
+  bumpTask('pack');
   update((s) => {
     if (pack.event) {
       eventGain(s, { eventPack: 1 });

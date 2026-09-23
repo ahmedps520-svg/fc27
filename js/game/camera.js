@@ -28,10 +28,13 @@
  */
 import { PITCH, GOAL_HALF } from './sim.js';
 
-const CY = PITCH.h / 2;
+import { CY, SCALE } from './field.js';
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const GOAL_H = 2.44;
+import { GOAL_HEIGHT as GOAL_H } from './field.js';
 const NET_DEPTH = 2.0;
+
+/** Clamp an x to `m` metres from either end — or to the middle on a pitch too small for that (v80). */
+const clampX = (v, m) => { const lo = Math.min(m, PITCH.w / 2); const hi = Math.max(PITCH.w - m, PITCH.w / 2); return Math.max(lo, Math.min(hi, v)); };
 
 /* ------------------------------ the presets ------------------------------ */
 export const CAMERA_PRESETS = [
@@ -238,7 +241,7 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
 
   /* The open-play pose for each preset. */
   const playPose = (m) => {
-    const Z = S.zoom * zoomAuto;
+    const Z = S.zoom * zoomAuto * Math.max(0.5, Math.min(1, SCALE * 1.15));   // v80: a small pitch wants the camera closer
     const H = S.height;
     const tilt = S.angle;                             // degrees: + steeper, - flatter
     const steep = 1 + tilt * 0.022; const near = 1 - tilt * 0.012;
@@ -248,15 +251,15 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
     const out = {};
     switch (S.preset) {
       case 'tele':
-        out.x = clamp(fx, 18, PITCH.w - 18); out.y = -58 * Z * near + fy * 0.25; out.z = 25 * H * steep * Math.sqrt(Z);
+        out.x = clampX(fx, 18); out.y = -58 * Z * near + fy * 0.25; out.z = 25 * H * steep * Math.sqrt(Z);
         out.tx = out.x; out.ty = fy * 0.85 + 5; out.tz = 0; out.hfov = 27;
         break;
       case 'coop':
-        out.x = clamp(fx, 24, PITCH.w - 24); out.y = -38 * Z * near + fy * 0.2; out.z = 26 * H * steep * Math.sqrt(Z);
+        out.x = clampX(fx, 24); out.y = -38 * Z * near + fy * 0.2; out.z = 26 * H * steep * Math.sqrt(Z);
         out.tx = out.x; out.ty = fy * 0.7 + CY * 0.3; out.tz = 0; out.hfov = 56;
         break;
       case 'tactical':
-        out.x = clamp(fx, 26, PITCH.w - 26); out.y = -18 * near; out.z = 58 * H * steep;
+        out.x = clampX(fx, 26); out.y = -18 * near; out.z = 58 * H * steep;
         out.tx = out.x; out.ty = fy * 0.55 + CY * 0.45; out.tz = 0; out.hfov = 58 * Math.min(1.15, Z);
         break;
       case 'dynamic':
@@ -272,7 +275,7 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
         out.tx = fx + dir * 8; out.ty = fy; out.tz = 0; out.hfov = 52;
         break;
       default: // broadcast
-        out.x = clamp(fx, 16, PITCH.w - 16); out.y = -30 * Z * near + fy * 0.3; out.z = 17 * H * steep * Math.sqrt(Z);
+        out.x = clampX(fx, 16); out.y = -30 * Z * near + fy * 0.3; out.z = 17 * H * steep * Math.sqrt(Z);
         out.tx = out.x; out.ty = Math.max(10, Math.min(48, fy * 0.82 + 7)); out.tz = 0; out.hfov = 48;
     }
     return out;
@@ -298,15 +301,15 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
         const ux = (goalX - b.x) / (toGoal || 1); const uy = (CY - b.y) / (toGoal || 1);
         return { x: b.x - ux * 10, y: b.y - uy * 10, z: 4.4, tx: goalX, ty: CY, tz: 1.0, hfov: 44 };
       }
-      return { x: clamp(b.x, 18, PITCH.w - 18), y: -28 + b.y * 0.3, z: 16, tx: clamp(b.x + dir * 10, 18, PITCH.w - 18), ty: b.y * 0.8 + 7, tz: 0, hfov: 50 };
+      return { x: clampX(b.x, 18), y: -28 + b.y * 0.3, z: 16, tx: clampX(b.x + dir * 10, 18), ty: b.y * 0.8 + 7, tz: 0, hfov: 50 };
     }
     if (kind === 'throwin') {
-      return { x: clamp(b.x, 14, PITCH.w - 14), y: -24 + b.y * 0.35, z: 13, tx: clamp(b.x + dir * 5, 14, PITCH.w - 14), ty: b.y * 0.85 + 4, tz: 0, hfov: 42 };
+      return { x: clampX(b.x, 14), y: -24 + b.y * 0.35, z: 13, tx: clampX(b.x + dir * 5, 14), ty: b.y * 0.85 + 4, tz: 0, hfov: 42 };
     }
     if (kind === 'goalkick') {
       const gk = b.owner;
       const kx = gk ? gk.x : b.x;
-      return { x: clamp(kx + dir * 16, 16, PITCH.w - 16), y: -26, z: 15, tx: clamp(kx + dir * 20, 16, PITCH.w - 16), ty: CY * 0.9, tz: 0, hfov: 54 };
+      return { x: clampX(kx + dir * 16, 16), y: -26, z: 15, tx: clampX(kx + dir * 20, 16), ty: CY * 0.9, tz: 0, hfov: 54 };
     }
     // kick-off: the whole of both halves
     return { x: PITCH.w / 2, y: -34, z: 20, tx: PITCH.w / 2, ty: CY * 0.9, tz: 0, hfov: 54 };

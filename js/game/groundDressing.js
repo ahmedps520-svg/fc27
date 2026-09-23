@@ -17,8 +17,7 @@
  */
 import * as THREE from '../vendor/three.module.js';
 
-const PITCH = { w: 105, h: 68 };
-const CY = PITCH.h / 2;
+import { PITCH, CY } from './field.js';
 
 /** Merge geometries (any mix of indexed and not) into one non-indexed buffer. */
 function merge(parts) {

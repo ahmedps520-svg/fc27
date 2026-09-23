@@ -6,11 +6,11 @@ import { DEF_STYLES, BUILD_UPS, ROLES, QUICK_TACTICS, defaultTactics, defaultRol
 /* ------------------------------------------------------------------ *
  * Real-time arcade match. Units are metres; the pitch is 105 x 68.
  * ------------------------------------------------------------------ */
-export const PITCH = { w: 105, h: 68 };
-export const GOAL_HALF = 5.5;      // goal spans centre +/- 5.5m
-const CY = PITCH.h / 2;
-const BOX_W = 16.5;
-const BOX_HALF = 20;
+/* v80: the field is data (game/field.js) — a full pitch unless a match asks
+   for a small one. These are live bindings: re-exported so every importer of
+   sim.js keeps working, and read at call time, never cached. */
+import { PITCH, CY, GOAL_HALF, GOAL_HEIGHT, BOX, FIELD, SCALE, setField } from './field.js';
+export { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX, FIELD, setField };
 
 /**
  * Gameplay presets.
@@ -108,6 +108,24 @@ export const SHAPES = {
 };
 
 export const FORMATION_NAMES = Object.keys(SHAPES);
+/** v80: five-a-side shapes — a keeper and four. */
+export const SHAPES5 = {
+  '1-2-1': [
+    { x: .05, y: .50, role: 'GK' }, { x: .24, y: .50, role: 'DEF' },
+    { x: .46, y: .22, role: 'MID' }, { x: .46, y: .78, role: 'MID' }, { x: .70, y: .50, role: 'FWD' },
+  ],
+  '2-2': [
+    { x: .05, y: .50, role: 'GK' }, { x: .26, y: .30, role: 'DEF' }, { x: .26, y: .70, role: 'DEF' },
+    { x: .62, y: .30, role: 'FWD' }, { x: .62, y: .70, role: 'FWD' },
+  ],
+  '2-1-1': [
+    { x: .05, y: .50, role: 'GK' }, { x: .24, y: .30, role: 'DEF' }, { x: .24, y: .70, role: 'DEF' },
+    { x: .46, y: .50, role: 'MID' }, { x: .72, y: .50, role: 'FWD' },
+  ],
+};
+export const FIVES_NAMES = Object.keys(SHAPES5);
+const shapesFor = () => (FIELD.players === 5 ? SHAPES5 : SHAPES);
+const defaultShape = () => (FIELD.players === 5 ? SHAPES5['1-2-1'] : SHAPES['4-4-2']);
 const SHAPE = SHAPES['4-4-2'];
 
 /** Natural role of a generated player, used when re-slotting into a new shape. */
@@ -125,7 +143,6 @@ export const BENCH_SIZE = 5;
 export const MAX_SUBS = 3;
 
 const GRAV = 16;                   // arcade gravity, m/s^2
-export const GOAL_HEIGHT = 2.44;
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
 export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true };
@@ -148,7 +165,16 @@ function pickXI(clubId) {
     ...add(take(['ST', 'LW', 'RW'], 2, used)),
   ];
   for (const p of pool) { if (xi.length >= 11) break; if (!used.has(p)) { xi.push(p); used.add(p); } }
+  if (FIELD.players === 5) return fivesFrom(xi);
   return xi.slice(0, 11);
+}
+/** A keeper, a defender, two midfielders and a forward, the best of an eleven (v80). */
+export function fivesFrom(xi) {
+  const role = (p) => ROLE_OF[p.position] || 'MID';
+  const by = (r) => xi.filter((p) => role(p) === r).sort((a, b) => b.overall - a.overall);
+  const out = [by('GK')[0], by('DEF')[0], ...by('MID').slice(0, 2), by('FWD')[0]];
+  for (const p of xi.slice().sort((a, b) => b.overall - a.overall)) { if (out.filter(Boolean).length >= 5) break; if (!out.includes(p)) out[out.findIndex((q) => !q)] = p; }
+  return out.filter(Boolean).slice(0, 5);
 }
 
 /**
@@ -209,7 +235,9 @@ function aggressionOf(ref) {
 
 function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
-  const xi = custom?.xi?.length === 11 ? custom.xi : pickXI(clubId);
+  const n = FIELD.players;
+  const xi = custom?.xi?.length === n ? custom.xi : custom?.xi?.length === 11 && n === 5 ? fivesFrom(custom.xi) : pickXI(clubId);
+  const SHAPE = defaultShape();
   const dir = side === 0 ? 1 : -1;
 
   const players = xi.map((ref, i) => {
@@ -257,7 +285,7 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     dir, side, isHuman,
     players, bench, subsLeft: MAX_SUBS,
     score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
-    formation: '4-4-2',
+    formation: n === 5 ? '1-2-1' : '4-4-2',
     // a custom squad may bring an instruction with it — the Apex Division uses
     // this to make the CPU press and push up the higher you climb
     tactics: { ...defaultTactics(), ...(custom?.tactics || {}) },
@@ -266,6 +294,9 @@ function makeTeam(clubId, side, isHuman, custom = null) {
 
 export class Match {
   constructor(homeId, awayId, opts = {}) {
+    // v80: the field comes first — every distance below reads it
+    setField(opts.field || 'full');
+    this.field = FIELD.id;
     // mode: 'single' | 'versus' | 'coop'. human === null runs both sides on AI.
     this.mode = opts.mode || 'single';
     this.human = opts.human === null ? null : (opts.human ?? 0);
@@ -276,16 +307,17 @@ export class Match {
 
     // One seat per person at the couch. Each keeps its own selected player and
     // its own shot charge, so two people never fight over the same footballer.
+    const last = FIELD.players - 1;
     if (this.human === null) this.controllers = [];
     else if (this.mode === 'versus') {
-      this.controllers = [{ team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
-        { team: 1, activeIdx: 10, charge: 0, passCharge: 0 }];
+      this.controllers = [{ team: 0, activeIdx: last, charge: 0, passCharge: 0 },
+        { team: 1, activeIdx: last, charge: 0, passCharge: 0 }];
       this.teams[1].isHuman = true;
     } else if (this.mode === 'coop') {
-      this.controllers = [{ team: 0, activeIdx: 10, charge: 0, passCharge: 0 },
-        { team: 0, activeIdx: 9, charge: 0, passCharge: 0 }];
+      this.controllers = [{ team: 0, activeIdx: last, charge: 0, passCharge: 0 },
+        { team: 0, activeIdx: last - 1, charge: 0, passCharge: 0 }];
     } else {
-      this.controllers = [{ team: this.human, activeIdx: 10, charge: 0, passCharge: 0 }];
+      this.controllers = [{ team: this.human, activeIdx: last, charge: 0, passCharge: 0 }];
     }
     this.duration = opts.duration ?? 240;      // real seconds for the whole match
     this.skill = opts.skill ?? 1;              // CPU aggression multiplier
@@ -451,7 +483,7 @@ export class Match {
     }
     const takers = this.teams[kickoffSide].players;
     const taker = takers.find((p) => p.role === 'FWD')
-      || takers.find((p) => p.role === 'MID') || takers[10];
+      || takers.find((p) => p.role === 'MID') || takers[takers.length - 1];
     taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6;
     taker.y = CY;
     this.kickoffTaker = taker;
@@ -993,8 +1025,8 @@ export class Match {
    * giving each slot the best natural fit still available.
    */
   applyFormation(teamIdx, name) {
-    const shape = SHAPES[name];
-    if (!shape) return;
+    const shape = shapesFor()[name];
+    if (!shape || shape.length !== this.teams[teamIdx].players.length) return;
     const team = this.teams[teamIdx];
     const used = new Set();
 
@@ -1223,7 +1255,7 @@ export class Match {
           if (p.touchLock > 0) continue;
           // a ball in the air can be attacked from further out — you jump for it,
           // and a keeper mid-dive is stretching at full span
-          let r = p.role === 'GK' ? (p.diveT > 0 ? 2.6 : 1.68)
+          let r = p.role === 'GK' ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5)
             : (p.slide > 0 ? 2.2 : (b.z > 0.8 ? 2.15 : 1.7));
           /* v79: a ball running out fast right on the touchline is hard to keep
              in — you cannot stretch over the line for it. */
@@ -1354,6 +1386,7 @@ export class Match {
             return;
           }
         }
+        if (b.passer && b.passer.team !== best.team) b.passer = null;   // the other side won it: no assist
         b.owner = best;
         b.lastTouch = best;
         best.holdT = 0;
@@ -1642,7 +1675,9 @@ export class Match {
     if ((this.ball.shotBy && this.ball.shotBy.team === side) || (!this.ball.shotBy && this.ball.lastTouch?.team === side)) team.onTarget++;
     this.ball.shotBy = null;
     const scorer = this.ball.lastTouch && this.ball.lastTouch.team === side ? this.ball.lastTouch : null;
-    if (scorer) team.scorers.push({ name: scorer.ref.name, minute: this.minute() });
+    // v80: who made it — the last team-mate to pass or cross it in
+    const assist = this.ball.passer && this.ball.passer.team === side && this.ball.passer !== scorer ? this.ball.passer : null;
+    if (scorer) team.scorers.push({ name: scorer.ref.name, id: scorer.ref.id, assist: assist?.ref.id || null, assistName: assist?.ref.name || null, minute: this.minute() });
     this.feed.unshift(`${this.minute()}'  ${team.short} — ${scorer ? scorer.ref.name : 'own goal'}`);
     this.banner = 'GOAL';
     this.goalTeam = side;
@@ -1799,6 +1834,7 @@ export class Match {
         const dx = best.x + best.vx * 0.5 - p.x; const dy = best.y + best.vy * 0.5 - p.y; const dd = Math.hypot(dx, dy) || 1;
         const sp = clamp(dd * 1.2 + 10, 14, 30);
         this.release(p, (dx / dd) * sp, (dy / dd) * sp);
+        this.ball.passer = p;
         return;
       }
       kind = 'driven';
@@ -1855,6 +1891,7 @@ export class Match {
     // floated hangs up at ~20 m/s; a driven one is whipped in low and quick
     const T = kind === 'driven' ? clamp(D / 27, 0.45, 1.3) : clamp(D / 20, 0.6, 1.9);
     this.cue('cross');
+    this.ball.passer = p;
     /* v79: a defender standing up to the crosser blocks it — mostly behind for
        a corner, which is where most corners in real football come from. */
     const blocker = this.teams[1 - p.team].players.find((q) => q.role !== 'GK' && dist(q, p) < 2.6
@@ -1910,6 +1947,7 @@ export class Match {
     }
 
     this.cue('pass');
+    this.ball.passer = p;
     // nobody in range: hit it where you were aiming, as hard as you were holding
     if (!best) {
       const punt = (16 + power * 22) * this.preset.passSpeed;
@@ -1992,7 +2030,7 @@ export class Match {
        against about a third in real football — narrowed again by a Finesse
        Finisher bending one in, and widened by a mistimed header or volley. */
     const finesse = curl ? 1 - 0.22 * (p.tr?.finesse || 0) : 1;
-    const spread = ((1.05 - acc) * 0.34 + d / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5;
+    const spread = ((1.05 - acc) * 0.34 + d / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
     /* Expected goals: how good the chance was, before the strike decides it.
      * Distance and angle do most of the work, a defender within two metres
      * takes a third off. The stat sheet sums it; a chance over a quarter of a
@@ -2423,7 +2461,7 @@ export class Match {
   /** Is `pt` inside the box that `defending` is protecting? */
   inPenaltyArea(pt, defending) {
     const goalX = this.teams[defending].dir > 0 ? 0 : PITCH.w;
-    return Math.abs(pt.x - goalX) < BOX_W && Math.abs(pt.y - CY) < BOX_HALF;
+    return Math.abs(pt.x - goalX) < BOX.w && Math.abs(pt.y - CY) < BOX.half;
   }
 
   /**
@@ -2434,7 +2472,7 @@ export class Match {
   awardPenalty(attacking, conceded) {
     const atk = this.teams[attacking];
     const goalX = atk.dir > 0 ? PITCH.w : 0;
-    const spotX = goalX + (atk.dir > 0 ? -11 : 11);
+    const spotX = goalX + (atk.dir > 0 ? -FIELD.spot : FIELD.spot);
 
     const b = this.ball;
     Object.assign(b, {
@@ -2530,7 +2568,7 @@ export class Match {
     const b = this.ball;
     const weHave = b.owner && b.owner.team === p.team;
     const push = ((b.x - PITCH.w / 2) / (PITCH.w / 2)) * team.dir;
-    const shift = push * 13 * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team);
+    const shift = push * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team);
     // Without the ball the block drops and narrows — more so for a cautious
     // side — so a shape is a shape when defending, not a line of statues.
     const drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team));
@@ -2540,7 +2578,7 @@ export class Match {
        stretches the shape in possession; and each player's role nudges him
        within his slot — an inverted wing-back tucks in, a false nine drops. */
     const tac = team.tactics || {};
-    const lineShift = (DEF_STYLES[tac.defStyle]?.line ?? 0) + ((tac.line ?? 0.5) - 0.5) * 16;
+    const lineShift = ((DEF_STYLES[tac.defStyle]?.line ?? 0) + ((tac.line ?? 0.5) - 0.5) * 16) * SCALE;
     const k = p.role === 'DEF' ? 1 : p.role === 'MID' ? 0.6 : 0.3;
     const width = weHave ? 0.84 + (tac.width ?? 0.5) * 0.5 : squeeze;
     let x = p.sx * PITCH.w + team.dir * (shift - drop + lineShift * k);
@@ -2732,7 +2770,7 @@ export class Match {
     return beyond && pastBall && theirHalf;
   }
   noteOffside(passer) {
-    if (this.phase !== 'play') { this.offsideWatch = null; return; }
+    if (this.phase !== 'play' || !FIELD.offside) { this.offsideWatch = null; return; }
     const line = this.offsideLine(1 - passer.team);
     const ids = new Set();
     for (const q of this.teams[passer.team].players) if (q !== passer && q.role !== 'GK' && this.isOffside(q, line)) ids.add(q);
@@ -2740,6 +2778,7 @@ export class Match {
   }
   /** The side with the ball keeps its forwards level with the last defender (AI). */
   onsideX(team, x, slack = 0) {
+    if (!FIELD.offside) return x;
     const line = this.offsideLine(1 - team.side);
     const lim = line - team.dir * (0.8 - slack);
     const ballLim = this.ball.x;
@@ -2750,7 +2789,7 @@ export class Match {
   /** Defenders never collapse onto their own keeper — hold a line off the goal. */
   holdLine(team, x) {
     const gx = team.dir > 0 ? 0 : PITCH.w;
-    const MIN = 7.5 * this.preset.discipline;
+    const MIN = 7.5 * this.preset.discipline * Math.max(0.45, SCALE);
     return team.dir > 0 ? Math.max(x, gx + MIN) : Math.min(x, gx - MIN);
   }
 
@@ -2817,8 +2856,9 @@ export class Match {
       return;
     }
 
-    if (toGoal < 31 && (pressure > 1.7 || toGoal < 16)) {
-      if (Math.random() < (3.3 - toGoal / 22) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+    const sc = Math.max(0.55, SCALE);
+    if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc)) {
+      if (Math.random() < (3.3 - toGoal / (22 * sc)) * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
         // CPU keeps most efforts down, but bends the odd one from range
         const far = toGoal > 17;
         const gk = this.teams[1 - p.team].players.find((q) => q.role === 'GK');
@@ -2835,8 +2875,9 @@ export class Match {
       }
     }
     // wide and deep? whip it into the box instead
-    const wide = p.y < 20 || p.y > PITCH.h - 20;
-    if (wide && Math.abs(goalX - p.x) < 32 && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt) {
+    const wideM = 20 * (PITCH.h / 68);
+    const wide = p.y < wideM || p.y > PITCH.h - wideM;
+    if (wide && Math.abs(goalX - p.x) < 32 * SCALE && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt) {
       const inBox = team.players.some((t) => t !== p && t.role !== 'GK' && Math.abs(t.x - goalX) < 22);
       if (inBox) {
         // v79: the delivery that suits it — pulled back from the byline, whipped in, or floated
@@ -2930,7 +2971,7 @@ export class Match {
       // The read is judged once per shot and carries an error scaled to the keeper's quality.
       if (p.readId !== b.shotId) {
         p.readId = b.shotId;
-        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6;
+        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5));   // v80: shots come quicker in small-sided
         p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22;  // beatable at pace (v79: a touch slower)
       }
       p.reactT = Math.max(0, (p.reactT || 0) - dt);
@@ -2944,7 +2985,7 @@ export class Match {
         // simply step to, they leave their feet and stretch for it.
         const gap = cross - p.y;
         // v79: how far he can get is his rating (and a Sweeper Keeper's spring)
-        const reach = 3.2 + (p.ref.overall - 70) * 0.06 + (p.tr?.sweeper || 0) * 0.35;
+        const reach = (3.2 + (p.ref.overall - 70) * 0.06 + (p.tr?.sweeper || 0) * 0.35) * Math.min(1, 0.35 + 0.65 * GOAL_HALF / 5.5);   // v80: a small goal, a smaller dive
         if (p.diveT <= 0 && t < 0.62 && Math.abs(gap) > 0.85 && Math.abs(gap) < reach) {
           p.diveT = 0.75;
           p.diveDir = Math.sign(gap);
@@ -2968,7 +3009,7 @@ export class Match {
     }
 
     ty = clamp(ty, CY - GOAL_HALF - 2.5, CY + GOAL_HALF + 2.5);
-    tx = team.dir > 0 ? clamp(tx, 1, BOX_W - 2) : clamp(tx, PITCH.w - BOX_W + 2, PITCH.w - 1);
+    tx = team.dir > 0 ? clamp(tx, 1, BOX.w - 2) : clamp(tx, PITCH.w - BOX.w + 2, PITCH.w - 1);
     this.moveTo(p, tx, ty, dt, urgency);
   }
 
@@ -3070,4 +3111,3 @@ export class Match {
   }
 }
 
-export const BOX = { w: BOX_W, half: BOX_HALF };
