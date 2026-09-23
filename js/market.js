@@ -68,7 +68,7 @@ function aiListings(slot) {
     const { min, max, value } = priceRange(p);
     const buyNow = Math.max(min, Math.min(max, Math.round(value * (0.9 + r() * 0.5) / 10) * 10));
     const start = Math.max(min, Math.round(buyNow * (0.6 + r() * 0.25) / 10) * 10);
-    out.push({ id: `a${slot}-${i}`, cardId: p.id, seller: 'market', start, buyNow, bid: 0, bidder: null, ends: (slot + 1) * SLOT_MS - Math.floor(r() * 3) * 3600_000 });
+    out.push({ id: `a${slot}-${i}`, cardId: p.id, seller: 'market', start, buyNow, bid: 0, bidder: null, ends: (slot + 1) * SLOT_MS + Math.floor(r() * 3) * 3600_000 });   // staggered past the slot, so the market is never thin
   }
   return out;
 }
@@ -150,8 +150,9 @@ export function search(filters = {}, now = Date.now()) {
   const s = getState();
   const bought = new Set(mkt(s).bought || []);
   const watched = new Set((mkt(s).watch || []).map((w) => w.listing));
-  const list = [...aiListings(slotOf(now)), ...aiListings(slotOf(now) - 1).filter((l) => l.ends > now)]
-    .filter((l) => !bought.has(l.id) && !watched.has(l.id));
+  // an ended listing is never shown: the current slot's can end up to two hours early
+  const list = [...aiListings(slotOf(now)), ...aiListings(slotOf(now) - 1)]
+    .filter((l) => l.ends > now && !bought.has(l.id) && !watched.has(l.id));
   const f = filters;
   const q = (f.text || '').trim().toLowerCase();
   return list.map((l) => ({ ...l, p: getPlayer(l.cardId) })).filter(({ p, buyNow }) => p

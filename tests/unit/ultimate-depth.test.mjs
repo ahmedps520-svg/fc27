@@ -235,3 +235,15 @@ test('the market cannot be farmed: no elite listings, nobody pays over the buyer
   assert.ok(!getState().club.mkt.trades.some((x) => x.side === 'sell'), 'a listing at the ceiling never sells');
   assert.ok(getState().club.collection.includes(p.id), 'and comes back unsold');
 });
+
+test('the market never shows an ended listing, at any point in a slot', () => {
+  update((s) => { s.club.apex = 10_000_000; });
+  const slot = Math.floor(Date.now() / market.SLOT_MS);
+  for (const into of [0.01, 0.5, 0.95, 0.999]) {
+    const now = (slot + into) * market.SLOT_MS;
+    const list = market.search({}, now);
+    assert.ok(list.length > 0);
+    for (const l of list) assert.ok(l.ends > now, 'listing still open');
+    assert.equal(market.buyNow(list[0], now).ok, true, `buyable at ${into} of the slot`);
+  }
+});
