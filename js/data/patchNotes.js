@@ -18,6 +18,41 @@
  */
 export const RELEASES = [
   {
+    version: 'v79',
+    date: '2026-09-23',
+    tag: 'Gameplay',
+    title: 'Momentum, first touches, traits, tactics, offside — and throw-ins',
+    lede: 'Players carry momentum and plant a foot to turn, the first touch can let you down, shots dip and knuckle, crosses come three ways, '
+        + 'there is offside, cards carry signature traits, every side has real tactics and roles, the CPU adapts to the score, and there are thirteen skill moves.',
+    entries: [
+      {
+        head: 'Movement and the ball',
+        summary: 'No more turning on a dime at full sprint; shoulder-to-shoulder duels that the stronger man wins; trips and pushes from behind; a first touch that depends on the player and the pass; driven, ground and lofted passes; through balls weighted by how long you hold; shots that dip or knuckle; volleys, headers you have to time, and the odd overhead kick.',
+        detail: 'Keepers dive as far as their rating lets them. A ball dribbled over the line is out, and a clearance can end up in the stand.',
+      },
+      {
+        head: 'Traits',
+        summary: 'Twelve signature traits — Finesse Finisher, Engine, Rock at the Back, Quick Step, Sweeper Keeper, Pinged Pass, Aerial Threat, Trickster, Anchor, Cannon, Velvet Touch and Dead Ball — each changing what the player does in a match, with an elite tier for the best. Shown on every card with his skill stars.',
+        detail: 'Traits are dealt from the card itself, so a player always has the same ones.',
+      },
+      {
+        head: 'Tactics',
+        summary: 'Defensive style (high press, balanced, deep block), build-up (short, balanced, long ball, counter), width and line height, and a role for every player — inverted wing-back, box-to-box, false nine, target man, ball-playing defender and more. Change them in Team Management, or flick between five quick tactics with 1–5 or the ⚑ button.',
+        detail: 'Ultimate XI keeps your instructions for the next match.',
+      },
+      {
+        head: 'A smarter CPU',
+        summary: 'The CPU uses the same tactics, changes them at half-time depending on the score, goes all out when losing late and runs the clock down when winning, presses a bad touch or a back pass, holds a line for offside, overlaps and makes third-man runs. Difficulty now changes how good its decisions are, not its players.',
+        detail: 'Offside is in: a forward beyond the second-last defender when the ball is played is flagged.',
+      },
+      {
+        head: 'Skill moves and restarts',
+        summary: 'Thirteen skill moves, from a ball roll to the rainbow flick, unlocked by a player\'s skill stars: hold Skill, point the stick, add Sprint, Curl or Lob and let go — or swipe the SKILL button on a phone. And throw-ins, corners, goal kicks, fouls and offsides now happen at believable rates instead of hardly at all.',
+        detail: 'The full list of moves and their combos is in Settings → Controls.',
+      },
+    ],
+  },
+  {
     version: 'v78',
     date: '2026-09-22',
     tag: 'Grounds',

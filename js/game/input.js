@@ -134,6 +134,9 @@ export class Input {
   heldTime(a) { return this.heldFor[a]; }
 
   setTouchVec(x, y) { this.touchVec = { x, y }; }
+  /** v79: a swipe on the touch skill button — its direction (screen space) and modifier. */
+  setGesture(g) { this.gesture = g; }
+  takeGesture() { const g = this.gesture; this.gesture = null; return g || null; }
   setTouchButton(a, on) { if (on) this.touchButtons.add(a); else this.touchButtons.delete(a); }
 }
 

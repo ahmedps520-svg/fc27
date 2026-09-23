@@ -4396,3 +4396,21 @@ html.large-text .tile-name { font-size: 27px; }
 /* v78: five weather choices have to fit a 320 px phone */
 .ts-opt .seg { flex-wrap: wrap; max-width: 100%; }
 .ts-opt { min-width: 0; }
+
+/* ---- v79: traits and skill stars on cards ---- */
+.pc-stars { display: block; font-size: 9px; letter-spacing: -1px; color: var(--rar, #ffd166); opacity: .9; line-height: 1; margin-top: 2px; }
+.pc-traits { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin: 2px 6px 0; min-height: 0; }
+.trait { font-size: 9.5px; font-weight: 700; letter-spacing: .02em; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); white-space: nowrap; }
+.trait.elite { background: linear-gradient(90deg, rgba(255,209,102,.3), rgba(255,160,40,.25)); border-color: rgba(255,209,102,.6); color: #ffe7a8; }
+.pc-mini .pc-traits, .pc-sm .pc-traits { display: none; }
+/* v79: tactics in Team Management */
+.p-slider { display: grid; grid-template-columns: 90px auto 1fr auto; gap: 8px; align-items: center; }
+.p-slider input { width: 100%; accent-color: var(--accent); }
+.p-slider small { color: var(--text-mute); font-size: 11px; }
+.p-roles summary { cursor: pointer; font-weight: 700; margin: 8px 0; }
+.role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 12px; }
+.role-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; }
+.role-row select { max-width: 60%; background: rgba(255,255,255,.06); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+.skills-head { margin: 16px 0 8px; font-size: 15px; }
+.skills-head small { display: block; font-weight: 500; color: var(--text-dim); font-size: 11.5px; margin-top: 3px; }
+.skills-grid b { color: #ffd166; }

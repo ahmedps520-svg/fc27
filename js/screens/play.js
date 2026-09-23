@@ -20,6 +20,7 @@ import { t, lang } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
+import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
 import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
@@ -186,6 +187,7 @@ export function render(params) {
           <span class="gm-pad" id="gmPad">No pad</span>
           <button class="icon-btn sm" id="gmEmoteBtn" title="Emotes" hidden>💬</button>
           <button class="icon-btn sm" id="gmCamBtn" title="Camera (V)" aria-label="Change camera">🎥</button>
+          <button class="icon-btn sm" id="gmTacBtn" title="Quick tactics (1–5)" aria-label="Quick tactics">⚑</button>
           <button class="icon-btn sm" id="gmFs" title="Fullscreen">⛶</button>
           <button class="icon-btn sm" id="gmPause" title="Pause">❚❚</button>
         </div>
@@ -343,7 +345,11 @@ export function mount(root, params) {
     const ctx = { score: `${match.teams[0].score}–${match.teams[1].score}`, minute: match.minute(), venue: match.venue?.stadium?.name || match.teams[0].club?.ground || 'the stadium' };
     let t = null;
     if (arg && typeof arg === 'object' && arg.ref) { ctx.player = arg.ref.short || arg.ref.name; t = arg.team; }
-    else if (arg && typeof arg === 'object' && typeof arg.team === 'number') { t = arg.team; ctx.dist = arg.dist; }
+    else if (arg && typeof arg === 'object' && typeof arg.team === 'number') {
+      t = arg.team; ctx.dist = arg.dist;
+      // v79: a tactics change names itself
+      if (arg.name || arg.mentality) ctx.tactic = arg.name || ({ allout: 'all-out attack', attacking: 'an attacking shape', defensive: 'a defensive shape', balanced: 'a balanced shape' })[arg.mentality] || 'a new shape';
+    }
     else if (typeof arg === 'number' && (arg === 0 || arg === 1)) t = arg;
     if (t === null && match.ball.owner) t = match.ball.owner.team;
     if (t === null) t = 0;
@@ -368,6 +374,7 @@ export function mount(root, params) {
     goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
     bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
     throwin: 'throwin', foul: 'foul', card: 'card', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+    offside: 'offside', volley: 'volley', bicycle: 'bicycle', knuckle: 'knuckle', heavyTouch: 'heavyTouch', tactic: 'tactic', adapt: 'adapt',
   };
   let lastCommentAt = -9;
   const commentCue = (name, arg) => {
@@ -429,7 +436,8 @@ export function mount(root, params) {
    * Three matches of rotating tips for the new controls, then never again. */
   const hintsEl = root.querySelector('#gmHints');
   const HINTS = [
-    'SKILL (H / L2) — a feint that beats a lunging tackle',
+    'SKILL (hold H / L2) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating',
+    'Keys 1–5 or the flag button switch quick tactics, from Park the bus to All-out attack',
     'LOB (U / Select) — chip it over the defence to a runner',
     'Hold PASS or SHOOT for more power · CURL with E while shooting',
     'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
@@ -1393,10 +1401,19 @@ export function mount(root, params) {
     const buttons = [...root.querySelectorAll('.tbtn')].map((el) => {
       const slot = el.dataset.slot;
       let action = IN_POSSESSION[slot][0];
+      let swipe = null;
       const press = (e) => {
         e.preventDefault();
         if (!action) return;
         el.classList.add('is-down');
+        /* v79: the skill button is a swipe pad. Its direction is the trick's
+           direction; a long swipe adds the sprint modifier, a curved one the
+           curl, and one made while SPRINT is held the lob (see game/skills.js). */
+        if (action === 'skill') {
+          swipe = { x0: e.clientX, y0: e.clientY, mx: e.clientX, my: e.clientY, n: 0 };
+          try { el.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+          return;
+        }
         input.setTouchButton(action, true);
         navigator.vibrate?.(8);
         // Capture keeps a thumb that slides off the button still holding it —
@@ -1404,8 +1421,27 @@ export function mount(root, params) {
         // input is already set and a refusal here is ignored.
         try { el.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
       };
+      el.addEventListener('pointermove', (e) => {
+        if (!swipe) return;
+        swipe.n += 1;
+        if (swipe.n === 4) { swipe.mx = e.clientX; swipe.my = e.clientY; }
+        swipe.x1 = e.clientX; swipe.y1 = e.clientY;
+      });
       const release = () => {
         el.classList.remove('is-down');
+        if (swipe) {
+          const x1 = swipe.x1 ?? swipe.x0; const y1 = swipe.y1 ?? swipe.y0;
+          const dx = x1 - swipe.x0; const dy = y1 - swipe.y0; const len = Math.hypot(dx, dy);
+          let mod = null;
+          if (len > 18) {
+            const a1 = Math.atan2(swipe.my - swipe.y0, swipe.mx - swipe.x0); const a2 = Math.atan2(y1 - swipe.my, x1 - swipe.mx);
+            let bend = Math.abs(a2 - a1); if (bend > Math.PI) bend = Math.PI * 2 - bend;
+            mod = input.held('sprint') ? 'lob' : bend > 0.9 ? 'curl' : len > 70 ? 'sprint' : null;
+          }
+          input.setGesture(len > 18 ? { x: dx / len, y: dy / len, mod } : { x: 0, y: 0, mod: null });
+          swipe = null;
+          return;
+        }
         // release whatever this button is currently bound to, and its other
         // binding too: the context can flip mid-press, and a stuck sprint or a
         // shot that never fires is worse than an extra clear
@@ -2007,6 +2043,20 @@ export function mount(root, params) {
   root.querySelector('#gmCamBtn')?.addEventListener('click', cycleCamera);
   const onCamKey = (e) => { if (e.code === 'KeyV' && !paused && !ended) cycleCamera(); };
   window.addEventListener('keydown', onCamKey);
+  /* v79: quick tactics — five settings from Park the bus to All-out attack,
+     on the number keys or the ⚑ button (which steps through them). */
+  const myTeam = match.controllers[0]?.team ?? null;
+  const setTactic = (id) => {
+    if (myTeam === null || paused || ended || online) return;
+    if (match.setQuickTactic(myTeam, id)) toast(`Tactic: ${QUICK_TACTICS.find((q) => q.id === id).name}`, 'info');
+  };
+  root.querySelector('#gmTacBtn')?.addEventListener('click', () => {
+    if (myTeam === null) return;
+    const cur = QUICK_TACTICS.findIndex((q) => q.id === (match.teams[myTeam].tactics.quick || 'balanced'));
+    setTactic(QUICK_TACTICS[(cur + 1) % QUICK_TACTICS.length].id);
+  });
+  const onTacKey = (e) => { const n = Number(e.key); if (n >= 1 && n <= 5 && !e.repeat) setTactic(QUICK_TACTICS[n - 1].id); };
+  window.addEventListener('keydown', onTacKey);
   const fsBtn = root.querySelector('#gmFs');
   // iPhone has no Fullscreen API — hide the control rather than offer a dead button
   if (!fullscreenSupported()) fsBtn.hidden = true;
@@ -2141,7 +2191,24 @@ export function mount(root, params) {
         </div>
         ${seg('mentality', ['defensive', 'balanced', 'attacking'])}
         ${seg('pressing', ['low', 'normal', 'high'])}
-        <p class="p-note">Changes apply immediately — your shape shifts on the next touch.</p>`;
+        ${(() => {
+          // v79: the full instructions — defensive style, build-up, width, line and roles
+          const segN = (key, label, map) => `
+            <div class="p-row"><span>${label}</span><div class="seg">${Object.entries(map).map(([id, o]) => `
+              <button class="${team.tactics[key] === id ? 'on' : ''}" data-tactic="${key}" data-val="${id}">${o.name}</button>`).join('')}</div></div>`;
+          const slider = (key, label, lo, hi) => `
+            <label class="p-row p-slider"><span>${label}</span><small>${lo}</small>
+              <input type="range" min="0" max="1" step="0.05" value="${team.tactics[key] ?? 0.5}" data-tactic-range="${key}"><small>${hi}</small></label>`;
+          const roleRows = team.players.map((pl, i) => {
+            if (pl.role === 'GK') return '';
+            const opts = rolesFor(pl.role);
+            return `<label class="role-row"><b>${pl.ref.short}</b><select data-role="${i}">${opts.map((o) => `<option value="${o.id}" ${pl.tRole === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}</select></label>`;
+          }).join('');
+          return `${segN('defStyle', 'Defending', DEF_STYLES)}${segN('buildUp', 'Build-up', BUILD_UPS)}
+            ${slider('width', 'Width', 'Narrow', 'Wide')}${slider('line', 'Line', 'Deep', 'High')}
+            <details class="p-roles"><summary>Player roles</summary><div class="role-grid">${roleRows}</div></details>`;
+        })()}
+        <p class="p-note">Changes apply immediately — your shape shifts on the next touch. Quick tactics: 1–5 or ⚑.</p>`;
     }
     /* ------------------------------ subs ------------------------------ *
      * Two columns, tap one then the other. Deliberately not drag-and-drop:
@@ -2527,6 +2594,7 @@ export function mount(root, params) {
 
     const tac = e.target.closest('[data-tactic]');
     if (tac) { setShape(tac.dataset.tactic, tac.dataset.val); paintPause(); return; }
+    if (e.target.closest('[data-role], [data-tactic-range], details, summary')) return;
 
     const off = e.target.closest('[data-suboff]');
     if (off) {
@@ -2573,14 +2641,25 @@ export function mount(root, params) {
   function setShape(key, val) {
     const team = online ? online.seat : (match.human ?? mgr?.side ?? 0);
     if (key === 'formation') match.applyFormation(team, val);
+    else if (key === 'role') { const [i, r] = val; const pl = match.teams[team].players[i]; if (pl) pl.tRole = r; match.teams[team].tactics.roles[i] = r; }
     else match.setTactic(team, key, val);
     if (online && !online.host) net.send({ t: 'evt', k: 'shape', team, key, val });
+    // Ultimate XI keeps its instructions for the next match (v79)
+    if (params.ultimate && key !== 'formation') update((st) => { st.club.tactics = { ...(st.club.tactics || {}), ...match.teams[team].tactics, roles: { ...match.teams[team].tactics.roles } }; });
   }
+  // sliders and role pickers report on change, not click
+  overlay.addEventListener('change', (e) => {
+    const r = e.target.closest('[data-tactic-range]');
+    if (r) { setShape(r.dataset.tacticRange, Number(r.value)); return; }
+    const ro = e.target.closest('[data-role]');
+    if (ro) setShape('role', [Number(ro.dataset.role), ro.value]);
+  });
   if (online?.host) {
     netOffs.push(net.on('evt', (m) => {
       if (m.k === 'sub') { match.substitute(m.team, m.pitchIdx, m.benchIdx); return; }
       if (m.k !== 'shape') return;
       if (m.key === 'formation') match.applyFormation(m.team, m.val);
+      else if (m.key === 'role') { const pl = match.teams[m.team].players[m.val?.[0]]; if (pl) pl.tRole = m.val[1]; }
       else match.setTactic(m.team, m.key, m.val);
     }));
   }
@@ -2611,7 +2690,7 @@ export function mount(root, params) {
     if (spectating && net.isReady()) net.send({ t: 'unspectate' });
     stopClip();
     window.removeEventListener('resize', resize);
-    window.removeEventListener('keydown', onCamKey);
+    window.removeEventListener('keydown', onCamKey); window.removeEventListener('keydown', onTacKey);
     document.removeEventListener('fullscreenchange', onFsChange);
     try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
     try { gl?.dispose(); } catch { /* GPU teardown least of all */ }

@@ -89,6 +89,14 @@ const L = {
     'A change for {team}: {player} comes off.', 'Substitution. {player} makes way.', '{team} bring on fresh legs for {player}.',
     '{player} is replaced.', 'The board goes up: {player} off.',
   ],
+  // v79
+  offside: ['The flag is up. {player} was offside.', 'Offside — {player} went too early.', 'Flag. {player} strayed beyond the line.', 'Offside, and a let-off for the defence.'],
+  volley: ['{player} meets it on the volley!', 'A volley from {player}!', 'He hits it first time — {player}!'],
+  bicycle: ['An overhead kick from {player}!', '{player} tries the acrobatic one!', 'Bicycle kick! {player} goes for the spectacular.'],
+  knuckle: ['That one moved in the air!', 'A knuckleball from {player} — the keeper has no idea where it is going.'],
+  heavyTouch: ['Heavy touch from {player}.', '{player} lets it get away from him.', 'Poor first touch, and they pounce.'],
+  tactic: ['A change of plan: {team} go to {tactic}.', '{team} switch to {tactic}.'],
+  adapt: ['{team} have changed things — {tactic} now.', 'You can see {team} going for it now.', '{team} look to see this out.'],
   counter: [
     'And {team} break!', 'A counter-attack on!', '{team} are away — space to run into.', 'Turnover, and {team} go quickly.',
     'They have won it and they are off.', '{team} pour forward.', 'Numbers up for {team} on the break.',

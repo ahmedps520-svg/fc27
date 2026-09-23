@@ -46,7 +46,7 @@ function runMatch(seed, homeId, awayId) {
     let prevScore = 0; let prevPhase = m.phase;
     const fail = (msg) => { if (errs.length < 12) errs.push(`seed ${seed} frame ${frame} (${m.phase}): ${msg}`); };
     while (m.phase !== 'end' && frame < 30 * 60 * 12) {
-      const b0 = { x: m.ball.x, y: m.ball.y, z: m.ball.z };
+      const b0 = { x: m.ball.x, y: m.ball.y, z: m.ball.z, vx: m.ball.vx, vy: m.ball.vy };
       const phase0 = m.phase;
       const stop0 = m.stoppages;
       m.update(dt);
@@ -71,7 +71,10 @@ function runMatch(seed, homeId, awayId) {
         const x = b0.x; const y = b0.y;
         const nearLine = Math.min(Math.abs(x), Math.abs(PITCH.w - x)) < 3 || b.inNet;
         if (!nearLine) fail(`goal given with the ball at ${x.toFixed(1)},${y.toFixed(1)}`);
-        if (Math.abs(b0.y - CY) > GOAL_HALF + 0.6) fail(`goal given with the ball wide of the posts (y ${b0.y.toFixed(2)})`);
+        // where it crossed the line, not where it was a frame before
+        const lineX = b0.x < PITCH.w / 2 ? 0 : PITCH.w;
+        const yc = Math.abs(b0.vx) > 0.5 ? b0.y + (lineX - b0.x) * (b0.vy / b0.vx) : b0.y;
+        if (Math.abs(yc - CY) > GOAL_HALF + 0.3) fail(`goal given with the ball crossing wide of the posts (y ${yc.toFixed(2)})`);
       }
       // a ball that was in play and went between the posts under the bar is a goal
       if (phase0 === 'play' && m.stoppages > stop0 && m.stoppage !== 'goal') {

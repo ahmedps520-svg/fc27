@@ -118,7 +118,8 @@ export function ultimateSquad() {
   const bench = (s.club.bench || []).map((id) => (id ? getPlayer(id) : null)).filter(Boolean)
     .map((p) => moddedRef(p, { level: levelOf(s.club, p.id) }));
   const id = clubIdentity();
-  return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest };
+  // v79: the instructions set in a match's Team Management travel to the next one
+  return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest, tactics: s.club.tactics || undefined };
 }
 
 /**
