@@ -15,6 +15,98 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v93 — R15 balance audit, part 1: packs, earning rates, a month of play
+`tools/economy-audit.mjs` (new, kept) reads the real tables: `PACKS` and
+`openPack` (1,500 seeded openings each), `DIVISIONS` and `matchApex`,
+`FIVES.reward`, `DAILY`, and quick-sell (value ÷ 25,000). It prints three
+tables. Output after the fixes:
+
+```
+1. Packs — price against quick-sell value (mean over 1500 opens)
+
+pack              price   sells for   ratio   special%   best card mean   a 90+
+campaign          25,000        225    0.01     100.0%             84.3    16.7%
+inform            18,000        215    0.01     100.0%             83.8    12.3%
+vault            120,000     10,000    0.08     100.0%             93.2   100.0%
+bronze                 0         65     free       0.0%             74.1     0.0%
+fodder             1,500        104    0.07       0.0%             76.0     0.0%
+silver             2,000        117    0.06       4.4%             78.5     3.5%
+keeper             3,500         91    0.03       3.7%             79.4     3.3%
+dip                5,000         89    0.02      18.7%             79.8    15.9%
+striker            3,500         90    0.03       3.4%             79.2     2.7%
+stack              4,500        211    0.05      10.3%             81.0     8.2%
+gold               7,500        290    0.04      23.7%             84.1    19.3%
+youth              6,000        178    0.03       5.9%             80.4     3.9%
+defence            6,000        177    0.03       7.5%             81.5     7.1%
+midfield           6,000        134    0.02       7.3%             80.4     5.1%
+builder           15,000        457    0.03      33.5%             85.6    28.2%
+form              12,000        274    0.02      34.5%             85.4    28.5%
+double            21,000        321    0.02     100.0%             91.4    78.7%
+prime             30,000        489    0.02      81.6%             90.7    72.2%
+premier           14,000        280    0.02      33.1%             85.5    21.5%
+nations           12,000        272    0.02      27.5%             84.7    18.6%
+mega              20,000        710    0.04      51.5%             87.7    44.3%
+gamble            18,000        199    0.01      62.5%             88.7    51.6%
+eleven            45,000        806    0.02     100.0%             91.7    83.8%
+stars             40,000      5,099    0.13     100.0%             92.5   100.0%
+limited           75,000     10,397    0.14     100.0%             99.0   100.0%
+wildcard          55,000        248    0.00      92.8%             91.2    76.3%
+wonder            90,000      5,450    0.06     100.0%             93.2   100.0%
+legend           200,000     10,906    0.05     100.0%             99.0   100.0%
+
+2. Earning in a match — Apex per real minute (a won match's pack counted at shop price)
+
+mode                               win      draw     loss    per min (win / loss)
+Ultimate XI · Division 10           2,600      210       90    578 / 20
+Ultimate XI · Division 7            3,300      455      195    733 / 43
+Ultimate XI · Division 4            4,600      910      390    1,022 / 87
+Ultimate XI · Apex Elite            9,500    2,625    1,125    2,111 / 250
+Quickfire Fives (2 goals for)       1,200      700      500    300 / 125
+Street (3 stars / 1 star)             950        0      300    238 / 75
+Kick Off friendly (2 goals)           320      320      320    58 / 58
+Skills drill (good score)             150        0       60    67 / 27
+
+3. A month of play — through the Ultimate XI ladder, with the daily login
+
+player     matches/day  win%   Apex/day (cash + packs)   month total   division reached   days to a Legends Vault
+casual               3   45%        5,449 (2,083 cash)       163,480   Division 9         57.6
+regular              8   52%       15,983 (7,883 cash)       479,475   Division 5         15.2
+grinder             20   58%       60,844 (42,411 cash)     1,825,330   Division 1         2.8
+
+(Season-pass tiers, objectives, challenges and events come on top; they are paced by the calendar, not by matches.)
+```
+
+What it means, and what changed:
+- **No money loop.** Every pack quick-sells for 1–14% of its price.
+- **Three packs were out of line and are fixed** (packs.js, odds and prices
+  only; the sweep is identical):
+  - High Roller 26,000 → 18,000, specials 26% → 55%, minimum 79 → 83. Its
+    promise, "Best single-card odds in the store", was false (a 90+ 20% of
+    the time, the Gold pack's rate) and now reads "One card, usually a
+    Special".
+  - Lucky Dip odds up (specials 12% → 20%): its best card averaged below a
+    2,000 Silver pack's.
+  - Prime specials 22% → 30%: 72% for a 90+, beside Double Down's 79%.
+- **Earning per minute** (a won match's Silver pack counted at its shop
+  price):
+  - The Ultimate XI ladder dominates by design, from 578/min in Division
+    10 to 2,111/min in Apex Elite.
+  - Fives about 300, Street about 240, drills about 70. Friendlies about 60
+    are deliberately pocket money.
+  - At the bottom of the ladder, cash alone (133/min) is below Fives, and
+    the pack on every win makes up the difference. Left as is.
+- **A month**: a casual player (3 matches a day) can afford the Legends
+  Vault from cash in about 58 days, a regular (8) in about 15, a grinder (20)
+  in about 3. The grinder number is the one to watch if the vault is meant to
+  stay aspirational; left for a decision (see "Open decisions").
+- **Not yet audited**: SBC cost against reward (needs a solver for the
+  cheapest qualifying eleven), evolution difficulty, the AI difficulty curve,
+  career finances. Next part of the audit.
+
+#### Open decisions
+- The Legends Vault is 2.8 days of cash for someone playing 20 Division
+  matches a day. Raise it, cap it per week, or leave the top end fast?
+
 ### v92 — polish: the new-player walkthrough (R15 item 1, first pass)
 `tests/tmp/newplayer.mjs` (throwaway; its screenshots are in tests/tmp/newplayer)
 starts from an empty save on a phone (390×844) and a desktop, through the

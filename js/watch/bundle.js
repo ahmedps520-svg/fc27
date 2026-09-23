@@ -10226,7 +10226,8 @@
       name: "Lucky Dip",
       cost: 5e3,
       size: 1,
-      odds: { bronze: 0.14, silver: 0.36, gold: 0.38, special: 0.12 },
+      // v93: the audit found its best card averaged below a Silver pack's at 2.5x the price
+      odds: { bronze: 0.05, silver: 0.3, gold: 0.45, special: 0.2 },
       note: "1 card · high variance"
     },
     /* The Keeper pack's mirror. A squad with no striker is not blocked the way
@@ -10303,7 +10304,7 @@
       note: "2 cards · special min",
       promise: "1 guaranteed Special"
     },
-    { id: "prime", cat: "premium", name: "Prime", cost: 3e4, size: 3, odds: { bronze: 0, silver: 0.06, gold: 0.72, special: 0.22 }, minOverall: 82, tone: "special", note: "3 · 82+ min" },
+    { id: "prime", cat: "premium", name: "Prime", cost: 3e4, size: 3, odds: { bronze: 0, silver: 0.04, gold: 0.66, special: 0.3 }, minOverall: 82, tone: "special", note: "3 · 82+ min" },
     /* v73: a division's own pack, the nation of the week, and the biggest bulk pack in the store. */
     { id: "premier", cat: "premium", name: "Premier Pick", cost: 14e3, size: 3, odds: { bronze: 0, silver: 0.14, gold: 0.74, special: 0.12 }, filter: { leagues: ["Apex Premier Division"] }, floor: "gold", tone: "gold", note: "3 · top division only", promise: "Every card from the Apex Premier Division" },
     { id: "nations", cat: "premium", name: "Nations Week", cost: 12e3, size: 3, odds: { bronze: 0, silver: 0.2, gold: 0.7, special: 0.1 }, filter: { nationOfWeek: !0 }, floor: "gold", tone: "gold", note: "3 · one nation", promise: "This week: the nation on the shelf", weekly: !0 },
@@ -10314,16 +10315,19 @@
        paying Limited money, and the rest of the time you paid Prime prices for
        one gold. Priced so that is a real decision rather than an obvious yes. */
     {
+      /* v93: the audit found it promised "the best single-card odds in the
+         store" and delivered a 90+ one time in five — what a 7,500 Gold pack
+         does. Now it is the store's premium single card, and says only that. */
       id: "gamble",
       cat: "premium",
       name: "High Roller",
-      cost: 26e3,
+      cost: 18e3,
       size: 1,
-      odds: { bronze: 0, silver: 0, gold: 0.74, special: 0.26 },
-      minOverall: 79,
+      odds: { bronze: 0, silver: 0, gold: 0.45, special: 0.55 },
+      minOverall: 83,
       tone: "special",
-      note: "1 card · 79+ min",
-      promise: "Best single-card odds in the store"
+      note: "1 card · 83+ min",
+      promise: "One card, usually a Special"
     },
     /* Eleven cards, one whole squad's worth, at odds a shade under Gold. The
        bulk option above Squad Builder — bought to fill a squad or feed a
