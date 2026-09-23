@@ -11,6 +11,8 @@ import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullsc
 import { settleDivisionMatch } from '../ultimate.js';
 import { settleFives, settleClash, noteDivisionResult } from '../modes.js';
 import { recordEvoMatch } from '../evolutions.js';
+import { rateMatch } from '../game/ratings.js';
+import { advancePro } from '../proCareer.js';
 import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
 import { say } from '../data/commentary.js';
@@ -84,12 +86,29 @@ function sideOf(params, which) {
  * weather come from the fixture and the day, so the same ground is seen in
  * every light; Kick Off can force either through `params.atmo`.
  */
+/** A finished Match as the Manager Career's record of it (names, not card ids). */
+function careerExtra(match, side, possession) {
+  const nm = (id) => String(id).replace(/^cr-/, '');
+  const team = match.teams[side];
+  const rated = rateMatch(match).players.filter((x) => x.side === side);
+  const xi = []; const subs = [];
+  for (const [id, st] of Object.entries(match.pst || {})) { if (st.team !== side) continue; (st.on > 0 ? subs : xi).push(nm(id)); }
+  return {
+    xi, subs,
+    ratings: Object.fromEntries(rated.map((x) => [nm(x.id), x.rating])),
+    goals: team.scorers.map((g) => nm(g.id)).filter(Boolean),
+    assists: team.scorers.map((g) => g.assist && nm(g.assist)).filter(Boolean),
+    possession,
+  };
+}
+
 function venueOf(params) {
   /* A custom home squad — a Career club, your Ultimate XI, an online opponent
      — brings its own identity, so it gets its own ground: dealt by name from
      the same set, sized by its rating, in its colours. A world club plays at
      the ground its blueprint names. */
-  const sq = params.homeSquad;
+  // a Player Career match fields your side as the home team; `venueSquad` is who really hosts (v81)
+  const sq = params.venueSquad || params.homeSquad;
   const home = sq?.name
     ? { id: sq.id || sq.name, name: sq.name, colors: sq.colors || sq.crest?.colors, country: sq.country || null, level: Math.max(0.1, Math.min(1, ((sq.rating || 74) - 60) / 30)) }
     : getClub(params.homeId);
@@ -319,7 +338,9 @@ export function mount(root, params) {
   /* The camera rig (game/camera.js): presets, springs, set-piece angles, the
      celebration orbit, and collision against this ground's stands and nets. */
   const camBounds = venueBounds(match.venue?.stadium);
-  const camRig = createCameraRig({ settings: getState().settings.camera, bounds: camBounds });
+  // v81: a Player Career match locks the stick and the camera to your footballer
+  if (params.pro) match.lockPlayer(params.pro.cardId);
+  const camRig = createCameraRig({ settings: params.pro ? { ...(getState().settings.camera || {}), preset: 'lock' } : getState().settings.camera, bounds: camBounds });
   window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
   window.__apexCam = camRig;             // the camera regression shots switch presets through this
   // colour-safe kits: the away strip is chosen against every kind of colour vision
@@ -2443,7 +2464,7 @@ export function mount(root, params) {
     const mine = match.teams[meIdx].score;
     const theirs = match.teams[1 - meIdx].score;
     // offered once: after the shootout there is nothing left to settle
-    const drawnKickOff = mine === theirs && !online && !params.ultimate && !shootoutResult;
+    const drawnKickOff = mine === theirs && !online && !params.ultimate && !params.pro && !shootoutResult;
 
     if (online && !spectating) {
       // A walkover still counts: the player who stayed takes the points.
@@ -2463,6 +2484,7 @@ export function mount(root, params) {
     // Apex Division matches settle the ladder instead of paying a flat fee
     let div = null;
     let sub = null;   // v80: a Fives or Squad Clash settlement
+    let proLine = null;   // v81: my Player Career line
     if (spectating) {
       // nothing to bank: it was somebody else's match
     } else if (params.fives) {
@@ -2477,12 +2499,21 @@ export function mount(root, params) {
         possession: online && online.seat === 1 ? pa : ph,
       });
       noteDivisionResult((online ? (oppGone ? Math.max(mine, theirs + 1) : mine) : h.score) > (online ? theirs : a.score));
+    } else if (params.pro) {
+      /* Player Career: my rating out of ten from the match itself; the score
+         goes back in fixture order (my side was fielded as the home team). */
+      const rated = rateMatch(match);
+      const line = rated.players.find((x) => x.id === params.pro.cardId);
+      const score = params.pro.swapped ? [a.score, h.score] : [h.score, a.score];
+      proLine = line ? { ...line, motm: rated.potm?.id === line.id } : null;
+      advancePro({ score, rating: line?.rating ?? 6, goals: line?.goals || 0, assists: line?.assists || 0, mins: line?.mins ?? 90, motm: !!proLine?.motm, possession: ph });
     } else if (mode === 'career') {
       /* The result flows into the career: my score home-first, the rest of the
        * round simulated, the table and the calendar moved on. Morale carries
        * out of the match — advanceWeek folds the result on top of it. */
       update((s) => { if (s.career) s.career.morale = mgr ? mgr.morale : s.career.morale; });
-      advanceWeek([h.score, a.score]);
+      // v81: what the match knew — who started, who came on, ratings, scorers, the ball
+      advanceWeek([h.score, a.score], careerExtra(match, params.career?.isHome === false ? 1 : 0, params.career?.isHome === false ? pa : ph));
     } else if (params.weekend) {
       // Weekend League pays at the end of the window, by rank; the match itself is tallied below
     } else {
@@ -2556,6 +2587,12 @@ export function mount(root, params) {
             <b>${sub.won ? 'Win' : sub.drew ? 'Draw' : 'Defeat'}</b>
             <span class="dr-reward">${params.fives ? `◈ ${sub.apex.toLocaleString()}` : `+${sub.pts} clash points`}</span>
           </div>` : ''}
+        ${proLine ? `
+          <div class="div-result ${proLine.rating >= 7 ? 'up' : proLine.rating < 6 ? 'down' : ''}">
+            <span class="dr-kicker">${proLine.motm ? 'Player of the match' : 'Your rating'}</span>
+            <b>${proLine.rating.toFixed(1)}</b>
+            <span class="dr-reward">${proLine.goals} goal${proLine.goals === 1 ? '' : 's'} · ${proLine.assists} assist${proLine.assists === 1 ? '' : 's'} · ${proLine.passes} passes · ${proLine.tackles} tackles won · ${proLine.km} km</span>
+          </div>` : ''}
         ${evoDone.length ? `<ul class="dr-objs evo-done">${evoDone.map((e) => `<li>✦ ${e.track}: stage ${e.stage} complete</li>`).join('')}</ul>` : ''}
         ${mgr ? `
           <div class="gm-stats mgr-ft">
@@ -2600,7 +2637,7 @@ export function mount(root, params) {
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
       if (o === 'clip') { recordClip(); return; }
-      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.pro) { navigate('pro'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);

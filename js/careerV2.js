@@ -26,6 +26,7 @@
 import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS } from './data/careerDb.js';
 import { pend } from './progress.js';
+import { rateOf, ageOf, valueIn, cardByName } from './careerPeople.js';
 
 /* ------------------------------------------------------------------ *
  * Tier two
@@ -139,13 +140,17 @@ export function buildCalendar(car, league) {
 /* ------------------------------------------------------------------ *
  * Ratings helpers (mirror career.js without importing it — no cycles)
  * ------------------------------------------------------------------ */
-const ratingOf = (name) => WORLD.players.find((p) => p.name === name)?.overall || 72;
-export function squadOverall(rows) {
-  const top = rows.map((r) => ratingOf(r[0])).sort((a, b) => b - a).slice(0, 11);
+/* v81: ratings read the save (development, regens, your pro), not the printed card */
+let curCar = null;
+const ratingOf = (name) => rateOf(curCar, name);
+/** Point the rating helpers at a career (every entry point does this). */
+export const useCar = (car) => { curCar = car; return car; };
+export function squadOverall(rows, car = curCar) {
+  const top = rows.map((r) => rateOf(car, r[0])).sort((a, b) => b - a).slice(0, 11);
   return top.length ? Math.round(top.reduce((s, v) => s + v, 0) / top.length) : 60;
 }
 export function simScoreV2(car, h, a) {
-  const d = squadOverall(car.squads[h] || []) - squadOverall(car.squads[a] || []) + 2;
+  const d = squadOverall(car.squads[h] || [], car) - squadOverall(car.squads[a] || [], car) + 2;
   const g = () => { const r = Math.random(); return r < 0.34 ? 0 : r < 0.68 ? 1 : r < 0.88 ? 2 : r < 0.97 ? 3 : 4; };
   let hg = g(); let ag = g();
   if (d > 3 && Math.random() < d / 14) hg += 1;
@@ -203,13 +208,14 @@ export const bindState = (fn) => { stateClub = fn; };
  * ------------------------------------------------------------------ */
 export const inWindow = (week, total) => week <= 3 || (week >= Math.floor(total / 2) && week < Math.floor(total / 2) + 3);
 
-const valueOf = (name) => WORLD.players.find((p) => p.name === name)?.value || 5_000_000;
+const valueOf = (name) => (curCar ? valueIn(curCar, name) : (cardByName(name)?.value || 5_000_000));
 
 /** AI clubs come for my best players. One offer a window week, if any. */
 export function generateOffers(car, week) {
   if (!inWindow(week, car.fixtures.length)) return;
   car.offers = (car.offers || []).filter((o) => o.until >= week);
   if (Math.random() > 0.55 || car.offers.length >= 2) return;
+  useCar(car);
   const mine = car.squads[car.clubId].slice().sort((x, y) => ratingOf(y[0]) - ratingOf(x[0])).slice(0, 6);
   const target = mine[Math.floor(Math.random() * mine.length)];
   if (!target || car.offers.some((o) => o.player === target[0])) return;
@@ -223,7 +229,7 @@ export function generateOffers(car, week) {
 }
 
 /** Accept / counter / reject an offer. Counter asks for `fee`. */
-export function respondToOffer(car, id, action, fee = 0) {
+export function respondToOffer(car, id, action, fee = 0, { sellOn = 0 } = {}) {
   const o = (car.offers || []).find((x) => x.id === id);
   if (!o || o.state !== 'open') return { ok: false, note: 'That offer is gone.' };
   if (action === 'reject') { o.state = 'rejected'; return { ok: true, note: 'Rejected. They will look elsewhere.' }; }
@@ -244,7 +250,13 @@ export function respondToOffer(car, id, action, fee = 0) {
   const row = rows.splice(i, 1)[0];
   row[3] = { years: 3, signed: car.season };
   (car.squads[o.from] = car.squads[o.from] || []).push(row);
-  car.coins += o.fee;
+  /* v81: a sell-on clause costs a slice of today's fee (buyers pay less for
+     one) and pays that percentage of whatever he fetches next time */
+  const paid = sellOn ? Math.round(o.fee * (1 - sellOn / 200) / 1e5) * 1e5 : o.fee;
+  car.coins += paid;
+  if (car.fin?.season) car.fin.season.sales = (car.fin.season.sales || 0) + paid;
+  if (sellOn) car.sellOns = { ...(car.sellOns || {}), [o.player]: { pct: sellOn, club: o.from } };
+  o.fee = paid;
   o.state = 'done';
   car.stats.sold = (car.stats.sold | 0) + 1;
   car.morale = Math.max(0.05, car.morale - 0.03);
@@ -254,6 +266,7 @@ export function respondToOffer(car, id, action, fee = 0) {
 /** Two or three deals between AI clubs each window week, money-balanced by rating. */
 export function aiTransfers(car, week) {
   if (!inWindow(week, car.fixtures.length)) return [];
+  useCar(car);
   const clubs = allClubs().filter((c) => c.id !== car.clubId && car.squads[c.id]?.length >= 14);
   const deals = [];
   const n = 2 + Math.floor(Math.random() * 2);
@@ -318,7 +331,7 @@ export function tickScouting(car) {
   s.weeksLeft -= 1;
   if (s.weeksLeft > 0) return;
   const clubs = allClubs().filter((c) => c.league === s.league && c.id !== car.clubId);
-  const rows = clubs.flatMap((c) => (car.squads[c.id] || []).map((r) => ({ name: r[0], position: r[1], nation: r[2], club: c.id, rating: ratingOf(r[0]), age: WORLD.players.find((p) => p.name === r[0])?.age || 26 })));
+  const rows = clubs.flatMap((c) => (car.squads[c.id] || []).map((r) => ({ name: r[0], position: r[1], nation: r[2], club: c.id, rating: rateOf(car, r[0]), age: ageOf(car, r[0]) })));
   rows.sort((a, b) => (b.rating + (28 - b.age) * 0.6) - (a.rating + (28 - a.age) * 0.6));
   s.results = rows.slice(0, 3).map((r) => ({ ...r, potential: Math.max(r.rating, Math.min(95, r.rating + Math.max(0, 27 - r.age) * 1.5)), value: valueOf(r.name) }));
 }
@@ -331,9 +344,7 @@ export function developSquads(car) {
   car.dev = car.dev || {};
   for (const rows of Object.values(car.squads)) {
     for (const r of rows) {
-      const p = WORLD.players.find((x) => x.name === r[0]);
-      if (!p) continue;
-      const age = p.age + (car.season - 1);
+      const age = ageOf(car, r[0]);
       const cur = car.dev[r[0]] | 0;
       let d = 0;
       if (age <= 23) d = Math.random() < 0.7 ? 1 + (Math.random() < 0.3 ? 1 : 0) : 0;
@@ -347,7 +358,7 @@ export function developSquads(car) {
 export function setBoardObjectives(car) {
   const league = car.leagueOf[car.clubId];
   const ids = leagueClubIds(car, league);
-  const rank = ids.map((id) => [id, squadOverall(car.squads[id] || [])]).sort((a, b) => b[1] - a[1]).findIndex(([id]) => id === car.clubId) + 1;
+  const rank = ids.map((id) => [id, squadOverall(car.squads[id] || [], car)]).sort((a, b) => b[1] - a[1]).findIndex(([id]) => id === car.clubId) + 1;
   const n = ids.length;
   const finish = rank <= 1 ? 1 : rank <= 3 ? 3 : rank <= n / 2 ? Math.ceil(n / 2) : n - 2;
   car.board = {
@@ -415,7 +426,7 @@ const cupRoundReached = (car) => (car.cup ? car.cup.results.filter((r) => r.h ==
 /** The other tier's finishing order, from squad strength with a little luck — it is not simulated week by week. */
 export function syntheticOrder(car, league) {
   return leagueClubIds(car, league)
-    .map((id) => [id, squadOverall(car.squads[id] || []) + (Math.random() - 0.5) * 6])
+    .map((id) => [id, squadOverall(car.squads[id] || [], car) + (Math.random() - 0.5) * 6])
     .sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
 

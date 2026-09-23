@@ -45,6 +45,7 @@ export const CAMERA_PRESETS = [
   { id: 'pro', name: 'Pro', blurb: 'Locked to your player, low and close.' },
   { id: 'e2e', name: 'End to End', blurb: 'Down the length of the pitch from behind the play.' },
   { id: 'tactical', name: 'Tactical', blurb: 'High above the halfway line: the whole team shape.' },
+  { id: 'lock', name: 'Player Lock', blurb: 'The Player Career camera: raised behind your player, the ball kept in frame.' },
 ];
 export const presetById = (id) => CAMERA_PRESETS.find((p) => p.id === id) || CAMERA_PRESETS[0];
 
@@ -270,6 +271,13 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
         out.x = me.x - dir * 8 * Z * near; out.y = me.y; out.z = 4.4 * H * steep;
         out.tx = me.x + dir * 11; out.ty = me.y; out.tz = 0.8; out.hfov = 62;
         break;
+      case 'lock': {
+        // between my man and the play, leaning toward the goal we attack
+        const mx = me.x * 0.62 + fx * 0.38; const my = me.y * 0.7 + fy * 0.3;
+        out.x = clampX(mx, 14); out.y = -20 * Z * near + my * 0.42; out.z = 12 * H * steep;
+        out.tx = clampX(mx + dir * 4, 10); out.ty = my; out.tz = 0.4; out.hfov = 50;
+        break;
+      }
       case 'e2e':
         out.x = fx - dir * 34 * Z * near; out.y = CY * 0.42 + fy * 0.58; out.z = 19 * H * steep;
         out.tx = fx + dir * 8; out.ty = fy; out.tz = 0; out.hfov = 52;

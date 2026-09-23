@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,weekend,online,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -195,6 +195,42 @@ try {
     assert.ok(seasons === 1 && weeks >= 17, `a full season simulated (${weeks} weeks, ${seasons} season boundaries)`);
     assert.ok(s.career.season >= 2, 'the career moved into a new season');
     step(`full season simulated in ${weeks} weeks; season ${s.career.season} begins`);
+    await ctx.close();
+  });
+
+  // v81: the Player Career — create through the form, then live a season and a half
+  await flow('pro', async () => {
+    const { ctx, page } = await boot('pro', baseSave());
+    await go(page, 'career', { modes: true });
+    await page.waitForSelector('#cmPlayer', { timeout: 10000 });
+    await click(page, '#cmPlayer');
+    await page.waitForSelector('#proForm', { timeout: 10000 });
+    await page.fill('#prName', 'Bot Player');
+    await page.evaluate(() => document.querySelector('#proClubs [data-club]').click());
+    await page.waitForSelector('#prStart:not([disabled])', { timeout: 5000 });
+    await click(page, '#prStart');
+    await page.waitForSelector('.cer-sign [data-ok]', { timeout: 5000 });
+    await click(page, '.cer-sign [data-ok]');
+    await page.waitForSelector('#proSim', { timeout: 10000 });
+    let weeks = 0;
+    for (let i = 0; i < 80; i++) {
+      const did = await page.evaluate(() => {
+        document.querySelectorAll('.ceremony [data-ok]').forEach((b) => b.click());
+        const talk = document.getElementById('talkAsk'); if (talk) { talk.click(); return 'talk'; }
+        const sim = document.getElementById('proSim'); if (sim) { sim.click(); return 'sim'; }
+        const ov = document.querySelector('#proTabs [data-tab="overview"]'); if (ov) { ov.click(); return 'tab'; }
+        return null;
+      });
+      if (did === 'sim') weeks += 1;
+      if (!did) throw new Error('player career hub has nothing to press');
+      const err = await page.evaluate(() => { const e = window.__lastErr; window.__lastErr = null; return e; });
+      if (err) throw new Error(`player career crashed after "${did}" in week ${weeks}: ${err.split('\n').slice(0, 4).join(' | ')}`);
+      await page.waitForTimeout(120);
+    }
+    const s = await save(page);
+    assert.ok(s.pro && s.pro.world.season >= 2, `the player reached season 2 (season ${s.pro?.world.season})`);
+    assert.ok(s.pro.totals.apps > 0, 'he gets on the pitch');
+    step(`player career: ${weeks} weeks, season ${s.pro.world.season}, ${s.pro.totals.apps} apps`);
     await ctx.close();
   });
 

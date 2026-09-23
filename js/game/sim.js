@@ -289,8 +289,16 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     // a custom squad may bring an instruction with it — the Apex Division uses
     // this to make the CPU press and push up the higher you climb
     tactics: { ...defaultTactics(), ...(custom?.tactics || {}) },
+    // v81: a career names its set-piece takers ({ pen, fk, corner }: card ids)
+    takers: custom?.takers || null,
   };
 }
+
+/** A named set-piece taker, if the side has one on the pitch (v81). */
+const namedTaker = (team, kind) => {
+  const id = team.takers?.[kind];
+  return id ? team.players.find((p) => p.ref.id === id && p.role !== 'GK' && !p.injured) || null : null;
+};
 
 export class Match {
   constructor(homeId, awayId, opts = {}) {
@@ -334,6 +342,10 @@ export class Match {
      * the online pause queue watches for a legal moment to stop the game. */
     this.stoppages = 0;
     this.stoppage = null;
+    /* v81: per-player numbers for match ratings, keyed by card id so a
+       substitution never mixes two men's figures. Counting only — nothing
+       here reads the dice, so the balance sweep is untouched. */
+    this.pst = {};
     this.t = 0;
     this.half = 1;
     this.phase = 'kickoff';
@@ -455,6 +467,19 @@ export class Match {
   get actives() { return this.controllers.map((c) => this.playerOf(c)).filter(Boolean); }
 
   playerOf(c) { return c ? this.teams[c.team].players[c.activeIdx] : null; }
+
+  /** Count something a player did (v81). */
+  tally(p, k, n = 1) {
+    const id = p?.ref?.id; if (!id) return;
+    const r = this.pst[id] || (this.pst[id] = { passes: 0, shots: 0, tackles: 0, saves: 0, dist: 0, on: 0, off: null, team: p.team });
+    r[k] += n;
+  }
+  /** Minutes on the pitch for a card id, in match minutes. */
+  minutesOf(id) {
+    const r = this.pst[id]; if (!r) return 0;
+    const end = r.off ?? this.t;
+    return Math.round(((end - r.on) / Math.max(1, this.duration)) * 90);
+  }
   isControlled(p) { return this.controllers.some((c) => this.playerOf(c) === p); }
   minute() { return Math.min(90, Math.floor((this.t / this.duration) * 90)); }
   possession() {
@@ -508,6 +533,7 @@ export class Match {
   /* ------------------------------ update ----------------------------- */
   update(dt, input) {
     if (this.phase === 'end') return;
+    if (this.locked) this.lockSeats();
     /* Anyone on the grass gets up on his own clock, not the phase's. A foul
      * puts the game into a set piece immediately, so a timer that only ran
      * during play would leave him lying there through the whole free kick. */
@@ -633,6 +659,33 @@ export class Match {
     this.separate();
     this.updateBall(dt);
     this.switchOnPossession();
+    if (this.locked) this.lockSeats();
+  }
+
+  /**
+   * Player lock (v81, the Player Career): a seat with `lockId` only ever
+   * steers that one footballer. Returns false when he is not on the pitch
+   * (subbed off, or not picked) — the match plays on without a stick.
+   */
+  lockPlayer(cardId, seat = this.controllers[0]) {
+    if (!seat) return false;
+    seat.lockId = cardId;
+    this.locked = true;
+    return this.lockSeats();
+  }
+  lockSeats() {
+    let ok = true;
+    for (const c of this.controllers) {
+      if (!c.lockId) continue;
+      const i = this.teams[c.team].players.findIndex((p) => p.ref.id === c.lockId);
+      if (i >= 0) { c.activeIdx = i; c.benched = false; } else { c.benched = true; ok = false; }
+    }
+    return ok;
+  }
+  /** The locked footballer, or null. */
+  lockedPlayer(c = this.controllers[0]) {
+    if (!c?.lockId) return null;
+    return this.teams[c.team].players.find((p) => p.ref.id === c.lockId) || null;
   }
 
   /**
@@ -642,7 +695,7 @@ export class Match {
   switchOnPossession() {
     const o = this.ball.owner;
     if (!o) return;
-    const seats = this.controllers.filter((c) => c.team === o.team);
+    const seats = this.controllers.filter((c) => c.team === o.team && !c.lockId);
     if (!seats.length) return;
     if (seats.some((c) => this.playerOf(c) === o)) return;   // someone already has him
 
@@ -700,11 +753,13 @@ export class Match {
     // A keeper comes off for a keeper or the goal is left to a winger.
     if (p.role === 'GK' && incoming.position !== 'GK') return false;
 
+    this.tally(p, 'dist', 0); this.pst[p.ref.id].off = this.t;
     team.bench[benchIdx] = p.ref;      // the man coming off takes the seat
     p.ref = incoming;
     Object.assign(p, attributesOf(incoming));
     p.touchLock = 0; p.stumble = 0; p.slide = 0; p.downT = 0; p.diveT = 0; p.injured = false; p.skillT = 0; p.spinT = 0; p.burst = null; p.skillKind = null;
     team.subsLeft -= 1;
+    this.tally(p, 'dist', 0); this.pst[incoming.id] && (this.pst[incoming.id].on = this.t);
     this.cue('whistle');
     return true;
   }
@@ -740,6 +795,8 @@ export class Match {
   }
 
   integrate(p, dt) {
+    const pr = this.pst[p.ref.id];
+    if (pr) pr.dist += Math.hypot(p.vx, p.vy) * dt; else this.tally(p, 'dist', 0);
     if (p.slide > 0) {
       p.x += p.vx * dt; p.y += p.vy * dt;
       p.vx *= 0.94; p.vy *= 0.94;
@@ -1008,7 +1065,7 @@ export class Match {
 
   /** L1 / R1 — jump to whoever is closest to the ball, skipping the other seat's man. */
   cycleActive(c = this.controllers[0]) {
-    if (!c) return;
+    if (!c || c.lockId) return;
     const taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o));
     let best = null;
     let bestD = Infinity;
@@ -1097,7 +1154,7 @@ export class Match {
   /** Only ever called at a restart, so you never lose the controlled player mid-play. */
   selectForKickoff() {
     if (!this.kickoffTaker) return;
-    const seat = this.controllers.find((c) => c.team === this.kickoffSide);
+    const seat = this.controllers.find((c) => c.team === this.kickoffSide && !c.lockId);
     if (!seat) return;
     const i = this.teams[seat.team].players.indexOf(this.kickoffTaker);
     if (i >= 0) seat.activeIdx = i;
@@ -1562,7 +1619,7 @@ export class Match {
     const inw = goalX < PITCH.w / 2 ? 1 : -1;
 
     // taker: the closest attacker to the flag
-    const taker = atk.players
+    const taker = namedTaker(atk, 'corner') || atk.players
       .filter((p) => p.role !== 'GK')
       .sort((a, z) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(z.x - b.x, z.y - b.y))[0];
     taker.x = b.x + inw * 1.4;
@@ -1816,6 +1873,7 @@ export class Match {
   }
 
   cross(p, aim, kind = 'floated') {
+    this.tally(p, 'passes');
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
     /* v79: a cut-back is a pass, not a cross — along the ground from the
@@ -1922,6 +1980,7 @@ export class Match {
   }
 
   pass(p, aim, through, power = 0.35, lob = false) {
+    this.tally(p, 'passes');
     const team = this.teams[p.team];
     const reach = 14 + power * 44;
     let ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX;
@@ -2017,6 +2076,7 @@ export class Match {
    *           is not at anyone's feet when it is struck
    */
   shoot(p, aim, power, opts = {}) {
+    this.tally(p, 'shots');
     const { loft = 1, curl = 0, placed = false, chip = false, sloppy = 0 } = opts;
     const team = this.teams[p.team];
     const goalX = team.dir > 0 ? PITCH.w : 0;
@@ -2124,6 +2184,7 @@ export class Match {
     const win = (p.ref.stats.defending + 16) /
       (p.ref.stats.defending + owner.ref.stats.dribbling + 16) * this.preset.tackle;
     if (Math.random() < win) {
+      this.tally(p, 'tackles');
       owner.touchLock = 0.55;
       owner.stumble = 0.35;
       /* v79: not every won tackle is a clean take. Nearly half poke it loose —
@@ -2295,7 +2356,7 @@ export class Match {
     const toGoal = Math.hypot(goalX - b.x, CY - b.y);
     const shootingRange = toGoal < 32;
     // taker: the best striker of a dead ball in range, else the nearest passer
-    const taker = atk.players.filter((q) => q.role !== 'GK')
+    const taker = (shootingRange && namedTaker(atk, 'fk')) || atk.players.filter((q) => q.role !== 'GK')
       .sort((x, y) => (shootingRange ? y.ref.stats.shooting - x.ref.stats.shooting : dist(x, b) - dist(y, b)))[0];
     taker.x = b.x - atk.dir * 2.6; taker.y = b.y + (b.y < CY ? -0.8 : 0.8);
     taker.vx = taker.vy = 0; taker.touchLock = 0;
@@ -2394,11 +2455,13 @@ export class Match {
    * the CPU takes it when the short timer expires.
    */
   beginSetPiece(kind, team, taker, aiDelay) {
-    const human = this.controllers.some((c) => c.team === team);
+    // a locked seat only takes the restarts its own man takes
+    const mine = (c) => c.team === team && (!c.lockId || c.lockId === taker?.ref?.id);
+    const human = this.controllers.some(mine);
     this.phaseT = human ? (kind === 'throwin' ? 6 : 9) : aiDelay + (this.teams[team].tactics.tempo === 'slow' ? 1.4 : 0);
     // the person's stick drives the taker: put the seat on him
     if (human) {
-      const c = this.controllers.find((k) => k.team === team);
+      const c = this.controllers.find(mine);
       if (c) c.activeIdx = this.teams[team].players.indexOf(taker);
     }
     return { kind, team, taker, human, aim: { x: this.teams[team].dir, y: 0 }, charge: 0, action: null };
@@ -2480,7 +2543,7 @@ export class Match {
       owner: null, lastTouch: null, inNet: null, curl: 0, shotBy: null,
     });
 
-    const taker = atk.players
+    const taker = namedTaker(atk, 'pen') || atk.players
       .filter((p) => p.role !== 'GK')
       .sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
     taker.x = spotX - atk.dir * 2.2;
@@ -3063,6 +3126,7 @@ export class Match {
     const hands = (gk.ref.overall / 100) * this.preset.hands;
     const holdable = 17 + hands * 13;                 // ~26-30 m/s for a good keeper
 
+    this.tally(gk, 'saves');
     if (speed < holdable && gk.diveT <= 0 && Math.random() < 0.36 + hands * 0.34) {   // v79: fewer clean catches, more parries
       this.cue('save');
       return true;                                    // clean catch
