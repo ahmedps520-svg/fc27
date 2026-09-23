@@ -13729,7 +13729,12 @@
     let dragId = null, origin = { x: 0, y: 0 }, R = 26;
     canvas.addEventListener("pointerdown", (e) => {
       var _a;
-      dragId = e.pointerId, origin = { x: e.clientX, y: e.clientY }, (_a = canvas.setPointerCapture) == null || _a.call(canvas, e.pointerId), e.preventDefault();
+      dragId = e.pointerId, origin = { x: e.clientX, y: e.clientY };
+      try {
+        (_a = canvas.setPointerCapture) == null || _a.call(canvas, e.pointerId);
+      } catch {
+      }
+      e.preventDefault();
     }), canvas.addEventListener("pointermove", (e) => {
       if (e.pointerId !== dragId) return;
       let dx = Math.max(-1, Math.min(1, (e.clientX - origin.x) / R)), dy = Math.max(-1, Math.min(1, (e.clientY - origin.y) / R));

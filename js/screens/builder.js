@@ -141,7 +141,8 @@ export function mount(root) {
     building = true;
     const d = current(); const id = me();
     match.venue = { stadium: B.toDef(d, { clubName: id.name, short: id.short }), atmo: atmosphereFor('builder', { time, weather: 'clear' }) };
-    try { gl?.dispose(); } catch { /* gone */ }
+    // v88: same canvas, so keep its context alive for the renderer that follows
+    try { gl?.dispose({ keepContext: true }); } catch { /* gone */ }
     try { gl = mod.createRenderer(canvas, match, quality, false); } catch (e) { note.hidden = false; note.textContent = 'This device could not open the 3D view.'; building = false; return; }
     size();
     note.hidden = true;

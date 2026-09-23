@@ -143,7 +143,7 @@ export function playMatch(app, awayId, onDone, level = 'normal', opts = {}) {
   const R = 26;
   canvas.addEventListener('pointerdown', (e) => {
     dragId = e.pointerId; origin = { x: e.clientX, y: e.clientY };
-    canvas.setPointerCapture?.(e.pointerId);
+    try { canvas.setPointerCapture?.(e.pointerId); } catch { /* gone */ }
     e.preventDefault();
   });
   canvas.addEventListener('pointermove', (e) => {

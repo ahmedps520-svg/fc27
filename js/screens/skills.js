@@ -131,7 +131,7 @@ function playDrill(root, id) {
     input.setTouchVec(x / m, y / m); knob.style.transform = `translate(${(x / m) * 28}px, ${(y / m) * 28}px)`;
   };
   const offPad = () => { input.setTouchVec(0, 0); knob.style.transform = ''; };
-  pad.addEventListener('pointerdown', (e) => { pad.setPointerCapture(e.pointerId); onPad(e); });
+  pad.addEventListener('pointerdown', (e) => { try { pad.setPointerCapture(e.pointerId); } catch { /* gone */ } onPad(e); });
   pad.addEventListener('pointermove', (e) => { if (e.buttons) onPad(e); });
   pad.addEventListener('pointerup', offPad); pad.addEventListener('pointercancel', offPad);
   const btn = stage.querySelector('#drillBtn');

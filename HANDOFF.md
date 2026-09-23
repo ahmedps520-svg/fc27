@@ -15,6 +15,30 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v88 — fixes from the first post-release play session
+New standing practice: after every release, play one full match each on phone
+touch, desktop keyboard and a simulated controller
+(`tests/qa/play-session.mjs`: a simple bot through each device's real input
+path, with CDP touch events for the phone), then fix the worst thing found.
+Also new: `tests/qa/pad-reach.mjs`, a controller-only walk of the app (simulated
+Gamepad API). It is **not in CI yet**: it still reports focus failures in long
+scrolling lists, and those need the v89 controller work before it can gate.
+- **Stadium Builder blank after the first change (v87 regression).** R14's
+  leak fix made `dispose()` call `forceContextLoss()`. The builder rebuilds
+  on the *same* canvas, which hands the same, now-lost context to the next
+  renderer, so three.js threw in `onFirstUse` (`getProgramInfoLog` is null
+  when the context is lost). `dispose({ keepContext: true })` from the
+  builder. Play and Grounds get a fresh canvas each mount and still force the
+  loss.
+- **Pad B stranded you on screens with nothing focusable** (the Trophy Room):
+  `tick()` returned before reading B/Start. Back and home are read first now.
+- **Touch stick could die**: an unguarded `setPointerCapture` throw left
+  `stickId` set with no stick shown, so every later touch was ignored. All
+  capture calls are guarded.
+- The quick-tactics hint named keys 1–5 on every device. The "No pad" chip
+  is hidden on touch devices until a pad is connected.
+- Test hooks: `window.__padMenu` (list / focus / peek) and `window.__apexScreen`.
+
 ### v87 — Round 14: performance, stability, accessibility
 Built earlier as the "R14 WIP" stash, paused for the v84 hotfix, the v85
 landscapes and the v86 bug pass, then re-applied on top of them. Its own

@@ -54,6 +54,7 @@ export function prefetchScreens() {
   const next = () => { const n = names.shift(); if (!n) return; loadScreen(n).catch(() => {}).finally(() => idle(next)); };
   idle(next);
 }
+window.__apexScreen = () => current;        // v88: which screen is up, for the controller test
 let navToken = 0;
 let prefetched = false;
 
@@ -72,7 +73,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v87';
+export const APP_VERSION = 'v88';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
