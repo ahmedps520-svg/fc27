@@ -17,6 +17,8 @@ import { CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS } from './da
 import { getState, update } from './state.js';
 import { onCareer } from './progress.js';
 import * as v2 from './careerV2.js';
+import { rateOf, ageOf } from './careerPeople.js';
+import * as v3 from './careerV3.js';
 import { bankGate, growOnPromotion } from './builder.js';
 import { supplyIndex, demandIndex, kindOf } from './economy.js';
 
@@ -59,15 +61,14 @@ function personality(name) {
 }
 
 /** A career squad entry, resolved to live numbers. */
-export function resolveEntry(row, contract) {
+export function resolveEntry(row, contract, carOverride = null) {
   const [name, position, nation] = row;
   const card = nameIndex().get(name);
   // v2: seasonal development and an academy graduate's own rating
-  const car = getState().career;
-  const dev = (car?.dev?.[name] | 0);
-  const base = car?.devBoost?.[name] ?? (CAREER_RATINGS[name] || card?.overall || 74);
-  const overall = Math.max(40, Math.min(99, base + dev));
-  const age = card?.age ?? 27;
+  // v81: the save's own ratings and ages (regens, your pro, the years passing)
+  const car = carOverride || getState().career;
+  const overall = car ? rateOf(car, name) : Math.max(40, Math.min(99, CAREER_RATINGS[name] || card?.overall || 74));
+  const age = car ? ageOf(car, name) : (card?.age ?? 27);
   const value = CAREER_RATINGS[name] ? valueFor(overall, age) : (card?.value ?? valueFor(overall, age));
   return {
     name,
@@ -76,8 +77,8 @@ export function resolveEntry(row, contract) {
     nation,
     age,
     overall,
-    stats: card?.stats || { pace: 70, shooting: 66, passing: 70, dribbling: 70, defending: 62, physical: 70 },
-    foot: card?.foot || 'R',
+    stats: car?.people?.[name]?.stats || card?.stats || statsFor(overall, position),
+    foot: car?.people?.[name]?.foot || card?.foot || 'R',
     value,
     wage: round3(Math.max(4000, Math.round(value / 250))),     // weekly
     persona: personality(name),
@@ -85,6 +86,15 @@ export function resolveEntry(row, contract) {
     form: 0,          // -2..2, drifts with results
     morale: 0.65,     // 0..1
   };
+}
+
+/** Stats for someone with no card (a regen): shaped by position around the rating. */
+export function statsFor(overall, position) {
+  const g = ['CB', 'LB', 'RB', 'CDM'].includes(position) ? 'D' : position === 'GK' ? 'G' : ['ST', 'LW', 'RW'].includes(position) ? 'F' : 'M';
+  const o = overall;
+  const t = { D: [0, -12, -6, -8, 6, 4], M: [-3, -6, 5, 3, -8, -2], F: [4, 5, -6, 3, -22, -3], G: [-10, -30, -8, -20, 4, -2] }[g];
+  const k = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+  return Object.fromEntries(k.map((x, i) => [x, Math.max(25, Math.min(99, o + t[i]))]));
 }
 
 const contractFor = (name, season = 1) => {
@@ -132,6 +142,14 @@ export function makeFixtures(league) {
  * Career lifecycle
  * ------------------------------------------------------------------ */
 export function startCareer(manager, clubId) {
+  const car = newWorld(manager, clubId);
+  update((s) => { s.career = car; });
+  onCareer('start');
+  return getState().career;
+}
+
+/** A fresh career world around one club — the Manager Career's, or a pro's (v81). */
+export function newWorld(manager, clubId) {
   const club = careerClub(clubId);
   // every squad in MY league is materialised (rows + contract), because
   // transfers and contract expiries have to be able to change them
@@ -163,11 +181,11 @@ export function startCareer(manager, clubId) {
   };
   car.fixtures = v2.buildCalendar(car, club.league);
   car.table = Object.fromEntries(v2.leagueClubIds(car, club.league).map((id) => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
+  v2.useCar(car);
   v2.refillYouth(car);
   v2.setBoardObjectives(car);
-  update((s) => { s.career = car; });
-  onCareer('start');
-  return getState().career;
+  v3.ensureV3(car);
+  return car;
 }
 
 export const myFixture = (car) => {
@@ -193,55 +211,83 @@ export function simScore(homeId, awayId, squads) {
   return [hg, ag];
 }
 
-/** Record my result, sim the rest of the round, advance the week. */
-export function advanceWeek(myScore) {
+/**
+ * Record my result, sim the rest of the round, advance the week.
+ * `extra` (v81) carries what a played match knows: the XI, subs, ratings,
+ * scorers and possession — without it my eleven's night is simulated too.
+ */
+export function advanceWeek(myScore, extra = null) {
   update((s) => {
     const car = s.career; if (!car) return;
     v2.bindState(() => s.club);
-    const entry = car.fixtures[car.week - 1] || [];
-    if (entry.type === 'cup') {
-      v2.playCupRound(car, entry.round, myScore);
-      if (myScore) { car.pressPending = true; car.stats[myScore[0] > myScore[1] ? 'w' : myScore[0] === myScore[1] ? 'd' : 'l'] += 1; }
-      weekTick(car);
-      return;
-    }
-    const round = entry.type === 'league' ? entry.pairs : entry;
-    for (const [h, a] of round) {
-      const mine = h === car.clubId || a === car.clubId;
-      const [hg, ag] = mine && myScore ? myScore : simScore(h, a, car.squads);
-      applyRow(car.table[h], hg, ag);
-      applyRow(car.table[a], ag, hg);
-      car.results.push({ week: car.week, h, a, hg, ag });
-      if (mine && myScore) {
-        // the gate: every seat the ground holds pays on a home matchday (builder.js)
-        if (h === car.clubId) bankGate(car);
-        const win = (h === car.clubId ? hg > ag : ag > hg);
-        const draw = hg === ag;
-        car.stats[win ? 'w' : draw ? 'd' : 'l'] += 1;
-        car.stats.rep = Math.max(1, Math.min(99, car.stats.rep + (win ? 2 : draw ? 0 : -1)));
-        car.morale = Math.max(0.05, Math.min(1, car.morale + (win ? 0.08 : draw ? -0.01 : -0.09)));
-        car.pressPending = true;
-      }
-    }
-    weekTick(car);
+    advanceCar(car, myScore, { extra });
   });
 }
 
+/** The week engine, on any career object (the Player Career runs its world on it too). */
+export function advanceCar(car, myScore, { extra = null, pro = false } = {}) {
+  v2.useCar(car); v3.ensureV3(car);
+  const entry = car.fixtures[car.week - 1] || [];
+  const mineRecord = (hg, ag, isHome) => {
+    const [mg, tg] = isHome ? [hg, ag] : [ag, hg];
+    if (extra) v3.recordMatch(car, { ...extra, scored: mg });
+    else {
+      const { xi } = v3.pickXI(car);
+      const sm = v3.simMatchFor(car, xi, mg, tg);
+      v3.recordMatch(car, { xi, ratings: sm.ratings, goals: sm.goals, assists: sm.assists, possession: 50, scored: mg });
+    }
+  };
+  if (entry.type === 'cup') {
+    v2.playCupRound(car, entry.round, myScore);
+    if (myScore) {
+      car.pressPending = true; car.stats[myScore[0] > myScore[1] ? 'w' : myScore[0] === myScore[1] ? 'd' : 'l'] += 1;
+      mineRecord(myScore[0], myScore[1], true);
+    }
+    weekTick(car, pro);
+    return;
+  }
+  const round = entry.type === 'league' ? entry.pairs : entry;
+  for (const [h, a] of round) {
+    const mine = h === car.clubId || a === car.clubId;
+    const [hg, ag] = mine && myScore ? myScore : v2.simScoreV2(car, h, a);
+    applyRow(car.table[h], hg, ag);
+    applyRow(car.table[a], ag, hg);
+    car.results.push({ week: car.week, season: car.season, h, a, hg, ag });
+    if (!mine) { v3.tallySimGoals(car, h, hg); v3.tallySimGoals(car, a, ag); }
+    if (mine && myScore) {
+      // the gate: every seat the ground holds pays on a home matchday (builder.js)
+      if (h === car.clubId && !pro) car.fin.season.tickets += bankGate(car);
+      const win = (h === car.clubId ? hg > ag : ag > hg);
+      const draw = hg === ag;
+      car.stats[win ? 'w' : draw ? 'd' : 'l'] += 1;
+      car.stats.rep = Math.max(1, Math.min(99, car.stats.rep + (win ? 2 : draw ? 0 : -1)));
+      car.morale = Math.max(0.05, Math.min(1, car.morale + (win ? 0.08 : draw ? -0.01 : -0.09)));
+      car.pressPending = true;
+      mineRecord(hg, ag, h === car.clubId);
+    }
+  }
+  weekTick(car, pro);
+}
+
 /** Everything a week brings beyond the fixture: windows, academy, scouts, the board. */
-function weekTick(car) {
+function weekTick(car, pro = false) {
   if (car.leagueOf) {
-    v2.generateOffers(car, car.week);
-    v2.aiTransfers(car, car.week);
+    if (!pro) {
+      v2.generateOffers(car, car.week);
+      for (const o of car.offers || []) if (o.state === 'open') v3.checkRelease(car, o);
+    }
+    for (const d of v2.aiTransfers(car, car.week)) v3.onAiTransfer(car, d);
     v2.trainYouth(car);
-    v2.tickScouting(car);
-    v2.boardReview(car, sortedCareerTable(car));
+    if (!pro) { v2.tickScouting(car); v2.boardReview(car, sortedCareerTable(car)); }
+    v3.weekV3(car, { pro });
+    if ((car.squads[car.clubId] || []).length < 14) v3.squadFloor(car);
   }
   car.week += 1;
-  if (car.week > car.fixtures.length) endSeason(car);
+  if (car.week > car.fixtures.length) endSeason(car, pro);
 }
 
 /** Contracts tick, expiries leave, the calendar resets. */
-function endSeason(car) {
+function endSeason(car, pro = false) {
   const table = sortedCareerTable(car);
   const champion = table[0]?.id === car.clubId;
   if (champion) car.stats.trophies += 1;
@@ -255,7 +301,8 @@ function endSeason(car) {
       // quietly re-signs most and loses some to the void of "another club"
       if (c.years <= 0 && cid !== car.clubId) {
         if (Math.random() < 0.6) c.years = 1 + Math.floor(Math.random() * 3);
-        else rows.splice(i, 1);
+        // v81: out of contract means a free agent another club can sign, not gone
+        else (car.freeAgents = car.freeAgents || []).push(rows.splice(i, 1)[0]);
       }
     }
   }
@@ -265,10 +312,14 @@ function endSeason(car) {
      * academy faces — and a calendar for whichever league I am in now. */
     const myLeague = car.leagueOf[car.clubId];
     const other = myLeague.endsWith(' 2') ? v2.topOf(myLeague) : v2.tier2Of(myLeague);
+    // v81: prize money, the five pillars, awards, retirements and regens, AI
+    // managers, potential and growth, loans home — before the board's verdict
+    v3.seasonEndV3(car, table);
+    if (pro) car.board = car.board || { patience: 1, finish: 99 };
     v2.seasonReviewV2(car, table, v2.syntheticOrder(car, other));
+    if (pro) car.review = null;
     // up from the second tier: the ground grows with the club (v78)
     if (myLeague.endsWith(' 2') && car.leagueOf[car.clubId] && !car.leagueOf[car.clubId].endsWith(' 2')) growOnPromotion(car);
-    v2.developSquads(car);
     v2.refillYouth(car);
   }
   car.season += 1;
@@ -278,7 +329,7 @@ function endSeason(car) {
   car.fixtures = car.leagueOf ? v2.buildCalendar(car, league) : makeFixtures(league);
   const ids = car.leagueOf ? v2.leagueClubIds(car, league) : Object.keys(car.table);
   car.table = Object.fromEntries(ids.map((id) => [id, { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }]));
-  if (car.leagueOf) v2.setBoardObjectives(car);
+  if (car.leagueOf) { v2.setBoardObjectives(car); v3.seasonStartV3(car); }
 }
 
 export function sortedCareerTable(car) {
@@ -388,7 +439,11 @@ export function completeTransfer(car, neg) {
   const row = rows.splice(i, 1)[0];
   row[3] = { years: neg.years, signed: car.season, wage: neg.wage };
   car.squads[car.clubId].push(row);
-  car.coins -= neg.agreedFee;
+  // v81: the fee, the agent's cut, and any clauses written into the deal
+  v3.book(car, 'buys', -neg.agreedFee);
+  v3.book(car, 'agents', -v3.agentFee(neg.agreedFee));
+  if (neg.release || neg.sellOn) v3.setClauses(car, neg.player, { release: neg.release || null });
+  car.lastSigning = { name: neg.player, fee: neg.agreedFee, from: neg.from, season: car.season, week: car.week };
   onCareer('sign');
   return true;
 }
@@ -407,6 +462,7 @@ export function releaseExpired(car) {
   const rows = car.squads[car.clubId];
   for (let i = rows.length - 1; i >= 0; i--) if (rows[i][3].years <= 0) rows.splice(i, 1);
   car.expiring = [];
+  v3.squadFloor(car);          // v81: the academy makes up the numbers
 }
 
 /** '500k', '200m', '85.5M', '12,000,000' — how a human types money. */

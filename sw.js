@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v80';
+const CACHE = 'apexxi-v81';
 
 const ASSETS = [
   './',
@@ -41,6 +41,7 @@ const ASSETS = [
   './js/components/screenHead.js',
   './js/game/sim.js',
   './js/game/field.js',
+  './js/game/ratings.js',
   './js/game/input.js',
   './js/game/render3d.js',
   './js/game/renderGL.js',
@@ -68,6 +69,8 @@ const ASSETS = [
   './js/screens/trophies.js',
   './js/screens/weekend.js',
   './js/screens/uxiHub.js',
+  './js/screens/pro.js',
+  './js/screens/careerDepth.js',
   './js/progress.js',
   './js/live.js',
   './js/weekend.js',
@@ -101,6 +104,10 @@ const ASSETS = [
   './js/modes.js',
   './js/tasks.js',
   './js/squadHub.js',
+  './js/careerPeople.js',
+  './js/careerV3.js',
+  './js/proCareer.js',
+  './js/components/ceremony.js',
   './js/careerV2.js',
   './js/data/commentary.js',
   './js/data/achievements.js',

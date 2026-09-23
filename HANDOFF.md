@@ -15,6 +15,61 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v81 — career depth (Round 11)
+**Sweep byte-identical** (seeds 12345, 777). The sim gained counting only:
+`Match.pst[cardId]` (passes, shots, won tackles, saves, distance, on/off
+time), `minutesOf`, named set-piece takers (`custom.takers { pen, fk, corner }`
+→ `namedTaker`) and the player lock (`lockPlayer(cardId)`, `lockSeats`,
+locked seats skip auto-switching and only take their own man's restarts).
+- **Ratings** (`js/game/ratings.js`): `rateMatch(m)` → players rated 3–10
+  (base 6, goals/assists, tallies, clean sheets, result, cards; cameos pulled
+  toward 6) and the player of the match; `simRating` for simmed games.
+- **People** (`js/careerPeople.js`, imported by every career module, imports
+  none): a name → card Map (the old `WORLD.players.find` per call), `ageOf`
+  moving with seasons, `rateOf` (base + `car.dev`), dynamic `potOf`,
+  `valueIn`, regional generated names, `addPerson` for regens and your pro.
+  `careerV2` now rates through it (`useCar(car)`, `squadOverall(rows, car)`).
+- **Engine**: `career.newWorld(manager, clubId)` builds a world;
+  `advanceCar(car, score, { extra, pro })` is the week (the Manager Career's
+  `advanceWeek` wraps it; `extra` = XI, subs, ratings, scorers, possession
+  from a played match — play.js `careerExtra`). Out-of-contract AI players
+  become free agents clubs sign before generating youngsters.
+- **careerV3.js**: training schedules + fitness/sharpness/injuries, plans
+  (focus or retrain in 8 weeks), hierarchy (keepers ranked apart) and
+  playing-time morale, talks/promises/requests, media stories, scouts
+  (1–3, 1–5★, regions, reports with ± error), loans in/out (home at season
+  end, growth by games), release clauses (fire on a bid), sell-ons (paid on
+  the AI move), agent fees 7 %, a ledger (`book`) and wage budget, four
+  facilities (15M × level²), five board pillars (success ×2), youth
+  tournament, awards (champion, POTS, golden boot from simmed scorers, young
+  player), AI manager changes, retirements from 34, regens to 18 a squad,
+  `squadFloor` (16, two keepers), pruning. Economy: TV 2.6M (tier 1) + rep ×
+  25k a round, shirts rep² × 450, prize by position.
+- **Player Career** (`js/proCareer.js`, screen `js/screens/pro.js`, route
+  `pro`): `startPro`, six attributes → position-weighted overall, hidden
+  potential 78–93, weekly drill (0–100, a timing bar) + match XP, trust →
+  selection (`start`/`bench`/`out`; the young always make the bench), agent
+  offers in windows (moves and loans happen in the summer), contract talks,
+  milestones, call-ups (nation's 23rd best via `world.nations()`), age decline
+  from 30, retire from 33 (forced at 40), `legacy()` score and tier.
+  Matches: play.js `params.pro { cardId, swapped }` — your side is fielded
+  as home, `venueSquad` is the real host; camera preset `lock`.
+- **Scenes** (`js/components/ceremony.js`): `pressScene`, `signingScene`,
+  `trophyScene` (confetti canvas; reduced motion → still). Faces take a
+  `look` override (`faceOf`).
+- **Screens**: career hub tabs Training, Dressing room, Finance (with
+  facilities), World; Scouting shows the network; Transfers adds Loans; the
+  Board shows the pillars; offers can carry a 15 % sell-on; contract terms a
+  release clause; `⇆ Careers` switches between the two careers.
+- Fixed on the way: the career squad and market rows overflowed a 390 px
+  phone (pre-existing).
+- Tests: `tests/unit/career-depth.test.mjs` (10 seasons of each career:
+  stability, < 450 KB, < 15 s; the lock; ratings; takers; manager systems;
+  people). Visual: `tests/visual/r11-shots.mjs`. QA bot: new `pro` flow.
+  Layout scan includes `pro`.
+- Measured: 10 manager seasons ≈ 0.4 s, 164 KB; a 19-season pro career
+  ≈ 1.2 s, 221 KB.
+
 ### v80 — Ultimate XI depth (Round 10)
 **Sweep byte-identical** for seeds 12345 and 777. The field became
 configurable without moving a single full-pitch number (the cross "wide"

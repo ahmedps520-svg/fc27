@@ -21,6 +21,9 @@ import { faceSVG, faceOf } from '../components/face.js';
 import { navigate, toast } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import * as v2 from '../careerV2.js';
+import * as v3 from '../careerV3.js';
+import { DEPTH_TABS, trainingHTML, dressingHTML, financeHTML, networkHTML, loansHTML, worldHTML, pillarsHTML, wireDepth } from './careerDepth.js';
+import { pressScene, signingScene, trophyScene } from '../components/ceremony.js';
 import { GROUND_LEVELS, groundLevel, groundCapacity, gateIncome, groundOf, expansionOffer, expand } from '../builder.js';
 import { sfx } from '../audio.js';
 
@@ -28,6 +31,8 @@ export const TITLE = 'Career';
 
 let step = 'modes';        // pre-career flow position
 let tab = 'overview';      // hub tab
+let showModes = false;     // v81: the two careers side by side
+let celebrated = null;     // the last signing / trophy shown as a scene
 let custom = null;         // the custom-manager draft
 let market = { q: '', pos: 'all', league: 'all', maxAge: 40, minOvr: 0, sort: 'value' };
 
@@ -37,9 +42,10 @@ const managerFace = (name, i = 0) => faceSVG({ id: `mgr-${name}-${i}`, name }, 7
 /* ------------------------------------------------------------------ *
  * Render
  * ------------------------------------------------------------------ */
-export function render() {
+export function render(params = {}) {
+  if (params.modes) showModes = true;
   const car = getState().career;
-  if (car?.v >= 2) return hubHTML(car);
+  if (car?.v >= 2 && !showModes) return hubHTML(car);
   if (step === 'manager') return managerHTML();
   if (step === 'custom') return customHTML();
   if (step === 'club') return clubsHTML();
@@ -51,19 +57,20 @@ function modesHTML() {
     ${screenHead({ kicker: 'Mode 03', title: 'Career', sub: 'Take a real club. Live with the results.', motif: 'season', tone: 'b' })}
     <div class="cm-modes">
       <button class="cm-mode glass" id="cmManager">
-        <span class="cm-kicker">Available now</span>
+        <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Available now'}</span>
         <b>MANAGER MODE</b>
         <p>You are the manager. Pick your touchline persona, take charge of a real club,
            work the transfer market, and influence matches from the technical area —
            the players are yours to steer, never to control.</p>
         <span class="cm-cta">Start →</span>
       </button>
-      <div class="cm-mode glass is-locked">
-        <span class="cm-kicker">In development</span>
+      <button class="cm-mode glass" id="cmPlayer">
+        <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `Continue · ${getState().pro.name}` : 'New in v81'}</span>
         <b>PLAYER MODE</b>
-        <p>One footballer, one boot-room locker, a whole career from prospect to icon.</p>
-        <span class="cm-uc">UNDER CONSTRUCTION</span>
-      </div>
+        <p>Create a footballer — name, nation, position, look — and start at seventeen in a second tier.
+           Play only your player, earn the manager's trust, train, move clubs, win caps, and retire with a legacy.</p>
+        <span class="cm-cta">${getState().pro ? 'Continue →' : 'Create your player →'}</span>
+      </button>
     </div>`;
 }
 
@@ -172,7 +179,7 @@ function hubHTML(car) {
   const offersN = (car.offers || []).filter((o) => o.state === 'open').length;
   const NAV = [['overview', 'Overview', '◉'], ['squad', 'Squad', '⬢'], ['transfers', 'Transfers', '⇄'],
     ['offers', `Offers${offersN ? ` (${offersN})` : ''}`, '✉'], ['youth', 'Academy', '❋'], ['scout', 'Scouting', '◎'],
-    ['fixtures', 'Fixtures', '▤'], ['cup', 'Cup', '🏆'], ['board', 'Board', '▦'], ['club', 'Club', '⛨'], ['career', 'Career', '★']];
+    ['fixtures', 'Fixtures', '▤'], ['cup', 'Cup', '🏆'], ['board', 'Board', '▦'], ['club', 'Club', '⛨'], ['career', 'Career', '★'], ...DEPTH_TABS];
   return `
     <header class="chub" style="--team:${club.colors[0]};--team2:${club.colors[1]}">
       <div class="chub-top">
@@ -196,18 +203,22 @@ function hubHTML(car) {
       ${NAV.map(([id, l, ic]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}"><i>${ic}</i>${l}</button>`).join('')}
     </nav>
     <div id="cBody">${hubBody(car)}</div>
-    <div class="career-foot"><button class="btn ghost danger" id="quitCareer">Resign</button></div>`;
+    <div class="career-foot"><button class="btn ghost" id="careerModes">⇆ Careers</button><button class="btn ghost danger" id="quitCareer">Resign</button></div>`;
 }
 
 function hubBody(car) {
   if (car.review) return reviewHTML(car);
   if (tab === 'offers') return offersHTML(car);
   if (tab === 'youth') return youthHTML(car);
-  if (tab === 'scout') return scoutHTML(car);
+  if (tab === 'scout') return networkHTML(car) + scoutHTML(car);
+  if (tab === 'training') return trainingHTML(car);
+  if (tab === 'dressing') return dressingHTML(car);
+  if (tab === 'finance') return financeHTML(car);
+  if (tab === 'world') return worldHTML(car);
   if (tab === 'cup') return cupHTML(car);
   if (tab === 'board') return boardHTML(car);
   if (tab === 'squad') return squadHTML(car);
-  if (tab === 'transfers') return transfersHTML(car);
+  if (tab === 'transfers') return transfersHTML(car) + (car.negotiation ? '' : loansHTML(car));
   if (tab === 'fixtures') return fixturesHTML(car);
   if (tab === 'club') return clubHTML(car);
   if (tab === 'career') return careerTabHTML(car);
@@ -279,6 +290,7 @@ function pressHTML(car) {
     <section class="panel glass press">
       <header class="panel-head"><h2>Press conference</h2></header>
       <p class="press-q">“${q.q}”</p>
+      <button class="btn ghost" id="pressRoom" data-qi="${qi}">Step into the press room</button>
       <div class="press-a">${q.a.map(([txt], i) => `<button class="btn ghost" data-press="${qi}:${i}">${txt}</button>`).join('')}</div>
     </section>`;
 }
@@ -296,6 +308,7 @@ function offersHTML(car) {
           <b class="offer-fee">${fmtCoins(o.fee)}</b>
           <div class="offer-actions">
             <button class="btn primary" data-offer="${o.id}:accept">Accept</button>
+            <button class="btn" data-offer="${o.id}:accept15" title="They pay a little less now; you get 15% of his next fee">Accept + 15% sell-on</button>
             <button class="btn" data-offer="${o.id}:counter">Counter</button>
             <button class="btn ghost" data-offer="${o.id}:reject">Reject</button>
           </div>
@@ -360,6 +373,7 @@ function boardHTML(car) {
       <header class="panel-head"><h2>The board</h2></header>
       ${b ? `<p class="lede">This season: <b>${b.text}</b> You are ${pos}${ordinal(pos)}.</p>
       <div class="ov-meters">${meter('Patience', b.patience)}</div>
+      ${pillarsHTML(car)}
       <p class="hint">Patience drops when you sit well below the objective and with careless answers to the press; it recovers with results. Below a third of it at season's end, with the objective missed, and you are gone — a cup or a promotion saves you.</p>` : ''}
       <h3 class="p-sub">History</h3>
       ${(car.history || []).map((h) => `<div class="rr"><span>Season ${h.season}</span><b>${h.pos}${ordinal(h.pos)} · ${h.pts} pts</b></div>`).join('') || '<p class="ov-empty">First season.</p>'}
@@ -531,6 +545,7 @@ function negotiationHTML(car) {
       <div class="neg-offer">
         <label>Wage / week <input id="negWage" inputmode="text" placeholder="e.g. 300k" value="${fmtCoins(Math.round(p.wage * 1.15))}"></label>
         <label>Years <select id="negYears">${[1, 2, 3, 4].map((y) => `<option ${y === 3 ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
+        <label class="cs-check"><input type="checkbox" id="negRelease"> Release clause at ◎ ${fmtCoins(Math.round(p.value * 2.5 / 1e6) * 1e6)} (he takes 5% less)</label>
         <button class="btn primary" id="negTerms">Offer terms</button>
         <button class="btn ghost" id="negClose">Walk away</button>
       </div>
@@ -677,7 +692,21 @@ function wire(root) {
   const rerender = () => { root.innerHTML = render(); wire(root); };
   const car = () => getState().career;
 
-  root.querySelector('#cmManager')?.addEventListener('click', () => { step = 'manager'; rerender(); });
+  root.querySelector('#cmManager')?.addEventListener('click', () => {
+    if (getState().career) { showModes = false; rerender(); return; }
+    step = 'manager'; rerender();
+  });
+  root.querySelector('#cmPlayer')?.addEventListener('click', () => { showModes = false; navigate('pro'); });
+  root.querySelector('#careerModes')?.addEventListener('click', () => { showModes = true; rerender(); });
+  wireDepth(root, rerender);
+  root.querySelector('#pressRoom')?.addEventListener('click', (e) => {
+    const qi = +e.currentTarget.dataset.qi; const q = v2.PRESS[qi]; const c = careerClub(car().clubId);
+    pressScene({ question: q.q, answers: q.a.map(([t]) => t), who: `${c.name} press conference`, club: { short: c.short, crest: crestOf(c) } }).then((ai) => {
+      update((s) => { if (s.career) { v2.answerPress(s.career, qi, ai); s.career.pressPending = false; } });
+      rerender();
+    });
+  });
+  celebrateManager(car());
   root.querySelectorAll('[data-mgr]').forEach((el) => el.addEventListener('click', () => {
     const m = REAL_MANAGERS[+el.dataset.mgr];
     custom = { real: true, name: m.name, nation: m.nation, age: m.age };
@@ -709,7 +738,7 @@ function wire(root) {
 
   root.querySelectorAll('[data-club]').forEach((el) => el.addEventListener('click', () => {
     startCareer(custom, el.dataset.club);
-    tab = 'overview'; step = 'modes';
+    tab = 'overview'; step = 'modes'; showModes = false;
     toast(`Appointed at ${careerClub(el.dataset.club).name}. ◎ ${fmtCoins(START_COINS)} to spend.`, 'good');
     rerender();
   }));
@@ -754,7 +783,7 @@ function wire(root) {
       if (!fee) return toast('That is not an amount', 'warn');
     }
     let r;
-    update((s) => { r = v2.respondToOffer(s.career, id, action, fee); });
+    update((s) => { r = action === 'accept15' ? v2.respondToOffer(s.career, id, 'accept', 0, { sellOn: 15 }) : v2.respondToOffer(s.career, id, action, fee); });
     toast(r.note, r.ok ? 'good' : 'warn');
     rerender();
   }));
@@ -831,10 +860,13 @@ function wire(root) {
     const wage = parseAmount(root.querySelector('#negWage').value);
     if (isNaN(wage)) { toast('Type a wage like 300k', 'warn'); return; }
     const years = +root.querySelector('#negYears').value || 3;
+    const release = !!root.querySelector('#negRelease')?.checked;
     update((s) => {
       const neg = s.career.negotiation;
       const p = marketPool(s.career).find((x) => x.name === neg.player);
-      const res = respondToTerms(s.career, neg, wage, years, p);
+      // v81: a release clause buys a cheaper wage — and a way out for him
+      neg.release = release ? Math.round(p.value * 2.5 / 1e6) * 1e6 : null;
+      const res = respondToTerms(s.career, neg, release ? Math.round(wage / 0.95) : wage, years, p);
       if (!res.ok && res.note) { neg.floorNote = res.note; }
       if (neg.state === 'off') toast(res.note, 'warn');
     });
@@ -883,7 +915,11 @@ function startMatchday(car) {
     const GROUPS = { GK: 'GK', CB: 'DF', LB: 'DF', RB: 'DF', CDM: 'MF', CM: 'MF', CAM: 'MF', LM: 'MF', RM: 'MF', LW: 'FW', RW: 'FW', ST: 'FW' };
     const rest = sq.slice().sort((a, b) => b.overall - a.overall);
     const xi = [];
-    for (const g of want) {
+    if (cid === car.clubId) {
+      // v81: my eleven is the fit, uninjured one the training ground allows
+      const pick = v3.pickXI(car);
+      for (const n of pick.xi) { const i = rest.findIndex((p) => p.name === n); if (i >= 0) xi.push(rest.splice(i, 1)[0]); }
+    } else for (const g of want) {
       const i = rest.findIndex((p) => GROUPS[p.position] === g);
       xi.push(i >= 0 ? rest.splice(i, 1)[0] : rest.shift());
     }
@@ -894,6 +930,7 @@ function startMatchday(car) {
       xi: xi.map(ref),
       bench: rest.slice(0, 7).map(ref),
       name: club.name, short: club.short, colors: club.colors, crest: crestOf(club),
+      takers: cid === car.clubId && car.setPieces ? Object.fromEntries(Object.entries(car.setPieces).filter(([, n]) => n).map(([k, n]) => [k, `cr-${n}`])) : null,
     };
   };
   /* The colours the touchline model wears. A custom manager chose them; a
@@ -911,4 +948,22 @@ function startMatchday(car) {
     awaySquad: mk(fx.away),
     career: { isHome: fx.isHome, manager: { ...car.manager, look, height: car.manager.height || 182 }, morale: car.morale, week: car.week, weeks: car.fixtures?.length || 38 },
   });
+}
+
+/* v81: the scenes — a signing announced, a trophy lifted. Once each. */
+function celebrateManager(car) {
+  if (!car || showModes) return;
+  const key = JSON.stringify([car.lastSigning, car.review && (car.review.champion || car.review.cup) ? car.season : null]);
+  if (celebrated == null) { celebrated = key; return; }
+  if (key === celebrated) return;
+  celebrated = key;
+  const club = careerClub(car.clubId);
+  const cc = { name: club.name, short: club.short, crest: crestOf(club) };
+  if (car.review && (car.review.champion || car.review.cup)) {
+    trophyScene({ title: car.review.champion ? `${car.review.league} champions` : 'Cup winners', club: cc, sub: `Season ${car.season - 1} · ${car.manager.name}`, cup: !car.review.champion });
+  } else if (car.lastSigning && car.lastSigning.season === car.season) {
+    const row = car.squads[car.clubId].find((r) => r[0] === car.lastSigning.name);
+    const e = row ? resolveEntry(row.slice(0, 3), row[3]) : { name: car.lastSigning.name };
+    signingScene({ player: { name: e.name, position: e.position, overall: e.overall }, club: cc, sub: `◎ ${fmtCoins(car.lastSigning.fee)} from ${careerClub(car.lastSigning.from)?.name || ''}` });
+  }
 }

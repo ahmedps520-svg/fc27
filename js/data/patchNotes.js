@@ -18,6 +18,41 @@
  */
 export const RELEASES = [
   {
+    version: 'v81',
+    date: '2026-09-23',
+    tag: 'Career',
+    title: 'Player Career, and a Manager Career with a whole club behind it',
+    lede: 'Create a footballer and live his career from seventeen to retirement — and as a manager, run the training ground, the dressing room, '
+        + 'the scouts, the books and the facilities, in a world that ages, retires, replaces and remembers.',
+    entries: [
+      {
+        head: 'Player Career',
+        summary: 'Create your player — name, nation (Saudi Arabia included), position, foot and look — and start at a second-tier club. Play only him, with the camera and controls locked on, or sim the week; every match ends with a rating out of ten.',
+        detail: 'Win the manager\'s trust to start, train once a week in a timing drill, grow toward a hidden potential, field calls from clubs through your agent, go on loan, talk contracts, earn caps, collect milestones and trophies, and retire with a legacy score.',
+      },
+      {
+        head: 'The manager\'s week',
+        summary: 'A training schedule with fitness and sharpness, individual plans and position retraining, set-piece takers, a squad hierarchy with playing-time expectations, and talks with players — praise, criticism, a promise of games — that land by temperament.',
+        detail: 'Unhappy players hand in transfer requests. Broken promises are remembered.',
+      },
+      {
+        head: 'Club business',
+        summary: 'A finance hub (tickets from your own ground, television, shirts, prize money, wages, fees), a wage budget, four facilities to upgrade, three scouts with star ratings and regions, loans in and out, release clauses and sell-on clauses, agent fees, and a board that judges five pillars.',
+        detail: 'The pillars: success, finance, youth, brand and style of play. Success counts double.',
+      },
+      {
+        head: 'A living world',
+        summary: 'Players age, peak, decline and retire; generated youngsters from each club\'s own part of the world take their places; potential moves with form and minutes; AI clubs change managers; champions, cup winners and awards are recorded; there is a news feed.',
+        detail: 'Ten seasons simulate in well under a second each and the save stays small. Twenty seasons cost what the first did.',
+      },
+      {
+        head: 'The big moments',
+        summary: 'A press room with the question typed out, a signing announcement in the club\'s colours, and a trophy lift with confetti.',
+        detail: 'All of it respects reduced motion.',
+      },
+    ],
+  },
+  {
     version: 'v80',
     date: '2026-09-23',
     tag: 'Ultimate XI',

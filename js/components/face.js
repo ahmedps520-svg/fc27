@@ -25,6 +25,12 @@ function hash(str) {
 export function faceOf(player) {
   const h = hash(player.id || player.name || 'x');
   const pick = (arr, shift) => arr[(h >> shift) % arr.length];
+  // v81: a created player (Player Career) carries his own look over the generated one
+  return player.look ? { ...faceBase(h, pick), ...player.look } : faceBase(h, pick);
+}
+export const LOOK_SKINS = SKINS;
+export const LOOK_HAIRS = HAIRS;
+function faceBase(h, pick) {
   return {
     skin: pick(SKINS, 0),
     hair: pick(HAIRS, 4),

@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { startServer } from '../smoke/server.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const SCREENS = arg('--screens', 'menu,today,squad,career,quick,online,weekend,trophies,world,stadiums,builder,settings').split(',');
+const SCREENS = arg('--screens', 'menu,today,squad,career,pro,quick,online,weekend,trophies,world,stadiums,builder,settings').split(',');
 const LANGS = arg('--langs', 'en,ar').split(',');
 const PHONES = [
   { name: 'se1', width: 320, height: 568 },

@@ -14,6 +14,7 @@ import * as Weekend from './screens/weekend.js';
 import * as World from './screens/world.js';
 import * as Stadiums from './screens/stadiums.js';
 import * as Builder from './screens/builder.js';
+import * as Pro from './screens/pro.js';
 import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
@@ -28,6 +29,7 @@ const SCREENS = {
   world: World,
   stadiums: Stadiums,
   builder: Builder,
+  pro: Pro,
   splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
   settings: Settings, match: MatchScreen, play: Play, online: Online,
   today: Today, trophies: Trophies, weekend: Weekend,
@@ -48,7 +50,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v80';
+export const APP_VERSION = 'v81';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
