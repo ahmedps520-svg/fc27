@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v94',
+    date: '2026-09-24',
+    tag: 'Fix',
+    title: 'Controller fix',
+    lede: 'Starting to remap a controller button and then leaving Settings with the mouse or a tap no longer leaves your controller unresponsive everywhere.',
+    entries: [
+      {
+        head: 'Controller',
+        summary: 'While Settings waits for you to press a button to remap, the menus stop listening to the controller. If you left Settings without pressing one, they never started listening again. Leaving any screen now always gives the controller back.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v93',
     date: '2026-09-24',
     tag: 'Balance',

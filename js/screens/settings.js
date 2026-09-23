@@ -408,10 +408,12 @@ function mountRebind(root) {
     if (kind === 'key') addEventListener('keydown', onKey, true); else { document.body.classList.add('pad-capture'); raf = requestAnimationFrame(poll); }
     stop = done;
   }));
+  // v93: leaving Settings mid-capture must not leave the pad driver switched off
+  return () => stop?.();
 }
 
 export function mount(root) {
-  mountRebind(root);
+  const stopRebind = mountRebind(root);
   /* The build the server is actually serving, which is the only way to tell
    * from the device whether a push has landed. `APP_VERSION` above is written
    * by hand and can lag; this cannot, because the server derives it from the
@@ -669,4 +671,5 @@ export function mount(root) {
     toast('Save reset');
     navigate('menu');
   });
+  return () => stopRebind?.();
 }
