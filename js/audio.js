@@ -587,40 +587,90 @@ export function stopAnthem() {
   anthemNodes = null;
 }
 
-/* ------------------------------ lobby music ----------------------------- */
-// An original loop: four chords, a pad, and a soft arpeggio on top.
-const CHORDS = [
-  [220.0, 261.6, 329.6],      // Am
-  [174.6, 220.0, 261.6],      // F
-  [196.0, 246.9, 293.7],      // G
-  [164.8, 196.0, 246.9],      // Em
+/* ------------------------------ lobby music ----------------------------- *
+ * v83: a playlist. Every track is generated here from a chord loop, a pad, an
+ * arpeggio pattern and a beat — no samples, nothing downloaded, nothing
+ * anybody else wrote. A track plays for its length in bars and the next one
+ * follows; the menu's player skips, goes back and mutes. The first track is
+ * the original v1 loop. */
+const N = (m) => 440 * 2 ** ((m - 69) / 12);          // MIDI note → Hz
+const tri = (r, q = 'min') => [N(r), N(r + (q === 'min' ? 3 : 4)), N(r + 7)];
+export const TRACKS = [
+  { name: 'Floodlight Hum', bar: 3.2, bars: 24, chords: [tri(57), tri(53, 'maj'), tri(55, 'maj'), tri(52)], arp: [0, 1, 2, 1, 0, 1, 2, 3], pad: 'sawtooth', beat: 'pulse' },
+  { name: 'Terrace Sunrise', bar: 2.4, bars: 32, chords: [tri(60, 'maj'), tri(55, 'maj'), tri(57), tri(53, 'maj')], arp: [0, 2, 1, 2, 0, 2, 1, 3], pad: 'triangle', beat: 'four' },
+  { name: 'Desert Night Drive', bar: 2.8, bars: 28, chords: [tri(62), tri(58, 'maj'), tri(60, 'maj'), tri(57)], arp: [0, 1, 2, 3, 2, 1, 0, 1], pad: 'sawtooth', beat: 'half' },
+  { name: 'Matchday Morning', bar: 2.2, bars: 32, chords: [tri(55, 'maj'), tri(52), tri(60, 'maj'), tri(62, 'maj')], arp: [0, 1, 2, 1, 2, 3, 2, 1], pad: 'square', beat: 'four' },
+  { name: 'Tunnel Lights', bar: 3.0, bars: 24, chords: [tri(52), tri(48, 'maj'), tri(55, 'maj'), tri(50, 'maj')], arp: [0, 2, 0, 3, 0, 2, 0, 1], pad: 'sawtooth', beat: 'pulse' },
+  { name: 'Rooftop Five', bar: 2.0, bars: 40, chords: [tri(58), tri(61, 'maj'), tri(63, 'maj'), tri(56, 'maj')], arp: [0, 1, 0, 2, 0, 3, 2, 1], pad: 'triangle', beat: 'break' },
 ];
+/** The highlights bed: brighter and quicker, used only under the reel. */
+export const HIGHLIGHTS_BED = { name: 'Highlights', bar: 1.9, bars: 999, chords: [tri(60, 'maj'), tri(57), tri(53, 'maj'), tri(55, 'maj')], arp: [0, 1, 2, 3, 2, 1, 2, 3], pad: 'sawtooth', beat: 'four' };
+let trackIdx = 0;
+let trackBar = 0;
+let muted = false;
+const trackFns = new Set();
+try { const saved = JSON.parse(localStorage.getItem('apexxi.music') || '{}'); trackIdx = (saved.track | 0) % TRACKS.length; muted = !!saved.muted; } catch { /* first run, or no storage */ }
+const keepMusic = () => { try { localStorage.setItem('apexxi.music', JSON.stringify({ track: trackIdx, muted })); } catch { /* none */ } };
+const tellTrack = () => { for (const fn of trackFns) fn({ index: trackIdx, name: TRACKS[trackIdx].name, muted }); };
+export const currentTrack = () => ({ index: trackIdx, name: TRACKS[trackIdx].name, muted });
+export const onTrack = (fn) => { trackFns.add(fn); return () => trackFns.delete(fn); };
+export function setTrack(i) {
+  trackIdx = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length; trackBar = 0; musicStep = 0;
+  keepMusic(); tellTrack();
+  if (musicTimer) { stopMusicLoop(); if (armed) startMusic(); }
+}
+export const nextTrack = () => setTrack(trackIdx + 1);
+export const prevTrack = () => setTrack(trackIdx - 1);
+export function setMusicMuted(m) {
+  muted = !!m; keepMusic(); tellTrack();
+  if (muted) stopMusicLoop(); else if (armed) startMusic();
+}
+export const musicMuted = () => muted;
+
+/** One bar of a track onto the music bus. */
+function playBar(tr, step, gainK = 1) {
+  const chord = tr.chords[step % tr.chords.length];
+  const bar = tr.bar;
+  chord.forEach((f, i) => {
+    tone({ freq: f, type: tr.pad, dur: bar * 0.95, gain: 0.032 * gainK * (tr.pad === 'square' ? 0.6 : 1), attack: 0.6, bus: musicBus, detune: -6 });
+    tone({ freq: f, type: tr.pad, dur: bar * 0.95, gain: 0.028 * gainK * (tr.pad === 'square' ? 0.6 : 1), attack: 0.7, bus: musicBus, detune: 7 });
+    tone({ freq: f / 2, type: 'sine', dur: bar * 0.9, gain: 0.04 * gainK, attack: 0.4, bus: musicBus, delay: i * 0.01 });
+  });
+  tr.arp.forEach((n, i) => {
+    const f = chord[n % chord.length] * (n >= chord.length ? 2 : 1);
+    tone({ freq: f, type: 'triangle', dur: bar / 8 * 0.9, gain: 0.034 * gainK, bus: musicBus, delay: i * (bar / 8) });
+  });
+  const kick = (d, g = 0.06) => tone({ freq: 70, to: 45, type: 'sine', dur: 0.22, gain: g * gainK, bus: musicBus, delay: d });
+  const hat = (d) => tone({ freq: 7200, type: 'square', dur: 0.03, gain: 0.006 * gainK, bus: musicBus, delay: d });
+  if (tr.beat === 'pulse') { kick(0); kick(bar / 2, 0.045); }
+  else if (tr.beat === 'four') { for (let k = 0; k < 4; k++) { kick(k * bar / 4, 0.05); hat(k * bar / 4 + bar / 8); } }
+  else if (tr.beat === 'half') { kick(0, 0.06); kick(bar * 0.625, 0.04); for (let k = 0; k < 8; k++) hat(k * bar / 8); }
+  else if (tr.beat === 'break') { kick(0); kick(bar * 0.375, 0.04); kick(bar * 0.625); for (let k = 0; k < 16; k += 2) hat(k * bar / 16); }
+}
 
 function musicBar() {
-  if (!ready || !settings.music) return;
+  if (!ready || !settings.music || muted) { musicTimer = null; return; }
   // never write into a stopped clock — the loop is re-armed by onstatechange
   if (ctx.state !== 'running') { musicTimer = null; return; }
-  const chord = CHORDS[musicStep % CHORDS.length];
-  const bar = 3.2;
-
-  chord.forEach((f, i) => {
-    tone({ freq: f, type: 'sawtooth', dur: bar * 0.95, gain: 0.035, attack: 0.6, bus: musicBus, detune: -6 });
-    tone({ freq: f, type: 'sawtooth', dur: bar * 0.95, gain: 0.03, attack: 0.7, bus: musicBus, detune: 7 });
-    tone({ freq: f / 2, type: 'sine', dur: bar * 0.9, gain: 0.04, attack: 0.4, bus: musicBus, delay: i * 0.01 });
-  });
-
-  // arpeggio
-  for (let i = 0; i < 8; i++) {
-    const f = chord[i % chord.length] * (i > 4 ? 2 : 1);
-    tone({ freq: f, type: 'triangle', dur: 0.28, gain: 0.035, bus: musicBus, delay: i * (bar / 8) });
-  }
-  // heartbeat pulse
-  tone({ freq: 70, to: 45, type: 'sine', dur: 0.22, gain: 0.06, bus: musicBus });
-  tone({ freq: 70, to: 45, type: 'sine', dur: 0.22, gain: 0.045, bus: musicBus, delay: bar / 2 });
-
+  const tr = TRACKS[trackIdx];
+  playBar(tr, musicStep);
   musicStep += 1;
-  musicTimer = setTimeout(musicBar, bar * 1000);
+  trackBar += 1;
+  if (trackBar >= tr.bars) { trackBar = 0; musicStep = 0; trackIdx = (trackIdx + 1) % TRACKS.length; keepMusic(); tellTrack(); }
+  musicTimer = setTimeout(musicBar, tr.bar * 1000);
 }
+
+/* The highlights bed runs on its own timer, in a match, where the lobby loop
+ * is stopped; it fades in over the reel and stops with it. */
+let bedTimer = null; let bedStep = 0;
+function bedBar() {
+  if (!ready || !settings.music || ctx.state !== 'running') { bedTimer = null; return; }
+  playBar(HIGHLIGHTS_BED, bedStep++, bedStep < 2 ? 0.6 : 1);
+  bedTimer = setTimeout(bedBar, HIGHLIGHTS_BED.bar * 1000);
+}
+export function startHighlightsBed() { if (!settings.enabled || bedTimer) return; if (!ready && !initAudio()) return; bedStep = 0; bedBar(); }
+export function stopHighlightsBed() { if (bedTimer) clearTimeout(bedTimer); bedTimer = null; }
+export const highlightsBedOn = () => !!bedTimer;
 
 /**
  * Ask for the lobby loop. If the context is still locked this only remembers
@@ -631,8 +681,7 @@ export function startMusic() {
   if (!settings.enabled) return;
   armed = true;
   if (!ready && !initAudio()) return;
-  if (musicTimer || ctx.state !== 'running') return;
-  musicStep = 0;
+  if (musicTimer || muted || ctx.state !== 'running') return;
   musicBar();
 }
 

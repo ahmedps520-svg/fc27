@@ -38,6 +38,13 @@ const defaults = () => ({
     sound: true,
     musicVol: 0.5,
     sfxVol: 0.9,
+    // v83: the broadcast
+    commVoice: true,            // two-voice spoken commentary (speech synthesis)
+    subtitles: true,            // commentary subtitles
+    commLang: 'auto',           // auto (the game's language) | en | ar
+    pregame: 'full',            // full | short | off — the pre-match show
+    broadcastGfx: true,         // straps, boards, pop-ups, momentum bar
+    menuTheme: 'auto',          // auto | off | nationalDay | ramadan | winter
   },
   club: {                     // Squad Builder progress
     // Two balances. Apex is the one you earn and spend. Ultimate is the

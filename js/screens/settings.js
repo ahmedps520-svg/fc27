@@ -120,6 +120,25 @@ export function render() {
       </div>
     </section>
 
+    <section class="panel glass" id="broadcastSet">
+      <header class="panel-head"><h2>Broadcast</h2></header>
+      <div class="setting-row">
+        <div><b>Spoken commentary</b><span>Two voices, play-by-play and analysis, through your device's speech.</span></div>
+        <button class="switch ${s.commVoice !== false ? 'on' : ''}" id="commVoiceTgl" role="switch" aria-checked="${s.commVoice !== false}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>Subtitles</b><span>Every commentary line on screen, with who said it.</span></div>
+        <button class="switch ${s.subtitles !== false ? 'on' : ''}" id="subsTgl" role="switch" aria-checked="${s.subtitles !== false}"><i></i></button>
+      </div>
+      ${segRow('Commentary language', 'commLang', [['auto', 'Game language'], ['en', 'English'], ['ar', 'العربية']], s.commLang || 'auto')}
+      ${segRow('Pre-match show', 'pregame', [['full', 'Full'], ['short', 'Walk-out only'], ['off', 'Off']], s.pregame || 'full')}
+      <div class="setting-row">
+        <div><b>On-screen graphics</b><span>Name straps, boards, stat pop-ups and the momentum bar.</span></div>
+        <button class="switch ${s.broadcastGfx !== false ? 'on' : ''}" id="bcGfxTgl" role="switch" aria-checked="${s.broadcastGfx !== false}"><i></i></button>
+      </div>
+      ${segRow('Menu theme', 'menuTheme', [['auto', 'By date'], ['off', 'Off'], ['nationalDay', 'National Day'], ['ramadan', 'Ramadan'], ['winter', 'Winter']], s.menuTheme || 'auto')}
+    </section>
+
     <section class="panel glass">
       <header class="panel-head"><h2>Sound</h2></header>
       <div class="setting-row">
@@ -265,6 +284,11 @@ export function render() {
     <button class="dev-dot" id="devDot" aria-label="Developer">·</button>`;
 }
 
+/** A labelled segmented control bound to one setting (v83). */
+function segRow(label, key, opts, cur) {
+  return `<div class="setting-row"><div><b>${label}</b></div><div class="seg seg-wrap">${opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-setseg="${key}:${v}">${l}</button>`).join('')}</div></div>`;
+}
+
 const BIND_NAMES = { pass: 'Pass / tackle', shoot: 'Shoot', cross: 'Cross', through: 'Through ball', lob: 'Lob', skill: 'Skill move', switch: 'Switch player', sprint: 'Sprint', pause: 'Pause' };
 
 /** v82: rebinding — the next key or pad button pressed becomes the control. */
@@ -336,6 +360,20 @@ export function mount(root) {
     applyTheme();
   });
   toggle(root.querySelector('#commentaryTgl'), 'commentary');
+  // v83: the broadcast — the switches default on, so they store an explicit boolean
+  const toggleOn = (el, key) => el?.addEventListener('click', () => {
+    const next = getState().settings[key] === false;
+    update((s) => { s.settings[key] = next; });
+    el.classList.toggle('on', next); el.setAttribute('aria-checked', String(next));
+  });
+  toggleOn(root.querySelector('#commVoiceTgl'), 'commVoice');
+  toggleOn(root.querySelector('#subsTgl'), 'subtitles');
+  toggleOn(root.querySelector('#bcGfxTgl'), 'broadcastGfx');
+  root.querySelectorAll('[data-setseg]').forEach((b) => b.addEventListener('click', () => {
+    const [key, val] = b.dataset.setseg.split(':');
+    update((s) => { s.settings[key] = val; });
+    root.querySelectorAll(`[data-setseg^="${key}:"]`).forEach((x) => x.classList.toggle('on', x === b));
+  }));
   toggle(root.querySelector('#motionTgl'), 'reduceMotion');
   toggle(root.querySelector('#fpsTgl'), 'showFps');
   toggle(root.querySelector('#colorSafeTgl'), 'colorSafeKits');

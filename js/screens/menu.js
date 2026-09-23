@@ -5,7 +5,10 @@ import { claimableCount, dailyStatus } from '../progress.js';
 import { activeEvent } from '../live.js';
 import { mountHero, disposeHero, heroPlayer } from '../menuHero.js';
 import { needsOnboarding, showWelcome } from '../onboarding.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
+import { getState } from '../state.js';
+import { activeTheme, decorationHTML } from '../seasonal.js';
+import { currentTrack, nextTrack, prevTrack, setMusicMuted, onTrack } from '../audio.js';
 
 export const TITLE = 'APEX XI';
 
@@ -87,8 +90,12 @@ export function render() {
   const claims = claimableCount();
   const ev = activeEvent();
   void dailyStatus();
+  const theme = activeTheme(getState().settings.menuTheme || 'auto');
+  const tr = currentTrack();
   return `
-    <section class="menu-screen">
+    <section class="menu-screen${theme ? ` theme-${theme}` : ''}">
+      ${decorationHTML(theme, { lang: lang() })}
+
       <!-- The wordmark set exactly as the cover sets it: heavy, italic, white
            APEX against a green XI. It was briefly removed along with the row of
            counters underneath it; the counters were the problem, not this. -->
@@ -146,6 +153,13 @@ export function render() {
       </div>
     </div>
 
+    <!-- v83: the menu's playlist (generated tracks, audio.js TRACKS) -->
+      <div class="music-player" id="musicPlayer" role="group" aria-label="Music">
+        <button class="mp-b" id="mpPrev" aria-label="Previous track">⏮</button>
+        <button class="mp-b" id="mpMute" aria-label="${tr.muted ? 'Unmute music' : 'Mute music'}">${tr.muted ? '🔇' : '♪'}</button>
+        <span class="mp-name" id="mpName">${tr.name}</span>
+        <button class="mp-b" id="mpNext" aria-label="Next track">⏭</button>
+      </div>
     <p class="disclaimer">${t('menu.disclaimer')}</p>
     </section>`;
 }
@@ -185,5 +199,14 @@ export function mount(root) {
   }
   const heroCanvas = root.querySelector('#menuHero');
   if (heroCanvas) mountHero(heroCanvas);
-  return () => { closeNotes?.(); disposeHero(); };
+  // the music player
+  const mpName = root.querySelector('#mpName'); const mpMute = root.querySelector('#mpMute');
+  root.querySelector('#mpPrev')?.addEventListener('click', () => prevTrack());
+  root.querySelector('#mpNext')?.addEventListener('click', () => nextTrack());
+  mpMute?.addEventListener('click', () => setMusicMuted(!currentTrack().muted));
+  const offTrack = onTrack((tr) => {
+    if (mpName) mpName.textContent = tr.name;
+    if (mpMute) { mpMute.textContent = tr.muted ? '🔇' : '♪'; mpMute.setAttribute('aria-label', tr.muted ? 'Unmute music' : 'Mute music'); }
+  });
+  return () => { closeNotes?.(); disposeHero(); offTrack(); };
 }

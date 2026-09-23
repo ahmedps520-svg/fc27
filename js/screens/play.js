@@ -1,5 +1,5 @@
 import { getState, update } from '../state.js';
-import { getClub } from '../data/generator.js';
+import { getClub, WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { Match, SHAPES, FORMATION_NAMES, PITCH } from '../game/sim.js';
 import { Input, promptFor, lastDevice } from '../game/input.js';
@@ -15,13 +15,19 @@ import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
 import { settleStreet } from '../streetMode.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
+import { createDirector } from '../broadcast/director.js';
+import { createPregame, previewText, teamRating } from '../broadcast/pregame.js';
+import { formMap } from '../broadcast/context.js';
+import { potmHTML, ratingsHTML, statsHTML, momentumSVG, reaction, reactionHTML, drawResultCard, shareResultCard } from '../broadcast/postmatch.js';
+import { trophyScene } from '../components/ceremony.js';
+import { weekCards, baseOf } from '../data/promos.js';
 import { say } from '../data/commentary.js';
 import { groundProfile } from '../data/grounds.js';
 import { stadiumFor, STADIUM_BY_ID, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
-import { t, lang } from '../i18n.js';
+import { t, lang, isRTL } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
@@ -307,7 +313,7 @@ export function render(params) {
       </div>
 
       <div class="replay-tag" id="replayTag" hidden>
-        <span class="rt-dot"></span>REPLAY
+        <span class="rt-dot"></span>REPLAY <i class="rt-angle" id="rtAngle"></i>
         <em>hold ◯</em>
         <button class="rt-skip" id="rtSkip" type="button">SKIP</button>
       </div>
@@ -432,8 +438,16 @@ export function mount(root, params) {
     ctx.poss = Math.round(match.possession()[t]);
     return ctx;
   };
+  /* v83: the broadcast — commentary desk, graphics, clock (broadcast/director.js)
+     and the pre-match show (broadcast/pregame.js). Built when the veil lifts. */
+  let director = null;
+  let pregame = null;
   const comment = (key, arg, ctxExtra = {}) => {
-    const line = say(key, { ...commentCtx(arg), ...ctxExtra });
+    const fullCtx = { ...commentCtx(arg), ...ctxExtra };
+    let line = say(key, fullCtx);
+    // the desk speaks it (in Arabic, its own line, which the feed shows too)
+    const spoken = director?.line(key, fullCtx, line);
+    if (director?.desk.lang === 'ar' && spoken) line = spoken;
     if (!line) return;
     commentLog.push({ minute: match.minute(), line });
     if (commentLog.length > 80) commentLog.shift();
@@ -539,6 +553,7 @@ export function mount(root, params) {
   const gcScorer = root.querySelector('#gcScorer');
   const gcScore = root.querySelector('#gcScore');
   const replayTag = root.querySelector('#replayTag');
+  const rtAngle = root.querySelector('#rtAngle');
   let lastPhase = null;
 
   /* ---------------------------- goal replay ---------------------------- */
@@ -662,6 +677,12 @@ export function mount(root, params) {
     reel = null;
   };
 
+  let linedUp = false;       // the XIs are on the halfway line, not at kick-off positions
+  const startWalkout = () => {
+    walkout = { t: 0, dur: 7 };
+    lineUp(); linedUp = true;
+    startAnthem(match.venue?.stadium?.name?.length || 1);
+  };
   /** Both XIs on the halfway line, facing the near touchline, keepers at the ends. */
   const lineUp = () => {
     for (let t = 0; t < 2; t++) {
@@ -694,6 +715,7 @@ export function mount(root, params) {
   const playHighlights = () => {
     if (!goalClips.length) return;
     highlightIdx = 0;
+    startHighlightsBed();
     overlay.hidden = true;
     clip = goalClips[0];
     startReplay();
@@ -737,7 +759,7 @@ export function mount(root, params) {
   const nextHighlight = () => {
     if (highlightIdx < 0) return false;
     highlightIdx += 1;
-    if (highlightIdx >= goalClips.length) { highlightIdx = -1; overlay.hidden = false; stopClip(); return false; }
+    if (highlightIdx >= goalClips.length) { highlightIdx = -1; stopHighlightsBed(); overlay.hidden = false; stopClip(); return false; }
     clip = goalClips[highlightIdx];
     return startReplay();
   };
@@ -760,6 +782,8 @@ export function mount(root, params) {
     };
     clip = null;
     replayTag.hidden = false;
+    rtAngle.textContent = replay.passes.length > 1 ? `· ANGLE 1/${replay.passes.length}` : '';
+    director?.wipe();
     gl?.setReplay(true);
     return true;
   };
@@ -770,6 +794,7 @@ export function mount(root, params) {
     allPlayers().forEach((p, i) => { p.celebrating = replay.celeb[i]; });
     replay = null;
     replayTag.hidden = true;
+    director?.wipe();
     gl?.setReplay(false);
     if (highlightIdx >= 0) nextHighlight();
   };
@@ -1378,12 +1403,52 @@ export function mount(root, params) {
     /* The PA welcomes the crowd as the veil lifts — the ground, the two
        sides and the gate. Once per match, and not online, where the two
        machines lift their veils at different moments. */
-    if (!online && !getState().settings.reduceMotion && !view) {
-      walkout = { t: 0, dur: 7 };
-      lineUp();
-      startAnthem(match.venue?.stadium?.name?.length || 1);
+    const S = getState().settings;
+    const bcAllowed = !params.practice && !spectating;
+    if (bcAllowed) {
+      let inForm = [];
+      try { inForm = weekCards('inform').map((c) => baseOf(c)); } catch { /* no promos this week */ }
+      const commLang = S.commLang === 'ar' || S.commLang === 'en' ? S.commLang : (lang() === 'ar' ? 'ar' : 'en');
+      director = createDirector({
+        match, host: shell, pitch: PITCH, clubs: WORLD.clubs, settings: S, lang: commLang, rtl: isRTL(),
+        graphics: !online && S.broadcastGfx !== false, clock: !online, final: !!params.final,
+        form: formMap({ career: mode === 'career' ? getState().career : null, inForm }),
+        venue: match.venue?.stadium?.name || 'the stadium', atmo: match.venue?.atmo || {},
+      });
+      window.__apexBC = director;
+      // subtitles replace the text feed (they carry the same lines, and who said them)
+      if (director.gfx && S.subtitles !== false) shell.classList.add('bc-subtitled');
+    }
+    if (!online && !S.reduceMotion && !view) {
+      const kind = S.pregame || 'full';
+      if (kind !== 'off' && bcAllowed && !guided) {
+        const [hm, aw] = match.teams;
+        const atmo = match.venue?.atmo || {};
+        const preLang = director?.desk.lang || 'en';
+        pregame = createPregame(shell, {
+          kind,
+          info: {
+            home: hm, away: aw, lang: preLang, derby: director?.derby || null, tossWinner: Math.random() < 0.5 ? 0 : 1,
+            venue: match.venue?.stadium?.name || 'The stadium',
+            conditions: `${TIME_LABEL[atmo.time] || ''}${atmo.weather ? ` · ${WEATHER_LABEL[atmo.weather]}` : ''}`,
+            preview: previewText({ home: hm, away: aw, derby: director?.derby, weather: atmo.weather, final: !!params.final, lang: preLang }),
+          },
+          onStage: (name) => { if (name === 'walkout' && !walkout) startWalkout(); if (name === 'coin') sfx('coin'); },
+          onDone: () => {
+            pregame = null;
+            shell.classList.remove('pregame-on');
+            if (walkout) { walkout = null; stopAnthem(); }
+            if (linedUp) { match.resetPositions(0); linedUp = false; }
+            sfx('whistle');
+            director?.kickoff();
+            last = performance.now();
+          },
+        });
+        window.__apexPregame = pregame;
+        shell.classList.add('pregame-on');
+      } else startWalkout();
       gl?.tifo(true);
-    } else gl?.tifo(true);
+    } else { gl?.tifo(true); director?.kickoff(); }
     if (match.venue?.stadium && !online) {
       const st = match.venue.stadium;
       const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
@@ -1756,7 +1821,7 @@ export function mount(root, params) {
      * the guest reads back out of snapshots. The local menu on its own never
      * stops an online match (the other player is still out there). */
     const syncActive = online ? (online.host ? syncLeft > 0 : guestSynced) : false;
-    const frozen = ((paused || loading || !!walkout || !!photo) && !online) || syncActive;
+    const frozen = ((paused || loading || !!walkout || !!pregame || !!photo) && !online) || syncActive;
     sender?.tick(dt);
 
     if (photo && input.pressed('pause')) closePhoto();
@@ -1840,6 +1905,8 @@ export function mount(root, params) {
             else {
               // the next angle: same tape, a new camera
               replay.pass += 1;
+              rtAngle.textContent = `· ANGLE ${replay.pass + 1}/${replay.passes.length}`;
+              director?.wipe();
               replay.angle = replay.passes[replay.pass].angle;
               replay.speed = replay.passes[replay.pass].speed;
               replay.i = 0; replay.hold = 0;
@@ -1938,6 +2005,7 @@ export function mount(root, params) {
         }
         mgrCue(c.name);
         commentCue(c.name, c.arg);
+        director?.cue(c.name, c.arg);
         if (online?.host) outgoing.push([c.name, typeof c.arg === 'object' ? (c.arg?.team ?? 0) : (c.arg ?? 0)]);
       }
 
@@ -1982,6 +2050,7 @@ export function mount(root, params) {
     if (feedTimer > 0) { feedTimer -= dt; if (feedTimer <= 0) feedEl?.classList.remove('flash'); }
     paintSetPiece();
     if (!loading && !ended) clockCommentary();
+    director?.tick(dt, !frozen && !loading && !ended && !replay && !reel);
     if (guided && !loading && !paused && !ended) {
       const stepDef = GUIDE_STEPS[guideIdx];
       if (stepDef) {
@@ -2005,7 +2074,19 @@ export function mount(root, params) {
      * scorer; broadcast resumes for the restart. Not during a replay (which
      * has its own) and not in a career manager cam. */
     let liveCam = cam;
-    if (walkout) {
+    if (pregame && !walkout) {
+      const pg = pregame;              // update() can end the show (and null `pregame`) mid-frame
+      pg.update(Math.min(0.25, raw));
+      const st = pg.stage(); const pt = pg.t();
+      if (st === 'flyover') liveCam = collideCamera(orbitCamera(showCam, pt * 0.8 + 0.4, 118, 52, 0.11), camBounds);
+      else if (st === 'handshake' || st === 'coin') {
+        lineUp();
+        const close = st === 'coin';
+        showCam.x = PITCH.w / 2 + (close ? 3.5 : -6 + pt * 3); showCam.y = CY - (close ? 7 : 13); showCam.z = close ? 2.1 : 2.8;
+        showCam.tx = PITCH.w / 2; showCam.ty = close ? CY - 1 : CY; showCam.tz = close ? 0.9 : 1.3; showCam.hfov = close ? 40 : 52;
+        liveCam = collideCamera(showCam, camBounds);
+      } else if (st) liveCam = collideCamera(orbitCamera(showCam, pt * 0.5 + 2.2, 84, 28, 0.06), camBounds);
+    } else if (walkout) {
       walkout.t += Math.min(0.25, raw);   // wall clock, so a slow device still walks out in seven seconds
       lineUp();
       /* v78: out of the tunnel. For the first four seconds the two sides walk
@@ -2032,9 +2113,10 @@ export function mount(root, params) {
       } else liveCam = walkoutCamera(showCam, (walkout.t - W) * (walkout.dur / (walkout.dur - W)) * 0.6 + walkout.dur * 0.4, walkout.dur);
       if (walkout.t >= walkout.dur) {
         walkout = null;
-        match.resetPositions(0);
         stopAnthem();
-        sfx('whistle');
+        // with the pre-match show on, the handshakes and the toss come first
+        if (pregame) pregame.pastWalkout();
+        else { match.resetPositions(0); linedUp = false; sfx('whistle'); director?.kickoff(); }
       }
     } else if (photo) {
       liveCam = collideCamera(photoCamera(), camBounds);
@@ -2059,6 +2141,7 @@ export function mount(root, params) {
       gcScorer.textContent = match.scorerName || '';
       chant('goal', 1);
       if (t && match.scorerName && match.scorerName !== 'Own goal') announce(`Goal for ${t.name}. ${match.scorerName}.`);
+      if (t && director) { const lastGoal = t.scorers[t.scorers.length - 1]; director.goal({ team: match.teams.indexOf(t), scorerId: lastGoal?.id, scorerName: match.scorerName, own: !!lastGoal?.own || match.scorerName === 'Own goal' }); }
       gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
       void goalCard.offsetWidth;
       goalCard.classList.add('show');
@@ -2091,6 +2174,7 @@ export function mount(root, params) {
         showTalk();
       } else {
         halfTime = true;
+        director?.halfTime();
         section = 'facts';
         navIdx = PAUSE_ITEMS.findIndex((it) => it.id === 'facts');
         setPaused(true);
@@ -2106,7 +2190,7 @@ export function mount(root, params) {
 
     scoreH.textContent = match.teams[0].score;
     scoreA.textContent = match.teams[1].score;
-    clockEl.textContent = `${match.minute()}'`;
+    clockEl.textContent = director ? director.clock() : `${match.minute()}'`;
     if (twoUp) {
       padEl.textContent = `P1 ${inputs[0].pad ? '✓' : 'kbd'} · P2 ${inputs[1].pad ? '✓' : 'kbd'}`;
       padEl.classList.toggle('on', !!(inputs[0].pad && inputs[1].pad));
@@ -2400,6 +2484,7 @@ export function mount(root, params) {
               ${match.teams[0].short} ${match.teams[0].score} – ${match.teams[1].score} ${match.teams[1].short}
             </span>
             <span class="half-note">Make your changes, then kick off the second half.</span>
+            ${director && match.half === 1 ? director.halfTimeHTML() : ''}
           </div>` : `
           <div class="pause-head">
             ${crestSVG(home.crest, home.short, 26)}
@@ -2423,6 +2508,7 @@ export function mount(root, params) {
         <div class="pause-panel">${panelFor(section)}</div>
         <div class="pause-hints"><b>✕</b> Select <b>◯</b> Resume</div>
       </div>`;
+    if (halfTime && director) director.drawHeat(overlay);
   }
 
   function activate(id) {
@@ -2619,6 +2705,33 @@ export function mount(root, params) {
     refreshCoins();
 
     comment('fulltime', h.score >= a.score ? 0 : 1);
+    /* v83: the broadcast's full time — the player of the match, ratings, the
+       full stat sheet, the momentum graph, the dressing room, a result card. */
+    let bcPost = '';
+    let ratedAll = null;
+    if (director && !params.street && !spectating) {
+      ratedAll = rateMatch(match);
+      director.fullTime({ potm: ratedAll.potm, ratings: [teamRating(h), teamRating(a)] });
+      const mgrName = mode === 'career' ? (getState().career?.manager?.name || 'The manager') : 'The manager';
+      const trail = director.trail();
+      const rx = reaction({ mine: myScore, theirs: theirScore, comeback: trail[meIdx] > 0 && myScore > theirScore, final: !!params.final, lang: director.desk.lang });
+      bcPost = `
+        <div class="pm-block">
+          ${potmHTML(ratedAll.potm, match)}
+          <div class="pm-tabs" role="tablist">
+            <button data-pm="ratings">Ratings</button><button data-pm="stats">Stats</button><button data-pm="momentum">Momentum</button><button data-pm="room">Dressing room</button>
+          </div>
+          <div class="pm-pane" data-pane="ratings" hidden>${ratingsHTML(ratedAll, match)}</div>
+          <div class="pm-pane" data-pane="stats" hidden>${statsHTML(match)}</div>
+          <div class="pm-pane" data-pane="momentum" hidden>${momentumSVG(director.mom.series(), [h.colors?.[0], a.colors?.[0]]) || '<p class="hint">Not enough of the match to draw.</p>'}</div>
+          <div class="pm-pane" data-pane="room" hidden>${reactionHTML(rx, mgrName)}</div>
+          <button class="btn ghost" data-o="share">⇪ Share the result card</button>
+        </div>`;
+    }
+    if (params.final && myScore > theirScore && !spectating) {
+      const champ = match.teams[meIdx];
+      setTimeout(() => { if (running) trophyScene({ title: 'Champions', club: { name: champ.name, short: champ.short, crest: champ.club?.crest }, sub: `${h.short} ${h.score}–${a.score} ${a.short}`, cup: true }); }, 1800);
+    }
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
@@ -2686,6 +2799,7 @@ export function mount(root, params) {
             <div><b>${Math.round(mgr.morale * 100)}</b><span>Team morale</span><b>${Math.round(mgr.perf * 100)}</b></div>
             <div><span class="mgr-ft-note">Performance — where the touchline left them</span></div>
           </div>` : ''}
+        ${bcPost}
         ${graphicsPrompt()}
         ${drawnKickOff && mode !== 'career' ? `
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
@@ -2706,6 +2820,13 @@ export function mount(root, params) {
   }
 
   overlay.addEventListener('click', (e) => {
+    const pm = e.target.closest('[data-pm]');
+    if (pm) {
+      const open = !pm.classList.contains('on');
+      overlay.querySelectorAll('[data-pm]').forEach((b) => b.classList.toggle('on', open && b === pm));
+      overlay.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = !open || x.dataset.pane !== pm.dataset.pm; });
+      return;
+    }
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
       if (o === 'gfxLower' || o === 'gfxKeep') {
@@ -2723,6 +2844,17 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
+      if (o === 'share') {
+        const cv = drawResultCard(document.createElement('canvas'), {
+          home: match.teams[0], away: match.teams[1], score: [match.teams[0].score, match.teams[1].score],
+          scorers: match.teams.map((tm) => tm.scorers.map((x) => ({ name: x.name, minute: x.minute }))),
+          venue: match.venue?.stadium?.name || '', potm: rateMatch(match).potm,
+          pens: shootoutResult ? [shootoutResult.home, shootoutResult.away] : null,
+        });
+        window.__apexShareCard = cv;
+        shareResultCard(cv).then((how) => { if (how === 'downloaded') toast('Result card saved', 'good'); });
+        return;
+      }
       if (o === 'clip') { recordClip(); return; }
       if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
@@ -2855,7 +2987,9 @@ export function mount(root, params) {
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onCamKey); window.removeEventListener('keydown', onTacKey);
     document.removeEventListener('fullscreenchange', onFsChange);
-    try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
+    try { stopCrowd(); stopRain(); silenceAnnouncer(); stopAnthem(); stopHighlightsBed(); photo?.off?.(); } catch { /* audio teardown must not block the rest */ }
+    try { pregame?.destroy(); director?.destroy(); } catch { /* the broadcast layer is DOM only */ }
+    if (window.__apexBC === director) window.__apexBC = null;
     try { gl?.dispose(); } catch { /* GPU teardown least of all */ }
     for (const inp of inputs) { try { inp.destroy?.(); } catch { /* ditto */ } }
     // tell the hub we are gone, so the other player is not left waiting
