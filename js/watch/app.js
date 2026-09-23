@@ -109,6 +109,7 @@ function clubScreen() {
     <div class="w-row"><span>Packs waiting</span><b>${packs.length}</b></div>
     ${best ? `<div class="w-row"><span>Best card</span><b>${best.overall} ${best.short}</b></div>
       <div class="w-row"><span>Market price</span><b>◈ ${guideValue(best).toLocaleString()}</b></div>` : ''}
+    ${s.club.watchSolo ? `<div class="w-row"><span>Street 1v1</span><b>${s.club.watchSolo.won}W ${s.club.watchSolo.lost}L</b></div>` : ''}
     ${(() => { const f = s.club.fives; const w = s.club.watchFives; if (!f && !w) return ''; const last = [f?.last, w?.last].filter(Boolean).sort((a, b) => b.at - a.at)[0]; return `
       <p class="w-title" style="margin-top:8px">Quickfire Fives</p>
       <div class="w-row"><span>Record</span><b>${(f?.won | 0) + (w?.won | 0)}W ${(f?.drawn | 0) + (w?.drawn | 0)}D ${(f?.lost | 0) + (w?.lost | 0)}L</b></div>
@@ -162,6 +163,7 @@ function playScreen() {
       `<button class="w-chip ${level === id ? 'on' : ''}" data-level="${id}">${l.label}</button>`).join('')}</div>
     <button class="w-btn" data-pens>⚽ Penalties</button>
     <button class="w-btn" data-fives>⚡ Quickfire Fives</button>
+    <button class="w-btn" data-solo>🏀 Street 1v1</button>
     <p class="w-sub" style="margin-top:8px">Pick an opponent. Drag to run, tap KICK.</p>
     ${clubs.map((c) => `
       <button class="w-btn ghost" data-club="${c.id}" style="text-align:left">
@@ -191,6 +193,19 @@ function playScreen() {
       store.fivesResult(stats?.goals | 0, stats?.conceded | 0);
       tab = 'play'; render();
     }, level, { field: 'fives' });
+  });
+  // v82: street 1v1 — one each in a walled cage, first to the most in sixty seconds
+  app.querySelector('[data-solo]').addEventListener('click', () => {
+    buzz(14);
+    const opp = clubs[1 + Math.floor(Math.random() * (clubs.length - 1))];
+    playMatch(app, opp.id, (reward, stats) => {
+      if (reward) store.earn(reward);
+      report('match');
+      if (stats?.goals) report('goal', stats.goals);
+      if (stats?.won) { report('win'); store.stat('wins'); }
+      store.soloResult(stats?.goals | 0, stats?.conceded | 0);
+      tab = 'play'; render();
+    }, level, { field: 'street1' });
   });
   app.querySelectorAll('[data-club]').forEach((el) => el.addEventListener('click', () => {
     buzz(14);

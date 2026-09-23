@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -40,8 +40,10 @@ const watch = (page, tag) => {
 const notesVersion = await fetch(`${server.url}/js/data/patchNotes.js`).then((r) => r.text()).then((t) => (t.match(/version: '(v\d+)'/) || [])[1]);
 
 /** A page booted to the menu with a given save. */
+// each browser is its own "household" to the server's per-address sign-up limit
+let addr = 0;
 async function boot(tag, save, viewport = { width: 900, height: 560 }) {
-  const ctx = await browser.newContext({ viewport, hasTouch: false });
+  const ctx = await browser.newContext({ viewport, hasTouch: false, extraHTTPHeaders: { 'x-forwarded-for': `10.9.0.${++addr}` } });
   const page = await ctx.newPage();
   watch(page, tag);
   await page.addInitScript(({ s }) => {
@@ -314,10 +316,73 @@ try {
     await A.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     await B.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     step('both clients reached full time');
-    await C.page.waitForSelector('[data-o="quit"]', { timeout: 90000 });
+    await C.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
     assert.ok(/spectating|Match ended/i.test(await C.page.evaluate(() => document.querySelector('.gm-ft')?.textContent || '')), 'spectator card says so');
     step('the spectator reached full time too');
     await A.ctx.close(); await B.ctx.close(); await C.ctx.close();
+  });
+
+  // v82: parties — a co-op season with two browsers, then a 2v2 with four
+  await flow('party', async () => {
+    const mk = async (tag) => {
+      const { ctx, page } = await boot(tag, baseSave({ club: { apex: 5000 } }));
+      const name = `${tag}${Date.now().toString(36).slice(-5)}`;
+      await page.evaluate(async (n) => { const api = await import('/js/net/api.js'); await api.register(n, 'qa-pass-12345'); }, name);
+      await go(page, 'online');
+      await page.waitForSelector('#olParty', { timeout: 10000 });
+      await page.waitForFunction(async () => (await import('/js/net/socket.js')).isReady(), null, { timeout: 15000 });
+      return { ctx, page, name };
+    };
+    const A = await mk('ptA'); const B = await mk('ptB');
+    await click(A.page, '[data-pmode="coop2"]');
+    await A.page.waitForSelector('.pty-code', { timeout: 10000 });
+    const code = await A.page.evaluate(() => document.querySelector('.pty-code').textContent.trim());
+    await B.page.fill('#ptyCode', code);
+    await click(B.page, '#ptyJoin');
+    await A.page.waitForFunction(() => /2\/2/.test(document.querySelector('#olParty .ol-kicker')?.textContent || ''), null, { timeout: 10000 });
+    step(`co-op party ${code}: two in`);
+    await click(A.page, '#ptyStart');
+    for (const X of [A, B]) {
+      await X.page.waitForSelector('#gmCanvas', { timeout: 30000 });
+      await X.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
+    }
+    await A.page.waitForFunction(() => (window.__apexMatch?.t || 0) > 2, null, { timeout: 60000 });
+    const seats = await A.page.evaluate(() => window.__apexMatch.controllers.map((c) => c.team));
+    assert.deepEqual(seats, [0, 0], 'two seats on one team');
+    // the guest's stick reaches the host: hold right on B, watch B's seat move on A
+    await B.page.evaluate(async () => { const i = window.__apexMatch; void i; });
+    await B.page.keyboard.down('KeyD');
+    await A.page.waitForFunction(() => { const m = window.__apexMatch; const p = m.playerOf(m.controllers[1]); window.__qaX = window.__qaX ?? p.x; return p.x - window.__qaX > 1.5; }, null, { timeout: 20000 });
+    await B.page.keyboard.up('KeyD');
+    step('the guest drives their own seat on the host');
+    await A.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
+    await A.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
+    await B.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
+    const me = await A.page.evaluate(async () => { const api = await import('/js/net/api.js'); return (await (await fetch('/api/me', { headers: { Authorization: `Bearer ${api.authToken()}` } })).json()).profile.coop; });
+    assert.equal(Object.values(me)[0]?.played, 1, 'the co-op season has the match');
+    step('co-op match recorded to the season');
+    // 2 v 2
+    const C = await mk('ptC'); const D = await mk('ptD');
+    for (const X of [A, B]) { await go(X.page, 'online'); await X.page.waitForSelector('#olParty', { timeout: 10000 }); }
+    // the co-op lobby outlives its match; the host closing it sends everyone back to the list
+    await click(A.page, '#ptyLeave');
+    for (const X of [A, B]) await X.page.waitForSelector('[data-pmode="duo"]', { timeout: 10000 });
+    await click(A.page, '[data-pmode="duo"]');
+    await A.page.waitForSelector('.pty-code', { timeout: 10000 });
+    const code2 = await A.page.evaluate(() => document.querySelector('.pty-code').textContent.trim());
+    for (const X of [B, C, D]) { await X.page.fill('#ptyCode', code2); await click(X.page, '#ptyJoin'); await X.page.waitForSelector('.pty-code', { timeout: 10000 }); }
+    await A.page.waitForFunction(() => /4\/4/.test(document.querySelector('#olParty .ol-kicker')?.textContent || ''), null, { timeout: 10000 });
+    await click(A.page, '#ptyStart');
+    for (const X of [A, B, C, D]) await X.page.waitForSelector('#gmCanvas', { timeout: 30000 });
+    await A.page.waitForFunction(() => (window.__apexMatch?.t || 0) > 1, null, { timeout: 90000 });
+    const s2 = await A.page.evaluate(() => window.__apexMatch.controllers.map((c) => c.team).sort().join(''));
+    assert.equal(s2, '0011', 'two seats a side');
+    for (const X of [B, C, D]) await X.page.waitForFunction(() => (window.__apexMatch?.t || 0) > 0.5, null, { timeout: 60000 });
+    step('2v2: four clients, four seats, every guest sees the match');
+    await A.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
+    for (const X of [A, B, C, D]) await X.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
+    step('2v2: all four reached full time');
+    for (const X of [A, B, C, D]) await X.ctx.close();
   });
 
   await flow('watch', async () => {

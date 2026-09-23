@@ -263,6 +263,21 @@ async function api(req, res, route) {
     return json(res, 200, { id, rows: store.weekendBoard(id) });
   }
 
+  // v82: skill-game boards — read by anyone, written with a token, bounded by the store
+  if (route === '/api/skills') {
+    if (req.method === 'GET') {
+      const game = String(new URL(req.url, 'http://x').searchParams.get('game') || '').slice(0, 16);
+      return json(res, 200, { game, rows: store.skillBoard(game) });
+    }
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (!guard.saveAllowed(acct.name)) return json(res, 429, { error: 'Too often.' });
+    const body = await readBody(req);
+    const best = store.recordSkill(acct, String(body.game || ''), body.score);
+    if (best == null) return json(res, 400, { error: 'Not a score.' });
+    return json(res, 200, { best });
+  }
+
   if (route === '/api/leaderboard') {
     return json(res, 200, { rows: store.leaderboard(25) });
   }
@@ -522,6 +537,10 @@ function unspectate(peer) {
 function tellSpectators(host) {
   if (host.sock.open) host.sock.send({ t: 'spectators', n: host.spectators ? host.spectators.size : 0 });
 }
+/* v82: parties — 2v2, co-op against the CPU, five-a-side pro clubs (server/party.js) */
+const { createPartyHub } = require('./party.js');
+const partyHub = createPartyHub({ store, guard, forget: (p) => { if (p.name && peers.get(p.name) === p) peers.delete(p.name); } });
+
 const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
 function pair(a, b, kind) {
@@ -591,6 +610,13 @@ ws.attach(server, '/ws', (sock) => {
        * inside a match less than a grace period ago: this socket takes over
        * that seat — same opponent, same match id, same host role — and the
        * opponent is told the game is back on. */
+      // v82: a party member coming back takes his seat again
+      if (existing && existing !== peer && existing.dropped && existing.party) {
+        peer.adopted = existing;
+        sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size });
+        partyHub.onReconnect(existing, sock);
+        return;
+      }
       if (existing && existing !== peer && existing.dropped && existing.opponent) {
         clearTimeout(existing.dropTimer);
         existing.sock = sock;
@@ -620,6 +646,7 @@ ws.attach(server, '/ws', (sock) => {
 
   function handle(peer, m) {
     const sock = peer.sock;
+    if ((peer.party || m.t.startsWith('party')) && partyHub.handle(peer, m)) return;
     switch (m.t) {
       case 'queue': {
         leaveQueue(peer);
@@ -797,6 +824,7 @@ ws.attach(server, '/ws', (sock) => {
     if (rec.sock !== sock) return;              // an older socket of a reconnected peer
     unspectate(rec);
     leaveQueue(rec);
+    if (rec.party && partyHub.onClose(rec)) return;
     /* Mid-match, the seat is held for a grace period rather than ended: the
      * opponent gets a 'dropped' event and pauses; a reconnect within the
      * window resumes, otherwise it is the walkover it always was. */

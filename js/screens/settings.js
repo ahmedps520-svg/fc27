@@ -1,4 +1,5 @@
 import { getState, update, resetAll } from '../state.js';
+import { ACTIONS, bindingOf, keyLabel, padGlyph, setBindings, getBindings } from '../game/input.js';
 import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
@@ -229,6 +230,16 @@ export function render() {
       </div>
     </section>
 
+    <section class="panel glass" id="rebind">
+      <header class="panel-head"><h2>Button map</h2><button class="btn ghost sm" id="bindReset">Defaults</button></header>
+      <p class="hint">Choose a control, then press the key or controller button you want for it. Prompts in a match follow whatever you last used — keyboard, controller or touch.</p>
+      <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
+        <div class="bind-row"><span>${BIND_NAMES[a] || a}</span>
+          <button class="btn ghost sm" data-bind="key:${a}">${b.key ? keyLabel(b.key) : '—'}</button>
+          <button class="btn ghost sm" data-bind="pad:${a}">${b.pad != null ? `${padGlyph(b.pad, 'xbox')} · ${padGlyph(b.pad, 'ps')}` : '—'}</button></div>`; }).join('')}</div>
+      <p class="hint" id="bindListen" aria-live="polite"></p>
+    </section>
+
     <section class="panel glass about">
       <header class="panel-head"><h2>Controls</h2></header>
       <div class="ctrl-grid">
@@ -254,7 +265,43 @@ export function render() {
     <button class="dev-dot" id="devDot" aria-label="Developer">·</button>`;
 }
 
+const BIND_NAMES = { pass: 'Pass / tackle', shoot: 'Shoot', cross: 'Cross', through: 'Through ball', lob: 'Lob', skill: 'Skill move', switch: 'Switch player', sprint: 'Sprint', pause: 'Pause' };
+
+/** v82: rebinding — the next key or pad button pressed becomes the control. */
+function mountRebind(root) {
+  const out = root.querySelector('#bindListen');
+  let stop = null;
+  const save = (b) => { setBindings(b); update((s) => { s.settings.controls = b; }); };
+  root.querySelector('#bindReset')?.addEventListener('click', () => { save({ keys: {}, pad: {} }); navigate('settings'); });
+  root.querySelectorAll('[data-bind]').forEach((btn) => btn.addEventListener('click', () => {
+    stop?.();
+    const [kind, action] = btn.dataset.bind.split(':');
+    out.textContent = kind === 'key' ? `Press a key for ${BIND_NAMES[action]} (Esc cancels)…` : `Press a controller button for ${BIND_NAMES[action]}…`;
+    btn.classList.add('is-listening');
+    let raf = 0;
+    const done = () => { removeEventListener('keydown', onKey, true); cancelAnimationFrame(raf); btn.classList.remove('is-listening'); stop = null; };
+    const onKey = (e) => {
+      if (kind !== 'key') return;
+      e.preventDefault(); e.stopPropagation();
+      done();
+      if (e.code === 'Escape') { out.textContent = ''; return; }
+      const b = getBindings(); b.keys[action] = e.code; save(b); navigate('settings');
+    };
+    const poll = () => {
+      const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+      for (const pd of pads) {
+        const i = pd.buttons.findIndex((x) => x.pressed);
+        if (i >= 0 && i < 12) { done(); const b = getBindings(); b.pad[action] = i; save(b); navigate('settings'); return; }
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    if (kind === 'key') addEventListener('keydown', onKey, true); else raf = requestAnimationFrame(poll);
+    stop = done;
+  }));
+}
+
 export function mount(root) {
+  mountRebind(root);
   /* The build the server is actually serving, which is the only way to tell
    * from the device whether a push has landed. `APP_VERSION` above is written
    * by hand and can lag; this cannot, because the server derives it from the

@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v81';
+const CACHE = 'apexxi-v82';
 
 const ASSETS = [
   './',
@@ -42,6 +42,8 @@ const ASSETS = [
   './js/game/sim.js',
   './js/game/field.js',
   './js/game/ratings.js',
+  './js/game/drills.js',
+  './js/game/streetDressing.js',
   './js/game/input.js',
   './js/game/render3d.js',
   './js/game/renderGL.js',
@@ -70,6 +72,8 @@ const ASSETS = [
   './js/screens/weekend.js',
   './js/screens/uxiHub.js',
   './js/screens/pro.js',
+  './js/screens/street.js',
+  './js/screens/skills.js',
   './js/screens/careerDepth.js',
   './js/progress.js',
   './js/live.js',
@@ -104,9 +108,13 @@ const ASSETS = [
   './js/modes.js',
   './js/tasks.js',
   './js/squadHub.js',
+  './js/net/party.js',
+  './js/net/partySquads.js',
+  './js/screens/partyPanel.js',
   './js/careerPeople.js',
   './js/careerV3.js',
   './js/proCareer.js',
+  './js/streetMode.js',
   './js/components/ceremony.js',
   './js/careerV2.js',
   './js/data/commentary.js',
@@ -116,6 +124,7 @@ const ASSETS = [
   './js/data/chemistry.js',
   './js/data/promos.js',
   './js/data/cardValue.js',
+  './js/data/street.js',
   './events.json',
 
   './js/net/api.js',

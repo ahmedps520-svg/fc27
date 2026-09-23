@@ -38,6 +38,10 @@ const ICONS = {
   /** Settings: faders, which is what the screen actually is. */
   settings: `<path d="M6 4.5v5M6 14.5v5M12 4.5v9M12 18.5v.9M18 4.5v2M18 11.5v8"/>
              <circle cx="6" cy="12" r="2.3"/><circle cx="12" cy="16" r="2.3"/><circle cx="18" cy="9" r="2.3"/>`,
+  /** Street: a cage — a goal inside a fence. */
+  street: `<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 9.5h17M3.5 14.5h17M8 5v14M12 5v14M16 5v14" opacity=".45"/><path d="M9 19v-4h6v4"/>`,
+  /** Skills: a cone and a ball. */
+  skills: `<path d="M8 19l3-12h2l3 12z"/><path d="M6.5 19h11M9.6 13.5h4.8"/><circle cx="18.5" cy="7" r="2.4"/>`,
   lock: `<rect x="5.5" y="10.5" width="13" height="9" rx="2"/>
          <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>`,
   /** Today: a calendar page with today's square marked. */
@@ -110,6 +114,14 @@ export function render() {
         <button class="tile t-mini tone-b" data-go="career">
           <span class="tile-icon">${icon('career')}</span>
           <span class="tile-name">${t('menu.career')}</span>
+        </button>
+        <button class="tile t-mini tone-a" data-go="street">
+          <span class="tile-icon">${icon('street')}</span>
+          <span class="tile-name">${t('menu.street')}</span>
+        </button>
+        <button class="tile t-mini tone-c" data-go="skills">
+          <span class="tile-icon">${icon('skills')}</span>
+          <span class="tile-name">${t('menu.skills')}</span>
         </button>
         <button class="tile t-mini tone-d" data-go="settings">
           <span class="tile-icon">${icon('settings')}</span>

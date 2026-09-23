@@ -18,6 +18,42 @@
  */
 export const RELEASES = [
   {
+    version: 'v82',
+    date: '2026-09-23',
+    tag: 'New modes',
+    title: 'Street, futsal, parties with friends, skill games and a button map',
+    lede: 'Small-sided football in six original cages and halls, a street tour with bosses and a baller of your own, futsal, '
+        + 'co-op and 2 v 2 online, pro five-a-side for your Player Career pro, two players on one tablet, skill games with leaderboards, '
+        + 'a practice arena and a penalty shootout — and every control can be moved, on keyboard or pad.',
+    entries: [
+      {
+        head: 'Street',
+        summary: 'Three, four or five a side in a walled cage: the ball comes back off the walls, there is no offside, restarts are instant, and tricks, wall passes and chains of both score style points on top of the goals.',
+        detail: 'Six venues of our own: a Riyadh rooftop, a dune court, a harbour cage, a neon hall, an underpass and a beach where the sand kills the bounce. Create your baller, unlock boots, kits and hair, beat two crews and a boss at each tour stop — a beaten boss joins your crew.',
+      },
+      {
+        head: 'Futsal',
+        summary: 'A hard court, a heavy low-bounce ball, kick-ins along the floor instead of throws.',
+        detail: 'Quick Match with the neon hall, or Street → Quick → Futsal.',
+      },
+      {
+        head: 'Play together',
+        summary: 'Parties on the Online screen: a co-op season (two friends, one team, ten-match seasons recorded for both), 2 v 2, and pro five-a-side where up to ten people each play only their Player Career pro. Two on one tablet get a half of the screen each.',
+        detail: 'The host runs the match; if someone drops, the CPU takes their man until they reconnect to the same seat. A five-letter code is the only thing typed between players.',
+      },
+      {
+        head: 'Skill games and practice',
+        summary: 'Four skill games — a dribbling slalom, free kicks at targets, crossing, and passing gates — each with an online leaderboard; a stand-alone penalty shootout; and a practice arena with free roam, free kicks, penalties and corners.',
+        detail: 'Leaderboards only take scores a game can actually produce.',
+      },
+      {
+        head: 'Controls',
+        summary: 'Settings → Button map: move any control to any key or pad button. On-screen prompts follow what you last touched — keyboard, Xbox-style or PlayStation-style pad, or touch.',
+        detail: 'The Watch gains a street one-v-one.',
+      },
+    ],
+  },
+  {
     version: 'v81',
     date: '2026-09-23',
     tag: 'Career',

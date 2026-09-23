@@ -4,6 +4,8 @@
  * Rendered as a tab inside Ultimate XI (see squad.js) and reused by the
  * standalone account screen off the main menu.
  */
+import { partyHTML, mountParty } from './partyPanel.js';
+import '../net/party.js';
 import { getState, adoptCloudSave, cloudWins, save, update } from '../state.js';
 import { pend } from '../progress.js';
 import { WORLD, getPlayer } from '../data/generator.js';
@@ -111,6 +113,8 @@ export function onlineView() {
       </section>
     </div>
 
+    <div class="ol-grid">${partyHTML()}</div>
+
     <div class="ol-grid">
       <section class="ol-card glass" id="olGuild">
         <span class="ol-kicker">${t('social.guild')}</span>
@@ -214,6 +218,7 @@ export function mountOnline(root, { rerender }) {
 
   net.connect();
   const offs = [];
+  offs.push(mountParty(root, net));   // v82: parties
   const searchEl = root.querySelector('#olSearch');
   const titleEl = root.querySelector('#olsTitle');
   const subEl = root.querySelector('#olsSub');

@@ -124,8 +124,21 @@ export const SHAPES5 = {
   ],
 };
 export const FIVES_NAMES = Object.keys(SHAPES5);
-const shapesFor = () => (FIELD.players === 5 ? SHAPES5 : SHAPES);
-const defaultShape = () => (FIELD.players === 5 ? SHAPES5['1-2-1'] : SHAPES['4-4-2']);
+/* v82: the street — three and four a side, a keeper each */
+export const SHAPES4 = {
+  '1-2': [{ x: .05, y: .50, role: 'GK' }, { x: .28, y: .50, role: 'DEF' }, { x: .58, y: .26, role: 'FWD' }, { x: .58, y: .74, role: 'FWD' }],
+  '2-1': [{ x: .05, y: .50, role: 'GK' }, { x: .26, y: .30, role: 'DEF' }, { x: .26, y: .70, role: 'DEF' }, { x: .62, y: .50, role: 'FWD' }],
+  'diamond': [{ x: .05, y: .50, role: 'GK' }, { x: .26, y: .50, role: 'DEF' }, { x: .46, y: .50, role: 'MID' }, { x: .68, y: .50, role: 'FWD' }],
+};
+export const SHAPES3 = {
+  '1-1': [{ x: .05, y: .50, role: 'GK' }, { x: .30, y: .50, role: 'DEF' }, { x: .62, y: .50, role: 'FWD' }],
+  'split': [{ x: .05, y: .50, role: 'GK' }, { x: .45, y: .28, role: 'MID' }, { x: .45, y: .72, role: 'MID' }],
+};
+export const SHAPES1 = { solo: [{ x: .30, y: .50, role: 'FWD' }] };
+const SMALL = { 5: [SHAPES5, '1-2-1'], 4: [SHAPES4, '1-2'], 3: [SHAPES3, '1-1'], 1: [SHAPES1, 'solo'] };
+const shapesFor = () => (SMALL[FIELD.players]?.[0] || SHAPES);
+const defaultShape = () => { const s = SMALL[FIELD.players]; return s ? s[0][s[1]] : SHAPES['4-4-2']; };
+export const shapeNamesFor = (n) => Object.keys(SMALL[n]?.[0] || SHAPES);
 const SHAPE = SHAPES['4-4-2'];
 
 /** Natural role of a generated player, used when re-slotting into a new shape. */
@@ -165,8 +178,20 @@ function pickXI(clubId) {
     ...add(take(['ST', 'LW', 'RW'], 2, used)),
   ];
   for (const p of pool) { if (xi.length >= 11) break; if (!used.has(p)) { xi.push(p); used.add(p); } }
-  if (FIELD.players === 5) return fivesFrom(xi);
+  if (FIELD.players < 11) return smallFrom(xi, FIELD.players);
   return xi.slice(0, 11);
+}
+/** The best `n` of an eleven for small-sided football: a keeper, then the best outfielders by role (v82). */
+export function smallFrom(xi, n) {
+  if (n === 5) return fivesFrom(xi);
+  const role = (p) => ROLE_OF[p.position] || 'MID';
+  if (n === 1) return [xi.filter((p) => role(p) !== 'GK').sort((a, b) => b.overall - a.overall)[0] || xi[0]];
+  const gk = xi.filter((p) => role(p) === 'GK').sort((a, b) => b.overall - a.overall)[0];
+  const rest = xi.filter((p) => p !== gk).sort((a, b) => b.overall - a.overall);
+  const want = n === 4 ? ['DEF', 'FWD', 'FWD'] : ['DEF', 'FWD'];
+  const out = [gk];
+  for (const r of want) { const i = rest.findIndex((p) => role(p) === r || (r === 'FWD' && role(p) === 'MID')); out.push(i >= 0 ? rest.splice(i, 1)[0] : rest.shift()); }
+  return out.filter(Boolean).slice(0, n);
 }
 /** A keeper, a defender, two midfielders and a forward, the best of an eleven (v80). */
 export function fivesFrom(xi) {
@@ -236,7 +261,7 @@ function aggressionOf(ref) {
 function makeTeam(clubId, side, isHuman, custom = null) {
   const club = getClub(clubId);
   const n = FIELD.players;
-  const xi = custom?.xi?.length === n ? custom.xi : custom?.xi?.length === 11 && n === 5 ? fivesFrom(custom.xi) : pickXI(clubId);
+  const xi = custom?.xi?.length === n ? custom.xi : custom?.xi?.length > n && n < 11 ? smallFrom(custom.xi, n) : pickXI(clubId);
   const SHAPE = defaultShape();
   const dir = side === 0 ? 1 : -1;
 
@@ -285,7 +310,7 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     dir, side, isHuman,
     players, bench, subsLeft: MAX_SUBS,
     score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],
-    formation: n === 5 ? '1-2-1' : '4-4-2',
+    formation: SMALL[n]?.[1] || '4-4-2',
     // a custom squad may bring an instruction with it — the Apex Division uses
     // this to make the CPU press and push up the higher you climb
     tactics: { ...defaultTactics(), ...(custom?.tactics || {}) },
@@ -316,7 +341,13 @@ export class Match {
     // One seat per person at the couch. Each keeps its own selected player and
     // its own shot charge, so two people never fight over the same footballer.
     const last = FIELD.players - 1;
-    if (this.human === null) this.controllers = [];
+    if (opts.seats?.length) {
+      /* v82: a party — any number of people, on either side, one seat each,
+         in the order the server dealt them (the snapshot relies on it) */
+      const used = [0, 0];
+      this.controllers = opts.seats.map((st) => ({ team: st.team, activeIdx: Math.max(1, last - used[st.team]++), charge: 0, passCharge: 0 }));
+      for (const t of [0, 1]) if (opts.seats.some((st) => st.team === t)) this.teams[t].isHuman = true;
+    } else if (this.human === null) this.controllers = [];
     else if (this.mode === 'versus') {
       this.controllers = [{ team: 0, activeIdx: last, charge: 0, passCharge: 0 },
         { team: 1, activeIdx: last, charge: 0, passCharge: 0 }];
@@ -468,6 +499,17 @@ export class Match {
 
   playerOf(c) { return c ? this.teams[c.team].players[c.activeIdx] : null; }
 
+  /** Street style (v82): points for skills and wall play, chained when they come quickly. Counting only. */
+  styleOf(side) { const t = this.teams[side]; return t.style || (t.style = { points: 0, skills: 0, walls: 0, goals: 0, stylish: 0, chain: 0, last: -99 }); }
+  styleEvent(p, kind, pts) {
+    if (!FIELD.street || !p) return;
+    const st = this.styleOf(p.team);
+    st[kind] += 1;
+    st.chain = this.t - st.last < 5 ? Math.min(5, st.chain + 1) : 1;
+    st.last = this.t;
+    st.points += pts * st.chain;
+  }
+
   /** Count something a player did (v81). */
   tally(p, k, n = 1) {
     const id = p?.ref?.id; if (!id) return;
@@ -480,7 +522,7 @@ export class Match {
     const end = r.off ?? this.t;
     return Math.round(((end - r.on) / Math.max(1, this.duration)) * 90);
   }
-  isControlled(p) { return this.controllers.some((c) => this.playerOf(c) === p); }
+  isControlled(p) { return this.controllers.some((c) => !c.ai && this.playerOf(c) === p); }
   minute() { return Math.min(90, Math.floor((this.t / this.duration) * 90)); }
   possession() {
     const total = this.teams[0].poss + this.teams[1].poss || 1;
@@ -534,6 +576,7 @@ export class Match {
   update(dt, input) {
     if (this.phase === 'end') return;
     if (this.locked) this.lockSeats();
+    if (this.parkedAny) this.repark();
     /* Anyone on the grass gets up on his own clock, not the phase's. A foul
      * puts the game into a set piece immediately, so a timer that only ran
      * during play would leave him lying there through the whole free kick. */
@@ -660,6 +703,24 @@ export class Match {
     this.updateBall(dt);
     this.switchOnPossession();
     if (this.locked) this.lockSeats();
+    if (this.parkedAny) this.repark();
+  }
+
+  /**
+   * Practice (v82): take players out of the game entirely — the practice arena
+   * parks the opposition bar the keeper. A parked man stands far off the
+   * pitch and is put back there every step, so no AI, tackle or pickup ever
+   * reaches him. Offside goes with them.
+   */
+  park(teamIdx, test = (p) => p.role !== 'GK') {
+    for (const p of this.teams[teamIdx].players) if (test(p)) p.parked = true;
+    this.parkedAny = true;
+    this.noOffside = true;
+    this.repark();
+  }
+  repark() {
+    if (this.phase === 'freekick') return;            // practice keeps a wall to beat
+    for (const t of this.teams) for (const p of t.players) if (p.parked) { p.x = -300; p.y = -300; p.vx = p.vy = 0; }
   }
 
   /**
@@ -985,6 +1046,7 @@ export class Match {
   /* ------------------------------ human ------------------------------ */
   /** Drive one seat's player. Called once per controller per frame. */
   handleSeat(c, dt, input) {
+    if (c.ai || c.benched) return;                 // v82: a dropped seat plays on the CPU until its owner is back
     const p = this.playerOf(c);
     if (!p) return;
     // Input arrives in screen space (up is negative). `basis` holds the camera's
@@ -1291,10 +1353,10 @@ export class Match {
     b.vz -= GRAV * dt;
     if (b.z <= 0) {
       b.z = 0;
-      if (b.vz < -1.2) { b.vz = -b.vz * 0.42; b.vx *= 0.8; b.vy *= 0.8; }
+      if (b.vz < -1.2) { b.vz = -b.vz * (FIELD.ball?.bounce ?? 0.42); b.vx *= 0.8; b.vy *= 0.8; }
       else b.vz = 0;
     }
-    const damp = Math.pow(b.z > 0.4 ? 0.9985 : 0.986, dt * 60);   // less drag through the air
+    const damp = Math.pow(b.z > 0.4 ? 0.9985 : (FIELD.ball?.drag ?? 0.986), dt * 60);   // less drag through the air
     b.vx *= damp; b.vy *= damp;
     if (b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5) { b.vx = 0; b.vy = 0; }
 
@@ -1549,6 +1611,7 @@ export class Match {
     const b = this.ball;
     if (!b.inNet && this.hitFrame()) return;
     const attackerSide = b.lastTouch ? b.lastTouch.team : 0;
+    if (FIELD.walls && this.walls()) return;
 
     if (b.y < 0.4 || b.y > PITCH.h - 0.4) {
       if (b.shotBy) { this.cue('shotWide', b.shotBy); b.shotBy = null; }
@@ -1587,6 +1650,31 @@ export class Match {
       gk.holdT = 0;
       this.markStoppage('goalkick');
     }
+  }
+
+  /**
+   * The street cage (v82): the ball comes back off the walls instead of going
+   * out. Between the posts it is still a goal. A carried ball is simply held
+   * at the wall. Returns true when the wall dealt with it.
+   */
+  walls() {
+    const b = this.ball;
+    const e = 0.62;                                    // how much a boarded wall gives back
+    let hit = false;
+    const inMouth = Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT;
+    if (b.y < 0.4) { b.y = 0.4; b.vy = Math.abs(b.vy) * e; hit = true; }
+    else if (b.y > PITCH.h - 0.4) { b.y = PITCH.h - 0.4; b.vy = -Math.abs(b.vy) * e; hit = true; }
+    if (!inMouth) {
+      if (b.x < 0.4) { b.x = 0.4; b.vx = Math.abs(b.vx) * e; hit = true; }
+      else if (b.x > PITCH.w - 0.4) { b.x = PITCH.w - 0.4; b.vx = -Math.abs(b.vx) * e; hit = true; }
+    }
+    if (!hit) return false;
+    if (b.owner) { b.vx = b.owner.vx; b.vy = b.owner.vy; }
+    if (b.shotBy) { this.cue('shotWide', b.shotBy); b.shotBy = null; }
+    this.wallHits = (this.wallHits || 0) + 1;
+    if (b.lastTouch && !b.owner) this.styleEvent(b.lastTouch, 'walls', 10);
+    this.cue('wall');
+    return true;
   }
 
   /** Record a dead-ball restart. Called by bounds() and scoreGoal, read by whoever polls. */
@@ -1727,6 +1815,8 @@ export class Match {
   scoreGoal(side, inw = 1, goalLineX = PITCH.w) {
     this.markStoppage('goal');
     const team = this.teams[side];
+    // v82: on the street a goal off a chain of skills and walls is worth more
+    if (FIELD.street) { const st = this.styleOf(side); const hot = this.t - st.last < 6; st.points += 100 + (hot ? 50 * st.chain : 0); st.goals += 1; if (hot && st.chain >= 2) st.stylish += 1; st.chain = 0; }
     team.score++;
     // a goal is on target, whatever it was meant to be — a cross that drifts in counts too (v79)
     if ((this.ball.shotBy && this.ball.shotBy.team === side) || (!this.ball.shotBy && this.ball.lastTouch?.team === side)) team.onTarget++;
@@ -2298,6 +2388,7 @@ export class Match {
     const dir = am <= 0.2 ? 'none' : Math.abs(lateral) > Math.abs(along) ? 'side' : along > 0 ? 'fwd' : 'back';
     const move = pickSkill(dir, mod, p.stars || 1, foeAhead);
     p.skillKind = move.id;
+    if (hasBall) this.styleEvent(p, 'skills', 25 + (foeAhead ? 15 : 0));
     p.stamina = Math.max(0, p.stamina - 0.04);
     /* It can fail — a heavy touch that runs away. A real dribbler rarely; the
        harder the move against his stars, the likelier; a Trickster less. */
@@ -2446,7 +2537,8 @@ export class Match {
     const p = sp.taker;
     this.ball.owner = p; p.touchLock = 0;
     this.pass(p, { x: this.teams[p.team].dir, y: (CY - p.y) / PITCH.h }, false, 0.3);
-    this.ball.vz = 3.2; this.ball.z = 1.6;
+    // futsal restarts with the foot, along the floor
+    if (FIELD.kickIn) { this.ball.vz = 0; this.ball.z = 0; } else { this.ball.vz = 3.2; this.ball.z = 1.6; }
   }
 
   /**
@@ -2456,9 +2548,11 @@ export class Match {
    */
   beginSetPiece(kind, team, taker, aiDelay) {
     // a locked seat only takes the restarts its own man takes
-    const mine = (c) => c.team === team && (!c.lockId || c.lockId === taker?.ref?.id);
+    const mine = (c) => c.team === team && !c.ai && (!c.lockId || c.lockId === taker?.ref?.id);
     const human = this.controllers.some(mine);
     this.phaseT = human ? (kind === 'throwin' ? 6 : 9) : aiDelay + (this.teams[team].tactics.tempo === 'slow' ? 1.4 : 0);
+    // v82: the street plays on — restarts are quick, for people and the CPU alike
+    if (FIELD.street) this.phaseT = human ? 2.5 : Math.min(this.phaseT, 0.5);
     // the person's stick drives the taker: put the seat on him
     if (human) {
       const c = this.controllers.find(mine);
@@ -2825,6 +2919,7 @@ export class Match {
     return own + (t.dir > 0 ? second : -second);
   }
   isOffside(q, lineX = null) {
+    if (this.noOffside) return false;
     const atk = this.teams[q.team];
     const line = lineX ?? this.offsideLine(1 - q.team);
     const beyond = (q.x - line) * atk.dir > 0.25;
@@ -2833,7 +2928,7 @@ export class Match {
     return beyond && pastBall && theirHalf;
   }
   noteOffside(passer) {
-    if (this.phase !== 'play' || !FIELD.offside) { this.offsideWatch = null; return; }
+    if (this.phase !== 'play' || !FIELD.offside || this.noOffside) { this.offsideWatch = null; return; }
     const line = this.offsideLine(1 - passer.team);
     const ids = new Set();
     for (const q of this.teams[passer.team].players) if (q !== passer && q.role !== 'GK' && this.isOffside(q, line)) ids.add(q);
@@ -2841,7 +2936,7 @@ export class Match {
   }
   /** The side with the ball keeps its forwards level with the last defender (AI). */
   onsideX(team, x, slack = 0) {
-    if (!FIELD.offside) return x;
+    if (!FIELD.offside || this.noOffside) return x;
     const line = this.offsideLine(1 - team.side);
     const lim = line - team.dir * (0.8 - slack);
     const ballLim = this.ball.x;

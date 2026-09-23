@@ -509,6 +509,42 @@ function weekendBoard(id, limit = 25) {
     .slice(0, limit);
 }
 
+/* v82: skill games. One best per game per account, bounded by what the
+   drill can actually produce (see js/game/drills.js), so an edited client
+   cannot top the board with a number no drill could score. */
+const SKILL_MAX = { slalom: 1600, freekicks: 750, crossing: 900, passing: 12000 };
+function recordSkill(acct, game, score) {
+  if (!Object.prototype.hasOwnProperty.call(SKILL_MAX, game)) return null;
+  const n = Math.floor(Number(score));
+  if (!Number.isFinite(n) || n < 0 || n > SKILL_MAX[game]) return null;
+  if (!acct.skills) acct.skills = {};
+  if ((acct.skills[game] || 0) >= n) return acct.skills[game];
+  acct.skills[game] = n;
+  flush();
+  return n;
+}
+function skillBoard(game, limit = 20) {
+  if (!Object.prototype.hasOwnProperty.call(SKILL_MAX, game)) return [];
+  return Object.values(db.accounts)
+    .filter((a) => a.skills?.[game])
+    .map((a) => ({ name: a.name, score: a.skills[game] }))
+    .sort((x, y) => y.score - x.score || x.name.localeCompare(y.name))
+    .slice(0, limit);
+}
+
+/* v82: a co-op season — two friends, one team, ten matches, points */
+function recordCoop(acct, pair, scored, conceded) {
+  if (!/^[A-Za-z0-9_+-]{3,60}$/.test(pair)) return null;
+  acct.coop = acct.coop || {};
+  const c = acct.coop[pair] || (acct.coop[pair] = { season: 1, played: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, best: 0 });
+  if (c.played >= 10) { c.best = Math.max(c.best, c.pts); Object.assign(c, { season: c.season + 1, played: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }); }
+  c.played += 1; c.gf += scored; c.ga += conceded;
+  if (scored > conceded) { c.w += 1; c.pts += 3; } else if (scored === conceded) { c.d += 1; c.pts += 1; } else c.l += 1;
+  const keys = Object.keys(acct.coop); while (keys.length > 6) delete acct.coop[keys.shift()];
+  flush();
+  return c;
+}
+
 function leaderboard(limit = 25) {
   return Object.values(db.accounts)
     .filter((a) => a.online.played > 0)
@@ -525,7 +561,7 @@ function leaderboard(limit = 25) {
 }
 
 /** What the client is allowed to see about itself. */
-const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null });
+const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null, coop: a.coop || {} });
 
 /** For the health endpoint: where accounts are going, and whether that lasts. */
 const status = () => ({
@@ -539,7 +575,7 @@ module.exports = {
   mintToken,
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
-  recordWeekend, weekendBoard,
+  recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
   addFriend, removeFriend, friendsView,
   // operator tools only — see the note on accountByName

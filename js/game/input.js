@@ -36,7 +36,66 @@ const PAD_ACTIONS = {
   4: 'switch', 5: ['switch', 'curl'], 6: 'skill', 7: 'sprint', 8: 'lob', 9: 'pause',
 };
 
-const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'lob', 'skill', 'switch', 'curl', 'sprint', 'pause'];
+export const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'lob', 'skill', 'switch', 'curl', 'sprint', 'pause'];
+
+/* ---------------------------------------------------------------- *
+ * v82: rebinding and prompts
+ *
+ * The defaults above stay the defaults. A player's changes are kept as
+ * { keys: { action: code }, pad: { action: buttonIndex } } (settings.controls)
+ * and laid over them for the primary seat — the one a single player uses and
+ * the one a controller drives. Binding an input moves it: a key or button can
+ * only mean one thing.
+ * ---------------------------------------------------------------- */
+let OVERRIDE = { keys: {}, pad: {} };
+export function setBindings(b) { OVERRIDE = { keys: { ...(b?.keys || {}) }, pad: { ...(b?.pad || {}) } }; }
+export const getBindings = () => ({ keys: { ...OVERRIDE.keys }, pad: { ...OVERRIDE.pad } });
+function laid(base, over) {
+  const out = { ...base };
+  for (const [action, code] of Object.entries(over)) {
+    for (const [k, v] of Object.entries(out)) {
+      const acts = Array.isArray(v) ? v : [v];
+      if (acts.includes(action)) { const rest = acts.filter((a) => a !== action); if (rest.length) out[k] = rest.length === 1 ? rest[0] : rest; else delete out[k]; }
+    }
+    out[code] = action;
+  }
+  return out;
+}
+export const keyMapFor = (set = 'primary') => (set === 'primary' ? laid(KEYSETS.primary, OVERRIDE.keys) : KEYSETS[set]);
+export const padMapFor = () => laid(PAD_ACTIONS, OVERRIDE.pad);
+/** The first key and pad button an action is on right now. */
+export function bindingOf(action) {
+  const k = Object.entries(keyMapFor()).find(([, v]) => (Array.isArray(v) ? v : [v]).includes(action))?.[0] || null;
+  const p = Object.entries(padMapFor()).find(([, v]) => (Array.isArray(v) ? v : [v]).includes(action))?.[0];
+  return { key: k, pad: p == null ? null : +p };
+}
+
+/* The last device anyone touched, so prompts can speak its language. */
+let LAST = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 'touch' : 'keyboard';
+let PAD_KIND = 'xbox';
+const deviceFns = new Set();
+const setDevice = (d) => { if (d !== LAST) { LAST = d; for (const fn of deviceFns) fn(d); } };
+export const lastDevice = () => LAST;
+export const onDeviceChange = (fn) => { deviceFns.add(fn); return () => deviceFns.delete(fn); };
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('keydown', () => setDevice('keyboard'), true);
+  window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setDevice('touch'); else if (e.pointerType === 'mouse') setDevice('keyboard'); }, true);
+  window.addEventListener('gamepadconnected', (e) => { PAD_KIND = /sony|dualsense|dualshock|playstation|054c/i.test(e.gamepad.id) ? 'ps' : 'xbox'; });
+}
+const PAD_GLYPH = {
+  ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', '↑', '↓', '←', '→'],
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', '↑', '↓', '←', '→'],
+};
+export const padGlyph = (i, kind = PAD_KIND) => PAD_GLYPH[kind][i] ?? `B${i}`;
+export const keyLabel = (code) => (code || '').replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Num ').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'R-Shift').replace('Space', 'Space').replace('Escape', 'Esc');
+const TOUCH_WORD = { pass: 'PASS', shoot: 'SHOOT', cross: 'CROSS', through: 'THROUGH', lob: 'LOB', skill: 'SKILL', switch: 'SWITCH', curl: 'CURL', sprint: 'SPRINT', pause: '❚❚' };
+/** What to press for an action on the device in use: "K", "○", or "SHOOT". */
+export function promptFor(action, device = LAST) {
+  const b = bindingOf(action);
+  if (device === 'pad' && b.pad != null) return padGlyph(b.pad);
+  if (device === 'touch') return TOUCH_WORD[action] || action.toUpperCase();
+  return b.key ? keyLabel(b.key) : action;
+}
 
 export class Input {
   /**
@@ -46,7 +105,8 @@ export class Input {
    */
   constructor(opts = {}) {
     this.padIndex = opts.pad ?? null;
-    this.keyMap = KEYSETS[opts.keys || 'primary'];
+    this.keyMap = keyMapFor(opts.keys || 'primary');
+    this.padMap = (opts.keys || 'primary') === 'primary' ? padMapFor() : PAD_ACTIONS;
     this.moveMap = MOVE_SETS[opts.keys || 'primary'];
     this.keys = new Set();
     this.touchVec = { x: 0, y: 0 };
@@ -114,9 +174,11 @@ export class Input {
       if (a) fire(a);
     }
     if (this.pad) {
-      for (const [i, a] of Object.entries(PAD_ACTIONS)) {
-        if (this.pad.buttons[i]?.pressed) fire(a);
+      let any = false;
+      for (const [i, a] of Object.entries(this.padMap)) {
+        if (this.pad.buttons[i]?.pressed) { fire(a); any = true; }
       }
+      if (any || Math.hypot(this.pad.axes[0] || 0, this.pad.axes[1] || 0) > 0.5) setDevice('pad');
     }
     for (const a of this.touchButtons) this.now.add(a);
 
