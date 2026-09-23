@@ -292,8 +292,24 @@ function cleanSquad(squad) {
 /** Crash reports: a handful a minute per address is a broken build, more is a hose. */
 function crashAllowed(req) { return allow(`crash:${clientIP(req)}`, 6, 6 / 60); }
 
+/**
+ * v87: the Weekend League window that is open right now (Friday 18:00 →
+ * Monday 06:00 UTC), as its id — or null when it is closed. The same
+ * reckoning as js/weekend.js, kept here so a client cannot file a result
+ * under a weekend of its choosing.
+ */
+function weekendIdNow(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const toFri = (5 - d.getUTCDay() + 7) % 7;
+  let opens = new Date(d); opens.setUTCDate(d.getUTCDate() + toFri); opens.setUTCHours(18, 0, 0, 0);
+  const closeOf = (o) => { const c = new Date(o); c.setUTCDate(o.getUTCDate() + 3); c.setUTCHours(6, 0, 0, 0); return c; };
+  const prev = new Date(opens); prev.setUTCDate(opens.getUTCDate() - 7);
+  if (opens > now && closeOf(prev) > now) opens = prev;
+  return now >= opens && now < closeOf(opens) ? opens.toISOString().slice(0, 10) : null;
+}
+
 module.exports = {
-  crashAllowed,
+  crashAllowed, weekendIdNow,
   clientIP, allow, peek, spend,
   loginAllowed, loginFailed, registerAllowed, saveAllowed, apiAllowed,
   sanitiseSave, checkResult, cleanClub, cleanSquad,

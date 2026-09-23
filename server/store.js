@@ -177,7 +177,12 @@ async function shutdown(attempts = 3) {
  * ------------------------------------------------------------------ */
 const hash = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString('hex');
 const newToken = () => crypto.randomBytes(24).toString('hex');
-const key = (name) => name.toLowerCase();
+const key = (name) => String(name ?? '').toLowerCase();
+/* v87: account lookups are own-property only — `db.accounts` is a plain
+ * object, and "constructor" or "__proto__" would otherwise find Object's own
+ * machinery instead of nobody. Those names are refused at registration too. */
+const RESERVED = new Set(['__proto__', 'constructor', 'prototype', 'hasownproperty', 'tostring', 'valueof']);
+const acctOf = (name) => { const k = key(name); return Object.prototype.hasOwnProperty.call(db.accounts, k) ? db.accounts[k] : null; };
 
 /**
  * Read the database into memory. Must finish before the server accepts
@@ -209,6 +214,8 @@ async function load() {
 }
 
 function register(name, pass) {
+  if (typeof name !== 'string' || typeof pass !== 'string') return { error: 'Name and password, please.' };
+  if (RESERVED.has(key(name))) return { error: 'That name is taken.' };
   if (!NAME_RE.test(name || '')) {
     return { error: 'Names are 3–16 characters: letters, numbers, . _ -' };
   }
@@ -219,7 +226,7 @@ function register(name, pass) {
   if (/^(password|12345678|11111111|qwertyui|football)/i.test(pass)) {
     return { error: 'That password is too easy to guess.' };
   }
-  if (db.accounts[key(name)]) return { error: 'That name is taken.' };
+  if (acctOf(name)) return { error: 'That name is taken.' };
 
   const salt = crypto.randomBytes(16).toString('hex');
   const acct = {
@@ -240,7 +247,7 @@ function register(name, pass) {
 }
 
 function login(name, pass) {
-  const acct = db.accounts[key(name || '')];
+  const acct = acctOf(name);
   if (!acct) return { error: 'No account with that name.' };
   const given = hash(pass || '', acct.salt);
   // constant-time compare so a wrong password can't be probed by timing
@@ -306,7 +313,7 @@ function byToken(token) {
  * enumeration oracle.
  */
 function accountByName(name) {
-  return db.accounts[key(name || '')] || null;
+  return acctOf(name);
 }
 
 /**
@@ -424,7 +431,7 @@ function guildView(acct, onlineNames = new Set()) {
   const board = guildBoard(200, id);
   const rank = board.findIndex((r) => r.code === g.code) + 1;
   return {
-    guild: { code: g.code, name: g.name, tag: g.tag, owner: g.owner, members: g.members.map((n) => ({ name: n, online: onlineNames.has(n), points: db.accounts[key(n)]?.online?.points || 0 })) },
+    guild: { code: g.code, name: g.name, tag: g.tag, owner: g.owner, members: g.members.map((n) => ({ name: n, online: onlineNames.has(n), points: acctOf(n)?.online?.points || 0 })) },
     week: { id, ...w, claimed: undefined },
     objectives: GUILD_OBJECTIVES.map((o) => {
       const have = Math.min(o.need, w[o.id] || 0);
@@ -462,7 +469,7 @@ function guildBoard(limit = 25, id = weekId()) {
  * spectating go through. No messages, ever.
  * ------------------------------------------------------------------ */
 function addFriend(acct, name) {
-  const other = db.accounts[key(name || '')];
+  const other = acctOf(name);
   if (!other) return { error: 'No player with that name.' };
   if (other === acct) return { error: 'That is you.' };
   acct.friends = acct.friends || [];
@@ -479,7 +486,7 @@ function removeFriend(acct, name) {
 /** The list with live status; `live(name)` is the hub's view of who is where. */
 function friendsView(acct, live = () => null) {
   return (acct.friends || []).map((n) => {
-    const a = db.accounts[key(n)];
+    const a = acctOf(n);
     const st = live(n) || {};
     return { name: n, points: a?.online?.points || 0, guild: a?.guild ? db.guilds[a.guild]?.tag || null : null, online: !!st.online, hosting: st.hosting || null, inMatch: st.matchId || null };
   });

@@ -20,7 +20,11 @@ const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, is
 const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
 await cdp.send('Network.enable');
-await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 1.6e6 / 8, uploadThroughput: 750e3 / 8 });
+// --net fast: a typical 4G line (9 Mb/s, 60 ms) instead of Chrome's "Slow 4G"
+const fast = process.argv.includes('--net') && process.argv[process.argv.indexOf('--net') + 1] === 'fast';
+await cdp.send('Network.emulateNetworkConditions', fast
+  ? { offline: false, latency: 60, downloadThroughput: 9e6 / 8, uploadThroughput: 1.5e6 / 8 }
+  : { offline: false, latency: 150, downloadThroughput: 1.6e6 / 8, uploadThroughput: 750e3 / 8 });
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 let bytes = 0; let requests = 0;
 cdp.on('Network.responseReceived', () => { requests += 1; });

@@ -18,8 +18,8 @@ import { CO, CONTEXT, AR } from '../data/commentaryVoices.js';
 
 /** Our two voices — invented people, the same in every match. */
 export const SPEAKERS = {
-  en: { pbp: 'Tom Hale', co: 'Nadia Farouk' },
-  ar: { pbp: 'فهد السالم', co: 'ليلى ناصر' },
+  en: { pbp: 'Tom Hale', co: 'Nadia Farouk', pa: 'Stadium announcer' },
+  ar: { pbp: 'فهد السالم', co: 'ليلى ناصر', pa: 'مذيع الملعب' },
 };
 const STYLE = { pbp: { rate: 1.08, pitch: 1.0 }, co: { rate: 0.96, pitch: 0.82 } };
 
@@ -127,6 +127,8 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
       queue.push({ speaker, text, prio, at: Date.now() });
       next();
     },
+    /** v87: a subtitle only — for lines another voice speaks (the stadium PA). */
+    caption(speaker, text) { if (!dead && text) show(speaker, text); },
     setVoice(on) { voice = !!on; if (!on && synth) { try { synth.cancel(); } catch { /* none */ } busy = false; } },
     setSubtitles(on) { subtitles = !!on; if (!on && el) el.hidden = true; },
     /** What has been said, newest last (the tests and Match Facts read it). */

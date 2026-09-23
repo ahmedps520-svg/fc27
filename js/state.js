@@ -3,6 +3,7 @@ import './data/promos.js';          // v80: registers the promo / in-form / icon
 import { dealSlate, LADDER, REFRESH_MS, ULTIMATE_RUNGS } from './data/objectives.js';
 import { pushSave } from './net/api.js';
 import * as storage from './storage.js';
+import * as safety from './saveSafety.js';
 
 const KEY = 'apexxi.save.v1';
 
@@ -46,6 +47,16 @@ const defaults = () => ({
     broadcastGfx: true,         // straps, boards, pop-ups, momentum bar
     menuTheme: 'auto',          // auto | off | nationalDay | ramadan | winter
     responsiveness: 0.7,        // v84 hotfix: how quickly your player answers the stick (0–1)
+    // v87: performance and accessibility
+    battery: false,             // 30 fps cap, lighter picture
+    governor: true,             // drop effects before frames drop
+    textScale: 1,               // 0.9 | 1 | 1.15 | 1.3
+    colorFilter: 'none',        // none | protan | deutan | tritan (in-match)
+    oneHanded: false,           // touch: every control on one side
+    oneHandedSide: 'right',
+    sprintToggle: false,        // sprint: hold (false) or tap to toggle
+    shootAssist: 0,             // 0 off | 1 auto-timed power on shots
+    passAssist: 1,              // 0 manual | 1 assisted | 2 full
   },
   club: {                     // Squad Builder progress
     // Two balances. Apex is the one you earn and spend. Ultimate is the
@@ -176,11 +187,29 @@ export { ULTIMATE_RUNGS };
 
 let state = defaults();
 
+/** v87: set when a damaged save was replaced by a backup, so the app can say so once. */
+export let recoveredFrom = null;
+
 export function loadState() {
+  let raw = null;
   try {
-    const raw = storage.getItem(KEY);
+    raw = storage.getItem(KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not a save');
+        safety.backupDaily(raw);
+      } catch (err) {
+        /* v87: a save that will not parse is kept aside — never overwritten —
+           and the newest good backup takes its place. Before this, the game
+           started fresh and the next save wrote over the damaged one. */
+        safety.stashCorrupt(raw);
+        const b = safety.newestGoodBackup();
+        if (!b) throw err;
+        parsed = b.save;
+        recoveredFrom = b.at;
+      }
       state = { ...defaults(), ...parsed };
       state.settings = { ...defaults().settings, ...(parsed.settings || {}) };
       state.club = { ...defaults().club, ...(parsed.club || {}) };
@@ -227,7 +256,21 @@ export function loadState() {
  */
 function repairSave(s) {
   const d = defaults();
-  for (const k of ['settings', 'club', 'flags']) if (!s[k] || typeof s[k] !== 'object') s[k] = d[k];
+  for (const k of ['settings', 'club', 'flags']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = d[k];
+  if (!s.ultimate || typeof s.ultimate !== 'object' || Array.isArray(s.ultimate)) s.ultimate = freshUltimate();
+  if (!s.meta || typeof s.meta !== 'object' || Array.isArray(s.meta)) s.meta = {};
+  /* v87 (save fuzzing): a field whose type no longer matches its default —
+     a balance that became null, a switch that became a string — goes back to
+     the default. Only scalar fields: anything structured is left to the
+     specific repairs below, which know what to keep. */
+  const scalars = (obj, def) => {
+    for (const [k, v] of Object.entries(def)) {
+      if (v === null || typeof v === 'object') continue;
+      const cur = obj[k];
+      if (typeof v === 'number' ? !Number.isFinite(cur) : typeof cur !== typeof v) obj[k] = v;
+    }
+  };
+  scalars(s.club, d.club); scalars(s.settings, d.settings); scalars(s.ultimate, freshUltimate());
   // the Light figures option is gone (v73): every save gets the scanned models
   if (s.settings.models === 'simple') s.settings.models = 'realistic';
   if (!Array.isArray(s.ultimate?.objectives) || !s.ultimate.objectives.every((o) => o && o.metric)) {
@@ -271,6 +314,7 @@ function applyReset(s) {
 export const getState = () => state;
 
 export function save() {
+  if (state?.meta) state.meta.savedAt = Date.now();
   // v80: the binder keeps every card you have ever owned
   if (state?.club?.collection) {
     const seen = state.club.everOwned || (state.club.everOwned = {});
@@ -309,6 +353,19 @@ export function adoptCloudSave(cloud) {
   applyReset(state);
   repairSave(state);
   try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
+  return true;
+}
+
+/**
+ * v87: replace the whole save with one from a file or a backup — what it
+ * replaces is backed up first, so an import is never a one-way door.
+ */
+export function replaceSave(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  try { safety.backupNow(JSON.stringify(state)); } catch { /* keep going: the import is what was asked for */ }
+  try { storage.setItem(KEY, JSON.stringify(obj)); } catch { return false; }
+  loadState();
+  save();
   return true;
 }
 

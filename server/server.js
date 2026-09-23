@@ -133,7 +133,8 @@ const readBody = (req) => new Promise((resolve, reject) => {
     if (raw.length > 512 * 1024) { reject(new Error('too large')); req.destroy(); }
   });
   req.on('end', () => {
-    try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('bad json')); }
+    // v87: only an object is a body — an array, a number or a string is treated as empty
+    try { const o = raw ? JSON.parse(raw) : {}; resolve(o && typeof o === 'object' && !Array.isArray(o) ? o : {}); } catch { reject(new Error('bad json')); }
   });
   req.on('error', reject);
 });
@@ -147,6 +148,10 @@ async function api(req, res, route) {
 
   if (route === '/api/register' || route === '/api/login') {
     const body = await readBody(req);
+    // v87 (fuzzing): a name or password that is not a string is not a sign-in
+    if (typeof body.name !== 'string' || typeof body.pass !== 'string' || body.name.length > 64 || body.pass.length > 256) {
+      return json(res, 400, { error: 'Name and password, please.' });
+    }
     /* Sign-in is the expensive endpoint (scrypt by design) and the one worth
      * guessing at, so it is limited per address and per account name both.
      * The message is deliberately the same either way: telling an attacker
@@ -421,7 +426,16 @@ const server = http.createServer((req, res) => {
   if (route.startsWith('/api/')) {
     cors(req, res);
     if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
-    api(req, res, route).catch((err) => json(res, 400, { error: err.message }));
+    /* v87: a malformed request is the client's fault and says so plainly;
+     * anything else is ours — logged here, and never echoed back, because an
+     * exception message is a map of the server's insides. */
+    api(req, res, route).catch((err) => {
+      const msg = String(err?.message || '');
+      if (msg === 'too large') return json(res, 413, { error: 'Request too large.' });
+      if (msg === 'bad json') return json(res, 400, { error: 'Malformed request.' });
+      console.error(`[api] ${route}:`, err);
+      return json(res, 500, { error: 'Server error.' });
+    });
     return;
   }
 
@@ -741,7 +755,8 @@ ws.attach(server, '/ws', (sock) => {
             scored: check.scored, conceded: check.conceded, divIdx: check.divIdx,
           });
           // Weekend League: the same validated result, filed under the weekend
-          const wl = typeof m.wl === 'string' ? m.wl.slice(0, 10) : null;
+          // v87: only the weekend that is open now, as the server reckons it — never a past or future one
+          const wl = typeof m.wl === 'string' && m.wl === guard.weekendIdNow() ? m.wl : null;
           if (wl) {
             store.recordWeekend(peer.acct, wl, check.scored > check.conceded);
             if (peer.opponent?.acct) store.recordWeekend(peer.opponent.acct, wl, check.conceded > check.scored);

@@ -1,44 +1,61 @@
 import { loadState, getState, update } from './state.js';
 import * as Menu from './screens/menu.js';
-import * as Squad from './screens/squad.js';
-import * as Career from './screens/career.js';
-import * as Quick from './screens/quickmatch.js';
-import * as Settings from './screens/settings.js';
-import * as MatchScreen from './screens/match.js';
-import * as Play from './screens/play.js';
 import * as Splash from './screens/splash.js';
-import * as Online from './screens/online.js';
-import * as Today from './screens/today.js';
-import * as Trophies from './screens/trophies.js';
-import * as Weekend from './screens/weekend.js';
-import * as World from './screens/world.js';
-import * as Stadiums from './screens/stadiums.js';
-import * as Builder from './screens/builder.js';
-import * as Pro from './screens/pro.js';
-import * as Street from './screens/street.js';
-import * as Skills from './screens/skills.js';
 import * as live from './live.js';
 import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
 import * as api from './net/api.js';
 import * as net from './net/socket.js';
-import { adoptCloudSave, cloudWins } from './state.js';
+import { adoptCloudSave, cloudWins, save, recoveredFrom } from './state.js';
+import { isRealConflict, chooseSave } from './components/saveConflict.js';
+import { backupNow } from './saveSafety.js';
 import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
-import { setBindings } from './game/input.js';
+import { setBindings, setToggles } from './game/input.js';
 import { applyLanguage } from './i18n.js';
 
-const SCREENS = {
-  world: World,
-  stadiums: Stadiums,
-  builder: Builder,
-  pro: Pro,
-  street: Street,
-  skills: Skills,
-  splash: Splash, menu: Menu, squad: Squad, career: Career, quick: Quick,
-  settings: Settings, match: MatchScreen, play: Play, online: Online,
-  today: Today, trophies: Trophies, weekend: Weekend,
+/* v87: code-split. The title screen and the menu ship with the boot; every
+ * other screen is its own chunk, fetched the first time it is visited (and
+ * prefetched in the background once the menu is up, so it rarely waits).
+ * The service worker precaches all of them, so offline play is unchanged. */
+const SCREENS = { splash: Splash, menu: Menu };
+const LAZY = {
+  world: () => import('./screens/world.js'),
+  stadiums: () => import('./screens/stadiums.js'),
+  builder: () => import('./screens/builder.js'),
+  pro: () => import('./screens/pro.js'),
+  street: () => import('./screens/street.js'),
+  skills: () => import('./screens/skills.js'),
+  squad: () => import('./screens/squad.js'),
+  career: () => import('./screens/career.js'),
+  quick: () => import('./screens/quickmatch.js'),
+  settings: () => import('./screens/settings.js'),
+  match: () => import('./screens/match.js'),
+  play: () => import('./screens/play.js'),
+  online: () => import('./screens/online.js'),
+  today: () => import('./screens/today.js'),
+  trophies: () => import('./screens/trophies.js'),
+  weekend: () => import('./screens/weekend.js'),
 };
+const loading = new Map();
+/** Fetch a screen's chunk (once). Resolves to the module. */
+export function loadScreen(name) {
+  if (SCREENS[name]) return Promise.resolve(SCREENS[name]);
+  if (!LAZY[name]) return Promise.reject(new Error(`no screen ${name}`));
+  if (!loading.has(name)) {
+    loading.set(name, LAZY[name]().then((mod) => { SCREENS[name] = mod; return mod; }, (err) => { loading.delete(name); throw err; }));
+  }
+  return loading.get(name);
+}
+/** Warm every chunk, a few at a time, when the device is idle. */
+export function prefetchScreens() {
+  const names = Object.keys(LAZY).filter((n) => !SCREENS[n]);
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  const next = () => { const n = names.shift(); if (!n) return; loadScreen(n).catch(() => {}).finally(() => idle(next)); };
+  idle(next);
+}
+let navToken = 0;
+let prefetched = false;
 
 /**
  * The one colour.
@@ -55,7 +72,7 @@ const SCREENS = {
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v86';
+export const APP_VERSION = 'v87';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -65,7 +82,6 @@ const ultEl = document.getElementById('ultCoins');
 
 let current = 'menu';
 let activeCleanup = null;
-let navSeq = 0;               // v86: which navigation is current (see navigate)
 
 export function applyTheme() {
   const s = getState().settings;
@@ -140,6 +156,20 @@ export function navigate(name, params = {}) {
     if (current !== 'menu') navigate('menu');
     return;
   }
+  const token = ++navToken;
+  if (!SCREENS[name]) {
+    // not fetched yet: show a light spinner if it takes a moment, then come back
+    const spin = setTimeout(() => { if (token === navToken) document.body.classList.add('screen-loading'); }, 150);
+    loadScreen(name).then(() => {
+      clearTimeout(spin); document.body.classList.remove('screen-loading');
+      if (token === navToken) navigate(name, params);
+    }, (err) => {
+      clearTimeout(spin); document.body.classList.remove('screen-loading');
+      crashGuard.crash(err, `load:${name}`);
+      toast('That screen could not load — check your connection', 'warn');
+    });
+    return;
+  }
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
   /* Overlays that were appended to <body> — a pack reveal opened from the
@@ -182,7 +212,6 @@ export function navigate(name, params = {}) {
   // inside .screen would ride the entry animation's containing block
   document.body.classList.toggle('on-menu', name === 'menu');
 
-  const token = ++navSeq;
   try {
     if (typeof mod.mount === 'function') {
       const cleanup = mod.mount(root, params) || null;
@@ -192,7 +221,7 @@ export function navigate(name, params = {}) {
          leaked the new screen's listeners and left this one's timers running
          against a DOM that was gone ("Cannot set properties of null" from the
          quick-match pad poll). Run it now instead. */
-      if (token === navSeq) activeCleanup = cleanup;
+      if (token === navToken) activeCleanup = cleanup;
       else if (typeof cleanup === 'function') { try { cleanup(); } catch { /* it was never on screen */ } }
     }
   } catch (err) {
@@ -203,6 +232,7 @@ export function navigate(name, params = {}) {
     if (name !== 'menu') { navigate('menu'); return; }
   }
   resetPadFocus();
+  if (name === 'menu' && !prefetched) { prefetched = true; setTimeout(prefetchScreens, 1500); }
   // music belongs to the front end only; the match runs its own crowd bed
   if (name === 'play') stopMusic(); else startMusic();
   refreshCoins();
@@ -331,6 +361,7 @@ crashGuard.setVersion(APP_VERSION);
 crashGuard.install();
 loadState();
 setBindings(getState().settings.controls);   // v82: the player's own button map
+setToggles({ sprint: !!getState().settings.sprintToggle });   // v87: hold or toggle
 applyTheme();
 /* Live content: the copy the save remembers is adopted first so the week's
  * event is known offline, then the server's file replaces it when it lands. */
@@ -371,13 +402,23 @@ startPadMenu();       // whole front-end is drivable from a controller
 // pick it up on the first touch.
 tryStartAudio();
 
+// v87: a damaged save was replaced by the newest backup — say so, once
+if (recoveredFrom) setTimeout(() => toast(`Your save was damaged, so the backup from ${new Date(recoveredFrom).toLocaleDateString()} was restored. The damaged copy is kept.`, 'warn'), 1200);
+
 /* ------------------------------ account ------------------------------ */
 // Resume a stored session in the background. If the account holds more progress
 // than this device does — or carries an operator correction — that copy wins;
 // otherwise the local one is pushed up. See `cloudWins`.
-api.resume().then((d) => {
+api.resume().then(async (d) => {
   if (!d) return;
-  if (cloudWins(d.save, getState())) {
+  // v87: a real conflict is the player's call (the loser is kept as a backup)
+  let useCloud;
+  if (isRealConflict(d.save, getState())) {
+    useCloud = (await chooseSave(getState(), d.save)) === 'cloud';
+    backupNow(JSON.stringify(useCloud ? getState() : d.save));
+    if (!useCloud) save();
+  } else useCloud = cloudWins(d.save, getState());
+  if (useCloud) {
     adoptCloudSave(d.save);
     applyTheme();
     refreshCoins();

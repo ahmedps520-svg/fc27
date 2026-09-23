@@ -368,6 +368,8 @@ export class Match {
     this.preset = PRESETS[opts.preset] || PRESETS.authentic;
     // v84 hotfix: how quickly a person's player answers the stick (0–1, Settings → Controls)
     this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7;
+    // v87: a person's assists (Settings → Accessibility); the CPU never reads them
+    this.assist = { shoot: opts.assist?.shoot ? 1 : 0, pass: [0, 1, 2].includes(opts.assist?.pass) ? opts.assist.pass : 1 };
     this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null };
     /* Out-of-bounds ledger. `bounds()` already rules on every ball that leaves
      * the pitch — throw-in, corner, goal kick, goal — but it ruled silently:
@@ -1140,7 +1142,7 @@ export class Match {
         // A tap is one frame of hold, which on its own would be a 3-yard nudge.
         // The floor keeps a quick pass playing exactly as it always did; the
         // hold is what buys anything above it.
-        this.pass(p, aim, false, Math.max(0.3, c.passCharge));
+        this.pass(p, aim, false, Math.max(0.3, c.passCharge), false, this.assist.pass);
         c.passCharge = 0;
       }
       if (input.pressed('through')) this.pass(p, aim, true, 0.5);
@@ -1169,6 +1171,13 @@ export class Match {
         // with it chips the keeper — a soft, high, dipping ball
         const curled = input.held('curl');
         const chip = input.held('lob');
+        /* v87: the timing assist — the power is chosen from the distance to
+           goal (firm close in, full from range) instead of from the hold */
+        if (this.assist.shoot) {
+          const gx = this.teams[p.team].dir > 0 ? PITCH.w : 0;
+          const dist = Math.hypot(gx - p.x, CY - p.y);
+          c.charge = chip ? 0.5 : Math.max(0.42, Math.min(0.92, 0.3 + dist / 38));
+        }
         this.shoot(p, aim, Math.max(0.28, c.charge), {
           loft: chip ? 2.6 : curled ? 0.9 : 1,
           curl: curled ? 46 : 0,
@@ -2131,10 +2140,15 @@ export class Match {
     return 1 - (1 - (p.stamina ?? 1)) * 0.3 - (p.injured ? 0.25 : 0);
   }
 
-  pass(p, aim, through, power = 0.35, lob = false) {
+  pass(p, aim, through, power = 0.35, lob = false, assist = 1) {
     this.tally(p, 'passes');
     const team = this.teams[p.team];
-    const reach = 14 + power * 44;
+    /* v87: pass assist, for a person's passes only (the CPU always plays at 1).
+       0 manual: only a man almost exactly on the line of the stick is found;
+       otherwise the ball goes where it was aimed. 2 full: the best open man in
+       a wider reach, with the aim only a tiebreak. */
+    const reach = 14 + power * 44 + (assist === 2 ? 10 : 0);
+    const alignW = assist === 2 ? 0.9 : 2.6;
     let ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX;
     let ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY;
     const am = Math.hypot(ax, ay) || 1;
@@ -2150,10 +2164,11 @@ export class Match {
       // how far you are willing to look for a team-mate is what the hold buys
       if (d < 3 || d > reach) continue;
       const align = (dx / d) * ax + (dy / d) * ay;
+      if (assist === 0 && align < 0.94) continue;
       const forward = ((t.x - p.x) * team.dir) / 40;
       // v79: a side told to play wide looks for the man on the touchline
       const wideBonus = (Math.abs(t.y - CY) / CY) * (team.tactics?.width ?? 0.5) * 0.9;
-      const score = align * 2.6 - d / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === 'GK' ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
+      const score = align * alignW - d / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === 'GK' ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
       if (score > bestScore) { bestScore = score; best = t; }
     }
 

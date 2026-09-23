@@ -99,7 +99,10 @@ export function applyLanguage() {
   document.documentElement.lang = l;
   document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.classList.toggle('rtl', l === 'ar');
-  document.documentElement.classList.toggle('large-text', !!s.largeText);
+  // v87: text size is a scale (S/M/L/XL); an old save's "larger text" reads as L
+  const scale = s.textScale && s.textScale !== 1 ? s.textScale : s.largeText ? 1.15 : 1;
+  document.documentElement.classList.toggle('large-text', scale > 1);
+  document.documentElement.style.setProperty('--ui-scale', String(scale));
 }
 
 export function setLang(l) {

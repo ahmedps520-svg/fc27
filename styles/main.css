@@ -65,7 +65,7 @@ body.on-menu::before {
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
     linear-gradient(180deg, rgba(4, 6, 13, .22) 0%, rgba(4, 6, 13, .18) 34%, rgba(4, 6, 13, .72) 100%),
-    url('../assets/keyart.jpg') center center / cover no-repeat;
+    url('../assets/keyart.webp') center center / cover no-repeat;
 }
 /* The wordmark is back: the art it was hidden for carried its own lockup, and
    this one does not. If the art is ever swapped for one that does, hide it
@@ -4962,3 +4962,54 @@ html.reduce-motion .sz-lantern, html.reduce-motion .sz-glow, html.reduce-motion 
 .mp-b:hover, .mp-b:focus-visible { background: rgba(255, 255, 255, .1); }
 .mp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); min-width: 0; }
 .seg.seg-wrap { flex-wrap: wrap; justify-content: flex-end; }
+
+/* v87: a screen's chunk still on its way */
+body.screen-loading #screen { opacity: .55; transition: opacity .2s; }
+body.screen-loading::after { content: ''; position: fixed; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .15); border-top-color: var(--accent); animation: spin .8s linear infinite; z-index: 50; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* v87: a focus ring you can always see, on everything you can reach by keyboard */
+:where(button, a[href], input, select, textarea, [tabindex], .tile):focus-visible {
+  outline: 3px solid var(--accent) !important; outline-offset: 2px !important;
+}
+.switch:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+
+/* v87: reduced motion, everywhere. Durations go to (almost) nothing rather than
+   to zero, so code that waits on animationend / transitionend still hears it;
+   loops play once. The match's own motion (camera, walk-out, wipes) is gated
+   in script on the same setting. */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* v87: text size (Settings → Accessibility). Zoom scales the whole front end —
+   the canvas of a match is left alone, its panels and captions are not. */
+body:not(.in-game) #screen, .topbar, #toasts, .gm-overlay, .bc-sub, .gm-feed, .gm-hints { zoom: var(--ui-scale, 1); }
+html.large-text { font-size: 100%; }
+/* colour-vision filters on the match picture */
+#gmCanvas.cb-protan { filter: url(#cbProtan); }
+#gmCanvas.cb-deutan { filter: url(#cbDeutan); }
+#gmCanvas.cb-tritan { filter: url(#cbTritan); }
+/* one-handed touch: the buttons in a column at the edge, the stick zone just
+   inside them — all within one thumb's arc */
+#gmRoot.one-hand .tpad { grid-template-columns: repeat(2, auto); gap: 6px; transform: scale(.78); bottom: 0; top: auto; transform-origin: bottom right; }
+#gmRoot.one-hand .tstick-zone { top: 38%; width: 38%; }
+#gmRoot.one-hand-right .tstick-zone { left: auto; right: 190px; }
+#gmRoot.one-hand-right .tpad { right: 0; left: auto; }
+#gmRoot.one-hand-left .tstick-zone { right: auto; left: 190px; }
+#gmRoot.one-hand-left .tpad { left: 0; right: auto; transform-origin: bottom left; }
+
+/* v87: the save-conflict chooser and the backups list */
+.sc-card { max-width: min(640px, 94vw); }
+.sc-lede { color: var(--text-dim); font-size: 14px; margin: 6px 0 14px; }
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.sc-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line-strong); color: var(--text); text-align: start; cursor: pointer; font: inherit; }
+.sc-opt:hover, .sc-opt:focus-visible { border-color: var(--accent); background: var(--accent-soft); }
+.sc-opt b { font-size: 17px; } .sc-opt em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+.sc-opt ul { margin: 6px 0 0; padding-inline-start: 18px; font-size: 13px; }
+.sv-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.bc-sub.pa b { color: #9cc8ff; }
