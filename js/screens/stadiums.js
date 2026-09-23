@@ -30,7 +30,7 @@ let time = 'night';
 let weather = 'clear';
 let winter = false;
 let filter = 'all';
-let camMode = 'orbit';          // orbit | fly
+let camMode = 'orbit';          // orbit | aerial | fly
 
 const clubOf = (st) => WORLD.clubs.find((c) => c.ground === st.name) || null;
 const classOf = (st) => (st.showpiece || st.wonder ? 'showpiece' : groundProfile(st).klass);
@@ -58,6 +58,7 @@ export function render(params = {}) {
         </div>
         <div class="seg gr-cam" id="scCam">
           <button class="${camMode === 'orbit' ? 'on' : ''}" data-cam="orbit">Orbit</button>
+          <button class="${camMode === 'aerial' ? 'on' : ''}" data-cam="aerial">Aerial</button>
           <button class="${camMode === 'fly' ? 'on' : ''}" data-cam="fly">Fly</button>
         </div>
         <p class="gr-hint" id="scHint" ${camMode === 'fly' ? '' : 'hidden'}>Drag to look · scroll or pinch to move · WASD, Q/E</p>
@@ -167,6 +168,10 @@ export function mount(root) {
         const k = (c) => (keys.has(c) ? 1 : 0);
         fly.move((k('KeyW') + k('ArrowUp') - k('KeyS') - k('ArrowDown')) * sp, (k('KeyA') + k('ArrowLeft') - k('KeyD') - k('ArrowRight')) * sp, (k('KeyE') - k('KeyQ')) * sp);
         fly.pose(cam);
+      } else if (camMode === 'aerial') {
+        // high and wide: the ground in the land round it — the streets, the hills, the sea
+        orbitCamera(cam, tt, 170 + st.size * 40, 70 + st.size * 22, 0.05);
+        cam.tz = 0; cam.hfov = 58;
       } else orbitCamera(cam, tt, 36 + st.size * 14, 12 + st.size * 12, 0.12);
       gl.render(match, cam, dt);
     };

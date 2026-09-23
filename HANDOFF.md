@@ -15,6 +15,68 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v85 — the land round every ground
+Reported: "the city backdrop has no streets, mountains don't look like mountains,
+and there are no trees or rocks". The old skyline boxes, ridge cones, dunes and
+palms in renderGL.js are gone; everything outside the stadium is now one call to
+`buildLandscape()` in **js/game/landscape.js** (new, precached).
+
+- **City / coast:** a street grid with merged asphalt, kerbed pavement slabs,
+  dashed centre lines and zebra crossings (polygonOffset so they don't z-fight),
+  street lights and parked cars near the ground, downtown towers, parks, and
+  rooftop details. Windows are drawn in the building shader from world position
+  (`buildingMaterial`, cache key `apex-building-*`), fade out with `fwidth` at
+  distance, and light up at night. The coast adds a sea, a beach, promenade
+  palms, shore rocks and a lighthouse, with no blocks on the sea side.
+- **Mountains:** a sectored polar heightfield (`terrainRing`) built from ridged
+  and fbm noise, with a 650 m ramp so the peaks sit above the far roof. Snow
+  above 340 m (60 m when it snows), bare rock on steep slopes, alpine meadow,
+  forest floor, pines below 150 m and rocks. There's a chalet village along the
+  near streets (`edgeHouses`, shared with the suburbs).
+- **Suburbs:** gable-roofed houses along the block edges, garden trees, a wood
+  and a line of hills. The old suburbs code in groundDressing.js is deleted.
+- **Desert:** dunes (`ridged*58`), flat-topped banded red mesas beyond 850 m,
+  low sandstone buildings, palms and rocks.
+- **Trees and rocks:** instanced in 8 angular sectors, each with its own
+  bounding sphere so culling works, with a near LOD and a far LOD. The strips
+  between the plaza and the first streets are planted (`plantFringe`), with a
+  lawn in the city.
+- **Haze** is baked into vertex and instance colours with `fog:false`, because
+  FogExp2 turned the mountains into white paper at these distances. Terrain uses
+  `envMapIntensity 0.15`, because the sky PMREM bleached the rock and mesas.
+- **Camera far plane 900 → 3000 m.** The hard band on the horizon was the far
+  plane clipping the land. The sky gradient now ends in the fog colour at the
+  horizon.
+- **Holes under the stadium:** the ground disc is a ring and the plaza a frame,
+  both open over the stadium's own surround (`floor` rect passed from
+  renderGL). A full sheet there shaded every pitch pixel twice and cost about
+  150 ms a frame on SwiftShader.
+- **Tiers:** Low uses 0.35× the counts, no lights, cars or rooftop details, a
+  110 m tree LOD radius and Lambert materials. Medium also uses Lambert. Low
+  has about half the triangles of High (unit-tested).
+- **Grounds gallery:** new **Aerial** camera (a high, wide orbit), because
+  the Orbit view never leaves the bowl and the land can't be seen from it.
+- `gl.scene` getter added for perf harnesses.
+
+Verification: unit 167 (9 new in landscape.test.mjs), sweep identical for both
+seeds, smoke ok, QA ok, layout ok. Venue matrix: 70 venue/tier frames, 0
+black and 0 errors. Every landscape was shot day and night from the broadcast,
+gallery, outward, street and top cameras (`tests/visual/landscape-shots.mjs`),
+and from the Grounds screen with snow.
+
+Fixed-resolution render cost (ms/frame, SwiftShader, night, broadcast camera,
+`tests/tmp/landbench.mjs`; v84 → v85):
+
+| tier | city | mountains | desert |
+|---|---|---|---|
+| low | 750 → 762 | 706 → 666 | 703 → 642 |
+| medium | 788 → 892 | 829 → 826 | 866 → 847 |
+| high | 1349 → 1402 | 1419 → 1287 | 1448 → 1296 |
+
+gl-fps (SwiftShader, in-app): Low 1.9, Medium 0.9, High 0.5, Ultra 0.3 (v84:
+1.8 / 1.3 / 0.7 / 0.1). This is noisy because the frame-time governor moves
+the resolution; trust the fixed bench above.
+
 ### v84 — hotfix: the controlled player's movement
 Reported: "doesn't move backwards, doesn't run properly and barely turns".
 Reproduced through the real `Input` class for keyboard, the touch vector and

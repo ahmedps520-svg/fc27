@@ -8,6 +8,7 @@ import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
+import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
 import { groundProfile } from '../data/grounds.js';
@@ -687,15 +688,18 @@ function skyTexture(atmo) {
   c.height = 512;
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, c.height);
+  /* v85: the middle row of this texture is the horizon, and it is painted in
+     (nearly) the fog's colour — the far land fades to the fog, so a sky that
+     was still mid-blue at the horizon drew a hard band round every ground. */
   if (time === 'day' && !dull) {
-    grad.addColorStop(0, '#2a62c4'); grad.addColorStop(0.5, '#5f9be6'); grad.addColorStop(0.8, '#a9cdf2'); grad.addColorStop(1, '#dbe9f7');
+    grad.addColorStop(0, '#2a62c4'); grad.addColorStop(0.3, '#5f9be6'); grad.addColorStop(0.44, '#9cc3ee'); grad.addColorStop(0.5, '#c2d6ee'); grad.addColorStop(1, '#dbe9f7');
   } else if (time === 'day') {
     const dark = weather === 'rain';
-    grad.addColorStop(0, dark ? '#4c5563' : '#6f7a8a'); grad.addColorStop(0.6, dark ? '#6b7584' : '#98a3b2'); grad.addColorStop(1, dark ? '#8a929e' : '#c0c8d2');
+    grad.addColorStop(0, dark ? '#4c5563' : '#6f7a8a'); grad.addColorStop(0.42, dark ? '#646e7c' : '#8a95a4'); grad.addColorStop(0.5, dark ? '#6f7887' : '#8e98a6'); grad.addColorStop(1, dark ? '#8a929e' : '#c0c8d2');
   } else if (time === 'dusk') {
-    grad.addColorStop(0, '#141d4a'); grad.addColorStop(0.45, dull ? '#4a3a52' : '#6a3a6a'); grad.addColorStop(0.72, dull ? '#8a5a58' : '#c8623f'); grad.addColorStop(1, dull ? '#b08a70' : '#f2a54a');
+    grad.addColorStop(0, '#141d4a'); grad.addColorStop(0.3, dull ? '#4a3a52' : '#6a3a6a'); grad.addColorStop(0.44, dull ? '#8a5a58' : '#c8623f'); grad.addColorStop(0.5, dull ? '#5a4048' : '#7a4040'); grad.addColorStop(1, dull ? '#3a2f38' : '#4a2f3a');
   } else {
-    grad.addColorStop(0, '#02040a'); grad.addColorStop(0.55, '#060c1c'); grad.addColorStop(0.78, '#0d1a33'); grad.addColorStop(1, '#16324d');
+    grad.addColorStop(0, '#02040a'); grad.addColorStop(0.35, '#060c1c'); grad.addColorStop(0.46, '#0d1a33'); grad.addColorStop(0.5, '#0b1526'); grad.addColorStop(1, '#070d18');
   }
   g.fillStyle = grad;
   g.fillRect(0, 0, c.width, c.height);
@@ -1128,7 +1132,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     pmrem = null;
   }
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 900);
+  // v85: 3 km out — the landscape reaches the horizon (at 900 m the far land and the mountains were cut off)
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 3000);
   camera.up.set(0, 0, 1);
 
     /* Lifted from 0.95. The base level matters as much as the lamps do: the
@@ -2051,94 +2056,18 @@ export function createRenderer(canvas, match, quality, models = false) {
     });
     scene.add(shell, win);
 
-    /* The skyline: towers on a ring 300 m out, lit windows at night, and
-       tall enough that the big ones show above a two-tier roof. What the
-       builder calls the landscape decides how many, and what else is out
-       there: a city is all towers; a coast keeps a few on one side and
-       puts the sea on the other; mountains and desert get a handful of low
-       buildings and the land itself. */
-    const LS = VENUE.landscape;
-    const towers = [];
-    const skyR = mulberry(venueSeed ^ 0x7ab3);
-    const N = Math.round((ultra ? 90 : 60) * (LS === 'city' ? 1 : LS === 'coast' ? 0.35 : LS === 'suburbs' ? (VENUE.klass === 'community' ? 0 : 0.08) : 0.18));   // v78: the suburbs are houses (groundDressing), a far tower or two at most
-    const cityScale = (0.6 + VENUE.scale * 0.9) * (LS === 'city' ? 1 : 0.45);      // big clubs, big cities
-    for (let i = 0; i < N; i++) {
-      // the far half only; on the coast, the towers keep to the left and the sea has the right
-      const a = Math.PI * (0.05 + (i / N) * (LS === 'coast' ? 0.42 : 0.9));
-      const r = 260 + skyR() * 120;
-      const w = 12 + skyR() * 22;
-      const h = (18 + Math.pow(skyR(), 2.2) * 110) * cityScale;
-      towers.push([PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, w, w * (0.7 + skyR() * 0.6), h, a]);
-    }
-    const towerMat = new THREE.MeshStandardMaterial({ color: LIGHT.flood > 0 ? 0x0e1420 : 0x5a6474, roughness: 0.95, emissive: 0xffd9a0, emissiveIntensity: LIGHT.flood > 0 ? 0.16 : 0 });
-    const city = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), towerMat, towers.length);
-    towers.forEach(([x, y, w, d, h, a], i) => {
-      d2.position.set(x, y, h / 2 - 1); d2.scale.set(w, d, h); d2.rotation.set(0, 0, a); d2.updateMatrix();
-      city.setMatrixAt(i, d2.matrix);
+    /* v85: the land round the ground — streets and blocks, mountains, dunes,
+       the sea — built in game/landscape.js from the venue's landscape. */
+    const land = buildLandscape({
+      landscape: VENUE.landscape || 'city',
+      keep: { x0: -outer - 4, x1: PITCH.w + outer + 4, y0: -outer - 4, y1: PITCH.h + outer + 4 },
+      // the stadium's own ground (the surround): the land leaves a hole there rather than draw under it
+      floor: { x0: -MARGIN - 30, x1: PITCH.w + MARGIN + 30, y0: CY - PITCH.h / 2 - MARGIN - 30, y1: CY + PITCH.h / 2 + MARGIN + 30 },
+      centre: { x: PITCH.w / 2, y: CY },
+      quality, night: LIGHT.flood > 0, snow: atmo.weather === 'snow' || !!atmo.frost,
+      seed: venueSeed, scale: VENUE.scale ?? 0.6, community: COMMUNITY, street: STREET, fogColor: LIGHT.fog[0], skyColor: LIGHT.bg,
     });
-    city.frustumCulled = false;
-    scene.add(city);
-
-    const night = LIGHT.flood > 0;
-    const landR = mulberry(venueSeed ^ 0x1a5d);
-    if (LS === 'mountains') {
-      // a ridge of cones on a far ring, blue-grey and softened by the fog
-      const ridge = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), new THREE.MeshStandardMaterial({ color: night ? 0x141c2a : 0x4e5d72, roughness: 1, flatShading: true }), 14);
-      for (let i = 0; i < 14; i++) {
-        const a = Math.PI * (0.02 + (i / 14) * 0.96);
-        const r = 520 + landR() * 200;
-        const h = 140 + landR() * 190;
-        const w = 160 + landR() * 140;
-        d2.position.set(PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, h / 2 - 8);
-        d2.scale.set(w, h, w); d2.rotation.set(Math.PI / 2, landR() * Math.PI, 0); d2.updateMatrix();
-        ridge.setMatrixAt(i, d2.matrix);
-      }
-      ridge.frustumCulled = false;
-      scene.add(ridge);
-    } else if (LS === 'desert') {
-      // dunes: flattened spheres in sand; a few palms by the ground
-      const dunes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshStandardMaterial({ color: night ? 0x2b2417 : 0xc9a96e, roughness: 1 }), 16);
-      for (let i = 0; i < 16; i++) {
-        const a = Math.PI * (0.02 + (i / 16) * 0.96);
-        const r = 240 + landR() * 260;
-        const w = 90 + landR() * 120;
-        d2.position.set(PITCH.w / 2 + Math.cos(a) * r, CY + Math.sin(a) * r, -2);
-        d2.scale.set(w, w * 0.7, 10 + landR() * 16); d2.rotation.set(0, 0, landR() * Math.PI); d2.updateMatrix();
-        dunes.setMatrixAt(i, d2.matrix);
-      }
-      dunes.frustumCulled = false;
-      scene.add(dunes);
-      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, roughness: 1 });
-      const frondMat = new THREE.MeshStandardMaterial({ color: night ? 0x0e2a14 : 0x2f7a3a, roughness: 0.9 });
-      const palms = new THREE.Group();
-      for (let i = 0; i < 10; i++) {
-        const a = Math.PI * (0.05 + (i / 10) * 0.9);
-        const r = outer + 26 + landR() * 40;
-        const x = PITCH.w / 2 + Math.cos(a) * r, y = CY + Math.sin(a) * r;
-        const h = 9 + landR() * 6;
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, h, 6), trunkMat);
-        trunk.rotation.x = Math.PI / 2; trunk.position.set(x, y, h / 2);
-        const crown = new THREE.Mesh(new THREE.ConeGeometry(3.2, 2.4, 7), frondMat);
-        crown.rotation.x = -Math.PI / 2; crown.position.set(x, y, h + 0.6);
-        palms.add(trunk, crown);
-      }
-      scene.add(palms);
-    } else if (LS === 'coast') {
-      // the sea beyond the right-hand half of the horizon, and a lighthouse on the point
-      const sea = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1100),
-        new THREE.MeshStandardMaterial({ color: night ? 0x0a1a2e : 0x1f5c8a, roughness: 0.22, metalness: 0.55, envMap: scene.environment }));
-      sea.position.set(PITCH.w / 2 + 520, CY + 420, -1.2);
-      sea.rotation.z = 0.35;
-      scene.add(sea);
-      const lh = new THREE.Group();
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(3, 4.5, 34, 10), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.8 }));
-      tower.rotation.x = Math.PI / 2; tower.position.z = 17;
-      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 4, 10), new THREE.MeshStandardMaterial({ color: 0x222831, emissive: 0xfff2c0, emissiveIntensity: night ? 2.4 : 0.2 }));
-      lamp.rotation.x = Math.PI / 2; lamp.position.z = 36;
-      lh.add(tower, lamp);
-      lh.position.set(PITCH.w / 2 + 330, CY + 250, 0);
-      scene.add(lh);
-    }
+    scene.add(land.group);
   }
 
   /* -------------------------------- the tifo --------------------------------
@@ -3389,6 +3318,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     ready,
     /** Live three.js counters — draw calls, triangles, memory. Handy for profiling. */
     get info() { return renderer.info; },
+    /** The scene graph, for the perf harness to switch parts off and time the rest. */
+    get scene() { return scene; },
     get engine() { return `three.js r${THREE.REVISION}`; },
     resize(w, h) {
       /* Recompute the ratio, because the budget is a function of the size and

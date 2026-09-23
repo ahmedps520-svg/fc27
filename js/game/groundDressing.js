@@ -260,34 +260,6 @@ export function dressGround(ctx) {
     }
   }
 
-  /* ------------------------------ the suburbs ------------------------------ */
-  if (VENUE.landscape === 'suburbs' && !potato) {
-    const houseR = ctx.landRand || rand;
-    const n = lo ? 60 : 160;
-    const bodyGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5);
-    const roofGeo = new THREE.CylinderGeometry(0.72, 0.72, 1, 3).rotateZ(Math.PI / 2).rotateY(Math.PI / 2).scale(1, 1, 0.55).translate(0, 0, 1.18);
-    const walls = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, emissive: night ? 0x3a2a14 : 0x000000, emissiveIntensity: night ? 0.35 : 0 }), n);
-    const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshStandardMaterial({ color: snow ? 0xeef2f6 : 0xffffff, roughness: 0.9 }), n);
-    const trees = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 7, 5), new THREE.MeshStandardMaterial({ color: snow ? 0xdfe6ec : night ? 0x0c1a10 : 0x2f5e2c, roughness: 1 }), n);
-    const d = new THREE.Object3D(); const c = new THREE.Color();
-    const WALLS = [0xc9b8a0, 0xa8573c, 0xe0d8c8, 0x8c6a4e, 0xb9b2a6];
-    const ROOFS = [0x4a3a36, 0x6b3a2e, 0x3a3f48, 0x55463c];
-    for (let i = 0; i < n; i++) {
-      const a = Math.PI * (0.02 + houseR() * 0.96) * (houseR() < 0.8 ? 1 : -0.35);
-      const r = (community ? 70 : 110) + houseR() * 170;
-      const x = PITCH.w / 2 + Math.cos(a) * r * 1.2; const y = CY + Math.sin(a) * r;
-      const w = 7 + houseR() * 5; const dd = 6 + houseR() * 3; const h = 5 + houseR() * 3;
-      const face = Math.round(houseR() * 4) * (Math.PI / 2);
-      d.position.set(x, y, -0.5); d.rotation.set(0, 0, face); d.scale.set(w, dd, h); d.updateMatrix();
-      walls.setMatrixAt(i, d.matrix); walls.setColorAt(i, c.setHex(WALLS[i % WALLS.length]));
-      roofs.setMatrixAt(i, d.matrix); roofs.setColorAt(i, c.setHex(ROOFS[i % ROOFS.length]));
-      const tr = 2.2 + houseR() * 2.5;
-      d.position.set(x + 7, y + 4, tr + 1.5); d.rotation.set(0, 0, 0); d.scale.set(tr, tr, tr * 1.2); d.updateMatrix();
-      trees.setMatrixAt(i, d.matrix);
-    }
-    for (const im of [walls, roofs, trees]) { im.frustumCulled = false; group.add(im); }
-  }
-
   /* ------------------------------ weather leftovers ------------------------------ */
   // puddles: standing water in the hollows when it is really coming down
   if (rain && (atmo.intensity || 0) > 0.62 && !potato) {
