@@ -252,10 +252,15 @@ if (!process.argv.includes('--explore')) {
     await page.waitForTimeout(800);
     const tac = () => page.evaluate(() => { const m = window.__apexMatch; return m.teams[m.controllers[0].team].tactics.quick || 'balanced'; });
     const t0 = await tac();
-    // held across several frames: software GL draws a match at a frame or two a second
-    await press(DPAD.up, 1600); await page.waitForTimeout(1200);
+    // held until the match has drawn a frame that saw it: software GL on CI can
+    // take longer than a second and a half per frame, which a fixed hold missed
+    await page.evaluate((i) => { const b = window.__simPad.buttons[i]; b.pressed = true; b.value = 1; window.__simPad.timestamp++; }, DPAD.up);
+    await page.waitForFunction((was) => { const m = window.__apexMatch; return (m.teams[m.controllers[0].team].tactics.quick || 'balanced') !== was; }, t0, { timeout: 10000, polling: 100 }).catch(() => {});
+    await page.evaluate((i) => { const b = window.__simPad.buttons[i]; b.pressed = false; b.value = 0; window.__simPad.timestamp++; }, DPAD.up);
+    await page.waitForTimeout(300);
     const t1 = await tac();
-    if (t1 === t0) return `the tactic stayed ${t0}`;
+    const leave = async () => { await page.evaluate(async () => { (await import('/js/app.js')).navigate('menu'); }); await page.waitForTimeout(500); };
+    if (t1 === t0) { await leave(); return `the tactic stayed ${t0}`; }   // leave either way, or every check after this starts inside a match
     await page.evaluate(() => { const p = window.__simPad; p.connected = false; window.dispatchEvent(Object.assign(new Event('gamepaddisconnected'), { gamepad: p })); });
     await page.waitForTimeout(500);
     const paused = await page.evaluate(() => document.getElementById('gmOverlay')?.classList.contains('is-pause'));
