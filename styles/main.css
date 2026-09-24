@@ -5083,3 +5083,21 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @media (max-width: 640px) { .ss-cols { grid-template-columns: 1fr; } .ss-col { min-height: 0; } }
 /* v92: the season grid's "show all" sits clear of the grid and the hint */
 #allTiers { display: inline-flex; margin: 10px 8px 6px 0; }
+
+/* v95: the attract demo — no controls, a banner that says how to get out */
+.attract .gm-touch, .attract #gmPause, .attract .gm-hints { display: none !important; }
+.gm-attract {
+  position: absolute; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 40; display: flex; align-items: center; gap: 12px; pointer-events: none;
+  padding: 10px 20px; border-radius: 999px; background: rgba(5, 7, 14, .78);
+  border: 1px solid rgba(63, 240, 138, .45); color: #fff; font-weight: 700; letter-spacing: .04em;
+  animation: attractPulse 2.4s ease-in-out infinite;
+}
+.gm-attract b { color: #3ff08a; text-transform: uppercase; font-size: 13px; letter-spacing: .18em; }
+.gm-attract span { font-size: 15px; }
+@keyframes attractPulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .gm-attract { animation: none; } }
+.credit-list { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 6px 16px; margin: 8px 0 4px; font-size: 13px; }
+.credit-list dt { font-weight: 700; color: var(--text); }
+.credit-list dd { margin: 0; color: var(--text-dim); line-height: 1.5; }
+@media (max-width: 560px) { .credit-list { grid-template-columns: 1fr; } .credit-list dd { margin-bottom: 6px; } }

@@ -1,5 +1,6 @@
 import { WORLD } from '../data/generator.js';
 import { navigate } from '../app.js';
+import { getState } from '../state.js';
 import { checkForUpdate, installUpdate } from '../update.js';
 
 export const TITLE = 'APEX XI';
@@ -163,6 +164,30 @@ export function mount(root) {
   const go = () => { if (!blocked) navigate('menu'); };
   startBtn.addEventListener('click', go);
 
+  /* v95: attract mode. Left alone on the title, the game plays itself — two
+   * top-tier sides, CPU against CPU, behind a "press any button" banner
+   * (play.js). Not with an update waiting, not with reduced motion or the
+   * battery saver on, not while the tab is hidden, and not under automation
+   * unless a test asks for it by setting window.__apexAttractMs. */
+  const S = getState().settings || {};
+  const idleMs = window.__apexAttractMs ?? (navigator.webdriver ? 0 : 40000);
+  let idle = null;
+  const armIdle = () => {
+    clearTimeout(idle);
+    if (!idleMs || S.reduceMotion || S.battery) return;
+    idle = setTimeout(() => {
+      if (blocked || document.hidden) { armIdle(); return; }
+      const top = WORLD.clubs.filter((c) => c.tier <= 2);
+      const pool = top.length >= 2 ? top : WORLD.clubs;
+      const h = pool[Math.floor(Math.random() * pool.length)];
+      let a = h; while (a === h) a = pool[Math.floor(Math.random() * pool.length)];
+      navigate('play', { attract: true, homeId: h.id, awayId: a.id, duration: 150, mode: 'single' });
+    }, idleMs);
+  };
+  const nudge = () => armIdle();
+  for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) window.addEventListener(ev, nudge, { passive: true });
+  armIdle();
+
   checkForUpdate().then(({ pending, build }) => {
     if (!pending || !build) return;
     blocked = true;
@@ -200,12 +225,15 @@ export function mount(root) {
     if (!pad) return;
     const down = pad.buttons.some((b) => b.pressed);
     if (down && !padWasDown) go();
+    if (down || Math.abs(pad.axes[0] || 0) > 0.3 || Math.abs(pad.axes[1] || 0) > 0.3) armIdle();
     padWasDown = down;
   }, 90);
 
   return () => {
     cancelAnimationFrame(raf);
     clearInterval(padPoll);
+    clearTimeout(idle);
+    for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) window.removeEventListener(ev, nudge);
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onKey);
   };
