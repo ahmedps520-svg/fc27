@@ -37,11 +37,12 @@ Match.prototype.aiSkillFor = function (team) { return (team === this.__cpu ? CPU
 
 const CLUBS = WORLD.clubs.slice(0, 10);
 console.log(`\nThe CPU at each skill the game uses, against the same AI held at 1.0 (${PER} matches each, both ends, Competitive, 180s)\n`);
-console.log('skill   CPU win  draw  loss   goals for–against   shots for–against   used by');
+console.log('skill   CPU win  draw  loss   goals for–against   shots for–against   xG for–against   CPU on target   used by');
 const rows = [];
-for (const s of [...LEVELS.keys()].sort((a, b) => a - b)) {
+const ONLY = process.argv.includes('--levels') ? process.argv[process.argv.indexOf('--levels') + 1].split(',').map(Number) : null;
+for (const s of [...LEVELS.keys()].sort((a, b) => a - b).filter((x) => !ONLY || ONLY.some((o) => Math.abs(o - x) < 0.006))) {
   CPU = s;
-  let w = 0, d = 0, l = 0, gf = 0, ga = 0, sf = 0, sa = 0;
+  let w = 0, d = 0, l = 0, gf = 0, ga = 0, sf = 0, sa = 0, xf = 0, xa = 0, of = 0;
   for (let i = 0; i < PER; i++) {
     Math.random = mulberry32(31337 + i * 7919);          // same dice at every level: only the skill differs
     const a = CLUBS[Math.floor(i / 2) % CLUBS.length]; const b = CLUBS[(Math.floor(i / 2) * 3 + 1) % CLUBS.length] === a ? CLUBS[(i + 5) % CLUBS.length] : CLUBS[(Math.floor(i / 2) * 3 + 1) % CLUBS.length];
@@ -50,12 +51,12 @@ for (const s of [...LEVELS.keys()].sort((a, b) => a - b)) {
     m.__cpu = cpuSide;
     for (let k = 0; k < 180 * 60 && m.phase !== 'end'; k++) m.update(1 / 60);
     const c = m.teams[cpuSide]; const o = m.teams[1 - cpuSide];
-    gf += c.score; ga += o.score; sf += c.shots; sa += o.shots;
+    gf += c.score; ga += o.score; sf += c.shots; sa += o.shots; xf += c.xg || 0; xa += o.xg || 0; of += c.onTarget || 0;
     if (c.score > o.score) w += 1; else if (c.score === o.score) d += 1; else l += 1;
   }
   const r = { s, win: w / PER, draw: d / PER, loss: l / PER, gd: (gf - ga) / PER };
   rows.push(r);
-  console.log(`${s.toFixed(2).padStart(5)}   ${String(Math.round(100 * r.win)).padStart(5)}%  ${String(Math.round(100 * r.draw)).padStart(3)}%  ${String(Math.round(100 * r.loss)).padStart(3)}%     ${(gf / PER).toFixed(2)}–${(ga / PER).toFixed(2)}           ${(sf / PER).toFixed(1)}–${(sa / PER).toFixed(1)}          ${LEVELS.get(s).join(', ')}`);
+  console.log(`${s.toFixed(2).padStart(5)}   ${String(Math.round(100 * r.win)).padStart(5)}%  ${String(Math.round(100 * r.draw)).padStart(3)}%  ${String(Math.round(100 * r.loss)).padStart(3)}%     ${(gf / PER).toFixed(2)}–${(ga / PER).toFixed(2)}           ${(sf / PER).toFixed(1)}–${(sa / PER).toFixed(1)}          ${(xf / PER).toFixed(2)}–${(xa / PER).toFixed(2)}        ${(of / PER).toFixed(1)}           ${LEVELS.get(s).join(', ')}`);
 }
 // the shape: points per match the CPU takes, level to level
 console.log('\nstep                     CPU points a match');

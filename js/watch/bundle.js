@@ -12417,14 +12417,18 @@
         return;
       }
       let sc = Math.max(0.55, SCALE);
-      if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc) && Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
-        let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q2) => q2.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team), post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
-        this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0, 1) }, 0.55 + Math.random() * 0.45, {
-          loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
-          curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
-          chip
-        });
-        return;
+      if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc)) {
+        let sk = this.aiSkillFor(p.team), over = clamp2(sk - 1, 0, 0.9), rateMul = over ? Math.max(0.25, 1 + over * (toGoal < 16 * sc ? 1.2 : toGoal < 22 * sc ? 0.2 : -0.7)) : sk;
+        if (Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * rateMul * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+          let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q2) => q2.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team), post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
+          over && gk && Math.random() < over && (post = -Math.sign(gk.y - CY) || post), this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0, 1) }, 0.55 + Math.random() * 0.45, {
+            loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
+            curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
+            chip,
+            ...over ? { sloppy: -0.45 * over } : {}
+          });
+          return;
+        }
       }
       let wideM = 20 * (PITCH.h / 68), wide = p.y < wideM || p.y > PITCH.h - wideM;
       if (wide && Math.abs(goalX - p.x) < 32 * SCALE && Math.random() < 2.2 * this.aiSkillFor(p.team) * dt && team.players.some((t) => t !== p && t.role !== "GK" && Math.abs(t.x - goalX) < 22)) {

@@ -15,6 +15,43 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v99 — difficulty above 1.0 buys shot selection, not volume
+In `sim.js`, the AI shooting branch (the carrier `think`, "toGoal < 31")
+works like this:
+- **Skill ≤ 1.0:** unchanged. The shot rate is × skill, as before. The sweep
+  runs at 1.0 and is byte-identical.
+- **Skill above 1.0:** `over = clamp(skill − 1, 0, 0.9)` changes three things.
+  - Rate multiplier: 1 + over × (1.2 in the box (< 16 m) / 0.2 at 16–22 m /
+    −0.7 beyond), floored at 0.25.
+  - With probability `over`, it aims for the post the keeper is not covering.
+  - Spread tightens by `sloppy: −0.45 × over`.
+
+`tools/difficulty-audit.mjs` now has `--levels` plus xG and on-target columns.
+Measured against a stand-in AI held at 1.0, 80 matches per level, same dice;
+the old code was measured in a clean worktree of main:
+
+| Skill 1.9 | Before | After |
+|---|---|---|
+| CPU xG / match (1.0: 0.49) | 0.51 | 0.54 |
+| CPU on target (1.0: 2.7) | 2.7 | 3.0 |
+| CPU goals (1.0: 0.80) | 0.80 | 0.88 |
+| CPU shots (1.0: 5.7) | 6.8 | 5.5 |
+
+W/D/L at 80 matches is within noise, about ±0.15 points a match; one pair of
+identical-settings levels differed by 0.3. Judge this lever by xG and on
+target, not results.
+
+The effect is real but small, because shot choice is a small part of chance
+creation. The bigger levers for a follow-up, all gated on over > 0 so the
+sweep holds:
+- build-up decision quality: `decisionQuality` already clamps at 0.99 from
+  1.83;
+- off-ball runs;
+- CPU defending: pressing and tackle success, not tackle rate.
+
+Against a person, defending is probably most of what "hard" feels like, and a
+stand-in AI cannot measure it. Needs a scripted-human bot, or real play.
+
 ### v98 — R15 balance audit, part 2b: evolutions, career money scale, the difficulty curve
 Four new tools in `tools/`, all kept; the first two run in CI (see below).
 
