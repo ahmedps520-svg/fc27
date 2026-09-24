@@ -344,6 +344,11 @@ export function mount(root, params) {
     if (st.oneHanded) shell.classList.add('one-hand', `one-hand-${st.oneHandedSide === 'left' ? 'left' : 'right'}`); }
   const mode = params.mode || 'single';
   const online = params.online || null;
+  /* v95: the attract demo — the title screen left alone plays a CPU match
+     behind a "press any button" banner. Nobody holds a stick, nothing is
+     paid or recorded, and any input (or the final whistle) goes back to the
+     title. */
+  const attract = !!params.attract;
   /* A spectator is a guest that never speaks: the host's snapshots pour in
    * exactly as they do for the away player, and nothing goes back up — no
    * input, no pause requests, no result. */
@@ -393,7 +398,7 @@ export function mount(root, params) {
     duration: params.duration || 240,
     skill: params.skill || 1,
     // the manager holds no stick: career matches are AI against AI, influenced
-    human: mode === 'career' ? null : undefined,
+    human: mode === 'career' || attract ? null : undefined,
     mode,
     // Kick Off is a game of football; Ultimate XI is a competition. Both sides
     // of an online match derive this from the same `ultimate` flag, so host and
@@ -567,7 +572,7 @@ export function mount(root, params) {
   const guided = !!params.guided;
   let guideIdx = 0;
   let guideHold = 0;
-  const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online;
+  const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online && !attract;
   if (wantHints) update((st) => { st.flags.hintMatches = (st.flags.hintMatches | 0) + 1; });
 
   const scoreH = root.querySelector('#gmScore');
@@ -1461,7 +1466,7 @@ export function mount(root, params) {
     }
     if (!online && !S.reduceMotion && !view) {
       const kind = S.pregame || 'full';
-      if (kind !== 'off' && bcAllowed && !guided) {
+      if (kind !== 'off' && bcAllowed && !guided && !attract) {
         const [hm, aw] = match.teams;
         const atmo = match.venue?.atmo || {};
         const preLang = director?.desk.lang || 'en';
@@ -2056,7 +2061,9 @@ export function mount(root, params) {
       if (match.phase === 'end') {
         // v82: the whistle goes out with a last picture, so every guest sees the end the host saw
         if (online?.host) sendMatch(encodeSnapshot(match));
-        ended = true; finish();
+        ended = true;
+        if (attract) { navigate('splash'); return; }
+        finish();
       }
 
       // drain the sim's audio cues
@@ -2236,7 +2243,7 @@ export function mount(root, params) {
      *
      * Online is excluded for the same reason pausing is: the other player's
      * clock keeps running whatever this one does. */
-    if (match.phase === 'half' && lastPhase !== 'half' && !online && !ended) {
+    if (match.phase === 'half' && lastPhase !== 'half' && !online && !ended && !attract) {   // the demo plays straight through
       if (careerCtx) {
         /* The interval belongs to the team talk. The sim freezes exactly as an
          * ordinary pause; the huddle is drawn by moving the XI, which the
@@ -2337,7 +2344,7 @@ export function mount(root, params) {
   /* v90: hot-plug. A controller dropping out pauses an offline match (the
      player has lost their hands); one arriving is announced. */
   const onPadGone = (e) => {
-    if (online || ended || loading) return;
+    if (online || ended || loading || attract) return;
     if (inputs.some((inp) => inp.pad && inp.pad.index === e.gamepad.index) || lastDevice() === 'pad') {
       if (!paused) setPaused(true);
       toast('Controller disconnected — paused', 'warn');
@@ -3081,11 +3088,42 @@ export function mount(root, params) {
     setPaused(!paused);
   });
 
+  /* v95: the attract demo's way out. Any key, tap, click or controller
+   * button goes back to the title; so does the final whistle (in the loop)
+   * and, as a backstop, a hard cap on the demo's length. */
+  let attractOff = () => {};
+  if (attract) {
+    shell.classList.add('attract');
+    const banner = document.createElement('div');
+    banner.className = 'gm-attract';
+    banner.innerHTML = '<b>Demo</b><span>Press any button to play</span>';
+    shell.appendChild(banner);
+    let left = false;
+    const leave = (e) => { if (left) return; left = true; e?.preventDefault?.(); e?.stopPropagation?.(); navigate('splash'); };
+    const held = new Set();
+    for (const g of navigator.getGamepads ? [...navigator.getGamepads()] : []) if (g) g.buttons.forEach((b, i) => { if (b.pressed) held.add(`${g.index}:${i}`); });
+    const padPoll = setInterval(() => {
+      for (const g of navigator.getGamepads ? [...navigator.getGamepads()] : []) {
+        if (!g?.connected) continue;
+        g.buttons.forEach((b, i) => { const k = `${g.index}:${i}`; if (b.pressed && !held.has(k)) leave(); else if (!b.pressed) held.delete(k); });
+      }
+    }, 90);
+    const cap = setTimeout(() => leave(), (params.attractSecs || 180) * 1000);
+    window.addEventListener('keydown', leave, true);
+    window.addEventListener('pointerdown', leave, true);
+    attractOff = () => {
+      clearInterval(padPoll); clearTimeout(cap);
+      window.removeEventListener('keydown', leave, true);
+      window.removeEventListener('pointerdown', leave, true);
+    };
+  }
+
   return () => {
     // the loop re-arms itself from a `finally`, so leaving has to say stop as
     // well as cancelling the frame already in flight
     running = false;
     cancelAnimationFrame(raf);
+    attractOff();
     /* Give the document back FIRST. `in-game` puts overflow:hidden on the
      * body, and it used to be removed after gl.dispose() — so a throwing GPU
      * teardown left the whole app unscrollable until a reload. The disposals

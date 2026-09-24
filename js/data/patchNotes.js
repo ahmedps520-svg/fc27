@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v95',
+    date: '2026-09-24',
+    tag: 'Feature',
+    title: 'Demo mode and credits',
+    lede: 'Leave the title screen alone and the game plays itself. Settings now has a Credits panel.',
+    entries: [
+      {
+        head: 'Demo mode',
+        summary: 'Leave the title screen for forty seconds and two top sides play a match. Press any button, key or the screen to go back.',
+        detail: 'The demo is the full match engine with the computer on both sides: the walk-out, the broadcast graphics and the commentary, with no half-time break. Nothing in it is paid, recorded or counted. It does not start while an update is waiting, while the tab is hidden, or when Reduce motion or Battery saver is on.',
+      },
+      {
+        head: 'Credits',
+        summary: 'Settings ends with a Credits panel: who made what, and the one outside library the game uses.',
+        detail: 'Everything you hear is synthesised as you play, and every ground, kit, badge and portrait is drawn in code. The 3D engine is three.js (MIT licence). The player and manager figures are listed there too. The home-screen and install icons were checked this release and left as they are: every size is right, and the maskable icon fills its whole square.',
+      },
+    ],
+  },
+  {
     version: 'v94',
     date: '2026-09-24',
     tag: 'Fix',

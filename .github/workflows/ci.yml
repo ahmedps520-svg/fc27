@@ -44,6 +44,8 @@ jobs:
         run: node tests/qa/pad-reach.mjs
       - name: Offline play (service worker)
         run: node tests/qa/offline.mjs
+      - name: Attract demo (idle title plays itself; any input leaves; nothing paid)
+        run: node tests/qa/attract.mjs
       - name: Soak (20 matches, random modes and settings)
         run: node tests/qa/soak.mjs --matches 20
       - name: Upload camera and layout screenshots

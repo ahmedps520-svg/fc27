@@ -319,6 +319,20 @@ export function render() {
         stats and values are invented and are not a claim about anyone's ability; badges
         and portraits are drawn rather than photographed — they are not likenesses.</p>
     </section>
+    <section class="panel glass about credits" id="credits">
+      <header class="panel-head"><h2>Credits</h2><span class="tag">${APP_VERSION}</span></header>
+      <p><b>APEX XI</b> — an original football game, made by the APEX XI team and developed with Claude Code.</p>
+      <dl class="credit-list">
+        <dt>Game, simulation, pitches and grounds</dt><dd>Written for APEX XI. Every stadium, crowd, kit, badge and portrait is drawn in code.</dd>
+        <dt>Sound</dt><dd>Every effect, crowd song and anthem is synthesised in your browser as you play; commentary uses your device's own voice. No recorded audio ships with the game.</dd>
+        <dt>3D engine</dt><dd>three.js and its example add-ons (glTF loader, post-processing), © three.js authors, MIT licence.</dd>
+        <dt>Player figures</dt><dd>A rigged character and animations from Mixamo.</dd>
+        <dt>Manager figure</dt><dd>Created with Meshy.</dd>
+        <dt>Type</dt><dd>Your system's own fonts.</dd>
+        <dt>Licence</dt><dd>The game's code is released under the Apache License 2.0.</dd>
+      </dl>
+      <p class="disclaimer">Thanks to everyone who played the early builds and said what felt wrong.</p>
+    </section>
     <button class="dev-dot" id="devDot" aria-label="Developer">·</button>`;
 }
 

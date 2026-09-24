@@ -15,6 +15,54 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v95 — R15 launch assets, part 1: attract demo, credits, PWA check
+- **Attract demo.** `splash.js` starts the timer: 40 s idle on the title opens
+  `play` with `{ attract: true, duration: 150 }`, using two random clubs of
+  tier ≤ 2. Any pointer move, wheel, key, pad button or stick push restarts
+  the timer. The demo is not armed:
+  - with an update pending (`blocked`);
+  - while the tab is hidden;
+  - with `reduceMotion` or `battery` on;
+  - under automation. `navigator.webdriver` sets the delay to 0 (off); a test
+    turns it on with `window.__apexAttractMs`.
+- In `play.js`, `attract`:
+  - runs with `human: null` (CPU v CPU);
+  - skips the pregame show, keeping the walkout;
+  - skips hints, the half-time pause and the pad-unplugged pause;
+  - hides the touch controls, the pause button and the hints (`.attract`);
+  - shows a `.gm-attract` banner.
+- **Leaving the demo.** Any key, pointerdown or new pad button calls
+  `navigate('splash')`. So do the final whistle (before `finish()`, so nothing
+  is paid, recorded or graphics-prompted) and a hard cap (`attractSecs`,
+  180 s).
+- **Credits.** A panel at the end of Settings (not the menu), `#credits`:
+  three.js (MIT), the Mixamo player rig, the Meshy manager model,
+  synthesised audio, system fonts, Apache-2.0.
+- **PWA icons verified, not replaced.** New `tests/unit/pwa.test.mjs`
+  decodes the PNGs. It checks that:
+  - every manifest and `<link>` icon is its declared size and not blank;
+  - the maskable icon and the apple-touch icon have no see-through pixel;
+  - the theme colours agree;
+  - sw.js precaches the manifest and every icon.
+
+  All of it passed first time; no icon changed.
+- **CI.** `tests/qa/attract.mjs` is a new step. It checks, in order:
+  - idle starts the demo, CPU v CPU, and it kicks off and plays;
+  - there are no controls on screen;
+  - a pad button returns to the title;
+  - it comes back, and a key returns to the title;
+  - the final whistle returns to the title;
+  - Apex and `hintMatches` are unchanged;
+  - there are 0 page errors.
+
+  SwiftShader draws the walkout at under 1 fps at 720p, and the sim takes at
+  most 4 steps per frame. The test therefore runs at 640×360 and uses a
+  3-second match for the whistle case.
+- Sweep identical; unit tests 190/190; smoke, layout and a11y scans OK.
+- Still to do in R15: store screenshots and a landing page; balance audit
+  part 2 (SBCs, evolutions, the AI curve, career finances); final hardening
+  (console errors, Lighthouse, server review); the Rounds 7–15 report.
+
 ### v94 — fix: a controller left dead after leaving Settings mid-rebind
 Found through CI: v90 and v91's `pad-reach` runs failed on the rebind check.
 The test pressed Y for 70 ms, which fell between the capture's per-frame
