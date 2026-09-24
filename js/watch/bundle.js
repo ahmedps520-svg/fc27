@@ -10744,7 +10744,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -11051,6 +11051,9 @@
     }
     /* ------------------------------ update ----------------------------- */
     update(dt, input) {
+      this.step(dt, input), this.parkedAny && this.repark();
+    }
+    step(dt, input) {
       var _a, _b;
       if (this.phase === "end") return;
       this.locked && this.lockSeats(), this.parkedAny && this.repark();
@@ -11107,7 +11110,7 @@
       ], this.supporters = [null, null];
       let carrier = this.ball.owner;
       if (carrier) {
-        let mates = this.teams[carrier.team].players.filter((q) => q !== carrier && q.role !== "GK").sort((a, z) => dist(a, carrier) - dist(z, carrier));
+        let mates = this.teams[carrier.team].players.filter((q) => q !== carrier && q.role !== "GK" && !q.parked).sort((a, z) => dist(a, carrier) - dist(z, carrier));
         this.supporters[carrier.team] = [mates[0], mates[1]];
       }
       this.controllers.forEach((c, i) => {
@@ -11889,14 +11892,25 @@
       this.tally(p, "passes");
       let team = this.teams[p.team], reach = 14 + power * 44 + (assist === 2 ? 10 : 0), alignW = assist === 2 ? 0.9 : 2.6, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
       ax /= am, ay /= am;
-      let best = null, bestScore = -1 / 0;
+      let human = this.controllers.some((k) => {
+        var _a2;
+        return ((_a2 = this.playerOf) == null ? void 0 : _a2.call(this, k)) === p;
+      }), openW = assist === 0 ? 0 : human ? assist === 2 ? 1 : 0.6 : this.decisionQuality(p.team), opp = this.teams[1 - p.team].players, openness = (t) => {
+        if (!openW) return 0;
+        let vx = t.x - p.x, vy = t.y - p.y, L3 = vx * vx + vy * vy || 1, lane = 9, mark = 9;
+        for (let o of opp) {
+          let u = clamp2(((o.x - p.x) * vx + (o.y - p.y) * vy) / L3, 0.08, 1);
+          lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y)), mark = Math.min(mark, dist(o, t));
+        }
+        return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW;
+      }, best = null, bestScore = -1 / 0;
       for (let t of team.players) {
         if (t === p) continue;
         let dx2 = t.x - p.x, dy2 = t.y - p.y, d3 = Math.hypot(dx2, dy2);
         if (d3 < 3 || d3 > reach) continue;
         let align = dx2 / d3 * ax + dy2 / d3 * ay;
         if (assist === 0 && align < 0.94) continue;
-        let forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * alignW - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
+        let forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * alignW - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0) + openness(t);
         score > bestScore && (bestScore = score, best = t);
       }
       if (this.cue("pass"), this.ball.passer = p, !best) {
@@ -12304,6 +12318,19 @@
           return;
         }
       }
+      let sup = weHave && b.owner && b.owner !== p ? this.supporters[p.team] : null;
+      if (TUNE.support && sup && (sup[0] === p || sup[1] === p) && team.counterT <= 0) {
+        if (p.supT = (p.supT || 0) - dt, p.supT <= 0 || p.supFor !== b.owner) {
+          p.supT = 0.35, p.supFor = b.owner;
+          let spot = this.supportSpot(p, b.owner, target, sup[0] === p ? sup[1] : sup[0]);
+          p.supX = spot.x, p.supY = spot.y;
+        }
+        if (p.supX != null) {
+          let far = Math.hypot(p.supX - p.x, p.supY - p.y);
+          this.moveTo(p, p.supX, p.supY, dt, far > 8 ? 1.02 : 0.9);
+          return;
+        }
+      }
       if (weHave && p.role === "FWD") {
         let burst = Math.sin(p.runT * 0.85 + p.num) > 0.2 ? 4 : 0;
         this.moveTo(
@@ -12373,6 +12400,32 @@
       this.offsideWatch = ids.size ? { team: passer.team, ids } : null;
     }
     /** The side with the ball keeps its forwards level with the last defender (AI). */
+    /** v103: the best spot near the carrier for a team-mate to receive it. */
+    supportSpot(p, c, home, other) {
+      let team = this.teams[p.team], opp = this.teams[1 - p.team].players, laneOf = (x, y) => {
+        let best2 = 99, vx = x - c.x, vy = y - c.y, L3 = vx * vx + vy * vy || 1;
+        for (let o of opp) {
+          let t = clamp2(((o.x - c.x) * vx + (o.y - c.y) * vy) / L3, 0, 1);
+          best2 = Math.min(best2, Math.hypot(c.x + vx * t - o.x, c.y + vy * t - o.y));
+        }
+        return best2;
+      }, roomAt = (x, y) => {
+        let best2 = 99;
+        for (let o of opp) best2 = Math.min(best2, Math.hypot(o.x - x, o.y - y));
+        return best2;
+      }, sc = Math.max(0.6, SCALE), best = null, bestScore = -1e9;
+      for (let deg of [-150, -110, -70, -35, 0, 35, 70, 110, 150]) {
+        let a = deg * Math.PI / 180;
+        for (let r of [9, 13, 17]) {
+          let x = c.x + team.dir * Math.cos(a) * r * sc, y = c.y + Math.sin(a) * r * sc;
+          if (y < 3 || y > PITCH.h - 3 || x < 3 || x > PITCH.w - 3) continue;
+          (x - c.x) * team.dir > 0 && (x = this.onsideX(team, x));
+          let lane = Math.min(5, laneOf(x, y)), room = Math.min(8, roomAt(x, y)), fwd = (x - c.x) * team.dir / (r * sc), stray = Math.max(0, Math.hypot(x - home.x, y - home.y) - 10 * sc), travel = Math.hypot(x - p.x, y - p.y), crowd = other && other.supX != null && Math.hypot(x - other.supX, y - other.supY) < 7 * sc ? 3 : 0, score = lane * 1 + room * 0.55 + fwd * 1.4 - stray * 0.22 - travel * 0.07 - crowd;
+          score > bestScore && (bestScore = score, best = { x, y });
+        }
+      }
+      return best || { x: home.x, y: home.y };
+    }
     onsideX(team, x, slack = 0) {
       if (!FIELD.offside || this.noOffside) return x;
       let lim = this.offsideLine(1 - team.side) - team.dir * (0.8 - slack), ballLim = this.ball.x, cap2 = team.dir > 0 ? Math.max(lim, ballLim) : Math.min(lim, ballLim);

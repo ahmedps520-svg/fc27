@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v103',
+    date: '2026-09-24',
+    tag: 'Gameplay',
+    title: 'Team-mates who show for it',
+    lede: 'The two team-mates nearest the ball now move to where you can find them, and passes go to the man who is actually open.',
+    entries: [
+      {
+        head: 'Support',
+        summary: 'When a team-mate has the ball, the two players closest to him look for a spot with a clear passing lane and some room, without leaving the shape.',
+        detail: 'Measured over forty computer-played matches: more short options open around the ball, and fewer moments where the man on the ball had nobody to pass to.',
+      },
+      {
+        head: 'Passing to the open man',
+        summary: 'With pass assist on, your pass goes to the team-mate who is open rather than the marked one next to him. Manual assist is unchanged: the ball goes where you aim it.',
+        detail: 'The computer uses the same judgement, weighted by its difficulty. Across the same forty matches, completed passes rose from 58% to 62%.',
+      },
+      {
+        head: 'Practice arena',
+        summary: 'Scoring in the practice arena no longer brings the whole opposition back onto the pitch for the celebration.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v102',
     date: '2026-09-24',
     tag: 'Feel',
