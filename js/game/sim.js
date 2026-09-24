@@ -2212,8 +2212,21 @@ export class Match {
     const human = this.controllers.some((k) => this.playerOf?.(k) === p);
     const openW = assist === 0 ? 0 : !human ? this.decisionQuality(p.team) : assist === 2 ? 1 : 0.6;
     const opp = this.teams[1 - p.team].players;
+    /* ...but not so much that nobody ever gives it to a centre-forward, who is
+       always marked: the first cut of this cut strikers' goals from 0.49 to
+       0.15 a match (tools/evo-audit.mjs). A through ball is judged by the space
+       ahead of the runner, not by his marker or the lane to his feet (it is
+       played into that space), and in the final third a side accepts the
+       risk — openness counts for a third as much there. */
+    const goalXp = team.dir > 0 ? PITCH.w : 0;
     const openness = (t) => {
       if (!openW) return 0;
+      const risk = Math.abs(goalXp - t.x) < 36 * SCALE ? 0.35 : 1;
+      if (through) {
+        const sx = t.x + team.dir * 8; let room = 9;
+        for (const o of opp) room = Math.min(room, Math.hypot(o.x - sx, o.y - t.y));
+        return (Math.min(room, 6) - 3) * 0.2 * openW * risk;
+      }
       const vx = t.x - p.x; const vy = t.y - p.y; const L = vx * vx + vy * vy || 1;
       let lane = 9; let mark = 9;
       for (const o of opp) {
@@ -2221,7 +2234,7 @@ export class Match {
         lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y));
         mark = Math.min(mark, dist(o, t));
       }
-      return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW;
+      return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW * risk;
     };
     let best = null;
     let bestScore = -Infinity;

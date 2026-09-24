@@ -15,6 +15,48 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v104 — fix: v103 starved the strikers (CI caught it through the evolution audit)
+**What happened.** v103's CI failed on main at "every evolution track can be
+finished". The audit's per-position table showed why: ST goals per match
+(Competitive, 180 s) fell 0.49 → 0.15, and CM assists 0.14 → 0.07. The new
+`openness()` term in `pass()` penalised a lane-cut, marked receiver, and a
+centre-forward is nearly always both, so the ball stopped going to him. Two
+tracks went over 60 matches (clinical as ST: 62; engine as CDM: 94). The
+release script did not run the economy audits, so this was not seen before
+the merge.
+
+**Fix in `pass()`:**
+- A through ball is scored by the room ≤ 6 m around the spot 8 m ahead of
+  the runner: `(room − 3) × 0.2 × weight`. It no longer counts the lane to
+  his feet or his marker, since it is played into space.
+- In the final third (receiver within 36 m × scale of goal), openness counts
+  at 0.35 × (`risk`).
+
+**After:**
+
+| Measure | Value |
+|---|---|
+| ST goals / match | 0.29 (noisy: ~45 ST samples in 60 matches) |
+| Sweep, goals / shots (12345) | 2.07 / 13.97 |
+| Sweep, goals / shots (777) | 1.95 / 14.93 |
+| Pass completion | 58.8% (v103 before this: 62.1%; pre-v103: 57.6%) |
+
+Completion fell back because risk in the final third is realistic.
+Supporters still raise the short options (0.73 → 0.88 per moment) and cut
+the nobody-open moments (19.9% → 18.5%). The sweep was re-baselined
+deliberately again.
+
+**Engine Room without CDM.** CDM assists are 0.03–0.04 a match, so "2
+assists" took ~70 matches (58 before v103, already borderline). `engine`
+now fits CM/CAM/LM/RM. A CDM mid-track keeps it; `startEvolution` checks
+`fits` only at the start.
+
+**So it can't recur:** `npm run test:economy` (the SBC and evolution audits)
+is a new script, and `tools/release.mjs` runs it after the sweep.
+
+Unit tests 208/208; SBC audit 0.40×; evolution audit ✓; play session clean
+on all three devices.
+
 ### v103 — team-mate support play (backlog #21)
 **Measured first.** New `tools/support-audit.mjs` plays seeded AI matches
 (the sweep's fixtures, Authentic, 240 s) and samples 4×/s during possession.

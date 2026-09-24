@@ -11895,14 +11895,20 @@
       let human = this.controllers.some((k) => {
         var _a2;
         return ((_a2 = this.playerOf) == null ? void 0 : _a2.call(this, k)) === p;
-      }), openW = assist === 0 ? 0 : human ? assist === 2 ? 1 : 0.6 : this.decisionQuality(p.team), opp = this.teams[1 - p.team].players, openness = (t) => {
+      }), openW = assist === 0 ? 0 : human ? assist === 2 ? 1 : 0.6 : this.decisionQuality(p.team), opp = this.teams[1 - p.team].players, goalXp = team.dir > 0 ? PITCH.w : 0, openness = (t) => {
         if (!openW) return 0;
+        let risk = Math.abs(goalXp - t.x) < 36 * SCALE ? 0.35 : 1;
+        if (through) {
+          let sx = t.x + team.dir * 8, room = 9;
+          for (let o of opp) room = Math.min(room, Math.hypot(o.x - sx, o.y - t.y));
+          return (Math.min(room, 6) - 3) * 0.2 * openW * risk;
+        }
         let vx = t.x - p.x, vy = t.y - p.y, L3 = vx * vx + vy * vy || 1, lane = 9, mark = 9;
         for (let o of opp) {
           let u = clamp2(((o.x - p.x) * vx + (o.y - p.y) * vy) / L3, 0.08, 1);
           lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y)), mark = Math.min(mark, dist(o, t));
         }
-        return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW;
+        return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW * risk;
       }, best = null, bestScore = -1 / 0;
       for (let t of team.players) {
         if (t === p) continue;
