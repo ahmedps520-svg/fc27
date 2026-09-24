@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v99',
+    date: '2026-09-24',
+    tag: 'Gameplay',
+    title: 'Top difficulties pick their shots',
+    lede: 'On the hardest settings the computer used to shoot more often, from worse positions. Now it waits for better chances and places them.',
+    entries: [
+      {
+        head: 'Difficulty',
+        summary: 'Above Pro (Kick Off Elite, Clash World Class and Legendary, and Ultimate XI from Division 7 up), the computer is keener to shoot inside the box, much less keen from distance, and aims for the side the keeper is not covering. Pro and below play exactly as before.',
+        detail: 'We measured every difficulty the game uses against a fixed opponent. From Pro up to Apex Elite, the computer\'s goals did not rise at all: higher difficulty only added long-range shots. At the top setting it now takes about a fifth fewer shots, creates chances worth about ten percent more, and puts more of them on target. This is a first step. Most of what makes a side hard to play, such as how it builds attacks and defends, is next.',
+      },
+    ],
+  },
+  {
     version: 'v98',
     date: '2026-09-24',
     tag: 'Balance',
