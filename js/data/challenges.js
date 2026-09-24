@@ -14,6 +14,12 @@
  *
  * `repeatable` challenges can be completed as often as you can afford them and
  * are the standing sink; the rest are once each.
+ *
+ * v97: a repeatable challenge must take more cards than it gives back. Seven
+ * of the quick ones paid a pack holding as many cards as they took, or more,
+ * and working a pile through them paid ~35× what its packs cost
+ * (tools/sbc-audit.mjs). Every quick repeatable pays Apex only now; only the
+ * eleven-card sinks still pay a pack, and a unit test holds the rule.
  */
 
 /**
@@ -74,18 +80,18 @@ export const CHALLENGES = [
   /* ---- v73: the easy ones. Three to seven cards, one condition, paid at
    * once — the SBCs a new save can finish on its first day, and the standing
    * sink for the bronzes and silvers every pack drops. All repeatable. ---- */
-  { id: 'first-steps', group: 'starter', name: 'First Steps', brief: 'Any three cards. The smallest SBC there is.', reqs: [R.size(3)], reward: { apex: 300, pack: 'bronze' }, repeatable: true },
-  { id: 'bronze-trio', group: 'starter', name: 'Bronze Trio', brief: 'Three bronzes for a bronze pack and change.', reqs: [R.size(3), R.rarity('bronze', 3, 'Bronze')], reward: { apex: 400, pack: 'bronze' }, repeatable: true },
-  { id: 'five-a-side', group: 'starter', name: 'Five-a-side', brief: 'Five cards, any five.', reqs: [R.size(5)], reward: { apex: 700, pack: 'silver' }, repeatable: true },
-  { id: 'two-keepers', group: 'starter', name: 'Safe Hands', brief: 'Two goalkeepers. Everyone has a spare.', reqs: [R.size(2), R.positions(['GK'], 2, 'goalkeepers')], reward: { apex: 600, pack: 'silver' }, repeatable: true },
-  { id: 'silver-lining', group: 'starter', name: 'Silver Lining', brief: 'Four silvers in, a silver pack and coins out.', reqs: [R.size(4), R.rarity('silver', 4, 'Silver')], reward: { apex: 1200, pack: 'silver' }, repeatable: true },
-  { id: 'two-nations', group: 'starter', name: 'Compatriots', brief: 'Five cards, two of them sharing a flag.', reqs: [R.size(5), R.sameNation(2)], reward: { apex: 900, pack: 'silver' }, repeatable: true },
-  { id: 'young-blood', group: 'starter', name: 'Young Blood', brief: 'Four players aged 23 or under.', reqs: [R.size(4), R.maxAge(23, 4)], reward: { apex: 1000, pack: 'silver' }, repeatable: true },
-  { id: 'club-pair', group: 'starter', name: 'Club Mates', brief: 'Six cards with three from one club.', reqs: [R.size(6), R.sameClub(3)], reward: { apex: 1300, pack: 'silver' }, repeatable: true },
+  { id: 'first-steps', group: 'starter', name: 'First Steps', brief: 'Any three cards. The smallest SBC there is.', reqs: [R.size(3)], reward: { apex: 300 }, repeatable: true },
+  { id: 'bronze-trio', group: 'starter', name: 'Bronze Trio', brief: 'Three bronzes for a handful of Apex.', reqs: [R.size(3), R.rarity('bronze', 3, 'Bronze')], reward: { apex: 400 }, repeatable: true },
+  { id: 'five-a-side', group: 'starter', name: 'Five-a-side', brief: 'Five cards, any five.', reqs: [R.size(5)], reward: { apex: 700 }, repeatable: true },
+  { id: 'two-keepers', group: 'starter', name: 'Safe Hands', brief: 'Two goalkeepers. Everyone has a spare.', reqs: [R.size(2), R.positions(['GK'], 2, 'goalkeepers')], reward: { apex: 600 }, repeatable: true },
+  { id: 'silver-lining', group: 'starter', name: 'Silver Lining', brief: 'Four silvers in, Apex out.', reqs: [R.size(4), R.rarity('silver', 4, 'Silver')], reward: { apex: 1200 }, repeatable: true },
+  { id: 'two-nations', group: 'starter', name: 'Compatriots', brief: 'Five cards, two of them sharing a flag.', reqs: [R.size(5), R.sameNation(2)], reward: { apex: 900 }, repeatable: true },
+  { id: 'young-blood', group: 'starter', name: 'Young Blood', brief: 'Four players aged 23 or under.', reqs: [R.size(4), R.maxAge(23, 4)], reward: { apex: 1000 }, repeatable: true },
+  { id: 'club-pair', group: 'starter', name: 'Club Mates', brief: 'Six cards with three from one club.', reqs: [R.size(6), R.sameClub(3)], reward: { apex: 1300 }, repeatable: true },
   { id: 'first-gold', group: 'starter', name: 'First Gold', brief: 'Five cards, one of them gold. Pays a gold pack back.', reqs: [R.size(5), R.rarity('gold', 1, 'Gold')], reward: { apex: 1500, pack: 'gold' } },
-  { id: 'seven-up', group: 'starter', name: 'Seven Up', brief: 'Seven cards rated 65 or better.', reqs: [R.size(7), R.minRated(65, 7)], reward: { apex: 1600, pack: 'gold' }, repeatable: true },
-  { id: 'defenders-three', group: 'starter', name: 'Back Three', brief: 'Three defenders, silver or better.', reqs: [R.size(3), R.positions(['CB', 'LB', 'RB'], 3, 'defenders'), R.rarity('silver', 3, 'Silver')], reward: { apex: 800, pack: 'silver' }, repeatable: true },
-  { id: 'front-two', group: 'starter', name: 'Front Two', brief: 'Two strikers rated 70+.', reqs: [R.size(2), R.positions(['ST'], 2, 'strikers'), R.minRated(70, 2)], reward: { apex: 900, pack: 'silver' }, repeatable: true },
+  { id: 'seven-up', group: 'starter', name: 'Seven Up', brief: 'Seven cards rated 65 or better.', reqs: [R.size(7), R.minRated(65, 7)], reward: { apex: 1600 }, repeatable: true },
+  { id: 'defenders-three', group: 'starter', name: 'Back Three', brief: 'Three defenders, silver or better.', reqs: [R.size(3), R.positions(['CB', 'LB', 'RB'], 3, 'defenders'), R.rarity('silver', 3, 'Silver')], reward: { apex: 800 }, repeatable: true },
+  { id: 'front-two', group: 'starter', name: 'Front Two', brief: 'Two strikers rated 70+.', reqs: [R.size(2), R.positions(['ST'], 2, 'strikers'), R.minRated(70, 2)], reward: { apex: 900 }, repeatable: true },
   {
     id: 'starter',
     name: 'Clearing the Locker',

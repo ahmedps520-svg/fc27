@@ -41,7 +41,7 @@ for (const device of ONLY) {
     }
   }, device === 'pad');
   await page.goto(`${server.url}/`);
-  await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
+  await page.waitForSelector('#startBtn'); await (phone ? page.tap('#startBtn') : page.click('#startBtn')); await page.waitForSelector('[data-go="squad"]');   // a phone taps: a click would tell the game it is on a mouse
   const t0 = Date.now();
   await page.evaluate(async (secs) => { (await import('/js/app.js')).navigate('play', { homeId: 'c1', awayId: 'c2', duration: secs, skill: 1, mode: 'single', atmo: { time: 'day', weather: 'clear' } }); }, SECS);
   await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 180000 });

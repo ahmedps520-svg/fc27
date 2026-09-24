@@ -556,7 +556,9 @@ export function mount(root, params) {
   const hintsEl = root.querySelector('#gmHints');
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
-    () => `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`,
+    () => (lastDevice() === 'touch'
+      ? 'Swipe the SKILL button for a trick — a long swipe sprints, a curved one curls: 13 tricks by star rating'
+      : `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`),
     () => `${lastDevice() === 'keyboard' ? 'Keys 1–5 or the flag button switch' : 'The flag button switches'} quick tactics, from Park the bus to All-out attack`,
     () => `LOB (${promptFor('lob')}) — chip it over the defence to a runner`,
     () => `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting`,

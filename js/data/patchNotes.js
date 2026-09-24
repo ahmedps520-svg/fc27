@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v97',
+    date: '2026-09-24',
+    tag: 'Balance',
+    title: 'Quick SBCs pay Apex',
+    lede: 'The quick, repeatable squad-building challenges now pay Apex instead of a pack. Several of them handed back as many cards as they took, so they could be repeated for free coins for as long as you kept clicking.',
+    entries: [
+      {
+        head: 'Quick SBCs',
+        summary: 'The eleven quick repeatable challenges pay the same Apex as before, without the pack. Clearing the Locker and Bronze Age still pay their packs, and the one-off challenges are unchanged.',
+        detail: 'We played every repeatable challenge in a loop, starting from ten silver packs. Some, like First Steps (three cards in, a four-card bronze pack out), gave back more cards than they took. Worked in a loop, the quick challenges paid out about thirty-five times what the starting packs had cost. With Apex-only rewards, the most any of them returns is 0.4 times the cost of the cards, which is still two to six times more than quick-selling those cards.',
+      },
+      {
+        head: 'Tips on a phone',
+        summary: 'The in-match tip about skill moves now tells a phone player to swipe the SKILL button, instead of naming a keyboard key. Three-line tips no longer spill over their box.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v96',
     date: '2026-09-24',
     tag: 'Polish',
