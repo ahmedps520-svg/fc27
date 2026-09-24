@@ -39,7 +39,8 @@ const CLUBS = WORLD.clubs.slice(0, 10);
 console.log(`\nThe CPU at each skill the game uses, against the same AI held at 1.0 (${PER} matches each, both ends, Competitive, 180s)\n`);
 console.log('skill   CPU win  draw  loss   goals for–against   shots for–against   used by');
 const rows = [];
-for (const s of [...LEVELS.keys()].sort((a, b) => a - b)) {
+const ONLY = process.argv.includes('--levels') ? process.argv[process.argv.indexOf('--levels') + 1].split(',').map(Number) : null;
+for (const s of [...LEVELS.keys()].sort((a, b) => a - b).filter((x) => !ONLY || ONLY.some((o) => Math.abs(o - x) < 0.006))) {
   CPU = s;
   let w = 0, d = 0, l = 0, gf = 0, ga = 0, sf = 0, sa = 0;
   for (let i = 0; i < PER; i++) {

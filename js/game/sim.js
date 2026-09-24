@@ -3162,18 +3162,31 @@ export class Match {
 
     const sc = Math.max(0.55, SCALE);
     if (toGoal < 31 * sc && (pressure > 1.7 || toGoal < 16 * sc)) {
-      if (Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * this.aiSkillFor(p.team) * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
+      /* v99: difficulty above 1 buys better chances, not more of them. Up to
+         1.0 the skill scales the shot rate as it always has (the sweep runs
+         at 1.0 and is unchanged); above it, the extra makes the CPU patient —
+         keener in the box, far less keen from range — and placed. Scaling the
+         rate alone only added shots from worse positions: from Pro (1.0) to
+         Apex Elite (1.9) the CPU's goals did not rise at all
+         (tools/difficulty-audit.mjs). */
+      const sk = this.aiSkillFor(p.team);
+      const over = clamp(sk - 1, 0, 0.9);
+      const rateMul = over ? Math.max(0.25, 1 + over * (toGoal < 16 * sc ? 1.2 : toGoal < 22 * sc ? 0.2 : -0.7)) : sk;
+      if (Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * rateMul * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
         // CPU keeps most efforts down, but bends the odd one from range
         const far = toGoal > 17;
         const gk = this.teams[1 - p.team].players.find((q) => q.role === 'GK');
         const gkOut = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9;
         const chip = gkOut && Math.random() < 0.35 * this.aiSkillFor(p.team);
         // v79: the CPU picks a corner — usually the far post — instead of hitting the keeper
-        const post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
+        let post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
+        // v99: a better CPU looks up first — the side the keeper is not covering, and tighter to it
+        if (over && gk && Math.random() < over) post = -Math.sign(gk.y - CY) || post;
         this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0 ? 1 : 1) }, 0.55 + Math.random() * 0.45, {
           loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
           curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
           chip,
+          ...(over ? { sloppy: -0.45 * over } : {}),
         });
         return;
       }
