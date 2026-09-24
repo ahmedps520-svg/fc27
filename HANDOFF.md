@@ -15,6 +15,82 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v98 — R15 balance audit, part 2b: evolutions, career money scale, the difficulty curve
+Four new tools in `tools/`, all kept; the first two run in CI (see below).
+
+**`evo-audit.mjs`: evolutions.** 60 seeded AI matches (Competitive, 180 s)
+record per-position goals, assists, win and clean-sheet rates. Each track is
+then played 4,000 times, for every position its own `fits` accepts.
+
+*Before:* 13 track/position pairs needed more than 60 matches, and several
+effectively never finished (500-match cap):
+- pace (goals stage) as CB, LB, RB, CDM, CM, RM, CAM;
+- clinical as CAM;
+- rising ("involve" stage) as GK, CB, LB, RB, CDM.
+
+*Fix:*
+- `pace` accepts ST/LW/RW/LM/RM/CAM only, and its stage 2 is now involve 3.
+- `clinical` accepts ST/LW/RW only.
+- `rising` stage 2 is now wins 3.
+
+*After:* every pair finishes in 15–58 matches (worst: engine as CDM, 58).
+Rising is 22–25 matches for +6 at every position. Rates are AI rates; a
+person's chosen card is more involved, so real numbers are lower.
+
+*Stacking* is bounded by the tracks' own caps. The best chain is a
+19-year-old CDM going 70 → 85, or 90 with the five paid levels. The paid
+levels cost ◈11.6k (a 65) to ◈36.3k (a 90) for all five. No change there.
+
+The tool exits 1 if any pair needs more than 60 matches.
+
+**`career-audit.mjs`: career money.** Four careers (top, middle and bottom of
+a first tier, plus a second-tier club) run 5 seasons untouched. The
+manager's own matches get a simulated score, so home gates are paid.
+- *Found:* `valueIn` priced world cards by `card.value`. That is the Ultimate
+  XI coin price (`marketValue`, an 83 ≈ 2m), not a career fee
+  (`valueOfRating`, an 83 ≈ 15m). Clubs of world cards were about 7× cheaper
+  in wages and fees; Newcastle's wage bill was 1.7m a season against City's
+  31m.
+- *Fix:* the career values everyone with `valueOfRating`. Best players now
+  cost 42–60m at every audited club, and wage bills are 7–25m a season.
+- *Kept for the owner, as numbers:* clubs are still rich.
+
+  | Measure | Value |
+  |---|---|
+  | Income, doing nothing | ~90–140m a season |
+  | Wages as share of income | ~15–25% (real clubs ~55–70%) |
+  | Surplus a season | +35m to +100m (0.6–1.7 best players) |
+  | `START_COINS` | 500m (~10 best players) |
+
+  Tightening it means cutting TV and merch, or starting budgets, and the
+  builder, facilities and scout prices would all need to follow. That is a
+  design call, not a bug. The audit's bars pass: no club goes broke, and none
+  banks more than 3 best players a season.
+
+**`difficulty-audit.mjs`: the AI curve.** The CPU is set to every skill the
+game uses (Kick Off 0.7/1/1.35, Clash 0.8–1.55, UXI 0.8–1.9). It plays a
+stand-in, the same AI held at 1.0. Each fixture is played from both ends,
+30 matches per level. Findings:
+- Below 1.0 the lever works: at 0.7 the CPU loses 40% of matches.
+- Above 1.0 results are flat within noise. CPU goals stay around 0.6–0.8 a
+  match from 1.0 up to 1.9. Higher skill only raises the shot count
+  (5.9 → 7.3) from poorer positions, since `aiSkillFor` multiplies the shot
+  and tackle rates.
+- `decisionQuality` clamps at 0.99 from skill 1.83, so Division 1 and Apex
+  Elite differ only in shot and tackle rates.
+- Next, a match-engine change: skill above 1 should buy shot selection and
+  finishing, not shot volume. Measure it with this tool at `--per 80` or more,
+  and keep skill 1.0 untouched so the sweep stays identical.
+
+**`sbc-audit.mjs` and `evo-audit.mjs` are CI steps.** The timeout was raised
+to 55 min after the v97 run was cancelled at 40.
+
+**Play session (v97):** clean on all three devices, 0 errors. The touch run
+ended at a free kick with the countdown running. That is not a bug: the bot
+does not take set pieces, and it is taken automatically at zero.
+
+Unit tests 195/195; sweep identical; QA bot career and pro seasons OK.
+
 ### v97 — R15 balance audit, part 2a: repeatable SBCs were a money loop
 New `tools/sbc-audit.mjs` (kept). It plays every repeatable SBC with the real
 `CHALLENGES`, `evaluate`, `openPack` and `dupValue`:

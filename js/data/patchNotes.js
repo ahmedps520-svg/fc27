@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v98',
+    date: '2026-09-24',
+    tag: 'Balance',
+    title: 'Evolutions you can finish, fair career prices',
+    lede: 'Some evolution tracks could be started by players who could never finish them. Career Mode was pricing many real players at a fraction of what everyone else cost.',
+    entries: [
+      {
+        head: 'Evolutions',
+        summary: 'Pace Merchant is now for attackers and wide players, and its goals stage became "score or assist 3 times". Clinical Upgrade is for forwards. Rising Talent\'s middle stage is now "win 3 matches", so a young keeper or defender can finish it.',
+        detail: 'We played each track with every kind of player it accepted. Thirteen pairings, such as a centre-back on Pace Merchant or a young right-back on Rising Talent, would have needed well over sixty matches, and some would never finish. Every track now finishes in roughly 15 to 60 matches for every player it accepts. A card already part-way through a track keeps its progress.',
+      },
+      {
+        head: 'Career Mode prices',
+        summary: 'Players from the card world were valued in Ultimate XI coins instead of career money, so clubs made of them had tiny wage bills and bargain fees. Every player is now priced on the same career scale.',
+        detail: 'An 83-rated card was worth about two million in a career, while a generated player of the same rating was worth about fifteen million. Wages and asking prices now follow one scale. Wage bills at those clubs rise to match, and existing careers keep their money.',
+      },
+    ],
+  },
+  {
     version: 'v97',
     date: '2026-09-24',
     tag: 'Balance',

@@ -21,10 +21,11 @@ const S = (metric, n, text) => ({ metric, n, text });
 export const EVO_TRACKS = [
   {
     id: 'pace', name: 'Pace Merchant', blurb: 'A quick player made quicker — and harder to catch on the turn.',
-    fits: (p) => p.position !== 'GK' && p.overall <= 82 && p.stats.pace <= 90,
+    // v98: attackers and wide players only — a defender could start this and never score the three goals
+    fits: (p) => ['ST', 'LW', 'RW', 'LM', 'RM', 'CAM'].includes(p.position) && p.overall <= 82 && p.stats.pace <= 90,
     stages: [
       { need: S('wins', 2, 'Win 2 matches'), give: { ovr: 1, stats: { pace: 3 } } },
-      { need: S('goals', 3, 'Score 3 goals with him'), give: { ovr: 1, stats: { pace: 2, dribbling: 2 }, trait: 'quick' } },
+      { need: S('involve', 3, 'Score or assist 3 times with him'), give: { ovr: 1, stats: { pace: 2, dribbling: 2 }, trait: 'quick' } },
       { need: S('apps', 5, 'Play 5 matches with him'), give: { ovr: 1, stats: { pace: 2, shooting: 1 } } },
     ],
   },
@@ -48,7 +49,7 @@ export const EVO_TRACKS = [
   },
   {
     id: 'clinical', name: 'Clinical Upgrade', blurb: 'A forward who stops missing.',
-    fits: (p) => ['ST', 'LW', 'RW', 'CAM'].includes(p.position) && p.overall <= 83,
+    fits: (p) => ['ST', 'LW', 'RW'].includes(p.position) && p.overall <= 83,   // v98: forwards; a CAM scores too rarely to finish it
     stages: [
       { need: S('goals', 3, 'Score 3 goals with him'), give: { ovr: 1, stats: { shooting: 3 } } },
       { need: S('wins', 3, 'Win 3 matches'), give: { ovr: 1, stats: { shooting: 2, dribbling: 1 }, trait: 'finesse' } },
@@ -69,7 +70,8 @@ export const EVO_TRACKS = [
     fits: (p) => p.age <= 21 && p.overall <= 78,
     stages: [
       { need: S('apps', 3, 'Play 3 matches with him'), give: { ovr: 2, stats: {} } },
-      { need: S('involve', 3, 'Score or assist 3 times with him'), give: { ovr: 2, stats: {} } },
+      // v98: minutes, not goals — the track takes any young player, keepers and full-backs included
+      { need: S('wins', 3, 'Win 3 matches'), give: { ovr: 2, stats: {} } },
       { need: S('wins', 4, 'Win 4 matches'), give: { ovr: 2, stats: {} } },
     ],
   },
