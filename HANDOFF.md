@@ -15,6 +15,51 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v96 — R15 launch assets, part 2: store shots and landing page, plus three fixes
+**Play-session finding (v95 session, 844×390 touch):** `.gm-setpiece` covered
+the rotating hint. `.gm-setpiece:not([hidden]) ~ .gm-hints` now hides the hint
+while a set piece is up; the banner carries its own controls.
+
+**Found in the store shots:**
+- **Clipped wordmark.** The italic XI on the title and menu wordmarks lost the
+  top of its I. With `background-clip: text`, the gradient only paints inside
+  the span's box, and the italic leans past it. The fix is
+  `padding-right: .16em; margin-right: -.16em` on both `.t2` rules.
+- **Loose checkbox.** `.cs-form label { display: grid }` outranked
+  `.cs-check`. The Facial hair box sat alone mid-form with its label on the
+  line below, on the Street, Career and Pro creation forms. The fix is
+  `.cs-form .cs-check` plus a sized checkbox.
+
+**Store shots.** New `tools/store-shots.mjs` (kept). It captures real frames
+at 1920×1080 into `assets/store/`:
+- title, menu, a night match (broadcast camera), a staged goal celebration,
+  Street create, and the Grounds showcase;
+- match shots hide every DOM overlay except the scorebug.
+
+Store images must show no player names: cards and the in-match HUD carry real
+footballers' names, the owner's in-game call. That is why there is no
+pack-reveal shot; the first attempt showed a real player's card. The match
+shots wait on sim state, not the clock. Software GL draws 1080p at a frame
+every few seconds; the two match shots took about 9 minutes.
+
+**Landing page.** `landing.html` at the root:
+- one file, inline CSS, nothing from another origin;
+- not precached, since it is for people who have not installed the game;
+- its claims were checked against the code, correcting two: eleven divisions,
+  not ten, and the real skill games;
+- no real names; the footer keeps the fiction note and points to
+  Settings → Credits;
+- new `tests/unit/landing.test.mjs` checks that every local file exists,
+  nothing is loaded off-site, and screenshots have real alt text;
+- checked at 1280 and 390 wide: no horizontal scroll, no failed requests.
+
+Unit tests 193/193, sweep identical, layout and a11y scans OK.
+
+**Still to do in R15:**
+- balance audit part 2 (SBCs, evolutions, the AI curve, career finances);
+- final hardening (zero console errors, Lighthouse, server review);
+- the Rounds 7–15 report.
+
 ### v95 — R15 launch assets, part 1: attract demo, credits, PWA check
 - **Attract demo.** `splash.js` starts the timer: 40 s idle on the title opens
   `play` with `{ attract: true, duration: 150 }`, using two random clubs of

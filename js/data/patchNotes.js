@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v96',
+    date: '2026-09-24',
+    tag: 'Polish',
+    title: 'Sharper edges',
+    lede: 'Three things that looked wrong now look right, and APEX XI has a page of its own to share.',
+    entries: [
+      {
+        head: 'Title',
+        summary: 'The top of the green I in APEX XI was cut off on the title screen and the menu. It is whole again.',
+        detail: '',
+      },
+      {
+        head: 'Free kicks on a phone',
+        summary: 'With your phone on its side, the free-kick banner covered the tip that rotates on the right. Tips now step aside while a set piece is being taken.',
+        detail: '',
+      },
+      {
+        head: 'Creating a player',
+        summary: 'The Facial hair box on the Street, Career and Pro creation screens sits next to its label again, instead of floating on its own in the middle of the form.',
+        detail: '',
+      },
+      {
+        head: 'A page to share',
+        summary: 'landing.html is a one-page introduction to the game, with real screenshots, for sending to someone who has not played it yet.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v95',
     date: '2026-09-24',
     tag: 'Feature',

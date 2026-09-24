@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>APEX XI — football in your browser</title>
+  <meta name="description" content="An original football game that runs in your browser: full matches, a card-club mode, a manager and a player career, street football, couch co-op and online play. Free, offline-ready, playable on touch, keyboard or controller." />
+  <meta name="theme-color" content="#05070e" />
+  <meta property="og:title" content="APEX XI" />
+  <meta property="og:description" content="An original football game that runs in your browser. Free, offline-ready, touch, keyboard or controller." />
+  <meta property="og:image" content="assets/keyart.jpg" />
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <!-- The landing page (v96, R15 launch assets). One file, no scripts that
+       matter, no third-party anything: it has to load before anyone has
+       decided to play. Pictures are real frames from the game, made by
+       tools/store-shots.mjs; none of them shows a player's name. -->
+  <style>
+    :root {
+      --bg: #05070e; --panel: #0d1422; --line: rgba(255,255,255,.09);
+      --text: #eef3fb; --dim: #9aa7bd; --accent: #3ff08a; --accent-2: #0f9e56;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    a { color: var(--accent); }
+    .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+
+    .hero { position: relative; min-height: min(92vh, 760px); display: grid; align-items: end; overflow: hidden; }
+    .hero picture, .hero img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,7,14,.15) 0%, rgba(5,7,14,.35) 45%, var(--bg) 96%); }
+    .hero .wrap { position: relative; z-index: 1; padding: 0 0 56px; }
+    .mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .14em; font-size: 13px; color: var(--dim); text-transform: uppercase; }
+    .mark img { width: 34px; height: 34px; border-radius: 9px; }
+    h1 { margin: 14px 0 6px; font-size: clamp(52px, 11vw, 120px); line-height: .9; font-style: italic; font-weight: 900; letter-spacing: -.03em; }
+    h1 span { color: var(--accent); }
+    .tag { margin: 0 0 26px; font-size: clamp(17px, 2.4vw, 22px); color: #d6deea; max-width: 34em; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 26px; border-radius: 999px; font-weight: 800; text-decoration: none; letter-spacing: .02em; }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03150b; }
+    .btn.ghost { border: 1px solid var(--line); color: var(--text); background: rgba(255,255,255,.04); }
+    .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .facts { margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--dim); font-size: 14px; padding: 0; list-style: none; }
+    .facts b { color: var(--text); }
+
+    section { padding: 64px 0; }
+    h2 { font-size: clamp(28px, 4vw, 40px); font-style: italic; font-weight: 900; letter-spacing: -.02em; margin: 0 0 8px; }
+    .lede { color: var(--dim); margin: 0 0 32px; max-width: 42em; }
+
+    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .mode { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 20px 18px; }
+    .mode h3 { margin: 0 0 6px; font-size: 19px; }
+    .mode p { margin: 0; color: var(--dim); font-size: 15px; }
+    .mode .k { display: block; color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 8px; }
+
+    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .shots figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .shots img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+    .shots figcaption { padding: 10px 14px; font-size: 14px; color: var(--dim); }
+
+    .play { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .play div { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; }
+    .play b { display: block; }
+    .play span { color: var(--dim); font-size: 15px; }
+
+    .final { text-align: center; padding: 72px 0 80px; background: radial-gradient(60% 80% at 50% 0%, rgba(63,240,138,.12), transparent 70%); }
+    .final .cta { justify-content: center; }
+    footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--dim); font-size: 13px; }
+    footer p { margin: 0 0 6px; max-width: 60em; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <picture>
+      <source srcset="assets/keyart.webp" type="image/webp" />
+      <img class="bg" src="assets/keyart.jpg" alt="" />
+    </picture>
+    <div class="wrap">
+      <span class="mark"><img src="icons/icon-192.png" alt="" /> Apex Sports</span>
+      <h1>APEX <span>XI</span></h1>
+      <p class="tag">Football in your browser. Full matches under the floodlights, a club built from cards, a career from the dugout or the pitch, and three-a-side on a rooftop.</p>
+      <div class="cta">
+        <a class="btn primary" href="./index.html">Play now — it's free</a>
+        <a class="btn ghost" href="#modes">What's in it</a>
+      </div>
+      <ul class="facts">
+        <li><b>100</b> clubs</li><li><b>6,000+</b> players</li><li><b>120</b> grounds</li>
+        <li>Touch, keyboard or controller</li><li>Plays offline</li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <section id="modes">
+      <div class="wrap">
+        <h2>Pick how you play</h2>
+        <p class="lede">Every mode runs on the same match engine, so the football is the same everywhere. Only what's riding on it changes.</p>
+        <div class="modes">
+          <div class="mode"><span class="k">Kick Off</span><h3>Straight into a match</h3><p>Any two clubs, any ground, any weather, day or night. Play alone, with a friend on your side, or against them on the same screen.</p></div>
+          <div class="mode"><span class="k">Ultimate XI</span><h3>Build a club from cards</h3><p>Open packs, fit the squad together for chemistry, and climb eleven divisions. Squad challenges, evolutions and weekly events keep it moving.</p></div>
+          <div class="mode"><span class="k">Career</span><h3>Manager or player</h3><p>Run a club through seasons of transfers, budgets and board meetings. Or create a footballer and play only your own position.</p></div>
+          <div class="mode"><span class="k">Street</span><h3>Three a side, five on the sand</h3><p>Small pitches, quick games, skill moves that earn style. Make a baller and take over the courts.</p></div>
+          <div class="mode"><span class="k">Online</span><h3>Against friends, or with them</h3><p>Head-to-head matches, co-op seasons, and a spectator seat. Chat is quick phrases and emotes only.</p></div>
+          <div class="mode"><span class="k">Skills</span><h3>Practise</h3><p>Skill games for dribbling, passing, crossing and free kicks, a penalty shootout, and a pitch to yourself. Your best scores are kept.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="shots">
+      <div class="wrap">
+        <h2>See it</h2>
+        <p class="lede">These are unedited frames from the game.</p>
+        <div class="shots">
+          <figure><img src="assets/store/03-match.jpg" alt="A match at night under floodlights, seen from the broadcast camera" loading="lazy" width="1920" height="1080" /><figcaption>A night match on the broadcast camera</figcaption></figure>
+          <figure><img src="assets/store/04-goal.jpg" alt="A goal celebration, the camera close to the scorer" loading="lazy" width="1920" height="1080" /><figcaption>After the goal, the camera goes to the scorer</figcaption></figure>
+          <figure><img src="assets/store/06-grounds.jpg" alt="A floodlit stadium, full of fans, seen from above the pitch" loading="lazy" width="1920" height="1080" /><figcaption>120 grounds, from village pitches to giant arenas</figcaption></figure>
+          <figure><img src="assets/store/02-menu.jpg" alt="The main menu over a live stadium" loading="lazy" width="1920" height="1080" /><figcaption>The main menu, over a live ground</figcaption></figure>
+          <figure><img src="assets/store/05-street.jpg" alt="Creating a street footballer: name, look and position" loading="lazy" width="1920" height="1080" /><figcaption>Make your baller for Street</figcaption></figure>
+          <figure><img src="assets/store/01-title.jpg" alt="The APEX XI title screen" loading="lazy" width="1920" height="1080" /><figcaption>The title screen. Leave it alone and the game plays itself.</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2>Nothing to install</h2>
+        <p class="lede">It's a web page. Add it to your home screen and it opens full screen like any other game, then keeps working with no connection.</p>
+        <div class="play">
+          <div><b>On a phone</b><span>A thumbstick that appears wherever you touch, big buttons, and a one-handed layout.</span></div>
+          <div><b>With a controller</b><span>Every screen and every match works with a controller. Up to four people on one screen.</span></div>
+          <div><b>On a keyboard</b><span>Two players on one keyboard, and every key can be changed.</span></div>
+          <div><b>For everyone</b><span>Colour-vision filters, colour-safe kits, subtitles for commentary, and reduced motion.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <h2>Kick off</h2>
+        <p class="lede" style="margin-inline:auto">Free to play. No account needed to start.</p>
+        <div class="cta"><a class="btn primary" href="./index.html">Play APEX XI</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>APEX XI is an original game. Ultimate XI clubs and all competitions are fictional; badges, kits and portraits are drawn, not photographed, and are not likenesses.</p>
+      <p>Built with three.js (MIT licence). Every sound is synthesised in your browser. Full credits are in the game under Settings → Credits. <a href="./notes.html">Release notes</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>
