@@ -15,6 +15,61 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v97 — R15 balance audit, part 2a: repeatable SBCs were a money loop
+New `tools/sbc-audit.mjs` (kept). It plays every repeatable SBC with the real
+`CHALLENGES`, `evaluate`, `openPack` and `dupValue`:
+1. Start from 10 silver packs of cards (◈20,000 at shop price).
+2. Submit the cheapest cards that meet the brief, as often as possible.
+3. Open whatever the reward pack gives, feed it back in, and repeat until dry.
+
+The loop runs two ways: all repeatables together, and each one alone, because
+a farmer picks whichever pays best. The bar: a pile worked through the
+repeatables must pay back less than its packs cost (< 1×). The tool exits 1
+if any plan fails.
+
+**Before.** Seven quick SBCs (first-steps, bronze-trio, two-keepers,
+silver-lining, young-blood, defenders-three, front-two) paid a pack with at
+least as many cards as they took. First Steps took 3 cards for a 4-card
+bronze pack plus ◈300. Together they paid **◈690k–760k from ◈20k of packs
+(~35×)**. They only stopped when the player pool ran out and every pull was a
+duplicate. Also, `onSbc` adds season-pass XP each time.
+
+**First fix.** Pack removed from those seven. All-together dropped to 0.60×,
+but single-challenge plans still broke the bar:
+
+| Plan | Payback |
+|---|---|
+| five-a-side (5 in, 4 back) | 1.26× |
+| two-nations | 1.35× |
+| seven-up (7 in, a 5-card gold back) | 1.12× |
+
+**Rule adopted.** Every quick repeatable (the starter group) pays Apex only,
+with the Apex amounts unchanged. The two eleven-card sinks (`starter`,
+`bronzes`) keep their packs. New `tests/unit/sbc-sink.test.mjs` holds it: a
+repeatable that pays a pack must take at least 6 more cards than the pack
+holds, and no repeatable pays a card.
+
+**After.** Worst plan 0.40× (seven-up alone), all together 0.36×. Quick-selling
+the same pile pays 0.06×, so SBCs still pay 2–6× what selling would. One-off
+SBCs (first-gold, the eleven-card and legend ones) are untouched. The
+completion toast no longer prints "undefined pack".
+
+**Also in this release:**
+- The v96 play-session finding: the harness pressed START with a mouse click
+  on the phone run, so the game rightly assumed a keyboard. The harness now
+  taps.
+- The touch version of the skill tip was "SKILL (hold SKILL)"; it now says to
+  swipe the SKILL button.
+- `.gm-hints` has its own line-height, so three-line tips no longer spill
+  over the border.
+
+**Still to do in part 2:** evolutions, the AI difficulty curve, and career
+finances.
+
+**Watch.** One local `npm run test:unit` run had 1 failure (194/195). Four
+reruns were clean, so the flaky test is not identified yet. If it shows up in
+CI, the log names it.
+
 ### v96 — R15 launch assets, part 2: store shots and landing page, plus three fixes
 **Play-session finding (v95 session, 844×390 touch):** `.gm-setpiece` covered
 the rotating hint. `.gm-setpiece:not([hidden]) ~ .gm-hints` now hides the hint

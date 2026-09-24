@@ -1233,7 +1233,7 @@ export function mount(root) {
       refreshCoins();
       sfx('coin');
       toast(`${c.name} complete — ◈${c.reward.apex.toLocaleString()}`
-        + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''} · ${c.reward.pack} pack`
+        + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''}${c.reward.pack ? ` · ${c.reward.pack} pack` : ''}`
         + `${c.reward.card ? ` · ${c.reward.card}` : ''}`);
       openChallenge = null;
       submission = [];
