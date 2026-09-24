@@ -62,8 +62,12 @@ export function valueOfRating(overall, age) {
 export function valueIn(car, name) {
   const card = cardByName(name);
   const r = rateOf(car, name);
-  // a world card keeps its real-world value, scaled by how far it has moved since
-  if (card && !car?.people?.[name]) return Math.round((card.value || valueOfRating(r, ageOf(car, name))) * Math.pow(1.12, r - card.overall) * (ageOf(car, name) >= 32 ? 0.7 : 1) / 1000) * 1000;
+  /* v99: one money scale in the career. A world card's `value` is the Ultimate
+     XI coin price (generator.js marketValue — an 83 is ~2m), not a career
+     fee (valueOfRating — an 83 is ~15m); pricing world players off it made
+     every club built of them roughly seven times cheaper, in fees and wages,
+     than a club of generated players of the same rating (tools/career-audit.mjs). */
+  void card;
   return valueOfRating(r, ageOf(car, name));
 }
 
