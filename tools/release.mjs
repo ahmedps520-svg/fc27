@@ -10,7 +10,7 @@
  *   - js/data/patchNotes.js has an entry for that version at the top
  *   - the service worker's precache list names every file the app is made of
  *   - the watch bundle is rebuilt from the current sources
- *   - the unit tests and the balance sweep pass
+ *   - the unit tests, the balance sweep and the economy audits pass
  *
  * It does not commit or push: the diff it leaves is the release, reviewed like
  * any other. HANDOFF.md still gets its section by hand — that is the one
@@ -97,6 +97,9 @@ const run = (label, args) => {
 if (!process.argv.includes('--no-tests')) {
   run('unit tests', ['run', 'test:unit']);
   run('balance sweep', ['run', 'test:sweep']);
+  // v104: the economy audits CI runs — v103 changed the match engine, moved every
+  // position's per-match numbers, and failed the evolution audit on main
+  run('economy audits (SBC loop, evolution tracks)', ['run', 'test:economy']);
 }
 
 if (problems.length) {

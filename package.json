@@ -11,6 +11,7 @@
     "test": "npm run test:unit && npm run test:sweep && npm run test:smoke",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:sweep": "node tests/sweep-check.mjs",
+    "test:economy": "node tools/sbc-audit.mjs && node tools/evo-audit.mjs",
     "test:smoke": "node tests/smoke/run.mjs",
     "build:watch": "node tools/build-watch.mjs",
     "release": "node tools/release.mjs",

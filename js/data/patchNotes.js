@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v104',
+    date: '2026-09-24',
+    tag: 'Fix',
+    title: 'Strikers get the ball again',
+    lede: 'The last update taught players to pass to whoever was open. Centre-forwards are almost always marked, so they stopped getting the ball. That is fixed.',
+    entries: [
+      {
+        head: 'Passing into the attack',
+        summary: 'A through ball is now judged by the space in front of the runner, not by the man marking him. In the final third, sides take the risk of playing it into a marked striker, as real teams do.',
+        detail: 'Measured over sixty computer-played matches: a striker\'s goals per match had dropped from about 0.5 to 0.15. They are back near 0.3, and goals per match are back in their usual range. Team-mates still get open for you, and your passes still find the free man in midfield.',
+      },
+      {
+        head: 'Evolutions',
+        summary: 'The Engine Room track is no longer offered to defensive midfielders. Its first stage asks for two assists, which took a defensive midfielder about seventy matches. The Wall Builder track fits them better.',
+        detail: 'A defensive midfielder already on the track keeps his progress.',
+      },
+    ],
+  },
+  {
     version: 'v103',
     date: '2026-09-24',
     tag: 'Gameplay',

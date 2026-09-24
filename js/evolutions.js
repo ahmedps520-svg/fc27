@@ -31,7 +31,8 @@ export const EVO_TRACKS = [
   },
   {
     id: 'engine', name: 'Engine Room Graduate', blurb: 'A midfielder who runs all day and passes on the move.',
-    fits: (p) => ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(p.position) && p.overall <= 81,
+    // v104: not a CDM — two assists took one ~70 matches (tools/evo-audit.mjs); the Wall Builder is his
+    fits: (p) => ['CM', 'CAM', 'LM', 'RM'].includes(p.position) && p.overall <= 81,
     stages: [
       { need: S('assists', 2, 'Make 2 assists with him'), give: { ovr: 1, stats: { passing: 3 } } },
       { need: S('apps', 4, 'Play 4 matches with him'), give: { ovr: 1, stats: { physical: 3, passing: 1 }, trait: 'engine' } },
