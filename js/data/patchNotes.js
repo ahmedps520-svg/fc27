@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v102',
+    date: '2026-09-24',
+    tag: 'Feel',
+    title: 'Players who step',
+    lede: 'Footballers used to skate: their legs ran in place while the body slid across the grass. Now every foot lands, stays put and pushes off, in whatever direction the player is moving.',
+    entries: [
+      {
+        head: 'Running',
+        summary: 'A foot on the grass stays where it landed until it pushes off. Sprints use longer strides rather than faster legs, and players lean into their turns.',
+        detail: 'Measured on the built-in figures: a foot touching the grass used to slide along at the player\'s own speed. It now moves at about a tenth of that, most of it the moment of landing and pushing off. Stride rhythm follows real running: about 1.3 strides a second at a jog and 2.2 at a sprint.',
+      },
+      {
+        head: 'Backpedalling and jockeying',
+        summary: 'A defender backing off steps backwards, and one jockeying a winger shuffles sideways, instead of running forwards on the spot while sliding the other way.',
+        detail: 'On High and Ultra, where players are full 3D models, the running animation plays in reverse for a backpedal and the hips turn toward a sideways move.',
+      },
+    ],
+  },
+  {
     version: 'v101',
     date: '2026-09-24',
     tag: 'Polish',

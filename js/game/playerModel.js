@@ -12,6 +12,7 @@
  * in — see `makeRig`.
  */
 import * as THREE from '../vendor/three.module.js';
+import { gaitOf } from './rig.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from '../vendor/jsm/utils/SkeletonUtils.js';
 
@@ -337,8 +338,13 @@ export function poseRig(rig, p, dt, every = 1) {
 
   // Walk, jog and sprint are all this one clip, taken at the rate the legs
   // would actually be turning over at that speed.
+  /* v102: the clip has only a forward run. A backpedal plays it backwards —
+     the reverse of running is what stepping backwards looks like — and a
+     sideways move turns the hips part of the way towards where he is going
+     (the heading below), so the feet stop skating across the grass. */
+  const g = gaitOf(p);
   if (want === 'run' && rig.actions.run) {
-    rig.actions.run.timeScale =
+    rig.actions.run.timeScale = g.dir *
       Math.min(RUN_RATE[1], Math.max(RUN_RATE[0], speed / RUN_CLIP_SPEED));
   }
 
@@ -392,7 +398,8 @@ export function poseRig(rig, p, dt, every = 1) {
   rig.root.position.set(p.x, p.y, 0);
   // The character's own forward is -Y once it has been tipped upright, so the
   // heading is a quarter turn ahead of the direction the match is steering him.
-  rig.root.rotation.z = Math.atan2(p.dirY, p.dirX) + Math.PI / 2;
+  const strafe = speed > 1.1 && !p.celebrating ? Math.atan2(g.ml, Math.abs(g.mf)) * 0.6 : 0;
+  rig.root.rotation.z = Math.atan2(p.dirY, p.dirX) + strafe * (g.dir) + Math.PI / 2;
   if (rig.hips) {
     rig.hips.position.x = 0;
     rig.hips.position.z = 0;

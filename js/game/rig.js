@@ -172,6 +172,46 @@ export function buildFor(ref, role) {
   };
 }
 
+/**
+ * v102: the gait, for both renderers — where a player is moving in his own
+ * frame (mf forward along the facing, ml across it, a unit vector when he is
+ * moving) and which way a clip should run: backwards on a backpedal (the
+ * model rig; the built-in figure steps in any direction on its own).
+ */
+export function gaitOf(p) {
+  const sp = Math.hypot(p.vx, p.vy);
+  if (sp < 0.3) return { mf: 1, ml: 0, dir: 1, sp };
+  const vx = p.vx / sp; const vy = p.vy / sp;
+  const mf = vx * p.dirX + vy * p.dirY;
+  const ml = -vx * p.dirY + vy * p.dirX;
+  return { mf, ml, dir: mf < -0.3 ? -1 : 1, sp };
+}
+
+/**
+ * v102: stride cycles a second at a given speed, from real running: about 1.3
+ * at a 3 m/s jog and 2.2 at a 9 m/s sprint (≈ 2.6 and 4.4 steps a second).
+ * The old rate was a straight line in speed — the legs spun at a sprint and
+ * crept at a jog — so a sprint read as a fast jog instead of long strides.
+ * Returns radians a second of the stride phase.
+ */
+export const strideRate = (sp) => 2 * Math.PI * 0.77 * Math.pow(Math.max(0, sp), 0.478);
+
+/**
+ * v102: how far the body tips into a turn: the path's curvature times speed
+ * (the lateral acceleration), smoothed. Called once a frame by the renderer.
+ */
+export function updateBank(p, dt) {
+  const sp = Math.hypot(p.vx, p.vy);
+  const h = Math.atan2(p.vy, p.vx);
+  let dh = sp > 1 && p._vh != null ? h - p._vh : 0;
+  if (dh > Math.PI) dh -= 2 * Math.PI; else if (dh < -Math.PI) dh += 2 * Math.PI;
+  p._vh = h;
+  const w = dt > 0 ? dh / dt : 0;                                 // turn rate, rad/s
+  const want = Math.max(-0.11, Math.min(0.11, w * sp * 0.011));   // lateral g, as a sideways lean in metres
+  p._bank = (p._bank || 0) + (want - (p._bank || 0)) * Math.min(1, dt * 9);
+  return p._bank;
+}
+
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
   /* The parts are placed in pitch coordinates, so the group itself only
@@ -193,7 +233,13 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const face = Math.atan2(sin, cos);
   const sp = Math.hypot(p.vx, p.vy);
   const gait = Math.min(1, sp / 6.5);
-  const lean = Math.min(0.14, sp / 62);
+  /* v102 (feel): where he is going, in his own frame: mf forward along the
+     facing, from −1 (straight backwards) to 1. */
+  const { mf } = gaitOf(p);
+  // leaning into the run only when running forwards; a touch back on a backpedal
+  const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf);
+  // a turn tips the body into it (p._bank, from the renderer: how fast the path is curving)
+  const bank = p._bank || 0;
   const cheer = p.celebrating ? 1 : 0;
   // little hop while celebrating, so the whole body lifts off the turf
   const hop = cheer ? Math.abs(Math.sin(celebT * 6.5)) * 0.22 : 0;
@@ -203,27 +249,89 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const wy = (f, l) => p.y + f * sin + l * cos;
   const lift = hop + bob;
 
-  const hipZ = HIP_Z * H + lift;
+  // v102: soft knees when moving, so a planted foot a stride ahead is within reach
+  const hipZ = HIP_Z * H + lift - 0.07 * gait;
   const shZ = SHOULDER_Z * H + lift;
 
+  /* v102 (feel): the legs step. Each foot is either planted — pinned to the
+     spot on the grass where it landed — or swinging on an arc to where it
+     will land next, which is predicted from where he is actually going (so a
+     backpedal steps backwards and a jockey steps sideways without any special
+     case). The thigh and shin are then solved to reach it (two-bone IK), the
+     knee bent forward the way knees bend. The stride used to be a rhythm
+     played along the facing whatever the body did: the planted foot slid at
+     the body's own speed, in every direction (tools/gait-audit.mjs). */
+  const feet = rig.feet || (rig.feet = {});
+  const cadence = strideRate(sp) / (2 * Math.PI);              // stride cycles a second
+  /* share of a cycle a foot is down, from how far a leg can sweep while planted
+     (~0.7 m of ground at a running crouch): a jog comes out ~0.3 and a sprint
+     ~0.18, as in real running; a walk is capped at 0.6 (both feet down a while) */
+  const duty = sp > 0.05 ? Math.max(0.15, Math.min(0.6, 0.7 * cadence / sp)) : 0.6;
+  const liftH = 0.06 + 0.12 * Math.min(1, sp / 8);
   const leg = (side, ph, thigh, shin, knee, foot) => {
-    const s = Math.sin(ph);
-    const hipA = s * 0.68 * gait;
-    const kneeA = hipA - (Math.max(0, -s) * 1.25 + 0.12) * gait - 0.08;
+    const key = side < 0 ? 'L' : 'R';
     const lat = side * 0.1;
-    const hipF = lean;
-    const kneeF = hipF + Math.sin(hipA) * THIGH * H;
-    const kneeZ = hipZ - Math.cos(hipA) * THIGH * H;
-    const ankF = kneeF + Math.sin(kneeA) * SHIN * H;
-    const ankZ = Math.max(ANKLE_Z * 0.7, kneeZ - Math.cos(kneeA) * SHIN * H);
-    segment(thigh, wx(hipF, lat), wy(hipF, lat), hipZ + 0.02,
-      wx(kneeF, lat), wy(kneeF, lat), kneeZ, 0.082 * G);
-    segment(shin, wx(kneeF, lat), wy(kneeF, lat), kneeZ,
-      wx(ankF, lat), wy(ankF, lat), ankZ, 0.062 * G);
-    knee.position.set(wx(kneeF, lat), wy(kneeF, lat), kneeZ);
+    const hx = wx(lean, lat); const hy = wy(lean, lat); const hz = hipZ + 0.02;
+    // where this foot stands under him, and where a step lands: ahead along his velocity
+    const homeX = p.x - sin * lat; const homeY = p.y + cos * lat;
+    const u = (((ph / (2 * Math.PI)) % 1) + 1) % 1;             // 0..1 through this leg's cycle
+    const stance = u < duty;
+    let f = feet[key];
+    // first sight, or he has jumped (a kick-off reset, a replay seeking): stand where he is
+    if (!f || Math.hypot(f.x - homeX, f.y - homeY) > 2.5 * H) f = feet[key] = { x: homeX, y: homeY, fromX: homeX, fromY: homeY, stance: true, u };
+    const moving = sp > 0.35 && cadence > 0.05;
+    let ax; let ay; let az = ANKLE_Z * H;
+    if (!moving) {
+      // standing: settle each foot under him, a small step at a time
+      const gx = homeX - f.x; const gy = homeY - f.y; const g = Math.hypot(gx, gy);
+      if (g > 0.015) { const k = Math.min(1, 0.05 / g); f.x += gx * k; f.y += gy * k; az += Math.min(0.05, g * 0.5); }
+      f.stance = true; ax = f.x; ay = f.y;
+    } else if (stance) {
+      if (!f.stance) {
+        // touch-down: the foot lands a little ahead of the hip along his path, mid-stance is under him
+        const ahead = (duty * 0.4) / cadence;                    // his weight passes over it at 40% of the stance, as in a real stride
+        f.x = homeX + p.vx * ahead; f.y = homeY + p.vy * ahead; f.stance = true;
+      }
+      ax = f.x; ay = f.y;
+    } else {
+      if (f.stance) { f.fromX = f.x; f.fromY = f.y; f.fromZ = f.z ?? ANKLE_Z * H; f.stance = false; }
+      // where the next plant will be, predicted from his velocity now
+      const toGo = ((1 - u) + duty * 0.4) / cadence;
+      const nx = homeX + p.vx * toGo; const ny = homeY + p.vy * toGo;
+      const s = (u - duty) / (1 - duty);
+      const e = s * s * (3 - 2 * s);
+      ax = f.fromX + (nx - f.fromX) * e; ay = f.fromY + (ny - f.fromY) * e;
+      // lift off from wherever the heel was (a toe-off leaves it up), onto the arc
+      az += ((f.fromZ ?? az) - az) * (1 - e) + Math.sin(Math.PI * s) * liftH;
+      f.x = ax; f.y = ay;
+    }
+    // two-bone IK, hip to ankle, knee forward
+    const T = THIGH * H; const S = SHIN * H;
+    let dx = ax - hx; let dy = ay - hy; let dz = az - hz;
+    let d = Math.hypot(dx, dy, dz);
+    const R = T + S - 1e-4;
+    if (d > R) {
+      const hd = Math.hypot(dx, dy);
+      // out of reach: keep the foot where it is and lift the heel (a toe-off), or, if even that cannot reach, stretch towards it
+      if (f.stance && hd < R * 0.999) { dz = -Math.sqrt(R * R - hd * hd); d = R; }   // only a planted foot keeps its spot
+      else { const k = R / d; dx *= k; dy *= k; dz *= k; d = R; }
+    }
+    const ex = hx + dx; const ey = hy + dy; const ez = hz + dz;   // the ankle, where the leg can reach
+    f.z = ez;
+    const ux = dx / d; const uy = dy / d; const uz = dz / d;
+    const a = (T * T - S * S + d * d) / (2 * d);
+    const hgt = Math.sqrt(Math.max(0, T * T - a * a));
+    let bx = cos; let by = sin; let bz = 0.15;
+    const dot = bx * ux + by * uy + bz * uz;
+    bx -= dot * ux; by -= dot * uy; bz -= dot * uz;
+    const bl = Math.hypot(bx, by, bz) || 1;
+    const kx = hx + ux * a + (bx / bl) * hgt; const ky = hy + uy * a + (by / bl) * hgt; const kz = hz + uz * a + (bz / bl) * hgt;
+    segment(thigh, hx, hy, hz, kx, ky, kz, 0.082 * G);
+    segment(shin, kx, ky, kz, ex, ey, ez, 0.062 * G);
+    knee.position.set(kx, ky, kz);
     knee.scale.setScalar(0.062 * G);
     // a boot is a flat wedge along the foot, not a sausage
-    foot.position.set(wx(ankF + 0.05, lat), wy(ankF + 0.05, lat), Math.max(0.035, ankZ - 0.055));
+    foot.position.set(ex + cos * 0.05, ey + sin * 0.05, Math.max(0.035, ez - 0.055));
     foot.rotation.set(0, 0, face);
     foot.scale.set(0.23, 0.1, 0.07);
     foot.visible = fine;
@@ -233,11 +341,11 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     const s = Math.sin(ph);
     // celebrating: both arms swing up and out overhead instead of pumping
     const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
-    const shA = cheer ? -2.35 + swing : s * 0.55 * gait;
+    const shA = cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
     const elA = cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
     // hung off the outside of the deltoid, not buried in the chest
-    const lat = side * (CHEST_W * b.shoulders + 0.014);
-    const out = side * (cheer ? 0.34 : CHEST_W * b.shoulders + 0.042);
+    const lat = side * (CHEST_W * b.shoulders + 0.014) + bank;
+    const out = side * (cheer ? 0.34 : CHEST_W * b.shoulders + 0.042) + bank;
     const shF = lean * 0.5;
     const elF = shF + Math.sin(shA) * UPPER_ARM * H;
     const elZ = shZ - Math.cos(shA) * UPPER_ARM * H;
@@ -268,21 +376,21 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   ovalSegment(parts.hips, wx(lean, 0), wy(lean, 0), waistZ,
     wx(lean, 0), wy(lean, 0), hipZ - 0.12, HIPS_W * G, HIPS_D * G, face, 1);
   ovalSegment(parts.torso, wx(lean, 0), wy(lean, 0), waistZ - 0.02,
-    wx(lean * 1.7, 0), wy(lean * 1.7, 0), shZ + 0.03,
+    wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ + 0.03,
     CHEST_W * b.shoulders * G, CHEST_D * G, face, 1);
   // deltoids: a flattened cap that rounds off the top of the shirt
-  parts.shoulder.position.set(wx(lean * 1.7, 0), wy(lean * 1.7, 0), shZ);
+  parts.shoulder.position.set(wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ);
   parts.shoulder.rotation.set(0, 0, face);
   parts.shoulder.scale.set(CHEST_D * G, CHEST_W * b.shoulders * G * 1.02, 0.085 * G);
-  segment(parts.neck, wx(lean * 1.7, 0), wy(lean * 1.7, 0), shZ,
-    wx(lean * 1.7 - 0.01, 0), wy(lean * 1.7 - 0.01, 0), shZ + 0.1 * H, 0.046);
+  segment(parts.neck, wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ,
+    wx(lean * 1.7 - 0.01, bank * 1.1), wy(lean * 1.7 - 0.01, bank * 1.1), shZ + 0.1 * H, 0.046);
 
   const hz = shZ + 0.21 * H;
-  parts.head.position.set(wx(lean * 1.7 - 0.012, 0), wy(lean * 1.7 - 0.012, 0), hz);
+  parts.head.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz);
   parts.head.rotation.set(0, 0, face);
   // a head is taller than it is wide, and deeper than it is broad
   parts.head.scale.set(0.098, 0.092, 0.112);
-  parts.hair.position.set(wx(lean * 1.7 - 0.012, 0), wy(lean * 1.7 - 0.012, 0), hz + 0.022);
+  parts.hair.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz + 0.022);
   parts.hair.rotation.set(0, 0, face);
   parts.hair.scale.set(0.101, 0.095, 0.104);
   parts.hair.visible = fine;
@@ -291,7 +399,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
      celebration: the mouth opens (scales tall) on the hop's rhythm. */
   const fx = Math.cos(face); const fy = Math.sin(face);
   const lx = -fy; const ly = fx;                         // across the face
-  const hx = wx(lean * 1.7 - 0.012, 0); const hy = wy(lean * 1.7 - 0.012, 0);
+  const hx = wx(lean * 1.7 - 0.012, bank * 1.15); const hy = wy(lean * 1.7 - 0.012, bank * 1.15);
   parts.eyeL.position.set(hx + fx * 0.085 + lx * 0.034, hy + fy * 0.085 + ly * 0.034, hz + 0.02);
   parts.eyeR.position.set(hx + fx * 0.085 - lx * 0.034, hy + fy * 0.085 - ly * 0.034, hz + 0.02);
   parts.eyeL.scale.set(0.012, 0.012, 0.012); parts.eyeR.scale.set(0.012, 0.012, 0.012);
