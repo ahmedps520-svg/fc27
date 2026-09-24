@@ -561,6 +561,8 @@ select {
 .menu-wordmark .t2 {
   background: linear-gradient(180deg, var(--accent), var(--accent-deep, var(--accent)));
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* v96: see .splash-title .t2 */
+  padding-right: .16em; margin-right: -.16em;
 }
 
 /* The tiles are the whole screen now, so they sit in the middle of it rather
@@ -1245,6 +1247,10 @@ body.on-splash #screen { max-width: none; padding: 0; animation: none; transform
 .splash-title .t2 {
   background: linear-gradient(180deg, var(--accent), var(--accent-deep, var(--accent)));
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* v96: the italic I leans out past its box, and a text-clipped background
+     only paints inside the box, so the top of the I was cut off. Pad the box
+     to cover the lean and take the same space back. */
+  padding-right: .16em; margin-right: -.16em;
 }
 .splash-tag {
   margin: 10px 0 0; font-size: 12.5px; letter-spacing: .26em; text-transform: uppercase;
