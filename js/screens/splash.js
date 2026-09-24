@@ -94,8 +94,13 @@ export function mount(root) {
   let raf = null;
   let t = 0;
 
+  /* v100: the backdrop is soft haze and drifting motes — half resolution and
+     thirty frames a second look the same and cost a quarter of the painting.
+     At full resolution and the display's rate it was the title screen's
+     biggest cost: Lighthouse (mobile, 4× CPU) put ~9 s of main-thread
+     rendering on this canvas before the game was interactive. */
   const resize = () => {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = 0.5;
     canvas.width = Math.round(shell.clientWidth * dpr);
     canvas.height = Math.round(shell.clientHeight * dpr);
     canvas.style.width = `${shell.clientWidth}px`;
@@ -113,10 +118,13 @@ export function mount(root) {
     a: 0.06 + Math.random() * 0.22,
   }));
 
-  const frame = () => {
+  let lastPaint = 0;
+  const frame = (now = 0) => {
+    if (now - lastPaint < 32) { raf = requestAnimationFrame(frame); return; }
+    lastPaint = now;
     const w = shell.clientWidth;
     const h = shell.clientHeight;
-    t += 0.006;
+    t += 0.012;                        // v100: half the frames, the same drift speed
 
     ctx.clearRect(0, 0, w, h);
     const g = ctx.createLinearGradient(0, 0, w * 0.6, h);
@@ -140,7 +148,7 @@ export function mount(root) {
 
     ctx.fillStyle = '#cfe6ff';
     for (const m of motes) {
-      m.y -= m.s * 0.0012;
+      m.y -= m.s * 0.0024;
       if (m.y < -0.03) { m.y = 1.03; m.x = Math.random(); }
       ctx.globalAlpha = m.a * (0.6 + 0.4 * Math.sin(t * 3 + m.x * 20));
       ctx.beginPath();

@@ -13,6 +13,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { startServer } from './server.mjs';
+import { watchResponses } from '../lib/console.mjs';
 
 const ARGS = [
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -29,6 +30,7 @@ const pageErrors = [];
 const watchErrors = (page, tag) => {
   page.on('pageerror', (e) => pageErrors.push(`${tag}: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR/.test(m.text())) pageErrors.push(`${tag} console: ${m.text()}`); });
+  watchResponses(page, server.url, pageErrors, tag);   // v100
 };
 const text = async (page, sel = 'body') => (await page.innerText(sel)).replace(/\s+/g, ' ');
 

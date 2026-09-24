@@ -14,6 +14,7 @@
  */
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { watchResponses } from '../lib/console.mjs';
 import { startServer } from '../smoke/server.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -36,6 +37,7 @@ const watch = (page, tag) => {
     pageErrors.push(`${key}\n      ${String(e.stack || '').split('\n').slice(1, 5).join('\n      ')}`);
   });
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR|WebGL context|Error creating WebGL/.test(m.text())) pageErrors.push(`${tag} console: ${m.text()}`); });
+  watchResponses(page, server.url, pageErrors, tag);   // v100: a missing file or a failing API call is a bug too
 };
 const notesVersion = await fetch(`${server.url}/js/data/patchNotes.js`).then((r) => r.text()).then((t) => (t.match(/version: '(v\d+)'/) || [])[1]);
 

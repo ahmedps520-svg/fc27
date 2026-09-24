@@ -16,6 +16,7 @@
  *   node tests/qa/pad-reach.mjs [--view phone|desktop]
  */
 import { chromium } from 'playwright';
+import { watchConsole } from '../lib/console.mjs';
 import { startServer } from '../smoke/server.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -33,6 +34,7 @@ const appVersion = await fetch(`${server.url}/js/app.js`).then((r) => r.text()).
 let lastKey = '';
 page.on('pageerror', (e) => { const k = `${e.message} @ ${(e.stack || '').split('\n')[1]?.trim()} (after ${lastKey})`; if (!errors.includes(k)) errors.push(k); });
 page.on('dialog', (d) => d.accept().catch(() => {}));
+const consoleIssues = watchConsole(page, { origin: server.url });   // v100: console.error and 4xx/5xx too, not only exceptions
 await page.addInitScript((ver) => {
   if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: ver }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
   // the simulated controller
@@ -332,6 +334,7 @@ for (const s of MUST_REACH) if (!reached.has(s)) problems.push(`${s}: not reacha
 
 await browser.close(); server.stop();
 for (const e of errors) problems.push(`page error: ${e}`);
+for (const e of consoleIssues) if (!/^page error/.test(e)) problems.push(e);
 for (const p of problems) console.log('  ✗', p);
 console.log(problems.length ? `pad-reach: ${problems.length} problem(s)` : `pad-reach: ok (${reached.size} screens, controller only)`);
 process.exit(problems.length ? 1 : 0);

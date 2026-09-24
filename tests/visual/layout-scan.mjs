@@ -16,6 +16,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { watchConsole } from '../lib/console.mjs';
 import { startServer } from '../smoke/server.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -32,12 +33,14 @@ mkdirSync(OUT, { recursive: true });
 const server = await startServer();
 const browser = await chromium.launch();
 const problems = [];
+const consoleIssues = [];
 
 for (const lang of LANGS) {
   for (const ph of PHONES) {
     const ctx = await browser.newContext({ viewport: { width: ph.width, height: ph.height }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => problems.push(`${lang}/${ph.name}: page error ${e.message}`));
+    consoleIssues.push(watchConsole(page, { tag: `${lang}/${ph.name}`, origin: server.url }));   // v100: console.error and 4xx/5xx
     await page.addInitScript((l) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
       meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
       settings: { lang: l, reduceMotion: true, tutorialDone: true, quality: 'low' },
@@ -104,5 +107,6 @@ for (const lang of LANGS) {
   }
 }
 await browser.close(); server.stop();
+for (const l of consoleIssues) for (const e of l) if (!/page error/.test(e)) problems.push(e);
 if (problems.length) { console.log(`layout: ${problems.length} problems`); for (const p of problems) console.log('  ✗', p); process.exit(1); }
 console.log(`layout: ok (${SCREENS.length} screens × ${PHONES.length} phones × ${LANGS.length} languages)`);
