@@ -15,6 +15,45 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v101 — R15 visual consistency audit
+New `tools/ui-audit.mjs` (kept). It visits all 15 screens at 1280 px. For each
+component kind it records every visible instance's computed style: primary,
+ghost, small and big buttons, screen titles, panel headings, panels, text
+inputs, selects, tabs and tags. Variants are listed with the screens they
+appear on; variants on only one or two screens are marked. The report goes to
+`tests/tmp/ui-audit.md`.
+
+**Before:** 11 one-off variants.
+- *Consistent:* buttons, panels, panel headings and screen titles.
+- *Deliberate, kept:*
+  - the danger ghost button (Settings, Reset);
+  - the menu wordmark (86 px);
+  - the version tag in Settings (12 px vs 11 px).
+- *Drift, fixed:*
+  - Text inputs came in 3 styles: 12/13.3/16 px, radius 8/9/11, height
+    34–39, three backgrounds.
+  - Selects came in 4 styles: 12/13/14/16 px, radius 8/9/10/12, height 31–40.
+  - The fix is one rule at the end of `main.css`: 16 px, 40 px tall,
+    radius 12 (the buttons'), `--line` border and the field background, with
+    an accent focus ring.
+  - 16 px is required, not taste: since v100 the page is zoomable, and iOS
+    Safari zooms into any field under 16 px on focus.
+  - After the fix, inputs and selects each have 1 variant.
+- *Not changed, for the owner:* the in-screen navigation has two styles for
+  one role. `.subtab` (Squad → Store) is uppercase with 2 px tracking and
+  weight 800. `.cnav-b` (Skills, Street, Career, Pro) is sentence case,
+  weight 600. The bottom `.tabs` is a separate, deliberate tier. Unifying the
+  first two would change four screens' look, so it is left as a design call.
+
+**Found while checking the audit on phones.** The Stadium Builder's time
+switch (`.bld-time`, absolute) sat on the screen title on every phone. The
+≤760 px rule made `.bld-view` `position: static`, so the switch anchored to
+the page. It is now `relative`. `tests/visual/layout-scan.mjs` has a new
+check, "a control sitting on a screen's title". It fails on the old CSS for
+all three phones and passes now.
+
+Layout, a11y, pad-reach and unit tests (198/198) OK.
+
 ### v100 — R15 final hardening: console errors, Lighthouse, server security review
 **Zero console errors, now enforced.** New `tests/lib/console.mjs`:
 - `watchConsole` counts uncaught exceptions, `console.error`, and any 4xx/5xx

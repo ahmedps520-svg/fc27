@@ -83,6 +83,17 @@ for (const lang of LANGS) {
           }
         }
         const btns = [...document.querySelectorAll('#screen button, #screen [role=button], #screen a, header button')].filter(visible);
+        // v101: a control sitting on a screen's title (the builder's time switch did, on every phone)
+        for (const h of [...document.querySelectorAll('#screen .sh-title, #screen .screen-head h1')].filter(visible)) {
+          const rh = h.getBoundingClientRect();
+          for (const b of btns) {
+            if (h.contains(b) || b.contains(h)) continue;
+            const rb = b.getBoundingClientRect();
+            const ix = Math.min(rh.right, rb.right) - Math.max(rh.left, rb.left);
+            const iy = Math.min(rh.bottom, rb.bottom) - Math.max(rh.top, rb.top);
+            if (ix > 4 && iy > 4) { out.push(`${desc(b)} sits on the screen title`); break; }
+          }
+        }
         let ov = 0;
         for (let i = 0; i < btns.length; i++) {
           for (let j = i + 1; j < btns.length; j++) {

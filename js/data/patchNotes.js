@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v101',
+    date: '2026-09-24',
+    tag: 'Polish',
+    title: 'Tidier forms',
+    lede: 'Every text box and drop-down in the game now looks and behaves the same, and a switch that sat on the Stadium Builder\'s title on phones has moved back where it belongs.',
+    entries: [
+      {
+        head: 'Forms',
+        summary: 'Text boxes and drop-downs share one size and shape, matching the buttons. On iPhone, tapping one no longer zooms the page in.',
+        detail: 'We measured every screen: text boxes came in three styles and drop-downs in four, with text from 12 to 16 points. They now all use 16-point text. That size also stops Safari zooming in when you tap a field.',
+      },
+      {
+        head: 'Stadium Builder on phones',
+        summary: 'The Afternoon / Dusk / Night switch sat on top of the screen\'s title on every phone. It is back over the stadium preview.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v100',
     date: '2026-09-24',
     tag: 'Fix',

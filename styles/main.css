@@ -4288,7 +4288,7 @@ html.large-text .tile-name { font-size: 27px; }
 .bld-savedrow span { color: var(--muted); font-size: 12px; margin-inline-start: auto; }
 @media (max-width: 760px) {
   .builder { grid-template-columns: 1fr; }
-  .bld-view { position: static; }
+  .bld-view { position: relative; top: auto; }   /* v101: static let .bld-time (absolute) escape onto the screen title */
   .bld-row { grid-template-columns: 1fr; }
   .bld-check { grid-template-columns: auto auto 1fr; }
 }
@@ -5114,3 +5114,21 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 /* v96: a set piece's own banner says what to press; the rotating hint behind it
    only collided with it (seen on a landscape phone, 844×390) */
 .gm-setpiece:not([hidden]) ~ .gm-hints { display: none; }
+
+/* v101: one form field. The UI audit (tools/ui-audit.mjs) found three text
+   input styles and four select styles across the screens — 12 to 16px type,
+   8 to 12px corners, 31 to 40px tall — each set by its own screen. They now
+   share the buttons' corner and height. 16px is not a taste call: since v100
+   the page can be zoomed, and iOS Safari zooms into any field set smaller
+   than 16px the moment it is tapped. */
+#screen input:is([type=text], [type=number], [type=search], [type=password], [type=email], :not([type])),
+#screen select,
+.ss-layer select, .ss-layer input:is([type=text], :not([type])) {
+  font-size: 16px; line-height: 1.2;
+  height: 40px; padding: 0 12px; border-radius: 12px;
+  border: 1px solid var(--line); background-color: rgba(255, 255, 255, .05); color: var(--text);
+  box-sizing: border-box;
+}
+#screen select { padding-right: 30px; }
+#screen input:is([type=text], [type=number], [type=search], [type=password], [type=email], :not([type])):focus-visible,
+#screen select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
