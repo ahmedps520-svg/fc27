@@ -20,6 +20,10 @@ jobs:
         run: npm run test:unit
       - name: Balance sweep is byte-identical
         run: npm run test:sweep
+      - name: Economy — no repeatable SBC pays for itself
+        run: node tools/sbc-audit.mjs
+      - name: Economy — every evolution track can be finished
+        run: node tools/evo-audit.mjs
       - name: Watch bundle is up to date
         run: |
           npm run build:watch
