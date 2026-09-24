@@ -15,6 +15,95 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v100 — R15 final hardening: console errors, Lighthouse, server security review
+**Zero console errors, now enforced.** New `tests/lib/console.mjs`:
+- `watchConsole` counts uncaught exceptions, `console.error`, and any 4xx/5xx
+  from our own origin. It allows only software-GPU WebGL noise and the
+  browser's automatic favicon.ico guess.
+- `watchResponses` is the response half, for scripts that keep their own
+  console filter.
+
+The old per-script filters hid "Failed to load resource" and net::ERR, which
+is exactly how a 404 would have gone unseen.
+
+Wired into:
+- `watchConsole`: pad-reach, a11y-scan, layout-scan (these caught only
+  exceptions before);
+- `watchResponses`: bot (every flow, online and party included), smoke, soak.
+
+Result: 0 console errors and 0 failed requests across pad-reach, a11y,
+layout, smoke, bot, offline and a 10-match soak.
+
+**Lighthouse 13** (mobile, simulated 4× CPU, run locally; not in CI because
+performance under simulated throttling is too noisy for a gate):
+
+| Page | Measure | Before | After |
+|---|---|---|---|
+| Game (`/`) | Performance | 47 | 77 |
+| Game (`/`) | Accessibility | 92 | 100 |
+| Game (`/`) | Best practices | 100 | 100 |
+| Game (`/`) | SEO | 100 | 100 |
+| Game (`/`) | Total blocking time | 4,950 ms | 300 ms |
+| Game (`/`) | Time to interactive | 12.7 s | 4.1 s |
+| `landing.html` | All four categories | — | 100 |
+
+- *Performance.* Almost all of it was painting the splash canvas, not script:
+  `splash.js` was 9.4 s total, of which 0.15 s was scripting. Three
+  full-viewport radial gradients plus 70 motes were drawn at up to 2× DPR on
+  every display frame. It is now drawn at 0.5× resolution and capped at
+  ~30 fps, with drift speed kept, and looks the same (checked against a
+  capture).
+- *Remaining cost.* A 709 ms long task in `app.js` (world generation at boot)
+  and a 3.1 s first paint are the next things to look at.
+- *Accessibility.* The only failure was `meta-viewport`
+  (`user-scalable=no, maximum-scale=1`). Pinch-zoom is now allowed in menus:
+  - `html` has `touch-action: manipulation`, so double-tap zoom stays off;
+  - `.gm` (a match) is `touch-action: none`;
+  - Safari's `gesturestart` is prevented only while `body.in-game`.
+- *PWA.* Lighthouse 12+ has no PWA category. Installability is covered by
+  `tests/unit/pwa.test.mjs` (v95) and `tests/qa/offline.mjs`.
+
+**Server security review.** Findings are ordered by severity; each is fixed
+and held by the new `tests/unit/server-exposure.test.mjs`.
+1. **Remote crash with one request.** `decodeURIComponent` on the raw path
+   threw on a malformed escape (`GET /%E0%A4%A`) outside any handler, killing
+   the process and every live match on it. Now it answers 400.
+2. **The repository was served.** The static server served everything under
+   the repo root except `server/data`: `/.git/config` returned 200, meaning
+   the whole history, plus the server source, tests, tools, HANDOFF, README
+   and package.json. Now there is an allowlist:
+   - top-level pages: index, notes, watch, landing, maintenance,
+     model-preview, manifest, sw.js, events.json, LICENSE;
+   - the directories `js/ styles/ assets/ icons/`;
+   - no dot-segments anywhere.
+
+   Anything else is a 404, not a 403, so probes learn nothing. The sw.js
+   precache list is entirely inside the allowlist.
+3. **Path containment.** `startsWith(ROOT)` accepted a sibling directory with
+   the same prefix; it now requires `ROOT + path.sep`.
+4. **Rate limits bypassable.** `clientIP` took the *first* X-Forwarded-For
+   entry, which the client writes, so every request could claim a new
+   address and walk through the per-address sign-in and API limits. Now it
+   takes the *last* entry (the one the single proxy appends), and only when
+   `TRUST_PROXY=1`; otherwise it uses the socket address. `render.yaml` sets
+   `TRUST_PROXY: "1"` and the README documents it. The test harness sets it
+   too, because the fuzz and QA tests stand in for many players via XFF.
+
+Checked and fine:
+- the WebSocket upgrade has no Origin check, but auth is a token *in a
+  message*, never a cookie, so a foreign page cannot act as a signed-in
+  player;
+- `accountByName` is used only inside the pairing claim, not exposed as an
+  endpoint;
+- CSP (hashed inline scripts), `nosniff`, `frame-ancestors 'none'`, body
+  limits, scrypt and the failure-only login throttles are as v87 left them.
+
+**Owner note.** A GitHub Pages deployment exists ("pages build and
+deployment" runs on main). Pages serves the repo as static files, so the
+allowlist above does not apply there: HANDOFF, tests and the server source
+are public on Pages. `server/data` is gitignored, so no secrets are exposed,
+but if the repo is private, that is worth knowing.
+
 ### v99 — difficulty above 1.0 buys shot selection, not volume
 In `sim.js`, the AI shooting branch (the carrier `think`, "toGoal < 31")
 works like this:

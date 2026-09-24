@@ -73,7 +73,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v99';
+export const APP_VERSION = 'v100';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -437,7 +437,8 @@ api.resume().then(async (d) => {
 // match simply uses the width it has.
 
 // Safari fires a synthetic double-tap zoom that steals taps from the touch stick.
-document.addEventListener('gesturestart', (e) => e.preventDefault());
+// v100: its pinch is stopped only in a match — menus may be zoomed (accessibility).
+document.addEventListener('gesturestart', (e) => { if (document.body.classList.contains('in-game')) e.preventDefault(); });
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 /* ------------------------------------------------------------------ *

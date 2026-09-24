@@ -420,8 +420,26 @@ const SECURITY_HEADERS = {
   ].join('; '),
 };
 
+/* v100 (security review): what the site serves, by name. The static
+ * server used to hand out anything under the repo root except server/data —
+ * .git (the whole history), the server's source, tests, tools and HANDOFF
+ * were all a GET away. Now only the game's own files are: the pages at the
+ * top level, and four directories. Anything else is a 404, not a 403, so a
+ * probe learns nothing about what exists. */
+const PUBLIC_FILES = new Set(['index.html', 'notes.html', 'watch.html', 'landing.html', 'maintenance.html',
+  'model-preview.html', 'manifest.webmanifest', 'sw.js', 'events.json', 'LICENSE']);
+const PUBLIC_DIRS = ['js', 'styles', 'assets', 'icons'];
+function isPublic(rel) {
+  const parts = rel.split(/[\\/]+/).filter(Boolean);
+  if (!parts.length || parts.some((p) => p.startsWith('.'))) return false;   // no dotfiles anywhere
+  return parts.length === 1 ? PUBLIC_FILES.has(parts[0]) : PUBLIC_DIRS.includes(parts[0]);
+}
+
 const server = http.createServer((req, res) => {
-  const route = decodeURIComponent(req.url.split('?')[0]);
+  /* v100: a malformed escape ("/%E0%A4%A") threw here, outside any handler,
+   * and one request took the whole process down with every live match on it. */
+  let route;
+  try { route = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400, { 'Content-Type': 'text/plain' }).end('Bad request'); return; }
 
   if (route.startsWith('/api/')) {
     cors(req, res);
@@ -441,7 +459,10 @@ const server = http.createServer((req, res) => {
 
   const alias = { '/': 'index.html', '/watch': 'watch.html', '/watch/': 'watch.html' };
   let file = path.join(ROOT, alias[route] || route);
-  if (!path.resolve(file).startsWith(ROOT)) { res.writeHead(403).end('Forbidden'); return; }
+  // v100: inside the root means the root plus a separator; a bare prefix let "/../fc27-x" through
+  const resolved = path.resolve(file);
+  if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) { res.writeHead(403).end('Forbidden'); return; }
+  if (!isPublic(path.relative(ROOT, resolved))) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
   // the account database is not part of the served site
   if (path.resolve(file).startsWith(path.join(__dirname, 'data'))) {
     res.writeHead(403).end('Forbidden');

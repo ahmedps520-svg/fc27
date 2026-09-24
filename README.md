@@ -53,6 +53,12 @@ origin. The server reads `PORT` from the environment, which is what those platfo
 node server/server.js          # PORT comes from the environment
 ```
 
+Behind exactly one reverse proxy (Render, Railway and Fly.io all put one in front), set
+`TRUST_PROXY=1` so the sign-in and API rate limits see each player's real address — the one the
+proxy appends to `X-Forwarded-For`. Without it the header is ignored, which is right when nothing
+sits in front, and means every player looks like the proxy when something does. `render.yaml`
+sets it.
+
 **Split: static front end + separate server** — keep the game on GitHub Pages and put only the
 server elsewhere. Set the server's origin in `js/net/config.js`:
 

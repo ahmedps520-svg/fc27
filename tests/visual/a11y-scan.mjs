@@ -13,6 +13,7 @@
  *   node tests/visual/a11y-scan.mjs [--screens menu,squad]
  */
 import { chromium } from 'playwright';
+import { watchConsole } from '../lib/console.mjs';
 import { startServer } from '../smoke/server.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -20,11 +21,13 @@ const SCREENS = arg('--screens', 'menu,today,squad,career,pro,quick,online,weeke
 const server = await startServer();
 const browser = await chromium.launch({ args: ['--disable-webgl'] });
 const problems = [];
+const consoleIssues = [];
 try {
   for (const lang of ['en', 'ar']) {
     const ctx = await browser.newContext({ viewport: { width: 1024, height: 700 } });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => problems.push(`${lang}: page error ${e.message}`));
+    consoleIssues.push(watchConsole(page, { tag: lang, origin: server.url }));   // v100: console.error and 4xx/5xx
     await page.addInitScript((lang) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999', onboarded: true }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, lang } })), lang);
     await page.goto(`${server.url}/`);
     await page.waitForSelector('#startBtn', { timeout: 30000 });
@@ -87,6 +90,7 @@ try {
   await browser.close();
   server.stop();
 }
+for (const l of consoleIssues) for (const e of l) if (!/page error/.test(e)) problems.push(e);
 for (const p of problems) console.log('  ✗', p);
 console.log(problems.length ? `a11y: ${problems.length} problem(s)` : `a11y: ok (${SCREENS.length} screens × 2 languages)`);
 process.exit(problems.length ? 1 : 0);

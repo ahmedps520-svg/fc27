@@ -63,10 +63,21 @@ setInterval(() => {
   for (const [k, b] of buckets) if (b.at < cutoff) buckets.delete(k);
 }, 5 * 60 * 1000).unref();
 
-/** The client's address, honouring one proxy hop (Render terminates TLS). */
+/** The client's address, honouring one proxy hop (Render terminates TLS).
+ *
+ * v100 (security review): the FIRST X-Forwarded-For entry is whatever the
+ * client wrote there — a proxy appends the address it saw to the end. Taking
+ * the first let anyone mint a fresh "address" per request and walk straight
+ * through every per-address limit (sign-in guessing included). With exactly
+ * one proxy in front, the last entry is the one it added. And with no proxy
+ * at all (local, or a host that does not set TRUST_PROXY), the header is not
+ * trusted: the socket's address is the only one nobody can forge. */
 function clientIP(req) {
-  const fwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return fwd || req.socket?.remoteAddress || 'unknown';
+  if (process.env.TRUST_PROXY === '1') {
+    const hops = (req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return req.socket?.remoteAddress || 'unknown';
 }
 
 /* Sign-in attempts are limited per address AND per account name, because

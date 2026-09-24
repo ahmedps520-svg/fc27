@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v100',
+    date: '2026-09-24',
+    tag: 'Fix',
+    title: 'Faster start, safer server',
+    lede: 'The title screen is much lighter on phones, you can pinch-zoom the menus, and the game server is harder to break.',
+    entries: [
+      {
+        head: 'Faster start',
+        summary: 'The title screen\'s moving backdrop now draws far less often, so the game is ready to play in about four seconds on a mid-range phone instead of about thirteen.',
+        detail: 'Measured with Lighthouse on a simulated mid-range phone. The time the main thread was blocked fell from 5.0 to 0.3 seconds, and the performance score rose from 47 to 77. The backdrop looks the same.',
+      },
+      {
+        head: 'Zoom',
+        summary: 'You can pinch to zoom any menu if the text is too small. Matches still ignore pinches, so the controls are never enlarged by accident.',
+        detail: '',
+      },
+      {
+        head: 'Server',
+        summary: 'A security review found and fixed three problems: one malformed web address could stop the game server, files that were never meant to be public could be downloaded, and sign-in limits could be dodged. None of them exposed passwords or saves.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v99',
     date: '2026-09-24',
     tag: 'Gameplay',

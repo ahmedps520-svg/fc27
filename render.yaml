@@ -28,6 +28,10 @@ services:
       # broke every deploy — see .node-version
       - key: NODE_VERSION
         value: 22.11.0
+      # one proxy (Render's) sits in front: guard.js takes the address it adds to
+      # X-Forwarded-For, not the one a client can write there itself
+      - key: TRUST_PROXY
+        value: "1"
       # accounts and cloud saves. Set these in the dashboard; `sync: false` keeps
       # the secrets out of the repo and stops a redeploy blanking them.
       - key: UPSTASH_REDIS_REST_URL

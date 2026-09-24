@@ -2144,6 +2144,7 @@ body.in-game #screen {
 html {
   /* stop Safari resizing text when the device rotates */
   -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;   /* v100: pinch-zoom yes, double-tap zoom (and its tap delay) no */
   height: -webkit-fill-available;
 }
 body {
