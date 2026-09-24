@@ -15,6 +15,77 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v102 — feel: players step instead of skating (backlog #19, part 1)
+**Measured problem.** New `tools/gait-audit.mjs` poses the built-in rig frame
+by frame and tracks a foot while it is on the grass (boot z < 0.09). That
+foot moved at 0.99–1.06× the body's speed in jog, sprint, backpedal and
+sideways jockey. The legs were a rhythm played along the *facing* at
+`phase += speed × 2.4`, with no relation to the ground.
+
+**The stepper** (`rig.js`, the `leg()` inside `posePlayer`). Each foot is
+either *planted*, pinned where it landed, or *swinging* on a smoothstep arc
+from its last plant to a predicted one. The prediction is home plus velocity
+× (time to the next mid-stance), so a backpedal steps backwards and a jockey
+steps sideways with no special case. Thigh and shin come from two-bone IK
+(hip → ankle, knee bent forward).
+- **Timing:**
+  - Cadence: `strideRate(sp) = 2π·0.77·sp^0.478`, fitted to real running
+    (1.3 cycles/s at 3 m/s, 2.2 at 9 m/s).
+  - Duty: `0.7 × cadence / sp`, clamped 0.15–0.6. That is ~0.3 at a jog and
+    ~0.18 at a sprint, as in real running.
+  - Touch-down: the foot lands with 40% of the stance ahead.
+- **Posture:** hip drops 0.07 × gait (soft knees). Without it, a leg of the
+  rig's length reaches only ±0.24 m along the ground, and planted feet
+  hung in the air.
+- **Rules learned the hard way** (each was a visible bug on the way):
+  - Overreach on a *planted* foot lifts the heel (toe-off) and keeps the
+    spot. A *swinging* foot out of reach stretches toward its target;
+    forcing it to the reach sphere's bottom made 0.4 m drops.
+  - A swing starts from the ankle's real height (`f.fromZ`), not from
+    standing height.
+  - A plant more than 2.5 m from home (a kick-off reset, a replay seek) is
+    dropped outright.
+  - Standing still (under 0.35 m/s): feet settle under the hips in 5 cm
+    steps.
+- **Also:**
+  - `gaitOf(p)` gives movement in the player's frame (mf, ml) and `dir`
+    (−1 on a backpedal).
+  - `updateBank(p, dt)` smooths the lateral acceleration into `p._bank`,
+    which shifts the shoulders, head and arms into a turn.
+  - Arm pump grows with speed.
+  - Lean is × mf: forward only when running forward, slightly back on a
+    backpedal.
+
+**Numbers** (`tools/gait-audit.mjs`, and `tests/unit/gait.test.mjs` holds
+them):
+
+| Move | Foot speed on grass (× body), before | After | Worst one-frame jump, after (old rig) |
+|---|---|---|---|
+| Jog | 1.00 | 0.08 | 0.07 m (0.06) |
+| Sprint | 1.06 | 0.19 | 0.11 m (0.34) |
+| Backpedal | 1.00 | 0.07 | 0.07 m (0.06) |
+| Jockey | 1.06 | 0.05 | 0.06 m (0.02) |
+
+What remains is swing feet skimming at touch-down and lift-off. The test
+bars are slip < 0.3 and jumps < 0.15 m across all five moves (the four
+above plus a hard turn).
+
+**Mixamo models (High/Ultra).** They have only a forward run clip.
+`poseRig` now plays it at `timeScale × dir` (reversed on a backpedal) and
+turns the root 60% of `atan2(ml, |mf|)` toward a sideways move. No foot
+plant: the clip owns the legs.
+
+**Clips.** `tools/gait-clips.mjs` records `before.webm` and `after.webm` (git
+HEAD's rig vs the working tree) of one figure going jog → sprint → hard turn
+→ backpedal → jockey, plus still strips, into `tests/tmp/gait/`.
+
+The sweep is identical (render-only change). The play session was clean on
+all three devices.
+
+**Still open for #19:** proper turn animations on the models (they have no
+turn clips); a plant-and-cut on hard direction changes (the sim turns in
+~0.15 s, and the stepper follows but has no dedicated "cut" step).
+
 ### v101 — R15 visual consistency audit
 New `tools/ui-audit.mjs` (kept). It visits all 15 screens at 1280 px. For each
 component kind it records every visible instance's computed style: primary,

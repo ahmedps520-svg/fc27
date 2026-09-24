@@ -10,7 +10,7 @@ import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
-import { kitTexture, buildPlayer, buildFor, posePlayer } from './rig.js';
+import { kitTexture, buildPlayer, buildFor, posePlayer, gaitOf, strideRate, updateBank } from './rig.js';
 import { groundProfile } from '../data/grounds.js';
 import { dressGround } from './groundDressing.js';
 import { dressStreet, courtTexture } from './streetDressing.js';
@@ -3574,7 +3574,9 @@ export function createRenderer(canvas, match, quality, models = false) {
           }
           const rig = rigs.get(p);
           if (!rig) continue;
-          p._phase = (p._phase || 0) + Math.hypot(p.vx, p.vy) * dt * 2.4;
+          // v102: a real cadence (longer strides as he speeds up), and the body tipped into a turn;
+          // the feet step on their own (rig.js), in whatever direction he moves
+          { const g = gaitOf(p); p._phase = (p._phase || 0) + strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(p, dt); }
           rig.groundZ = surfaceAt(p.x, p.y);
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
