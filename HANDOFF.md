@@ -15,6 +15,78 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v103 — team-mate support play (backlog #21)
+**Measured first.** New `tools/support-audit.mjs` plays seeded AI matches
+(the sweep's fixtures, Authentic, 240 s) and samples 4×/s during possession.
+- A team-mate counts as *open* when he is 6–28 m from the carrier, no
+  opponent is within 2.2 m of the lane, and none is within 3 m of him.
+- Passes are followed to where they end, via a `pass` wrapper and the next
+  owner.
+
+Baseline, 40 matches, seed 12345:
+
+| Measure | Value |
+|---|---|
+| Open options per moment | 2.09 (≤16 m: 0.73) |
+| Moments with nobody open | 19.9% |
+| Nearest team-mate | 10.8 m |
+| Passes completed | 57.6% (real ~80%) |
+
+**Two causes, two fixes.**
+1. `this.supporters` (the two nearest team-mates, picked every frame since
+   v69) was never used. `think` now sends them to `supportSpot(p, carrier,
+   home, otherSupporter)`, re-chosen every 0.35 s or when the carrier
+   changes.
+   - Candidates: 9 angles (−150° to 150° from the attacking direction) × 3
+     radii (9, 13, 17 m × scale), forward ones onside.
+   - Score: lane (≤5) + 0.55 × room (≤8) + 1.4 × forwardness − 0.22 × stray
+     (beyond 10 m from his shape slot) − 0.07 × travel − 3 if within 7 m of
+     the other supporter.
+   - Priority: after the counter, overlap, third-man and run branches;
+     before the FWD/DEF shape moves.
+   - Gated by `TUNE.support`.
+2. `pass()` picked the receiver by angle, distance, forwardness and width,
+   never by openness. Now: + `openness(t)` = ((min(lane, 4) − 2) × 0.35 +
+   (min(mark, 5) − 2.5) × 0.15) × weight.
+   - Weight: CPU = `decisionQuality`; a person's assist 1 = 0.6, assist 2
+     = 1; manual (0) = 0.
+   - This also makes pass assist 2 do what its v87 comment always claimed
+     ("the best open man").
+
+**After** (40 matches, seed 12345): open options 2.18 (short 0.87), nobody
+open 18.7%, nearest mate 9.3 m, completion **62.1%**, possession 2.9 → 3.1 s.
+Seed 777 is similar (59.9%).
+
+**Sweep re-baselined deliberately:**
+
+| Seed | Goals | Shots |
+|---|---|---|
+| 12345 | 2.22 → 1.98 | 14.17 → 14.58 |
+| 777 | 1.92 → 1.88 | 14.73 → 13.75 |
+
+Careful passing means fewer scrappy chances. `shotRate` 0.75 and 0.8 were
+tried: more shots, no more goals (1.83–1.90), so it stays at 0.7. Goals
+within ±0.2 of the 2.0 floor are sampling noise at 60 matches.
+
+**Still ~18 points short of real completion.** At skill 1.0, 16% of CPU
+passes are deliberately random (v79's decision-quality lever, `Math.random()
+> q`), and that stays. The rest is pass physics and interceptions: next
+levers if needed.
+
+**Found by the unit tests:** in the practice arena, a goal brought all ten
+parked opponents back onto the pitch for the celebration and walk-back. The
+dead-ball phases return early from `update`, before the end-of-frame
+`repark`. `update` is now a wrapper that calls `step` and then reparks.
+Parked men are also excluded from supporters.
+
+**Tests:** `tests/unit/support.test.mjs` covers three things:
+- the open man gets it 18/20 times;
+- manual assist still goes where aimed;
+- a supporter picks a spot with a lane over 2.2 m clear.
+
+The watch bundle was rebuilt (it contains sim.js). Unit tests 208/208; the
+QA bot and play session are clean.
+
 ### v102 — feel: players step instead of skating (backlog #19, part 1)
 **Measured problem.** New `tools/gait-audit.mjs` poses the built-in rig frame
 by frame and tracks a foot while it is on the grass (boot z < 0.09). That

@@ -159,7 +159,7 @@ const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
 /* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns") */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35 };
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -579,6 +579,14 @@ export class Match {
 
   /* ------------------------------ update ----------------------------- */
   update(dt, input) {
+    this.step(dt, input);
+    /* v103: parked men go back off the pitch after every path through the
+       step — the dead-ball phases return early, and a goal's celebration and
+       walk back used to bring the whole parked side on in the practice arena */
+    if (this.parkedAny) this.repark();
+  }
+
+  step(dt, input) {
     if (this.phase === 'end') return;
     if (this.locked) this.lockSeats();
     if (this.parkedAny) this.repark();
@@ -671,7 +679,7 @@ export class Match {
     const carrier = this.ball.owner;
     if (carrier) {
       const mates = this.teams[carrier.team].players
-        .filter((q) => q !== carrier && q.role !== 'GK')
+        .filter((q) => q !== carrier && q.role !== 'GK' && !q.parked)   // v103: a parked man (the practice arena) is nobody's option
         .sort((a, z) => dist(a, carrier) - dist(z, carrier));
       this.supporters[carrier.team] = [mates[0], mates[1]];
     }
@@ -2194,6 +2202,27 @@ export class Match {
     const am = Math.hypot(ax, ay) || 1;
     ax /= am; ay /= am;
 
+    /* v103 (backlog #21): is he open? A clear lane from the passer and room
+       from his marker now count towards who the ball goes to — the pass used
+       to pick by angle, distance and forwardness alone and went into marked
+       men and through defenders (58% of passes arrived). The CPU weighs it by
+       its decision quality (so difficulty still matters); a person's pass
+       assist weighs it too, fully at "full", and manual (0) not at all — there
+       the ball goes where it was aimed. */
+    const human = this.controllers.some((k) => this.playerOf?.(k) === p);
+    const openW = assist === 0 ? 0 : !human ? this.decisionQuality(p.team) : assist === 2 ? 1 : 0.6;
+    const opp = this.teams[1 - p.team].players;
+    const openness = (t) => {
+      if (!openW) return 0;
+      const vx = t.x - p.x; const vy = t.y - p.y; const L = vx * vx + vy * vy || 1;
+      let lane = 9; let mark = 9;
+      for (const o of opp) {
+        const u = clamp(((o.x - p.x) * vx + (o.y - p.y) * vy) / L, 0.08, 1);
+        lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y));
+        mark = Math.min(mark, dist(o, t));
+      }
+      return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW;
+    };
     let best = null;
     let bestScore = -Infinity;
     for (const t of team.players) {
@@ -2208,7 +2237,7 @@ export class Match {
       const forward = ((t.x - p.x) * team.dir) / 40;
       // v79: a side told to play wide looks for the man on the touchline
       const wideBonus = (Math.abs(t.y - CY) / CY) * (team.tactics?.width ?? 0.5) * 0.9;
-      const score = align * alignW - d / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === 'GK' ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0);
+      const score = align * alignW - d / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === 'GK' ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0) + openness(t);
       if (score > bestScore) { bestScore = score; best = t; }
     }
 
@@ -3007,6 +3036,29 @@ export class Match {
       }
     }
 
+    /* v103 (backlog #21): support. The two team-mates nearest the carrier
+       (this.supporters, picked every frame since v69 but never acted on) now
+       go and make themselves an option: every ~0.35 s each scores spots 9–17 m
+       from the ball — a clear lane from the carrier, room from the nearest
+       marker, a little forward if it is on — without straying far from his
+       place in the shape or standing on the other supporter, and moves there.
+       Before this, one moment in five on the ball had nobody open and 58% of
+       passes arrived (tools/support-audit.mjs). */
+    const sup = weHave && b.owner && b.owner !== p ? this.supporters[p.team] : null;
+    if (TUNE.support && sup && (sup[0] === p || sup[1] === p) && team.counterT <= 0) {
+      p.supT = (p.supT || 0) - dt;
+      if (p.supT <= 0 || p.supFor !== b.owner) {
+        p.supT = 0.35; p.supFor = b.owner;
+        const spot = this.supportSpot(p, b.owner, target, sup[0] === p ? sup[1] : sup[0]);
+        p.supX = spot.x; p.supY = spot.y;
+      }
+      if (p.supX != null) {
+        const far = Math.hypot(p.supX - p.x, p.supY - p.y);
+        this.moveTo(p, p.supX, p.supY, dt, far > 8 ? 1.02 : 0.9);
+        return;
+      }
+    }
+
     if (weHave && p.role === 'FWD') {
       // forwards push the line and drift across it in bursts
       const burst = Math.sin(p.runT * 0.85 + p.num) > 0.2 ? 4 : 0;
@@ -3081,6 +3133,42 @@ export class Match {
     this.offsideWatch = ids.size ? { team: passer.team, ids } : null;
   }
   /** The side with the ball keeps its forwards level with the last defender (AI). */
+  /** v103: the best spot near the carrier for a team-mate to receive it. */
+  supportSpot(p, c, home, other) {
+    const team = this.teams[p.team];
+    const opp = this.teams[1 - p.team].players;
+    const laneOf = (x, y) => {
+      let best = 99;
+      const vx = x - c.x; const vy = y - c.y; const L = vx * vx + vy * vy || 1;
+      for (const o of opp) {
+        const t = clamp(((o.x - c.x) * vx + (o.y - c.y) * vy) / L, 0, 1);
+        best = Math.min(best, Math.hypot(c.x + vx * t - o.x, c.y + vy * t - o.y));
+      }
+      return best;
+    };
+    const roomAt = (x, y) => { let best = 99; for (const o of opp) best = Math.min(best, Math.hypot(o.x - x, o.y - y)); return best; };
+    const sc = Math.max(0.6, SCALE);
+    let best = null; let bestScore = -1e9;
+    for (const deg of [-150, -110, -70, -35, 0, 35, 70, 110, 150]) {
+      const a = deg * Math.PI / 180;
+      for (const r of [9, 13, 17]) {
+        let x = c.x + team.dir * Math.cos(a) * r * sc;
+        const y = c.y + Math.sin(a) * r * sc;
+        if (y < 3 || y > PITCH.h - 3 || x < 3 || x > PITCH.w - 3) continue;
+        if ((x - c.x) * team.dir > 0) x = this.onsideX(team, x);
+        const lane = Math.min(5, laneOf(x, y));
+        const room = Math.min(8, roomAt(x, y));
+        const fwd = ((x - c.x) * team.dir) / (r * sc);
+        const stray = Math.max(0, Math.hypot(x - home.x, y - home.y) - 10 * sc);
+        const travel = Math.hypot(x - p.x, y - p.y);
+        const crowd = other && other.supX != null && Math.hypot(x - other.supX, y - other.supY) < 7 * sc ? 3 : 0;
+        const score = lane * 1.0 + room * 0.55 + fwd * 1.4 - stray * 0.22 - travel * 0.07 - crowd;
+        if (score > bestScore) { bestScore = score; best = { x, y }; }
+      }
+    }
+    return best || { x: home.x, y: home.y };
+  }
+
   onsideX(team, x, slack = 0) {
     if (!FIELD.offside || this.noOffside) return x;
     const line = this.offsideLine(1 - team.side);
