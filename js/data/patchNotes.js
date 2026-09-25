@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v111',
+    date: '2026-09-25',
+    tag: 'Fixes',
+    title: 'Fouled players stay above the grass',
+    lede: 'A polish release. On High and Ultra graphics, a fouled player now goes down onto the grass instead of disappearing into it, and sprinters lean the right way.',
+    entries: [
+      {
+        head: 'On High and Ultra',
+        summary: 'A fouled player now falls face down onto the grass. Before, he tipped the wrong way and sank out of sight until he got up. A sprinter now leans into his run, and a roulette turns on the spot.',
+        detail: 'All three tilted the player relative to the pitch instead of relative to himself. A sprinter running along the touchline leaned sideways or backwards, the roulette tumbled instead of turning, and the fall sank the player under the turf. Low and Medium graphics were not affected.',
+      },
+      {
+        head: 'Online celebrations',
+        summary: 'In online matches the guest now sees the scorer\'s own celebration, animated. Before, the guest saw the old cheer, frozen mid-jump. The Airplane also banks on High and Ultra.',
+        detail: 'Nothing changes for a player on an older build: an older guest ignores the extra information and an older host doesn\'t send it.',
+      },
+    ],
+  },
+  {
     version: 'v110',
     date: '2026-09-25',
     tag: 'Gameplay',

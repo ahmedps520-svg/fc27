@@ -353,24 +353,28 @@ export function poseRig(rig, p, dt, every = 1) {
 
   if (p._actT > 0) p._actT -= dt;
   // a sprint leans into the run: the same clip, faster, with the body tipped forward
-  if (rig.root) {
+  /* v111: the root's turn is built as a quaternion (orientRoot, below): a
+     heading about the vertical, then a pitch about his own left-right axis.
+     It used to be Euler angles in three's default XYZ order, where x and y
+     turn about the *world's* axes — the sprint lean tipped a man running
+     along the touchline sideways (or backwards), the roulette tumbled him
+     about a horizontal axis, and a fouled player was tipped the wrong way and
+     sunk 0.72 m, under the grass: on High and Ultra he vanished for the fall. */
+  let pitch = 0;
+  if (p.downT > 0) {
     /* Fouled: the whole figure is tipped onto the grass for the length of
        `downT` and levered back up at the end of it, whatever clip the model
        happens to be playing. A scanned asset with a real fall animation uses
        that instead (see actionFor); this is what makes the others go down. */
-    if (p.downT > 0) {
-      const T = Math.max(0.001, p.downMax || 1.6);
-      const t = 1 - Math.max(0, Math.min(1, p.downT / T));
-      const flat = Math.max(0, Math.min(1, t * 6) - Math.max(0, (t - 0.72) / 0.28));
-      rig.root.rotation.x = -flat * (Math.PI / 2) * 0.92;
-      rig.root.position.z = -flat * 0.72;
-      return;
-    }
-    rig.root.rotation.x = want === 'run' ? -Math.min(0.14, Math.max(0, speed - 4.5) * 0.05) : 0;
-    rig.root.position.z = 0;
-    // the roulette: one full turn through the move (sim.js skillMove)
-    rig.root.rotation.y = p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
+    const T = Math.max(0.001, p.downMax || 1.6);
+    const t = 1 - Math.max(0, Math.min(1, p.downT / T));
+    const flat = Math.max(0, Math.min(1, t * 6) - Math.max(0, (t - 0.72) / 0.28));
+    orientRoot(rig, p, 0, flat * (Math.PI / 2) * 0.92);
+    return;
   }
+  if (want === 'run') pitch = Math.min(0.14, Math.max(0, speed - 4.5) * 0.05);
+  // the roulette: one full turn through the move (sim.js skillMove), about the vertical
+  const roulette = p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
 
   if (want !== rig.current) {
     const next = rig.actions[want] || rig.actions.idle;
@@ -398,16 +402,29 @@ export function poseRig(rig, p, dt, every = 1) {
   // The clips walk the character across the floor; the match decides where a
   // player is, so the root motion is cancelled by pinning the hips to the spot
   // the simulation put him on.
-  rig.root.position.set(p.x, p.y, 0);
-  // The character's own forward is -Y once it has been tipped upright, so the
-  // heading is a quarter turn ahead of the direction the match is steering him.
   const strafe = speed > 1.1 && !p.celebrating ? Math.atan2(g.ml, Math.abs(g.mf)) * 0.6 : 0;
-  rig.root.rotation.z = Math.atan2(p.dirY, p.dirX) + strafe * (g.dir) + Math.PI / 2;
+  orientRoot(rig, p, strafe * g.dir + roulette, pitch);
   if (rig.hips) {
     rig.hips.position.x = 0;
     rig.hips.position.z = 0;
   }
   if (p.celebrating && p.celebKind && p.celebKind !== 'corner') celebrateRig(rig, p, speed, celebClock);
+}
+
+/**
+ * Place and turn the root: on his spot, facing where the match steers him
+ * (plus `turn`), tipped `pitch` radians forward about his own left-right
+ * axis, pivoting at the boots. The character's own forward is -Y once it has
+ * been tipped upright, so the heading is a quarter turn ahead.
+ */
+const _oq = new THREE.Quaternion(); const _op = new THREE.Quaternion(); const _ov = new THREE.Vector3();
+const Z_UP = new THREE.Vector3(0, 0, 1);
+function orientRoot(rig, p, turn, pitch) {
+  const face = Math.atan2(p.dirY, p.dirX) + turn;
+  _oq.setFromAxisAngle(Z_UP, face + Math.PI / 2);
+  if (pitch) { _op.setFromAxisAngle(_ov.set(-Math.sin(face), Math.cos(face), 0), pitch); _oq.premultiply(_op); }
+  rig.root.quaternion.copy(_oq);
+  rig.root.position.set(p.x, p.y, 0);
 }
 
 /* ------------------------------------------------------------------ *
@@ -431,6 +448,8 @@ function celebrateRig(rig, p, speed, t) {
   const pitch = C.belly > 0 ? (Math.PI / 2) * 0.92 * C.belly : C.lean - C.flip;
   _q.setFromAxisAngle(Z_AXIS, face + Math.PI / 2);                    // the model's forward is -Y (see poseRig)
   _qp.setFromAxisAngle(_v.set(-fy, fx, 0), pitch);
+  // v111: the airplane's bank — a roll about his own forward line
+  if (C.roll) _qp.premultiply(_q2.setFromAxisAngle(_v.set(fx, fy, 0), C.roll));
   root.quaternion.copy(_qp).multiply(_q);
   // the hips stay where they belong (a somersault turns about them, not the boots)
   _h.set(0, 0, HIP_H).applyQuaternion(_qp);
