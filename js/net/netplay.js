@@ -162,6 +162,11 @@ export function encodeSnapshot(match) {
     tm: r2(match.t),
     c: match.controllers.map((c) => c.activeIdx),
     ce: all.map((p) => (p.celebrating ? 1 : 0)).join(''),
+    // v111: the scorer's celebration and the goal's clock — the guest never
+    // simulates, so it had the generic cheer, frozen mid-hop. Optional fields:
+    // an older guest ignores them, an older host leaves them out.
+    ck: match.celebrant?.celebKind ? [all.indexOf(match.celebrant), match.celebrant.celebKind] : null,
+    ct: r2(match.celebT || 0),
     bn: match.banner || '',
     // Who scored, and who put it in. These are written by the simulation, so
     // the guest — which never simulates — has no way to know them otherwise,
@@ -285,7 +290,10 @@ export class SnapshotView {
       // an older host does not send this, and a full tank is the safe read
       p.stamina = sa[7] ?? 1;
       p.celebrating = a.ce?.[i] === '1';
+      p.celebKind = a.ck && a.ck[0] === i ? a.ck[1] : null;
     }
+    if (a.ct != null) m.celebT = a.ct;
+    m.celebrant = a.ck ? all[a.ck[0]] || null : null;
 
     m.teams[0].score = a.s[0];
     m.teams[1].score = a.s[1];

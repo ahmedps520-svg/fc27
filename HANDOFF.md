@@ -15,6 +15,40 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v111 — polish: the Mixamo root turned about the wrong axes
+**Found while building v110.** `playerModel.js` posed the root with Euler
+angles in three's default XYZ order: `rotation.x` for the sprint lean and
+the foul fall, `rotation.y` for the roulette, `rotation.z` for the heading.
+In XYZ, x and y turn about the parent (world) axes, not the player's own.
+
+A headless check on the model in two facings (+x, −y) showed:
+- **fouled:** tipped about world X, then `position.z = −0.72`, which is
+  under the turf. On High/Ultra a fouled player **vanished** for the fall.
+- **sprint lean:** facing −y leaned *backwards*; facing ±x rolled sideways.
+- **roulette:** turned about a horizontal world axis, so it tumbled instead
+  of spinning.
+
+**Fix:** new `orientRoot(rig, p, turn, pitch)`. The root quaternion is
+heading (+ strafe + roulette) about +Z, then `pitch` about the player's own
+left-right axis `(−sin, cos, 0)`, pivoting at the boots with no sink.
+- `downT` uses pitch `flat·0.92·π/2`: face down, above the grass.
+- The sprint uses pitch ≤ 0.14.
+- No `root.rotation.*` writes remain.
+- Re-checked the same way: fouled face-down in both facings, both sprints
+  lean forward, the roulette is upright.
+
+**Online (`netplay.js`):** the snapshot gains optional `ck:
+[playerIndex, celebKind]` and `ct: celebT`. The guest sets `celebKind`,
+`celebrant` and `celebT`, so the celebration shows and animates. It is
+backward compatible both ways. A unit test covers the round trip and an
+old-host snapshot. (`downT` and `spinT` still aren't sent, so a guest sees
+no fall and no roulette; not changed here.)
+
+**Airplane on Mixamo:** `celebrateRig` adds `C.roll` about the player's
+forward axis.
+
+**Sweeps:** unit tests, sweep identical, soak, QA bot; see the report.
+
 ### v110 — goal celebrations: 16, and a picker (backlog #15)
 **Before.** There was one celebration: everyone on the scoring side hopped
 with both arms up (`rig.js` `cheer`), the scorer ran to the corner, and the

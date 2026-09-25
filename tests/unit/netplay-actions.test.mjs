@@ -44,3 +44,28 @@ test('the first eight bits mean what they always meant (a build behind reads the
   const oldReads = OLD.filter((a, i) => out[0].h & (1 << i));
   assert.deepEqual(oldReads, ['curl', 'sprint']);
 });
+
+/* v111: the guest never simulates, so the scorer's celebration and the goal's
+   clock have to come over the wire, or a guest sees the generic cheer frozen
+   mid-hop. */
+test('a guest sees the scorer’s own celebration and the goal clock running', async () => {
+  const { encodeSnapshot, SnapshotView } = await import('../../js/net/netplay.js');
+  const { Match, setField } = await import('../../js/game/sim.js');
+  const { WORLD } = await import('../../js/data/generator.js');
+  setField('full');
+  const host = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0, celebration: 'backflip' });
+  const guest = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0 });
+  const scorer = host.teams[0].players[9];
+  host.phase = 'play'; host.ball.lastTouch = scorer; host.scoreGoal(0);
+  host.celebT = 1.25;
+  const snap = encodeSnapshot(host);
+  new SnapshotView(guest).apply(snap, snap, 0);
+  const g = guest.teams[0].players[9];
+  assert.equal(g.celebKind, 'backflip');
+  assert.equal(guest.celebT, 1.25);
+  assert.equal(guest.teams[1].players[9].celebKind ?? null, null);
+  // an older host's snapshot, without the fields, leaves the guest on the plain cheer
+  const old = { ...snap }; delete old.ck; delete old.ct;
+  new SnapshotView(guest).apply(old, old, 0);
+  assert.equal(g.celebKind, null);
+});
