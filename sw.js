@@ -121,6 +121,7 @@ const ASSETS = [
   './js/components/saveConflict.js',
   './js/components/osk.js',
   './js/components/sideSelect.js',
+  './js/components/touchLayout.js',
   './js/game/quality.js',
   './js/game/governor.js',
   './js/broadcast/context.js',

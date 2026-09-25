@@ -44,6 +44,8 @@ jobs:
         run: node tests/visual/layout-scan.mjs
       - name: Accessibility scan (names, focus rings, keyboard)
         run: node tests/visual/a11y-scan.mjs
+      - name: Touch pad on four phones (sizes, gaps, reach, nothing covered)
+        run: node tools/touch-audit.mjs
       - name: Controller only (every screen by pad, keyboard, tabs, sliders, line-up)
         run: node tests/qa/pad-reach.mjs
       - name: Offline play (service worker)

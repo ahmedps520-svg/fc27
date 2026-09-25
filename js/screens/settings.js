@@ -295,7 +295,7 @@ export function render() {
         <div><b>Stick response</b><span>Left: quick off the centre. Right: finer control near it.</span></div>
         <input type="range" id="padCurve" min="50" max="200" step="10" value="${Math.round((s.padCurve ?? 1) * 100)}" aria-label="Stick response">
       </div>
-      <div class="setting-row"><div><b>Vibration</b><span>Goals, shots and tackles, on controllers that can rumble.</span></div>
+      <div class="setting-row"><div><b>Vibration</b><span>Goals, shots and tackles, on controllers that can rumble and on Android phones (iPhones do not let web pages vibrate). Also the tick when you press a touch button.</span></div>
         <button class="switch ${s.rumble !== false ? 'on' : ''}" id="rumbleTgl" role="switch" aria-checked="${s.rumble !== false}"><i></i></button></div>
       <p class="hint">Choose a control, then press the key or controller button you want for it. Prompts in a match follow whatever you last used — keyboard, controller or touch.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
