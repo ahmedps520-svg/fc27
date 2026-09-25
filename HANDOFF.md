@@ -15,6 +15,70 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v106 — touch redesign, part 2: the layout editor (backlog #20)
+**`js/components/touchLayout.js`:**
+- `arcLayout(W, H, { user, pin })` takes `settings.touchLayout = { scale,
+  offsets: { slot: { dx, dy } } }`.
+  - `scale` is clamped to 0.8–1.3 and multiplies B before the rings are
+    worked out, so the arc widens with the buttons.
+  - Offsets are in units of B, screen-wise (dx right, dy down), measured
+    from the arc's position for that scale. A layout made on an SE lands in
+    the same relative place on a tablet.
+- With no layout, or a default one (`isCustom` false), the output is the
+  plain v105 arc, byte for byte. The touch audit is unchanged.
+- `fitLayout(L, W, H, { pin })` keeps every button:
+  - on screen (4 px margin);
+  - right of the stick zone (46% of W);
+  - under the HUD row (56 px);
+  - at least 10 px from its neighbours.
+
+  It pushes overlapping pairs apart along the centre line (the `pin`ned
+  button does not move), clamps, and repeats (≤ 300 passes).
+- `offsetsFrom(layout, W, H, scale)` is the inverse: positions on screen
+  back to offsets.
+- `applyTouchLayout(pad, W, H, user, pin)` now returns the layout.
+
+**`js/components/touchEditor.js`** (new, precached):
+- `openTouchEditor(current)` resolves to the new layout, `null` (plain
+  arc) or `undefined` (cancelled).
+- It is a full-screen overlay: a stand-in pitch, the stick half shaded, a
+  bar in the HUD row (Size slider, Reset, Cancel, Done) and the real
+  `.tbtn` classes.
+- A pointer drag moves one button with `pin`, so the others make way. On
+  release (and on a slider change or arrow-key nudge) the on-screen layout
+  is written back as offsets for every button, so what you let go of is
+  what gets saved.
+- Transitions are off in the editor. The `.is-down` scale transition could
+  stick mid-way and skew sizes.
+
+**Wiring:**
+- Settings → Accessibility has a "Touch buttons" row with a Customise
+  button, below the one-handed rows.
+- `play.js` passes `getState().settings.touchLayout` to `applyTouchLayout`.
+  One-handed mode still clears it.
+
+**Tests:**
+- Unit (`tests/unit/touch-layout.test.mjs`):
+  - a default layout equals the arc;
+  - at 3 screens × 2 scales × {all on one spot, all flung off screen,
+    scattered}, every button is on screen, clear of the stick and HUD,
+    ≥ 48 px and ≥ 9 px apart;
+  - `offsetsFrom` round-trips;
+  - the pinned button holds.
+- New `tests/qa/touch-editor.mjs` (in CI), on 844×390 touch with CDP
+  finger events:
+  - SHOOT follows a 120 px drag;
+  - 120% scales the buttons;
+  - Done saves;
+  - in a match every button is within 0 px of where the editor left it and
+    the buttons are ≥ 10 px apart;
+  - SHOOT answers a press;
+  - Reset + Done clears the setting;
+  - there are no console errors.
+
+**Next on #20:** gestures, e.g. swipe on SHOOT to aim or chip, swipe on
+PASS for a through ball.
+
 ### v105 — touch redesign, part 1: the arc pad (backlog #20)
 New `tools/touch-audit.mjs` (in CI, exits 1 on a problem). It runs a live
 match at 568×320, 667×375, 844×390 and 932×430 (touch, DPR 1) and measures

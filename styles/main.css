@@ -5146,3 +5146,20 @@ body.pad-active [data-pad][data-pad-glyph]::after {
    on a first-gen SE) */
 #gmRoot:has(#gmTouch:not([hidden])) .bc-strap { bottom: auto; top: 88px; }   /* below the player strip (it covered it at 50px on an SE) */
 #gmRoot:has(#gmTouch:not([hidden])) .bc-sub { bottom: auto; top: 136px; }
+
+/* v106 (backlog #20): the touch button editor — the match's buttons over a
+   stand-in pitch, the stick's half shaded, the controls in the HUD's row */
+.tedit { position: fixed; inset: 0; z-index: 80; overflow: hidden; touch-action: none;
+  background: repeating-linear-gradient(90deg, #2f7a3e 0 60px, #2a7039 60px 120px); }
+.tedit-stick { position: absolute; left: 0; top: 56px; bottom: 0; width: 46%; display: grid; place-items: center;
+  background: rgba(0, 0, 0, .18); border-right: 2px dashed rgba(255, 255, 255, .35); pointer-events: none; }
+.tedit-stick span { font: 700 13px/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+.tedit-bar { position: absolute; top: 8px; left: 8px; right: 8px; height: 44px; display: flex; gap: 8px; align-items: center; justify-content: flex-end;
+  padding: 0 8px; border-radius: 12px; background: rgba(6, 12, 10, .8); color: #fff; }
+.tedit-size { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 700; font-size: 14px; }
+.tedit-size input { width: min(180px, 28vw); }
+.tedit-size output { min-width: 3.2em; font-variant-numeric: tabular-nums; }
+.tedit-hint { position: absolute; left: 12px; top: 60px; margin: 0; max-width: 42%; font-size: 13px; color: rgba(255, 255, 255, .85); pointer-events: none; }
+.tedit .tpad { position: absolute; }
+.tedit .tbtn { cursor: grab; transition: none; }
+.tedit .tbtn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

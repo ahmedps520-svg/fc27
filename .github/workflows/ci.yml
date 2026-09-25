@@ -46,6 +46,8 @@ jobs:
         run: node tests/visual/a11y-scan.mjs
       - name: Touch pad on four phones (sizes, gaps, reach, nothing covered)
         run: node tools/touch-audit.mjs
+      - name: Touch button editor (drag, size, saved into the match, reset)
+        run: node tests/qa/touch-editor.mjs
       - name: Controller only (every screen by pad, keyboard, tabs, sliders, line-up)
         run: node tests/qa/pad-reach.mjs
       - name: Offline play (service worker)

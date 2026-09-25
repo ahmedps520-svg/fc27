@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v106',
+    date: '2026-09-25',
+    tag: 'Touch',
+    title: 'Put the buttons where you want them',
+    lede: 'On phones and tablets you can now move and resize the match buttons: Settings, then Touch buttons, then Customise.',
+    entries: [
+      {
+        head: 'The editor',
+        summary: 'Drag any button to move it; the others move out of the way. A slider makes them all smaller or bigger (80–130%), and Reset puts back the standard layout.',
+        detail: 'The editor shows the match buttons at your screen\'s size over a stand-in pitch, with the stick\'s half shaded. The arrow keys also move the selected button. Your layout is saved as a size plus a nudge for each button, measured in button widths from the standard layout, so it carries over to a phone or tablet of another size.',
+      },
+      {
+        head: 'It stays playable',
+        summary: 'Whatever you ask for, every button stays on the screen, keeps out of the stick\'s half and the top bar, and stays at least 10 points from its neighbours.',
+        detail: 'In a match the buttons go exactly where you left them in the editor. One-handed mode keeps its own column.',
+      },
+    ],
+  },
+  {
     version: 'v105',
     date: '2026-09-25',
     tag: 'Touch',
