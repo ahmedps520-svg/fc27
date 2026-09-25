@@ -15,6 +15,49 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v119 — real rivalries (backlog #16), and the v118 CI red explained
+**v118 CI.** The run on `01ad46e` failed in `touch-editor.mjs`: the Done tap
+did not close the editor, and 7 checks cascaded from it.
+- The editor code was unchanged since v117, which passed, and the test
+  passes locally.
+- The test now waits for the overlay to detach, and retries once with a log
+  line (`Done: first tap not taken`) before failing.
+- The re-run on `7aa91da` was all green. The retry line did **not** appear,
+  so it was a one-off.
+- Listener-leak audit of every screen mount: all `window`/`document`
+  listeners are removed on cleanup; only the two v118 root listeners had
+  leaked.
+
+**Rivalries (`js/data/rivalries.js`, new, precached):**
+- 17 pairs of real-club ids from `countries.js`, each with a plain name
+  ("the Manchester derby", "the Glasgow derby", "the great Spanish
+  rivalry"), no branded titles.
+- `rivalryOf(idA, idB)` is symmetric; null for unknown, identical or
+  missing ids.
+
+**Where it shows:**
+- `play.js` sets `match.rivalry` from the travelling squads' ids. The world
+  ids only anchor the pitch; I checked that the anchor clubs 0 and 1 are
+  not themselves a generated derby.
+- A derby counts as `bigGame`: sell-out, the walkout, the tifo.
+- The crowd bed floor goes 0.3 → 0.42.
+- Chants come every 14–30 s instead of 28–58 s.
+- `broadcast/director.js` prefers `match.rivalry` over `derbyOf`, so the
+  existing `derby`/`derbyGoal` commentary and the pre-match preview name it.
+- Kick Off shows the name above the head-to-head when you pick two rivals.
+
+It is presentation only, and a unit test asserts `sim.js` never mentions a
+rivalry. The sweep is identical.
+
+**Tests:** new `tests/unit/rivalries.test.mjs`:
+- every pair exists in the team data;
+- names are symmetric;
+- negatives return null;
+- the sim does not know about rivalries.
+
+Browser check: picking Liverpool v United showed "The north-west rivalry" on
+Kick Off, and the same on `match.rivalry` and the director.
+
 ### v118 — Custom Cup (backlog #16: tournament creator), and stacked click handlers fixed
 **`js/customCup.js`** (new, precached):
 - Teams come from `countries.js`: every country's clubs plus the nations,

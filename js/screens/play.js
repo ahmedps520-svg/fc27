@@ -33,6 +33,7 @@ import { t, lang, isRTL } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import * as customCup from '../customCup.js';
+import { rivalryOf } from '../data/rivalries.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // v118: a cup's name is the player's own text
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
@@ -206,7 +207,8 @@ function venueOf(params) {
   }
   // a final, a showpiece, or two strong sides: the ground sells out
   const strong = (s) => (s?.rating || 0) >= 84;
-  const bigGame = showpiece || !!params.final || (strong(params.homeSquad) && strong(params.awaySquad));
+  // v119: a real derby sells out too
+  const bigGame = showpiece || !!params.final || (strong(params.homeSquad) && strong(params.awaySquad)) || !!rivalryOf(params.homeSquad?.id, params.awaySquad?.id);
   return { stadium, atmo, seasonWear: 0.08 + frac * 0.82, bigGame, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}${atmo.frost ? ' · Frost' : ''}` };
 }
 
@@ -435,6 +437,9 @@ export function mount(root, params) {
   if (params.practice) match.park(1);
   const camRig = createCameraRig({ settings: params.pro ? { ...(getState().settings.camera || {}), preset: 'lock' } : getState().settings.camera, bounds: camBounds });
   window.__apexMatch = match;            // the QA bot and the perf harness reach the sim through this
+  // v119: a real rivalry between the two sides that are actually playing (the world ids only anchor the pitch)
+  const derbyDay = rivalryOf(params.homeSquad?.id, params.awaySquad?.id);
+  match.rivalry = derbyDay;
   window.__apexCam = camRig;             // the camera regression shots switch presets through this
   // colour-safe kits: the away strip is chosen against every kind of colour vision
   match.vision = getState().settings.colorSafeKits ? 'all' : 'normal';
@@ -2162,11 +2167,12 @@ export function mount(root, params) {
       if (online?.host) pendingCues.push(...outgoing);
       // crowd lifts as play nears either goal, and roars through a celebration
       const near = Math.min(match.ball.x, PITCH.w - match.ball.x) / (PITCH.w / 2);
-      setCrowd(match.phase === 'goal' ? 1 : 0.3 + (1 - near) * 0.5);
+      // v119: a derby starts louder and never quite settles
+      setCrowd(match.phase === 'goal' ? 1 : Math.min(1, (derbyDay ? 0.42 : 0.3) + (1 - near) * 0.5));
       // the stands sing every so often while the ball is in play, louder when it is close
       chantT -= dt;
       if (chantT <= 0 && match.phase === 'play' && !paused && !replay) {
-        chantT = 28 + Math.random() * 30;
+        chantT = derbyDay ? 14 + Math.random() * 16 : 28 + Math.random() * 30;   // v119: a derby sings twice as often
         // v78: what they sing follows the score, from the home end's point of view
         const diff = match.teams[0].score - match.teams[1].score;
         const song = diff > 0 ? (Math.random() < 0.7 ? 'winning' : 'clap') : diff < 0 ? (Math.random() < 0.6 ? 'losing' : 'hum') : (Math.random() < 0.5 ? 'level' : 'hum');

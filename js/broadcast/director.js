@@ -27,7 +27,8 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
   const bank = banks(lang);
   const heat = createHeat();
   const mom = createMomentum();
-  const derby = derbyOf(match.teams[0].club, match.teams[1].club, clubs);
+  // v119: a real rivalry (data/rivalries.js) first; the generated world's own pairs otherwise
+  const derby = match.rivalry || derbyOf(match.teams[0].club, match.teams[1].club, clubs);
   const trail = [0, 0];
   const pending = new Set();
   const later = (fn, ms) => { const id = setTimeout(() => { pending.delete(id); fn(); }, ms); pending.add(id); };

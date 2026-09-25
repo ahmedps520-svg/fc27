@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v119',
+    date: '2026-09-25',
+    tag: 'Atmosphere',
+    title: 'Derby day',
+    lede: 'The big rivalries now feel like derbies. Pick two rivals in Kick Off, the Custom Cup or online, and the ground sells out, the crowd starts louder and sings twice as often, and the broadcast calls the derby.',
+    entries: [
+      {
+        head: 'Seventeen rivalries',
+        summary: 'The Manchester, Madrid, Milan, Glasgow, Buenos Aires, Istanbul, Lisbon, Athens and Cairo derbies, the north London derby and more. Kick Off shows the name as soon as you pick the two sides.',
+        detail: 'Each is named plainly for its city or country. You get the sell-out and the pre-match build-up, a crowd that starts louder and chants about twice as often, and derby commentary before kick-off and on the goals.',
+      },
+      {
+        head: 'Only the atmosphere changes',
+        summary: 'A derby changes how the match looks and sounds, not how it plays. The teams, the ratings and the result work exactly as they would in any other match.',
+        detail: 'The generated world\'s clubs already had derbies of their own. These are the real ones, for real clubs.',
+      },
+    ],
+  },
+  {
     version: 'v118',
     date: '2026-09-25',
     tag: 'Modes',

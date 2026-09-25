@@ -9,6 +9,7 @@ import { stadiumFor } from '../data/stadiums.js';
 import { COUNTRIES, INTERNATIONAL, countryNames, countryByName, flagOf, clubSheet, matchSquad, internationalTeams, internationalSquad } from '../data/countries.js';
 import { flagSVG } from '../components/crest.js';
 import { t } from '../i18n.js';
+import { rivalryOf } from '../data/rivalries.js';
 
 export const TITLE = 'Kick Off';
 
@@ -99,7 +100,10 @@ function h2h() {
   const hc = teamOf('home'); const ac = teamOf('away');
   const h = sheetOf(hc); const a = sheetOf(ac);
   const rows = [['ATT', h.att, a.att], ['MID', h.mid, a.mid], ['DEF', h.def, a.def]];
+  // v119: two rivals picked — say so
+  const derby = rivalryOf(hc.id, ac.id);
   return `
+    ${derby ? `<div class="ts-derby">${derby.charAt(0).toUpperCase() + derby.slice(1)}</div>` : ''}
     <div class="ts-h2h" style="--hc:${hc.colors[0]};--ac:${ac.colors[0]}">
       ${rows.map(([label, x, y]) => {
     const top = Math.max(x, y) || 1;
