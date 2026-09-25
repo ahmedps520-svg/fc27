@@ -1,6 +1,7 @@
 import { rosterOf, getClub } from '../data/generator.js';
 import { traitLevel, skillStars } from '../data/traits.js';
 import { pickSkill } from './skills.js';
+import { pickCelebration } from './celebrations.js';
 import { DEF_STYLES, BUILD_UPS, ROLES, QUICK_TACTICS, defaultTactics, defaultRole, adaptFor } from './tactics.js';
 
 /* ------------------------------------------------------------------ *
@@ -369,6 +370,7 @@ export class Match {
     // v84 hotfix: how quickly a person's player answers the stick (0–1, Settings → Controls)
     this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7;
     // v87: a person's assists (Settings → Accessibility); the CPU never reads them
+    this.celebration = typeof opts.celebration === 'string' ? opts.celebration : 'random';   // v110: a person's own side's goal celebration
     this.assist = { shoot: opts.assist?.shoot ? 1 : 0, pass: [0, 1, 2].includes(opts.assist?.pass) ? opts.assist.pass : 1 };
     this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null };
     /* Out-of-bounds ledger. `bounds()` already rules on every ball that leaves
@@ -543,7 +545,7 @@ export class Match {
         p.y = p.sy * PITCH.h;
         p.vx = p.vy = 0;
         p.touchLock = p.stumble = p.holdT = p.slide = p.downT = 0;
-        p.celebrating = false;
+        p.celebrating = false; p.celebKind = null;
         p.diveT = 0;
       }
       // pull the shape back into its own half for the restart
@@ -1980,6 +1982,14 @@ export class Match {
     b.owner = null;
     b.inNet = { inw, back: goalLineX + inw * 1.75 };
     for (const p of team.players) p.celebrating = true;
+    /* v110: the scorer's celebration. A person's side does the one they
+       picked; everyone else picks by who they are (never Math.random — the
+       sweep's goals must not shift the dice). Only the look changes: the run
+       to the corner is the same for all of them. */
+    if (scorer) {
+      const own = this.controllers.some((c) => !c.ai && c.team === scorer.team);
+      scorer.celebKind = pickCelebration(own ? this.celebration : null, scorer.ref?.id ?? scorer.ref?.name ?? '', team.score);
+    }
   }
 
   /** Ball flight after it has crossed the line: the net drags it to a stop. */

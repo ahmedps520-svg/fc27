@@ -6,6 +6,7 @@
  * whole match renderer behind it.
  */
 import * as THREE from '../vendor/three.module.js';
+import { celebPose, armDirs } from './celebrations.js';
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
 const _v = new THREE.Vector3();
@@ -225,24 +226,39 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   rig.grp.position.set(p.x - (cs * p.x - sn * p.y), p.y - (sn * p.x + cs * p.y), rig.groundZ || 0);
   if (p.diveT > 0) { poseDive(rig, p, fine); return; }
   if (p.downT > 0) { poseDown(rig, p); return; }
+  const sp = Math.hypot(p.vx, p.vy);
+  /* v110: the scorer's own celebration (game/celebrations.js); the rest of
+     the side keeps the cheer */
+  const C = p.celebrating && p.celebKind ? celebPose(p.celebKind, celebT, sp > 1.5) : null;
+  if (C && C.belly > 0.5) { poseDown(rig, { ...p, downT: 0.9, downMax: 1.6 }); return; }
+  if (C && C.flip && !spin) {
+    // a somersault turns the whole figure about its hips, across its own left-right axis
+    const pivot = new THREE.Vector3(p.x, p.y, HIP_Z);
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(-p.dirY, p.dirX, 0), C.flip);
+    rig.grp.quaternion.copy(q);
+    rig.grp.position.copy(pivot).sub(pivot.clone().applyQuaternion(q)).add(new THREE.Vector3(0, 0, (rig.groundZ || 0) + C.lift));
+  }
   const b = rig.build || { height: 1, girth: 1, shoulders: 1 };
   const H = b.height;
   const G = b.girth;
-  const cos = p.dirX;
-  const sin = p.dirY;
-  const face = Math.atan2(sin, cos);
-  const sp = Math.hypot(p.vx, p.vy);
+  const face = Math.atan2(p.dirY, p.dirX) + (C ? C.spin : 0);
+  const cos = Math.cos(face);
+  const sin = Math.sin(face);
   const gait = Math.min(1, sp / 6.5);
   /* v102 (feel): where he is going, in his own frame: mf forward along the
      facing, from −1 (straight backwards) to 1. */
   const { mf } = gaitOf(p);
   // leaning into the run only when running forwards; a touch back on a backpedal
-  const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf);
+  // a celebration's bow or lean back tips the torso: shoulders forward (or back) by its length × sin
+  const TORSO = (SHOULDER_Z - WAIST_Z) * b.height;
+  const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf) + (C ? (TORSO * Math.sin(C.lean)) / 1.7 : 0);
   // a turn tips the body into it (p._bank, from the renderer: how fast the path is curving)
-  const bank = p._bank || 0;
-  const cheer = p.celebrating ? 1 : 0;
+  const bank = (p._bank || 0) + (C ? C.roll * TORSO : 0);
+  const cheer = p.celebrating && !C ? 1 : 0;
   // little hop while celebrating, so the whole body lifts off the turf
-  const hop = cheer ? Math.abs(Math.sin(celebT * 6.5)) * 0.22 : 0;
+  // a celebration's jump lifts the whole figure (the group, below), boots and all; kneeling sinks the hips
+  const hop = cheer ? Math.abs(Math.sin(celebT * 6.5)) * 0.22 : C ? -C.kneel * 0.42 : 0;
+  if (C && C.lift && !C.flip) rig.grp.position.z += C.lift;
   // the body rises and falls once per stride, as the trailing leg drives
   const bob = Math.abs(Math.sin(phase)) * 0.035 * gait;
   const wx = (f, l) => p.x + f * cos - l * sin;
@@ -251,7 +267,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
 
   // v102: soft knees when moving, so a planted foot a stride ahead is within reach
   const hipZ = HIP_Z * H + lift - 0.07 * gait;
-  const shZ = SHOULDER_Z * H + lift;
+  const shZ = SHOULDER_Z * H + lift - (C ? TORSO * (1 - Math.cos(C.lean)) : 0);
 
   /* v102 (feel): the legs step. Each foot is either planted — pinned to the
      spot on the grass where it landed — or swinging on an arc to where it
@@ -338,6 +354,26 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   };
 
   const arm = (side, ph, upper, fore, hand, sleeve) => {
+    if (C) {
+      /* v110: an arm placed by direction. Hanging straight down, raised
+         sideways (raise: 1 = level, 2 = overhead) and swung forwards (fwd,
+         the same scale); the elbow folds the forearm in (celebrations.armDirs). */
+      const a = side < 0 ? C.armL : C.armR;
+      const { upper: up, fore: fo } = armDirs(a);
+      const [uf, ul, uz] = [up[0], up[1] * side, up[2]];
+      const [ff, fl2, fz] = [fo[0], fo[1] * side, fo[2]];
+      const lat = side * (CHEST_W * b.shoulders + 0.014) + bank;
+      const shF = lean * 1.7;
+      const eF = shF + uf * UPPER_ARM * H; const eL = lat + ul * UPPER_ARM * H; const eZ = shZ + uz * UPPER_ARM * H;
+      const hF = eF + ff * FOREARM * H; const hL = eL + fl2 * FOREARM * H; const hZ = eZ + fz * FOREARM * H;
+      segment(upper, wx(shF, lat), wy(shF, lat), shZ, wx(eF, eL), wy(eF, eL), eZ, 0.049 * G);
+      segment(sleeve, wx(shF, lat), wy(shF, lat), shZ, wx(shF + (eF - shF) * 0.52, lat + (eL - lat) * 0.52), wy(shF + (eF - shF) * 0.52, lat + (eL - lat) * 0.52), shZ + (eZ - shZ) * 0.52, 0.056 * G, 1);
+      segment(fore, wx(eF, eL), wy(eF, eL), eZ, wx(hF, hL), wy(hF, hL), hZ, 0.042 * G);
+      hand.position.set(wx(hF, hL), wy(hF, hL), hZ - 0.02);
+      hand.scale.set(0.045, 0.055, 0.032);
+      hand.visible = fine;
+      return;
+    }
     const s = Math.sin(ph);
     // celebrating: both arms swing up and out overhead instead of pumping
     const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
@@ -403,7 +439,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   parts.eyeL.position.set(hx + fx * 0.085 + lx * 0.034, hy + fy * 0.085 + ly * 0.034, hz + 0.02);
   parts.eyeR.position.set(hx + fx * 0.085 - lx * 0.034, hy + fy * 0.085 - ly * 0.034, hz + 0.02);
   parts.eyeL.scale.set(0.012, 0.012, 0.012); parts.eyeR.scale.set(0.012, 0.012, 0.012);
-  const shout = cheer ? 0.5 + Math.abs(Math.sin(celebT * 6.5)) * 0.5 : 0;
+  const shout = C ? C.mouth : cheer ? 0.5 + Math.abs(Math.sin(celebT * 6.5)) * 0.5 : 0;
   parts.mouth.position.set(hx + fx * 0.09, hy + fy * 0.09, hz - 0.035);
   parts.mouth.rotation.set(0, 0, face);
   parts.mouth.scale.set(0.012, 0.022, 0.006 + shout * 0.02);

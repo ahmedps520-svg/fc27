@@ -396,6 +396,7 @@ export function mount(root, params) {
 
   const match = new Match(params.homeId, params.awayId, {
     responsiveness: getState().settings.responsiveness ?? 0.7,   // v84 hotfix
+    celebration: getState().settings.celebration || 'random',     // v110: your side's goal celebration
     assist: { shoot: getState().settings.shootAssist, pass: getState().settings.passAssist ?? 1 },
     duration: params.duration || 240,
     skill: params.skill || 1,

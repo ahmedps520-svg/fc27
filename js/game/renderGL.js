@@ -6,7 +6,7 @@ import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
-import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
+import { loadPlayerModel, makeRig, poseRig, setCelebClock } from './playerModel.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
@@ -3582,7 +3582,7 @@ export function createRenderer(canvas, match, quality, models = false) {
               let every = !ahead ? 4 : d2 > 70 * 70 ? 3 : d2 > 45 * 45 ? 2 : 1;
               if (!load.shadows && every > 1) every += 1;          // the governor is already shedding work
               if (replayMode) every = 1;                           // a replay is the one time everything is looked at
-              poseRig(rig, p, dt, every);
+              setCelebClock(m.celebT); poseRig(rig, p, dt, every);
               rig.root.position.z += surfaceAt(p.x, p.y);
             }
             continue;

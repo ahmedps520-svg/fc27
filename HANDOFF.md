@@ -15,6 +15,85 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v110 — goal celebrations: 16, and a picker (backlog #15)
+**Before.** There was one celebration: everyone on the scoring side hopped
+with both arms up (`rig.js` `cheer`), the scorer ran to the corner, and the
+Mixamo figure played its `celebrate` clip.
+
+**`js/game/celebrations.js`** (new, precached):
+- `CELEBRATIONS`: 16 entries of `{ id, name, blurb }`. The names are our own.
+- `pickCelebration(choice, seedId, nth)`: a person's valid choice, or else
+  one of three "favourites" from an FNV hash of the scorer's id, rotating by
+  the team's goal count. No `Math.random`.
+- `celebPose(kind, t, moving)` is renderer-neutral. It returns `{ lift, lean,
+  roll, spin, flip, kneel, belly, armL, armR, mouth }`, with each arm as
+  `{ raise, fwd, bend }`.
+- `armDirs(a)`: unit directions `[forward, outward, up]` for the upper arm
+  and forearm.
+  - The upper arm is raised sideways, then swung forwards.
+  - The elbow folds the forearm towards forward-up-in (`t = [0.6, -0.55,
+    0.6]` minus its component along the upper arm).
+  - Both renderers use it. Before this helper, hand-to-head poses pointed
+    outward.
+
+**Sim:**
+- `opts.celebration`, stored as `this.celebration` (default `'random'`).
+- In `scoreGoal`, the scorer gets
+  `celebKind = pickCelebration(own side ? this.celebration : null, ref.id,
+  team.score)`.
+- It is cleared with `celebrating` at the restart.
+- Movement is unchanged: everyone still runs to `celebSpot`. So stamina,
+  positions and the sweep are byte-identical; `Ice Cold` stands still only
+  once there.
+
+**`rig.js` (Low/Med):**
+- `C = celebPose(...)` for the scorer only.
+- `face` adds `C.spin`.
+- `lean` adds `TORSO·sin(C.lean)/1.7`, and `shZ` drops by
+  `TORSO·(1 − cos)`.
+- `bank` adds `roll·TORSO`.
+- Kneel lowers the hips by 0.42 and the leg IK squats.
+- Lift raises the whole group, boots and all. Raising the hips stretched the
+  legs.
+- `flip` rotates the group about the hip point across the player's own
+  lateral axis.
+- `belly` reuses `poseDown` mid-hold.
+- Arms go through `armDirs`.
+
+**`playerModel.js` (High/Ultra):**
+- `actionFor` puts a scorer with a non-corner kind on `idle` (or `run` while
+  moving), and `celebrateRig` poses over it after the mixer.
+- The root quaternion is heading + spin, then a pitch about the player's own
+  lateral axis. `root.rotation.x` is XYZ order, so it tips about *world* X;
+  the existing sprint lean and the `downT` fall do too, which is worth a
+  look.
+- The position keeps the hip point fixed through a pitch or flip.
+- Arm and forearm bones are swung (`setFromUnitVectors` on their +Y) to the
+  `armDirs` directions, and their twist is kept.
+- `setCelebClock(m.celebT)` is set by `renderGL` before `poseRig`.
+- `rig.figure` is now on the rig.
+
+**Settings:** a "Goal celebration" select (Random plus the 16) below Sprint,
+with the blurb as the sub-line; `play.js` passes it into the match.
+
+**Tests and tools:**
+- New `tests/unit/celebrations.test.mjs`:
+  - ids are unique;
+  - every pose is finite and in range at 0–4.2 s, moving or not, with unit
+    arm directions;
+  - picks are deterministic, and 200 scorers use at least 12 kinds;
+  - `scoreGoal` gives the person's side its pick and draws exactly as many
+    randoms as a match with no pick.
+- New `tools/celeb-shots.mjs` writes contact sheets (both figures, 4×4) to
+  `tests/tmp/celeb/`. It was used to fix the forearm fold, the spin-jump
+  stretch, the double flip lift and chest-height hands.
+
+**Known:**
+- An online guest sees the generic cheer for the scorer, because snapshots
+  don't carry `celebKind`.
+- `roll` (the airplane bank) isn't applied on the Mixamo figure.
+- Knee Slide on the Mixamo figure sinks it 0.3 m rather than truly kneeling.
+
 ### v109 — set-piece aim guide (backlog #15: penalty and free-kick aiming)
 **Finding.** A person's dead ball had no aim feedback at all.
 `readSetPieceInput` turned the stick into `sp.aim`, but nothing drew it.
