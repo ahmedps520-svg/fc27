@@ -7,6 +7,7 @@ import { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig, setCelebClock } from './playerModel.js';
+import { createReferee, updateReferee } from './referee.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
@@ -2872,6 +2873,23 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
   const mgrProxy = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, celebrating: false, stumble: 0, holdT: 0 };
 
+  /* v112: the referee (game/referee.js) — moved by the renderer from what the
+     match already knows, never by the simulation. All in black; the built
+     figure on Low/Medium, the model once it has loaded on High/Ultra. Not on
+     the street, where nobody referees anything. */
+  const refState = STREET ? null : createReferee(match);
+  const REF_KIT = '#151515';
+  let refRig = null; let refModel = null;
+  if (refState) {
+    const k = new THREE.Color(REF_KIT);
+    refRig = buildPlayer(k, k.clone(), new THREE.Color('#c99a74'), new THREE.Color('#1d140d'), k.clone(), { height: 1.01, girth: 1, shoulders: 1 });
+    scene.add(refRig.grp);
+  }
+  const refCard = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.105),
+    new THREE.MeshBasicMaterial({ color: 0xffd21f, side: THREE.DoubleSide, toneMapped: false }));
+  refCard.visible = false; scene.add(refCard);
+  const _hand = new THREE.Vector3();
+
   /* A supplied manager model replaces the built figure.
    *
    * Drop a glTF binary at assets/manager.glb (checked in, or hosted next to
@@ -3014,9 +3032,16 @@ export function createRenderer(canvas, match, quality, models = false) {
           modelRigs.set(p, rig);
         }
       }
+      if (refState) {
+        const k = new THREE.Color(REF_KIT);
+        refModel = makeRig(model, { kit: { shirt: k, shorts: k.clone(), socks: k.clone() }, ref: refState.ref, index: 23, isGK: false });
+        scene.add(refModel.root);
+        refModel.hand = refModel.figure.getObjectByName('mixamorigRightHand') || refModel.figure.getObjectByName('mixamorig5RightHand');
+      }
       // hide the built-in figures rather than destroying them, so quality can
       // be turned back down mid-match without rebuilding anything
       for (const rig of rigs.values()) rig.grp.visible = false;
+      if (refRig) refRig.grp.visible = false;
       useModels = true;
       // compiled after the rigs are in the scene, so their programs are
       // included rather than being built on the first frame of play
@@ -3594,6 +3619,30 @@ export function createRenderer(canvas, match, quality, models = false) {
           { const g = gaitOf(p); p._phase = (p._phase || 0) + strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(p, dt); }
           rig.groundZ = surfaceAt(p.x, p.y);
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
+        }
+      }
+      if (refState) {
+        // the replay is the tape's world, not his; he stands down for it and for the final whistle
+        const live = !replayMode && m.phase !== 'end';
+        if (live) updateReferee(refState, m, dt);
+        const fig = useModels && refModel ? refModel : null;
+        if (fig) {
+          fig.root.visible = live;
+          if (live) { setCelebClock(0); poseRig(fig, refState, dt, 1); fig.root.position.z += surfaceAt(refState.x, refState.y); }
+        } else if (refRig) {
+          refRig.grp.visible = live;
+          if (live) {
+            const g = gaitOf(refState); refState._phase += strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(refState, dt);
+            refRig.groundZ = surfaceAt(refState.x, refState.y);
+            posePlayer(refRig, refState, refState._phase, fine, 0);
+          }
+        }
+        refCard.visible = live && !!refState.card;
+        if (refCard.visible) {
+          const hand = fig ? fig.hand : refRig?.parts.handR;
+          if (hand) { hand.getWorldPosition(_hand); refCard.position.set(_hand.x, _hand.y, _hand.z + 0.09); }
+          else refCard.position.set(refState.x, refState.y, 2.35);
+          refCard.lookAt(camera.position);
         }
       }
       if (mgrRig && m.managerFig) {
