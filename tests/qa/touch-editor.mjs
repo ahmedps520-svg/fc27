@@ -3,6 +3,8 @@
  * landscape phone: open it from Settings, drag SHOOT to the left, make the
  * buttons bigger, Done — then a match puts SHOOT where it was left, at the
  * new size, clear of its neighbours; and Reset brings the arc back.
+ * v107: in that match, flicks — SHOOT up chips, sideways bends; PASS flicked
+ * is a through ball, tapped a pass.
  *
  *   node tests/qa/touch-editor.mjs
  */
@@ -66,6 +68,41 @@ try {
   const down = await page.evaluate(() => document.querySelector('#tpad [data-slot="shoot"]').classList.contains('is-down'));
   await page.evaluate(() => { const b = document.querySelector('#tpad [data-slot="shoot"]'); b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 5, pointerType: 'touch' })); });
   check(down, 'SHOOT answers a press where it now is');
+
+  // v107: flicks — a finger flicked up off SHOOT chips; flicked off PASS plays a through ball
+  const flickTest = async (slot, dx, dy) => {
+    await page.evaluate(() => {
+      const m = window.__apexMatch; const c = m.controllers[0]; const me = m.playerOf(c);
+      const dir = m.teams[me.team].dir; const gx = dir > 0 ? 105 : 0;
+      me.x = gx - dir * 20; me.y = 34; me.vx = me.vy = 0; m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0;
+      window.__kicks = [];
+      if (!m.__spied) {
+        m.__spied = true;
+        const sh = m.shoot.bind(m); m.shoot = (p, a, pw, o = {}) => { if (p === m.playerOf(m.controllers[0])) window.__kicks.push(o.chip ? 'chip' : o.curl ? 'finesse' : 'shot'); return sh(p, a, pw, o); };
+        const pa = m.pass.bind(m); m.pass = (p, a, th, pw, lob, ...r) => { if (p === m.playerOf(m.controllers[0])) window.__kicks.push(lob ? 'lofted' : th ? 'through' : 'pass'); return pa(p, a, th, pw, lob, ...r); };
+      }
+    });
+    // a few sim frames, so the pad reads "in possession" (a software GPU draws slowly)
+    const frames = async (n) => { const t0 = await page.evaluate(() => window.__apexMatch.t); await page.waitForFunction((t) => window.__apexMatch.t > t, t0 + n / 60, { timeout: 60000 }); };
+    await frames(4);
+    const b = await box(`#tpad [data-slot="${slot}"]`);
+    await touch('touchStart', b.x, b.y);
+    for (let i = 1; i <= 6; i++) { await touch('touchMove', b.x + (dx * i) / 6, b.y + (dy * i) / 6); await page.waitForTimeout(16); }
+    await frames(3);
+    const badge = await page.evaluate((s) => document.querySelector(`#tpad [data-slot="${s}"]`).dataset.flick || '', slot);
+    await touch('touchEnd');
+    await page.waitForFunction(() => window.__kicks.length, null, { timeout: 30000 }).catch(() => {});
+    await frames(4);
+    return { badge, kicks: await page.evaluate(() => window.__kicks) };
+  };
+  const chip = await flickTest('shoot', 0, -60);
+  check(chip.badge === 'CHIP' && chip.kicks[0] === 'chip' && !chip.kicks.includes('lofted'), `SHOOT flicked up is a chip (badge ${chip.badge || '–'}, kicks ${chip.kicks.join(', ') || 'none'})`);
+  const fin = await flickTest('shoot', -60, 0);
+  check(fin.kicks[0] === 'finesse', `SHOOT flicked sideways bends it (kicks ${fin.kicks.join(', ') || 'none'})`);
+  const thr = await flickTest('pass', -60, 10);
+  check(thr.kicks[0] === 'through', `PASS flicked is a through ball (kicks ${thr.kicks.join(', ') || 'none'})`);
+  const tap = await flickTest('pass', 0, 0);
+  check(tap.kicks[0] === 'pass', `PASS tapped is still a pass (kicks ${tap.kicks.join(', ') || 'none'})`);
 
   // Reset → the arc again
   await page.evaluate(async () => (await import('/js/app.js')).navigate('settings'));

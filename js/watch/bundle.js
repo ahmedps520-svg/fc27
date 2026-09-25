@@ -11375,7 +11375,7 @@
       }
       if (c.rPrev = rm, owns) {
         if (input.held("pass") && (c.passCharge = Math.min(1, c.passCharge + dt / 0.7 * (0.6 + 0.4 * ((_c = (_b = input.value) == null ? void 0 : _b.call(input, "pass")) != null ? _c : 1)))), input.released("pass") && (this.pass(p, aim, !1, Math.max(0.3, c.passCharge), !1, this.assist.pass), c.passCharge = 0), input.pressed("through")) this.pass(p, aim, !0, 0.5);
-        else if (input.pressed("lob") && !input.held("skill")) this.pass(p, aim, !0, 0.55, !0);
+        else if (input.pressed("lob") && !input.held("skill") && !input.held("shoot")) this.pass(p, aim, !0, 0.55, !0);
         else if (input.pressed("cross")) {
           let back = aim.x * this.teams[p.team].dir < -0.35;
           this.cross(p, aim, back ? "cutback" : input.held("curl") ? "driven" : "floated");

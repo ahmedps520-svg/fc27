@@ -15,6 +15,51 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v107 — touch redesign, part 3: flicks, and the chip fixed (backlog #20)
+**The bug.** In `sim.js` `handleSeat`, `input.pressed('lob')` fired a lob
+pass even while SHOOT was held. The documented chip (SHOOT held + LOB, let
+go) therefore never happened: the ball left as a lofted pass the moment LOB
+went down. This was true on keyboard, pad and touch alike.
+- Fix: the lob pass needs `!input.held('shoot')`.
+- The CPU never goes through `handleSeat`, so the sweep is identical.
+- New `tests/unit/touch-flick.test.mjs` covers:
+  - chip = shot with `chip:true` and no pass;
+  - finesse = shot with `curl`;
+  - LOB alone is still a lob pass;
+  - THROUGH or LOB during a PASS hold gives a through or lob pass.
+
+**Flicks (`play.js`, the touch buttons):**
+- On SHOOT or PASS, in open play with the ball (`attacking === true`, and
+  the slot bound to its own action), a finger that travels 30 px becomes a
+  flick. The sim sees nothing new: a flick holds the same modifier a
+  keyboard would.
+  - SHOOT up (`-dy > 0.8·|dx|`) holds LOB, giving a chip.
+  - SHOOT sideways holds CURL, giving a finesse shot.
+  - SHOOT down does nothing.
+  - PASS up holds LOB, giving a lofted pass (it fires immediately).
+  - PASS any other way holds THROUGH, giving a through ball (it fires
+    immediately).
+- The modifier is released two animation frames after the button, so the
+  sim reads it on the shot's release.
+- `data-flick` shows a badge over the button (CHIP, FINESSE, LOFTED or
+  THROUGH), with a 12 ms buzz if vibration is on.
+- A hint (touch wording) and a loading tip teach it. The keyboard/pad hint
+  now mentions the chip.
+- Online guests: `net/netplay.js` does not carry `lob`, so a guest's chip
+  (any device) still doesn't reach the host. Curl and through do. Adding
+  `lob` to its ACTIONS mask is a protocol change; not done here.
+
+**QA:** `tests/qa/touch-editor.mjs` (in CI) now also flicks with CDP touch
+in the live match. It waits on sim frames, not wall-clock, since SwiftShader
+is slow, and counts only the human's kicks.
+- SHOOT up → chip, with the CHIP badge.
+- Sideways → finesse.
+- PASS flick → through.
+- PASS tap → pass.
+
+**Next:** #20 is done apart from polish. Due next is a polish/bug-fix
+release (v108): features v105–v107 have shipped since the last one.
+
 ### v106 — touch redesign, part 2: the layout editor (backlog #20)
 **`js/components/touchLayout.js`:**
 - `arcLayout(W, H, { user, pin })` takes `settings.touchLayout = { scale,
