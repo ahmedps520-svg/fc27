@@ -15,6 +15,44 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v114 — polish: online cards and advantage, the alerts moved
+**Online (`netplay.js`).** The snapshot gains three optional fields:
+- `bk`: the bookings count;
+- `bl`: the latest booking `{team, name, minute}`;
+- `av`: 0/1, whether advantage is being played.
+
+The guest:
+- pads `bookings` up to `bk` with `bl`, so the referee's card and the HUD
+  card both fire;
+- keeps one `advantage` object while `av` is 1, so the referee signals once
+  per advantage and the pill shows.
+
+It is backward compatible both ways, and a unit test covers bookings,
+the stable advantage object, and no duplicates.
+
+**HUD collisions (found by a 568×320 touch check with both showing).**
+- The booking card, top right, covered SKILL on the arc pad.
+- The advantage pill, top centre, sat on the player strip.
+- Both are now in `.gm-alerts`, a column at `top: 80px; left: 14px` under
+  the player strip, with the card at `max-width: min(46vw, 320px)`.
+- Re-checked: no overlap with the score bug, the strip, the HUD buttons or
+  the pad. The hints (top right) and the feed (bottom) are clear.
+
+**Sweeps:** soak 20/20 with 0 errors; QA bot ok (online 2-client and 2v2);
+touch audit 0 problems; UI audit shows only the known owner-decision
+variants (two nav styles, the danger button, the menu wordmark).
+
+**Evolution tracks near the 60-match line: measured, left as the owner's
+call.**
+- RW clinical is slow because RWs score about 0.15–0.18 a match against
+  0.28–0.32 for LWs. There are also half as many RW slots in the
+  formations (~134 vs ~279 per 120 matches).
+- A right-footed left winger cutting inside onto his strong foot scores
+  more; that's real (inverted wingers) and not a bug.
+- If the owner wants RW clinical faster, the lever is the track's stage-2
+  goal count for RW (`js/evolutions.js`), not the sim.
+- CAM pace (~52–56) is involvement-driven, and CAMs are rarely involved.
+
 ### v113 — the advantage rule (backlog #15), sweep re-baselined deliberately
 **Rule (`sim.js`).** This applies only in the tackle-foul branch, the main
 foul path. The aggression fouls at ~1052 and ~3075 and the ~1090 shoulder

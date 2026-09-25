@@ -320,8 +320,10 @@ export function render(params) {
       <div class="gm-feed" id="gmFeed" aria-live="polite"></div>
       <div class="gm-setpiece" id="gmSetPiece" hidden></div>
       <div class="gm-hints" id="gmHints" hidden></div>
-      <div class="gm-adv" id="gmAdv" role="status" hidden>Advantage</div>
-      <div class="gm-booking" id="gmBooking" role="status" hidden><i class="gb-card" aria-hidden="true"></i><b></b><span></span></div>
+      <div class="gm-alerts">
+        <div class="gm-adv" id="gmAdv" role="status" hidden>Advantage</div>
+        <div class="gm-booking" id="gmBooking" role="status" hidden><i class="gb-card" aria-hidden="true"></i><b></b><span></span></div>
+      </div>
 
       <div class="goal-card" id="goalCard" hidden>
         <span class="gc-word">GOAL</span>
