@@ -167,6 +167,11 @@ export function encodeSnapshot(match) {
     // an older guest ignores them, an older host leaves them out.
     ck: match.celebrant?.celebKind ? [all.indexOf(match.celebrant), match.celebrant.celebKind] : null,
     ct: r2(match.celebT || 0),
+    // v114: bookings (a count and the latest) and whether advantage is being
+    // played — the referee's card and signal, and the HUD's card and pill
+    bk: match.bookings?.length || 0,
+    bl: match.bookings?.length ? match.bookings[match.bookings.length - 1] : null,
+    av: match.advantage ? 1 : 0,
     bn: match.banner || '',
     // Who scored, and who put it in. These are written by the simulation, so
     // the guest — which never simulates — has no way to know them otherwise,
@@ -293,6 +298,12 @@ export class SnapshotView {
       p.celebKind = a.ck && a.ck[0] === i ? a.ck[1] : null;
     }
     if (a.ct != null) m.celebT = a.ct;
+    if (a.bk != null) {
+      m.bookings = m.bookings || [];
+      while (m.bookings.length < a.bk) m.bookings.push(a.bl || { team: 0, name: '', minute: 0 });
+    }
+    // a stable object while it runs, so the referee signals once per advantage
+    if (a.av != null) m.advantage = a.av ? (m.advantage || { remote: true }) : null;
     m.celebrant = a.ck ? all[a.ck[0]] || null : null;
 
     m.teams[0].score = a.s[0];

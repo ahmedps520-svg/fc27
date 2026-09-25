@@ -69,3 +69,23 @@ test('a guest sees the scorer’s own celebration and the goal clock running', a
   new SnapshotView(guest).apply(old, old, 0);
   assert.equal(g.celebKind, null);
 });
+
+test('a guest sees bookings and advantage (v114)', async () => {
+  const { encodeSnapshot, SnapshotView } = await import('../../js/net/netplay.js');
+  const { Match, setField } = await import('../../js/game/sim.js');
+  const { WORLD } = await import('../../js/data/generator.js');
+  setField('full');
+  const host = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0 });
+  const guest = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0 });
+  const view = new SnapshotView(guest);
+  host.bookings.push({ team: 1, name: 'A. Defender', minute: 12 });
+  host.advantage = { team: 0, x: 60, y: 30, offender: host.teams[1].players[4], t: 2.5 };
+  let s = encodeSnapshot(host); view.apply(s, s, 0);
+  assert.equal(guest.bookings.length, 1); assert.equal(guest.bookings[0].name, 'A. Defender');
+  const first = guest.advantage; assert.ok(first);
+  s = encodeSnapshot(host); view.apply(s, s, 0);
+  assert.equal(guest.advantage, first, 'the same advantage from one snapshot to the next');
+  assert.equal(guest.bookings.length, 1, 'no duplicate bookings');
+  host.advantage = null; s = encodeSnapshot(host); view.apply(s, s, 0);
+  assert.equal(guest.advantage, null);
+});

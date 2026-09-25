@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v114',
+    date: '2026-09-25',
+    tag: 'Fixes',
+    title: 'Cards and advantage for everyone',
+    lede: 'A polish release. Online guests now see bookings and advantage, and on small phones the booking card no longer covers your buttons.',
+    entries: [
+      {
+        head: 'Online',
+        summary: 'In an online match the guest now sees the referee show the card, the booking card on screen, and the advantage signal and label. Before, only the host saw them.',
+        detail: 'Nothing changes for a player on an older build: an older guest ignores the extra information and an older host doesn\'t send it.',
+      },
+      {
+        head: 'On a small phone',
+        summary: 'The booking card and the Advantage label now sit together on the left, under the player\'s name. On the smallest phones the card used to cover the SKILL button, and the label covered the player\'s name.',
+        detail: 'Checked on a 568×320 screen with both showing at once. They are display-only, so taps always go through to the game.',
+      },
+    ],
+  },
+  {
     version: 'v113',
     date: '2026-09-25',
     tag: 'Gameplay',
