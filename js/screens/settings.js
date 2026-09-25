@@ -12,6 +12,8 @@ import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
 import { describeRenderer } from '../game/gpu.js';
 import { deviceClass } from '../game/render3d.js';
 import { CAMERA_PRESETS, cameraSettings } from '../game/camera.js';
+import { openTouchEditor } from '../components/touchEditor.js';
+import { isCustom } from '../components/touchLayout.js';
 
 /* The developer unlock: every tier on every device, for this session. */
 const DEV_KEY = 'apexxi.devUnlock';
@@ -187,6 +189,10 @@ export function render() {
         <button class="switch ${s.oneHanded ? 'on' : ''}" id="oneHandTgl" role="switch" aria-checked="${!!s.oneHanded}"><i></i></button>
       </div>
       ${segRow('One-handed side', 'oneHandedSide', [['left', 'Left'], ['right', 'Right']], s.oneHandedSide || 'right')}
+      <div class="setting-row">
+        <div><b>Touch buttons</b><span id="touchLayoutSub">${isCustom(s.touchLayout) ? 'Your own layout.' : 'Round the right thumb.'} Move and resize them.</span></div>
+        <button class="btn ghost sm" id="touchLayoutBtn">Customise</button>
+      </div>
       <div class="setting-row">
         <div><b>Sprint</b><span>Hold the button, or tap once to run and again to stop.</span></div>
         <div class="seg"><button class="${s.sprintToggle ? '' : 'on'}" data-setseg="sprintToggle:">Hold</button><button class="${s.sprintToggle ? 'on' : ''}" data-setseg="sprintToggle:1">Toggle</button></div>
@@ -515,6 +521,15 @@ export function mount(root) {
   toggle(root.querySelector('#fpsTgl'), 'showFps');
   toggle(root.querySelector('#colorSafeTgl'), 'colorSafeKits');
   toggle(root.querySelector('#oneHandTgl'), 'oneHanded');
+  // v106: the touch button editor
+  root.querySelector('#touchLayoutBtn')?.addEventListener('click', async () => {
+    const next = await openTouchEditor(getState().settings.touchLayout);
+    if (next === undefined) return;
+    update((st) => { if (next) st.settings.touchLayout = next; else delete st.settings.touchLayout; });
+    const sub = root.querySelector('#touchLayoutSub');
+    if (sub) sub.textContent = `${next ? 'Your own layout.' : 'Round the right thumb.'} Move and resize them.`;
+    toast(next ? 'Touch buttons saved' : 'Touch buttons reset');
+  });
   toggle(root.querySelector('#batteryTgl'), 'battery');
   toggleOn(root.querySelector('#govTgl'), 'governor');
   root.querySelector('#rendererSeg').addEventListener('click', (e) => {

@@ -1535,7 +1535,7 @@ export function mount(root, params) {
     /* v105: the buttons fan out round the right thumb, sized to the screen
        (components/touchLayout.js); the one-handed layout keeps its column */
     const tpad = root.querySelector('#tpad');
-    const layoutPad = () => { if (shell.classList.contains('one-hand')) clearTouchLayout(tpad); else applyTouchLayout(tpad, shell.clientWidth || innerWidth, shell.clientHeight || innerHeight); };
+    const layoutPad = () => { if (shell.classList.contains('one-hand')) clearTouchLayout(tpad); else applyTouchLayout(tpad, shell.clientWidth || innerWidth, shell.clientHeight || innerHeight, getState().settings.touchLayout); };
     layoutPad();
     window.addEventListener('resize', layoutPad);
     touchOffs.push(() => window.removeEventListener('resize', layoutPad));
