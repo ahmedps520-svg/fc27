@@ -9,7 +9,11 @@
  */
 import * as net from './socket.js';
 
-const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'switch', 'curl', 'sprint', 'pause'];
+/* v108: lob, skill, jockey and press were never sent, so a guest could not
+   chip, hold a trick, jockey or send a second man to press. They go on the end
+   of the mask: an older host ignores the extra bits and an older guest never
+   sets them, so either side can be a build behind. */
+const ACTIONS = ['pass', 'shoot', 'cross', 'through', 'switch', 'curl', 'sprint', 'pause', 'lob', 'skill', 'jockey', 'press'];
 const r2 = (n) => Math.round(n * 100) / 100;
 // Positions and velocities go out at 10 cm / 0.1 m/s. The guest interpolates
 // between snapshots and nobody can see a tenth of a metre on a 105 m pitch, so
