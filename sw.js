@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v108';
+const CACHE = 'apexxi-v109';
 
 const ASSETS = [
   './',

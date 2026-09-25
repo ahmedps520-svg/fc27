@@ -3,7 +3,7 @@ import { EffectComposer } from '../vendor/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
-import { PITCH, GOAL_HALF, BOX } from './sim.js';
+import { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig } from './playerModel.js';
@@ -3042,6 +3042,21 @@ export function createRenderer(canvas, match, quality, models = false) {
     return m;
   });
 
+  /* v109: the set-piece aim guide (sim.setPieceGuide). A ground arrow along
+     the stick, in the colour of the button being held, and — when the kick
+     can be a shot — a band in the goal mouth as wide as the strike can stray
+     at the power held so far, with a line where it is aimed. */
+  const GUIDE_COL = { pass: 0x3ea8ff, through: 0xffc02e, cross: 0xff8b3d, shoot: 0xff4d4d };
+  const guideMat = (op) => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false });
+  const guide = new THREE.Group(); guide.visible = false; scene.add(guide);
+  const shaftGeo = new THREE.PlaneGeometry(1, 0.42); shaftGeo.translate(0.5, 0, 0);
+  const shaft = new THREE.Mesh(shaftGeo, guideMat(0.8)); guide.add(shaft);
+  const tipShape = new THREE.Shape(); tipShape.moveTo(0, -0.8); tipShape.lineTo(1.5, 0); tipShape.lineTo(0, 0.8); tipShape.lineTo(0, -0.8);
+  const tip = new THREE.Mesh(new THREE.ShapeGeometry(tipShape), guideMat(0.9)); guide.add(tip);
+  const bandGeo = new THREE.PlaneGeometry(1, 1); bandGeo.rotateY(Math.PI / 2);   // spans y (width) and z (height)
+  const band = new THREE.Mesh(bandGeo, guideMat(0.34)); band.visible = false; scene.add(band);
+  const aimLine = new THREE.Mesh(bandGeo, guideMat(0.95)); aimLine.visible = false; scene.add(aimLine);
+
   /* ------------------------------- rain -------------------------------
    * Streaks, not drops: at broadcast distance rain is a field of short
    * falling lines catching the floodlights. One LineSegments mesh, every
@@ -3672,6 +3687,27 @@ export function createRenderer(canvas, match, quality, models = false) {
         mk.visible = !!p && !near && m.phase !== 'goal' && m.phase !== 'half' && m.phase !== 'end' && !replayMode;
         if (p) mk.position.set(p.x, p.y, 2.6 + surfaceAt(p.x, p.y));
       });
+
+      {
+        const g = !replayMode && m.setPiece && m.setPieceGuide ? m.setPieceGuide() : null;
+        guide.visible = !!g; band.visible = aimLine.visible = !!g?.goal;
+        if (g) {
+          const col = g.shot ? GUIDE_COL.shoot : (GUIDE_COL[g.action] ?? 0xffffff);
+          shaft.material.color.setHex(col); tip.material.color.setHex(col);
+          guide.position.set(g.x, g.y, surfaceAt(g.x, g.y) + 0.04);
+          guide.rotation.set(0, 0, Math.atan2(g.dir.y, g.dir.x));
+          shaft.scale.set(Math.max(0.5, g.len - 1.5), 1, 1); shaft.position.x = 0.4;
+          tip.position.x = 0.4 + Math.max(0.5, g.len - 1.5);
+          if (g.goal) {
+            const inset = g.goal.x > PITCH.w / 2 ? -0.06 : 0.06;   // just in front of the line, facing the taker
+            const w = Math.max(0.5, g.goal.spread * 2);
+            const lo = Math.max(-GOAL_HALF, g.goal.y - PITCH.h / 2 - w / 2); const hi = Math.min(GOAL_HALF, g.goal.y - PITCH.h / 2 + w / 2);
+            band.scale.set(1, Math.max(0.2, hi - lo), GOAL_HEIGHT); band.position.set(g.goal.x + inset, PITCH.h / 2 + (lo + hi) / 2, GOAL_HEIGHT / 2);
+            band.material.color.setHex(g.shot ? GUIDE_COL.shoot : 0xffffff);
+            aimLine.scale.set(1, 0.16, GOAL_HEIGHT); aimLine.position.set(g.goal.x + inset * 1.5, g.goal.y, GOAL_HEIGHT / 2);
+          }
+        }
+      }
 
       if (contextLost) return;
       /* `info` is reset by every render call, so through the composer it would

@@ -11954,17 +11954,17 @@
      *           is not at anyone's feet when it is struck
      */
     shoot(p, aim, power, opts = {}) {
-      var _a, _b, _c;
+      var _a, _b;
       this.tally(p, "shots");
-      let { loft = 1, curl = 0, placed = !1, chip = !1, sloppy = 0 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), finesse = curl ? 1 - 0.22 * (((_a = p.tr) == null ? void 0 : _a.finesse) || 0) : 1, spread = ((1.05 - acc) * 0.34 + d2 / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
+      let { loft = 1, curl = 0, placed = !1, chip = !1, sloppy = 0 } = opts, team = this.teams[p.team], dx = (team.dir > 0 ? PITCH.w : 0) - p.x, dy = CY + (aim && Math.abs(aim.y) > 0.2 ? aim.y * GOAL_HALF * 0.9 : 0) - p.y, d2 = Math.hypot(dx, dy) || 1, acc = p.ref.stats.shooting / 100, weak = !placed && this.weakFoot(p), spread = this.shotSpread(p, d2, power, { curl, weak, sloppy });
       {
         let angle = Math.atan2(GOAL_HALF * 2 * Math.abs(dx), d2 * d2 - GOAL_HALF * GOAL_HALF) || 0.01, foe = this.nearestTo(1 - p.team, p), close = foe && dist(p, foe) < 2 ? 0.66 : 1, xg = clamp2(0.92 * Math.exp(-d2 / 11) * Math.min(1, angle / 0.9) * close, 0.02, 0.8);
         team.xg = (team.xg || 0) + xg, xg >= 0.25 && (team.bigChances = (team.bigChances || 0) + 1, this.cue("bigChance", p));
       }
       let err = (Math.random() - 0.5) * 2 * spread, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2;
       this.cue("shot", power);
-      let speed = chip ? (13 + power * 6) * (weak ? 0.93 : 1) : (23.5 + power * 19 + acc * 6) * (weak ? 0.93 : 1) * ((_b = p.tr) != null && _b.cannon && d2 > 20 ? 1.08 : 1), rise = chip ? 7.5 + power * 3 : (1.3 + power * 8.2) * loft + (curl ? 1.2 : 0);
-      if (this.release(p, nx * speed, ny * speed, rise), chip && this.cue("lob", p), !chip && !curl && power > 0.75 && (this.ball.dip = 0.25 + power * 0.2), !chip && !curl && power > 0.85 && d2 > 22 && Math.random() < ((_c = p.tr) != null && _c.cannon ? 0.45 : 0.12) && (this.ball.knuckle = 2.2 + Math.random() * 1.8, this.ball.knPh = Math.random() * 6.28, this.cue("knuckle", p)), this.ball.shotKind = null, curl) {
+      let speed = chip ? (13 + power * 6) * (weak ? 0.93 : 1) : (23.5 + power * 19 + acc * 6) * (weak ? 0.93 : 1) * ((_a = p.tr) != null && _a.cannon && d2 > 20 ? 1.08 : 1), rise = chip ? 7.5 + power * 3 : (1.3 + power * 8.2) * loft + (curl ? 1.2 : 0);
+      if (this.release(p, nx * speed, ny * speed, rise), chip && this.cue("lob", p), !chip && !curl && power > 0.75 && (this.ball.dip = 0.25 + power * 0.2), !chip && !curl && power > 0.85 && d2 > 22 && Math.random() < ((_b = p.tr) != null && _b.cannon ? 0.45 : 0.12) && (this.ball.knuckle = 2.2 + Math.random() * 1.8, this.ball.knPh = Math.random() * 6.28, this.cue("knuckle", p)), this.ball.shotKind = null, curl) {
         let sign = aim && Math.abs(aim.y) > 0.2 ? -Math.sign(aim.y) : Math.sign(CY - p.y) || 1;
         this.ball.curl = sign * curl * (0.55 + acc * 0.6);
       }
@@ -12154,6 +12154,32 @@
         if (input.held(a) && (sp.action = a, sp.charge = Math.min(1, sp.charge + dt / 0.8)), input.released(a))
           return this.takeSetPiece(a, sp.aim, Math.max(0.3, sp.charge)), !0;
       return this.charge = sp.charge, !0;
+    }
+    /** The angular error (radians, either side) a strike is drawn from. */
+    shotSpread(p, d2, power, { curl = 0, weak = !1, sloppy = 0 } = {}) {
+      var _a;
+      let acc = p.ref.stats.shooting / 100, finesse = curl ? 1 - 0.22 * (((_a = p.tr) == null ? void 0 : _a.finesse) || 0) : 1;
+      return ((1.05 - acc) * 0.34 + d2 / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
+    }
+    /**
+     * v109: the aim guide for a person's dead ball — what the renderer draws so
+     * a set piece is not taken blind. Null unless a person is taking one.
+     *   dir, len   the ground arrow: where the stick points, and roughly how
+     *              far a pass would go at the power held so far
+     *   goal       when the kick can be a shot (a penalty, a free kick within
+     *              35 m): where on the goal line it is aimed and how far either
+     *              side of that the strike can stray — the same spread the
+     *              shot is drawn from, at the power held so far
+     */
+    setPieceGuide() {
+      let sp = this.setPiece;
+      if (!sp || !sp.human || !sp.taker) return null;
+      let p = sp.taker, team = this.teams[p.team], goalX = team.dir > 0 ? PITCH.w : 0, bx = this.ball.x, by = this.ball.y, a = Math.hypot(sp.aim.x, sp.aim.y) > 0.2 ? sp.aim : { x: team.dir, y: 0 }, m = Math.hypot(a.x, a.y) || 1, charge = sp.charge || 0, out = { kind: sp.kind, action: sp.action, x: bx, y: by, dir: { x: a.x / m, y: a.y / m }, len: sp.kind === "throwin" ? 6 + charge * 16 : 9 + charge * 30, goal: null }, toGoal = Math.hypot(goalX - bx, CY - by);
+      if (sp.kind === "penalty" || sp.kind === "freekick" && toGoal < 35) {
+        let pen = sp.kind === "penalty", ay = clamp2(pen ? a.y * 1.4 : a.y, -1, 1), ty = CY + (Math.abs(ay) > 0.2 ? ay * GOAL_HALF * 0.9 : 0), d2 = Math.hypot(goalX - bx, ty - by) || 1, power = pen ? clamp2(Math.max(0.3, charge), 0.45, 1) : Math.max(0.3, charge), err = this.shotSpread(p, d2, power, { curl: pen ? 0 : 1 });
+        out.goal = { x: goalX, y: ty, spread: Math.min(GOAL_HALF * 2, d2 * Math.tan(err)), power }, (pen || sp.action === "shoot") && (out.dir = { x: (goalX - bx) / d2, y: (ty - by) / d2 }, out.len = d2, out.shot = !0);
+      }
+      return out;
     }
     /** A person takes the dead ball. Also what the watch and tests call. */
     takeSetPiece(action, aim, power = 0.6) {

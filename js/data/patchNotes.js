@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v109',
+    date: '2026-09-25',
+    tag: 'Gameplay',
+    title: 'See where your set piece is going',
+    lede: 'Penalties, free kicks, corners and throw-ins no longer have to be taken blind. An arrow shows where you are aiming, and on a shot a band in the goal shows how far the ball could stray.',
+    entries: [
+      {
+        head: 'The arrow',
+        summary: 'An arrow on the grass follows your stick and grows as you hold the button, in the colour of the button you are holding.',
+        detail: 'Blue is a short pass, yellow driven or through, orange a cross and red a shot. Before, you picked a direction with the stick and nothing on screen showed which one.',
+      },
+      {
+        head: 'The target',
+        summary: 'On a penalty, or a free kick within about 35 m, a band in the goal mouth shows where the shot is aimed and how far either side it could go. More power narrows it, and a better finisher narrows it further.',
+        detail: 'The band is the exact spread the shot is then taken from, not an approximation, so a narrow band really is a safer kick. Hold SHOOT on a free kick and the arrow turns red and runs straight to the target. Computer-controlled set pieces work exactly as before.',
+      },
+    ],
+  },
+  {
     version: 'v108',
     date: '2026-09-25',
     tag: 'Fixes',
