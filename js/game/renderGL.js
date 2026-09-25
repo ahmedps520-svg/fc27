@@ -209,9 +209,23 @@ const hexOf = (c) => parseInt(String(c).replace('#', ''), 16);
 /* The away strip: chosen so it never clashes with the home shirt — and, when
    the player has asked for colour-safe kits (`match.vision`), never clashes
    for a deutan, protan or tritan viewer either. See js/kits.js. */
-function pickAwayKit(match) {
-  return new THREE.Color(hexOf(pickAwayHex(match.teams[0].colors[0], match.teams[1].colors, match.vision || 'normal')));
+/* v115/v116: each side's strip — shirt, trim, shorts, socks, pattern. A club
+   with a designed kit (data/kitDesign.js) wears it: home, or away when the
+   home shirt would clash with the other side's; anyone else keeps the old
+   look — the badge colour, or a guaranteed-apart away colour. One decision,
+   read by the players and by the stands. */
+function matchStrips(match) {
+  const vision = match.vision || 'normal';
+  const plainStrip = (hexS) => ({ shirt: hexS, trim: hexS, shorts: null, socks: null, pattern: 'plain' });
+  const homeKit = match.teams[0].kit;
+  const home = homeKit ? homeKit.home : plainStrip(match.teams[0].colors[0]);
+  const awayKit = match.teams[1].kit;
+  const away = awayKit && !clash(awayKit.home.shirt, home.shirt, vision) ? awayKit.home
+    : awayKit && !clash(awayKit.away.shirt, home.shirt, vision) ? awayKit.away
+      : plainStrip(pickAwayHex(home.shirt, match.teams[1].colors, vision));
+  return [home, away];
 }
+
 
 /* --------------------------- pitch texture -------------------------
  *
@@ -2416,9 +2430,11 @@ export function createRenderer(canvas, match, quality, models = false) {
      and the left side) is mostly in the home kit; the away corner (far
      right) is the away kit; everywhere else is coats and scarves. Hex
      colours are darkened a touch so a white kit is not a white wall. */
-  const homeCol = new THREE.Color(hexOf(match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
-  const homeAlt = new THREE.Color(hexOf(match.teams[0].colors[1] || match.teams[0].colors[0])).multiplyScalar(0.85).getHex();
-  const awayCol = pickAwayKit(match).clone().multiplyScalar(0.85).getHex();
+  // v116: the stands wear what the players wear — a designed kit's shirt and trim, the away side's actual strip
+  const [fanHome, fanAway] = matchStrips(match);
+  const homeCol = new THREE.Color(hexOf(fanHome.shirt)).multiplyScalar(0.85).getHex();
+  const homeAlt = new THREE.Color(hexOf(fanHome.pattern !== 'plain' ? fanHome.trim : (match.teams[0].colors[1] || fanHome.shirt))).multiplyScalar(0.85).getHex();
+  const awayCol = new THREE.Color(hexOf(fanAway.shirt)).multiplyScalar(0.85).getHex();
   /* v78: a proper away end. On a three-sided ground the visitors have the far
      half of the right-hand end (0.72..0.86 round the walk), fenced off from
      the home fans by a few empty rows either side; at a community ground
@@ -2709,19 +2725,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
 
   // players
-  /* v115: each side's strip — shirt, trim, shorts, socks, pattern. A club
-     with a designed kit (data/kitDesign.js) wears it: home, or away when the
-     home shirt would clash with the other side's; anyone else keeps the old
-     look — the badge colour, or a guaranteed-apart away colour. */
-  const vision = match.vision || 'normal';
-  const plainStrip = (hexS) => ({ shirt: hexS, trim: hexS, shorts: null, socks: null, pattern: 'plain' });
-  const homeKit = match.teams[0].kit;
-  const stripHome = homeKit ? homeKit.home : plainStrip(match.teams[0].colors[0]);
-  const awayKit = match.teams[1].kit;
-  const stripAway = awayKit && !clash(awayKit.home.shirt, stripHome.shirt, vision) ? awayKit.home
-    : awayKit && !clash(awayKit.away.shirt, stripHome.shirt, vision) ? awayKit.away
-      : plainStrip(pickAwayHex(stripHome.shirt, match.teams[1].colors, vision));
-  const strips = [stripHome, stripAway];
+  const strips = matchStrips(match);
+  const [stripHome, stripAway] = strips;
   const kitHome = new THREE.Color(hexOf(stripHome.shirt));
   const kitAway = new THREE.Color(hexOf(stripAway.shirt));
   const rigs = new Map();

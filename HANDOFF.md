@@ -15,6 +15,34 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v116 — the kit online and in the stands (backlog #16/#17)
+**Online:**
+- The client sends `kit: clubIdentity().kit` with queue, room and join.
+- The server stores `peer.kit = guard.cleanKit(m.kit)` in all three join
+  handlers and forwards it in the match card's `opp.kit`.
+- `cleanKit` accepts only `{home, away}`, each with `shirt/trim/shorts/socks`
+  as `#rrggbb` and `pattern` in the six names. Anything else drops that kit
+  to `null`, extra fields are stripped, and no text passes between players.
+- `online.js` `squadOf(..., kit)` runs it through `kitOf` for both sides.
+  Before, the opponent always wore the stock pink "Rival" kit; now it's
+  their design, or their badge colours if they sent none.
+
+**Stands (`renderGL.js`):**
+- `matchStrips(match)` is now the one module-level decision on who wears
+  what (home kit, away kit on a clash, `pickAwayHex` fallback). The players
+  and the crowd both read it.
+- The home fans take the shirt, plus the trim for a patterned kit (else the
+  badge's second colour).
+- The away fans take the away side's actual strip. Before it was a separate
+  `pickAwayKit` colour that could differ from the players; that function is
+  removed.
+
+**Tests:**
+- `guard.test.mjs`: `cleanKit` passes a good kit and drops bad colours,
+  markup in the pattern, half kits, strings and extra fields.
+- `tests/qa/bot.mjs` online flow: the guest designs a hooped yellow kit
+  before joining, and the host's `teams[1].kit.home` must match. It passed.
+
 ### v115 — the kit designer (backlog #16)
 **Before.** A club's kit was the badge's first colour. Shorts ×0.6 and
 socks ×0.8 of it, no pattern, no away kit of its own; the other side got a

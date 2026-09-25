@@ -61,3 +61,19 @@ test('wire hygiene: clubs and squads are cut down to size', () => {
   assert.equal(guard.cleanSquad('nope'), null);
   assert.ok(guard.MAX_RELAY_BYTES >= 8192);
 });
+
+test('v116: a kit on the wire is colours and a pattern name, or nothing', () => {
+  const good = { home: { shirt: '#D7263D', trim: '#f4f4f4', shorts: '#151515', socks: '#d7263d', pattern: 'stripes' }, away: { shirt: '#f4f4f4', trim: '#d7263d', shorts: '#f4f4f4', socks: '#f4f4f4', pattern: 'plain' } };
+  const k = guard.cleanKit(good);
+  assert.equal(k.home.shirt, '#d7263d');
+  assert.equal(k.home.pattern, 'stripes');
+  assert.deepEqual(Object.keys(k.home).sort(), ['pattern', 'shirt', 'shorts', 'socks', 'trim']);
+  // anything else is dropped whole: no text, no markup, no extra fields riding along
+  assert.equal(guard.cleanKit({ ...good, home: { ...good.home, shirt: 'red' } }), null);
+  assert.equal(guard.cleanKit({ ...good, home: { ...good.home, pattern: '<img src=x>' } }), null);
+  assert.equal(guard.cleanKit({ home: good.home }), null);
+  assert.equal(guard.cleanKit('hello'), null);
+  assert.equal(guard.cleanKit(null), null);
+  const extra = guard.cleanKit({ ...good, note: 'hi', home: { ...good.home, name: 'free text' } });
+  assert.equal(extra.note, undefined); assert.equal(extra.home.name, undefined);
+});

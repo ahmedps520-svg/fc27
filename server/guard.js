@@ -300,6 +300,28 @@ function cleanSquad(squad) {
   return squad.slice(0, SQUAD_MAX).filter((id) => typeof id === 'string' && id.length <= 24);
 }
 
+/**
+ * v116: a designed kit on the wire (js/data/kitDesign.js). Colours and a
+ * pattern name only — each colour must be a #rrggbb hex and the pattern one
+ * of six names, or that strip is dropped; nothing else survives. No text
+ * travels between players here.
+ */
+const KIT_HEX = /^#[0-9a-f]{6}$/i;
+const KIT_PATTERNS = ['plain', 'stripes', 'hoops', 'halves', 'sash', 'pinstripe'];
+function cleanKit(kit) {
+  if (!kit || typeof kit !== 'object') return null;
+  const strip = (k) => {
+    if (!k || typeof k !== 'object') return null;
+    const out = {};
+    for (const f of ['shirt', 'trim', 'shorts', 'socks']) { if (!KIT_HEX.test(String(k[f]))) return null; out[f] = String(k[f]).toLowerCase(); }
+    if (!KIT_PATTERNS.includes(k.pattern)) return null;
+    out.pattern = k.pattern;
+    return out;
+  };
+  const home = strip(kit.home); const away = strip(kit.away);
+  return home && away ? { home, away } : null;
+}
+
 /** Crash reports: a handful a minute per address is a broken build, more is a hose. */
 function crashAllowed(req) { return allow(`crash:${clientIP(req)}`, 6, 6 / 60); }
 
@@ -323,6 +345,6 @@ module.exports = {
   crashAllowed, weekendIdNow,
   clientIP, allow, peek, spend,
   loginAllowed, loginFailed, registerAllowed, saveAllowed, apiAllowed,
-  sanitiseSave, checkResult, cleanClub, cleanSquad,
+  sanitiseSave, checkResult, cleanClub, cleanSquad, cleanKit,
   MAX_RELAY_BYTES, MAX_SAVE_BYTES, LIMITS,
 };

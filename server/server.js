@@ -594,7 +594,7 @@ function pair(a, b, kind) {
     host,
     seat: host ? 0 : 1,
     you: { name: self.name, club: self.club, divIdx: self.divIdx },
-    opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx },
+    opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx, kit: opp.kit || null },
     wl: self.wl ? self.wl.id : null,
   });
   a.sock.send(card(a, b, true));
@@ -689,6 +689,7 @@ ws.attach(server, '/ws', (sock) => {
         // is rebuilt from known fields rather than forwarded as it arrived
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
+        peer.kit = guard.cleanKit(m.kit);          // v116
         peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         peer.wl = mm.cleanWL(m.wl);
         peer.queuedAt = Date.now();
@@ -707,6 +708,7 @@ ws.attach(server, '/ws', (sock) => {
         leaveQueue(peer);
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
+        peer.kit = guard.cleanKit(m.kit);          // v116
         peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         let code = makeCode();
         while (rooms.has(code)) code = makeCode();
@@ -726,6 +728,7 @@ ws.attach(server, '/ws', (sock) => {
         leaveQueue(peer);
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
+        peer.kit = guard.cleanKit(m.kit);          // v116
         peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         rooms.delete(code);
         host.room = null;

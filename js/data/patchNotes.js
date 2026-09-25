@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v116',
+    date: '2026-09-25',
+    tag: 'Club',
+    title: 'Your kit, everywhere',
+    lede: 'Your designed kit now goes with you into online matches, and the home fans wear the home team\'s kit colours.',
+    entries: [
+      {
+        head: 'Online',
+        summary: 'When you play someone online, they see your designed kit and you see theirs. Before, the other player always appeared in a stock pink kit.',
+        detail: 'Only colours and a pattern name are sent. The server checks them and drops anything else, so no text passes between players. An opponent who hasn\'t designed a kit plays in their badge colours.',
+      },
+      {
+        head: 'In the stands',
+        summary: 'The home end wears the home kit, stripes and trim included, and the away end wears the colours the visitors are actually playing in, including an away kit if they switched to it.',
+        detail: 'Before, the away fans wore a colour picked separately from the away team\'s kit, so the two could differ.',
+      },
+    ],
+  },
+  {
     version: 'v115',
     date: '2026-09-25',
     tag: 'Club',

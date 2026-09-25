@@ -5,6 +5,7 @@
  * standalone account screen off the main menu.
  */
 import { partyHTML, mountParty } from './partyPanel.js';
+import { kitOf } from '../data/kitDesign.js';
 import '../net/party.js';
 import { getState, adoptCloudSave, cloudWins, save, update } from '../state.js';
 import { isRealConflict, chooseSave } from '../components/saveConflict.js';
@@ -237,6 +238,7 @@ export function mountOnline(root, { rerender }) {
   const payload = () => ({
     club: WORLD.clubs[0].id,
     squad: lineup(),
+    kit: clubIdentity().kit,     // v116: your designed kit, checked by the server (guard.cleanKit)
     divIdx: getState().ultimate.divIdx,
   });
 
@@ -548,20 +550,20 @@ export function mount(root) {
 // Registered once, at module level, rather than by whichever screen happens to
 // be mounted — an opponent can be found after you have wandered off the tab.
 net.on('match', (m) => {
-  const squadOf = (ids, name, short, crest) => {
+  const squadOf = (ids, name, short, crest, kit = null) => {
     const xi = (ids || []).map(getPlayer).filter(Boolean);
     return xi.length === 11
-      ? { xi, name, short, colors: crest.colors, crest }
+      ? { xi, name, short, colors: crest.colors, crest, kit: kit ? kitOf(kit, crest.colors) : null }
       : null;
   };
   /* Your own club goes onto the wire as you built it. The opponent's badge does
      not travel — the lobby only carries a name and eleven ids — so they take a
      stock away kit that is guaranteed to clash with nothing. */
   const me = clubIdentity();
-  const mine = squadOf(getState().club.lineup.filter(Boolean), me.name, me.short, me.crest);
+  const mine = squadOf(getState().club.lineup.filter(Boolean), me.name, me.short, me.crest, me.kit);
   const oppName = m.opp.name || 'Rival';
   const theirs = squadOf(m.opp.squad, oppName, oppName.slice(0, 3).toUpperCase(),
-    { shape: 'circle', pattern: 'halves', device: 'star', colors: ['#ff2e88', '#160b16'] });
+    { shape: 'circle', pattern: 'halves', device: 'star', colors: ['#ff2e88', '#160b16'] }, m.opp.kit || null);   // v116: their designed kit, if they sent one
 
   sfx('confirm');
   navigate('play', {
@@ -602,7 +604,7 @@ net.on('invited', (m) => {
     close();
     const lineup = getState().club.lineup.filter(Boolean);
     if (lineup.length !== 11) return toast('Fill all 11 Ultimate XI positions to play', 'warn');
-    net.send({ t: 'join', code: m.code, club: WORLD.clubs[0].id, squad: lineup, divIdx: getState().ultimate.divIdx });
+    net.send({ t: 'join', code: m.code, club: WORLD.clubs[0].id, squad: lineup, kit: clubIdentity().kit, divIdx: getState().ultimate.divIdx });
   });
   setTimeout(close, 45000);
 });
@@ -641,6 +643,7 @@ export function queueWeekend(wl) {
     t: 'queue',
     club: WORLD.clubs[0].id,
     squad: getState().club.lineup.filter(Boolean),
+    kit: clubIdentity().kit,
     divIdx: getState().ultimate.divIdx,
     wl,
   });
