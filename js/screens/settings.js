@@ -14,6 +14,7 @@ import { deviceClass } from '../game/render3d.js';
 import { CAMERA_PRESETS, cameraSettings } from '../game/camera.js';
 import { openTouchEditor } from '../components/touchEditor.js';
 import { isCustom } from '../components/touchLayout.js';
+import { CELEBRATIONS } from '../game/celebrations.js';
 
 /* The developer unlock: every tier on every device, for this session. */
 const DEV_KEY = 'apexxi.devUnlock';
@@ -196,6 +197,13 @@ export function render() {
       <div class="setting-row">
         <div><b>Sprint</b><span>Hold the button, or tap once to run and again to stop.</span></div>
         <div class="seg"><button class="${s.sprintToggle ? '' : 'on'}" data-setseg="sprintToggle:">Hold</button><button class="${s.sprintToggle ? 'on' : ''}" data-setseg="sprintToggle:1">Toggle</button></div>
+      </div>
+      <div class="setting-row">
+        <div><b>Goal celebration</b><span id="celebSub">${(CELEBRATIONS.find((c) => c.id === s.celebration) || { blurb: 'A different one each time, by who scored.' }).blurb}</span></div>
+        <select id="celebSel" aria-label="Goal celebration">
+          <option value="random"${!s.celebration || s.celebration === 'random' ? ' selected' : ''}>Random</option>
+          ${CELEBRATIONS.map((c) => `<option value="${c.id}"${s.celebration === c.id ? ' selected' : ''}>${c.name}</option>`).join('')}
+        </select>
       </div>
       ${segRow('Shot timing assist', 'shootAssist', [['0', 'Off'], ['1', 'On — power from distance']], String(s.shootAssist || 0))}
       ${segRow('Pass assist', 'passAssist', [['0', 'Manual'], ['1', 'Assisted'], ['2', 'Full']], String(s.passAssist ?? 1))}
@@ -521,6 +529,13 @@ export function mount(root) {
   toggle(root.querySelector('#fpsTgl'), 'showFps');
   toggle(root.querySelector('#colorSafeTgl'), 'colorSafeKits');
   toggle(root.querySelector('#oneHandTgl'), 'oneHanded');
+  // v110: the goal celebration
+  root.querySelector('#celebSel')?.addEventListener('change', (e) => {
+    const v = e.target.value;
+    update((st) => { st.settings.celebration = v; });
+    const sub = root.querySelector('#celebSub');
+    if (sub) sub.textContent = (CELEBRATIONS.find((c) => c.id === v) || { blurb: 'A different one each time, by who scored.' }).blurb;
+  });
   // v106: the touch button editor
   root.querySelector('#touchLayoutBtn')?.addEventListener('click', async () => {
     const next = await openTouchEditor(getState().settings.touchLayout);

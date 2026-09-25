@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v110',
+    date: '2026-09-25',
+    tag: 'Gameplay',
+    title: 'Sixteen ways to celebrate',
+    lede: 'Scorers no longer all do the same run and hop. There are sixteen celebrations, and you can pick your own side\'s in Settings.',
+    entries: [
+      {
+        head: 'The celebrations',
+        summary: 'Corner Run, Knee Slide, Airplane, Sky Point, Shush, Heart Hands, Salute, Ice Cold, Spin Jump, Fist Pump, Take a Bow, The Robot, Cradle, Cup the Ear, Belly Slide and Backflip.',
+        detail: 'Every one works on all graphics settings, from the built-in players on Low and Medium to the detailed models on High and Ultra. Team-mates still chase the scorer and cheer.',
+      },
+      {
+        head: 'Pick yours',
+        summary: 'Settings, then Goal celebration. Choose one for every goal your side scores, or Random.',
+        detail: 'Random, and every computer-controlled scorer, picks by who scored, so each player has a few favourites they come back to. The choice is only how it looks, so match results are exactly as before.',
+      },
+    ],
+  },
+  {
     version: 'v109',
     date: '2026-09-25',
     tag: 'Gameplay',

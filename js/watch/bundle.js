@@ -10526,6 +10526,35 @@
     return pick || SKILL_MOVES.filter((m) => (m.dir === dir || dir === "none" && m.dir === "side") && allowed(m)).sort((a, b) => b.stars - a.stars)[0] || SKILL_MOVES[0];
   }
 
+  // js/game/celebrations.js
+  var CELEBRATIONS = [
+    { id: "corner", name: "Corner Run", blurb: "Off to the corner flag, arms up, shouting." },
+    { id: "kneeslide", name: "Knee Slide", blurb: "Down on the knees and slide, leaning back." },
+    { id: "airplane", name: "Airplane", blurb: "Arms out wide, banking through the turns." },
+    { id: "skypoint", name: "Sky Point", blurb: "Both arms straight up, pointing at the sky." },
+    { id: "shush", name: "Shush", blurb: "A finger to the lips for the away end." },
+    { id: "heart", name: "Heart Hands", blurb: "Hands together over the heart, for the home fans." },
+    { id: "salute", name: "Salute", blurb: "Stand to attention and salute." },
+    { id: "icecold", name: "Ice Cold", blurb: "Stop dead, arms folded, not a flicker." },
+    { id: "spinjump", name: "Spin Jump", blurb: "Leap, turn in the air, land arms down and wide." },
+    { id: "fistpump", name: "Fist Pump", blurb: "Pumping the fist, again and again." },
+    { id: "bow", name: "Take a Bow", blurb: "A slow bow to the crowd." },
+    { id: "robot", name: "The Robot", blurb: "Stiff arms, jerky turns." },
+    { id: "cradle", name: "Cradle", blurb: "Rocking a baby — one for the family." },
+    { id: "cupear", name: "Cup the Ear", blurb: "Hand to the ear: can't hear you." },
+    { id: "bellyslide", name: "Belly Slide", blurb: "Dive and slide on the front across the grass." },
+    { id: "backflip", name: "Backflip", blurb: "A standing backflip. Show-off." }
+  ], IDS = CELEBRATIONS.map((c) => c.id), celebrationOf = (id) => IDS.includes(id) ? id : null;
+  function pickCelebration(choice, seedId = "", nth = 0) {
+    let own = celebrationOf(choice);
+    if (own) return own;
+    let h = 2166136261;
+    for (let ch of String(seedId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    let favourites = [(h >>> 0) % IDS.length, (h >>> 8) % IDS.length, (h >>> 16) % IDS.length];
+    return IDS[favourites[nth % 3]];
+  }
+  var arm = (raise = 0, fwd = 0, bend = 0) => ({ raise, fwd, bend }), REST = arm(0.08, 0.05, 0.25);
+
   // js/game/tactics.js
   var DEF_STYLES = {
     high: { name: "High press", press: 1.35, line: 8 },
@@ -10897,7 +10926,7 @@
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
       ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
-      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.celebration = typeof opts.celebration == "string" ? opts.celebration : "random", this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -11027,7 +11056,7 @@
       this.kickoffSide = kickoffSide;
       for (let team of this.teams) {
         for (let p of team.players)
-          p.x = p.sx * PITCH.w, p.y = p.sy * PITCH.h, p.vx = p.vy = 0, p.touchLock = p.stumble = p.holdT = p.slide = p.downT = 0, p.celebrating = !1, p.diveT = 0;
+          p.x = p.sx * PITCH.w, p.y = p.sy * PITCH.h, p.vx = p.vy = 0, p.touchLock = p.stumble = p.holdT = p.slide = p.downT = 0, p.celebrating = !1, p.celebKind = null, p.diveT = 0;
         let half = team.dir > 0;
         for (let p of team.players)
           half && p.x > PITCH.w / 2 - 2 && (p.x = PITCH.w / 2 - 2 - (p.role === "FWD" ? 3 : 8)), !half && p.x < PITCH.w / 2 + 2 && (p.x = PITCH.w / 2 + 2 + (p.role === "FWD" ? 3 : 8));
@@ -11737,7 +11766,7 @@
       p && (p.x = b.x - this.teams[side].dir * 1.2, p.y = b.y, p.touchLock = 0, b.owner = p, b.lastTouch = p);
     }
     scoreGoal(side, inw = 1, goalLineX = PITCH.w) {
-      var _a;
+      var _a, _b, _c, _d, _e;
       this.markStoppage("goal");
       let team = this.teams[side];
       if (FIELD.street) {
@@ -11763,6 +11792,10 @@
         at: this.t
       }, b.owner = null, b.inNet = { inw, back: goalLineX + inw * 1.75 };
       for (let p of team.players) p.celebrating = !0;
+      if (scorer) {
+        let own = this.controllers.some((c) => !c.ai && c.team === scorer.team);
+        scorer.celebKind = pickCelebration(own ? this.celebration : null, (_e = (_d = (_b = scorer.ref) == null ? void 0 : _b.id) != null ? _d : (_c = scorer.ref) == null ? void 0 : _c.name) != null ? _e : "", team.score);
+      }
     }
     /** Ball flight after it has crossed the line: the net drags it to a stop. */
     settleBallInNet(dt) {
@@ -13312,7 +13345,7 @@
         BOOT,
         4
       );
-    }, arm = (side, ph) => {
+    }, arm2 = (side, ph) => {
       let shA = Math.sin(ph) * armSwing, elA = shA + 0.75 * gait + 0.25, lat = side * 0.2, shF = lean * 0.5, elF = shF + Math.sin(shA) * UPPER_ARM, elZ = SHOULDER_Z - Math.cos(shA) * UPPER_ARM, haF = elF + Math.sin(elA) * FOREARM, haZ = elZ - Math.cos(elA) * FOREARM, latOut = side * 0.235;
       limb(
         ctx,
@@ -13342,7 +13375,7 @@
         sides
       ), fine && sphere(ctx, V, wx(haF, latOut), wy(haF, latOut), haZ - 0.03, 0.055, look.skin);
     };
-    leg(-1, phase + Math.PI), arm(1, phase + Math.PI), leg(1, phase), limb(
+    leg(-1, phase + Math.PI), arm2(1, phase + Math.PI), leg(1, phase), limb(
       ctx,
       V,
       wx(lean, 0),
@@ -13368,7 +13401,7 @@
       0.215,
       look.kit,
       sides
-    ), arm(-1, phase), limb(
+    ), arm2(-1, phase), limb(
       ctx,
       V,
       wx(lean * 1.6, 0),

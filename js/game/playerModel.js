@@ -11,6 +11,7 @@
  * match is z-up and in metres, so every clone is tipped and scaled on the way
  * in — see `makeRig`.
  */
+import { celebPose, armDirs } from './celebrations.js';
 import * as THREE from '../vendor/three.module.js';
 import { gaitOf } from './rig.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
@@ -306,7 +307,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
   const startAt = (index % 11) / 11;
 
   return {
-    root, mixer, actions, hips, trait, isGK,
+    root, figure, mixer, actions, hips, trait, isGK,
     current: null,
     offset: startAt,
     index,              // v87: staggers the animation LOD so skipped players are not all skipped on the same frame
@@ -318,6 +319,8 @@ export function actionFor(rig, speed, p) {
   if (p.downT > 0) return rig.actions.down || rig.actions.fall || rig.actions.tackle ? (rig.actions.down ? 'down' : rig.actions.fall ? 'fall' : 'tackle') : 'idle';
   if (p.diveT > 0) return rig.actions.keeperDive ? 'keeperDive' : 'idle';
   if (p._act && p._actT > 0 && rig.actions[p._act]) return p._act;
+  // v110: a scorer with a celebration of their own stands on the idle clip and is posed over it (celebrateRig)
+  if (p.celebrating && p.celebKind && p.celebKind !== 'corner') return speed > 1.5 && rig.actions.run ? 'run' : 'idle';
   if (p.celebrating && rig.actions.celebrate && speed < 1.5) return 'celebrate';
   if (speed > 1.1) return 'run';
   return rig.isGK && rig.actions.keeperIdle ? 'keeperIdle' : 'idle';
@@ -403,5 +406,56 @@ export function poseRig(rig, p, dt, every = 1) {
   if (rig.hips) {
     rig.hips.position.x = 0;
     rig.hips.position.z = 0;
+  }
+  if (p.celebrating && p.celebKind && p.celebKind !== 'corner') celebrateRig(rig, p, speed, celebClock);
+}
+
+/* ------------------------------------------------------------------ *
+ * v110: goal celebrations over the idle clip (game/celebrations.js)
+ * ------------------------------------------------------------------ */
+let celebClock = 0;
+/** The goal's clock, for the pose (the match screen sets it from match.celebT). */
+export function setCelebClock(t) { celebClock = t || 0; }
+const _q = new THREE.Quaternion(); const _q2 = new THREE.Quaternion(); const _qp = new THREE.Quaternion();
+const _v = new THREE.Vector3(); const _v2 = new THREE.Vector3(); const _h = new THREE.Vector3();
+const Z_AXIS = new THREE.Vector3(0, 0, 1); const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const HIP_H = 0.95;
+
+function celebrateRig(rig, p, speed, t) {
+  const C = celebPose(p.celebKind, t, speed > 1.5);
+  const root = rig.root;
+  const heading = Math.atan2(p.dirY, p.dirX);
+  const face = heading + C.spin;
+  const fx = Math.cos(face); const fy = Math.sin(face);
+  // flat on the front for a belly slide; otherwise a pitch (bow, lean back, somersault) about his own left-right axis
+  const pitch = C.belly > 0 ? (Math.PI / 2) * 0.92 * C.belly : C.lean - C.flip;
+  _q.setFromAxisAngle(Z_AXIS, face + Math.PI / 2);                    // the model's forward is -Y (see poseRig)
+  _qp.setFromAxisAngle(_v.set(-fy, fx, 0), pitch);
+  root.quaternion.copy(_qp).multiply(_q);
+  // the hips stay where they belong (a somersault turns about them, not the boots)
+  _h.set(0, 0, HIP_H).applyQuaternion(_qp);
+  const sink = C.belly > 0 ? 0.72 * C.belly : C.kneel * 0.3;
+  root.position.set(p.x, p.y, 0).add(_v2.set(0, 0, HIP_H + C.lift - sink)).sub(_h);
+  if (!rig.bones) {
+    const bone = (n) => rig.figure?.getObjectByName(`mixamorig${n}`) || rig.figure?.getObjectByName(`mixamorig5${n}`);
+    rig.bones = { armL: bone('LeftArm'), foreL: bone('LeftForeArm'), armR: bone('RightArm'), foreR: bone('RightForeArm') };
+  }
+  root.updateMatrixWorld(true);
+  // an arm by direction (celebrations.armDirs): outward is his left for the left arm
+  const toWorld = (side, d, out) => { const f = d[0]; const l = d[1] * side; return out.set(fx * f - fy * l, fy * f + fx * l, d[2]).applyQuaternion(_qp).normalize(); };
+  const aim = (b, want) => {
+    if (!b) return;
+    b.getWorldQuaternion(_q2);
+    const along = _v.copy(Y_AXIS).applyQuaternion(_q2).normalize();
+    _q.setFromUnitVectors(along, want);
+    _q2.premultiply(_q);
+    b.parent.getWorldQuaternion(_q);
+    b.quaternion.copy(_q.invert().multiply(_q2));
+    b.updateMatrixWorld(true);
+  };
+  for (const [side, a, up, fore] of [[1, C.armL, rig.bones.armL, rig.bones.foreL], [-1, C.armR, rig.bones.armR, rig.bones.foreR]]) {
+    const d = armDirs(a);
+    aim(up, toWorld(side, d.upper, _v2));
+    aim(fore, toWorld(side, d.fore, _v2));
   }
 }
