@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v112',
+    date: '2026-09-25',
+    tag: 'Presentation',
+    title: 'A referee in the middle',
+    lede: 'Matches now have a referee on the pitch, who follows play and shows a card when a player is booked. The card also appears on screen with the player\'s name.',
+    entries: [
+      {
+        head: 'The referee',
+        summary: 'Dressed in black, he follows play from about fifteen metres away, stays clear of the players, comes in close for set pieces and heads back to the centre circle after a goal.',
+        detail: 'He appears on every graphics setting, but not in street games. He never touches the ball or gets in anyone\'s way, so matches play out exactly as they did before.',
+      },
+      {
+        head: 'Bookings',
+        summary: 'When a player is booked, the referee stops, turns to him and holds the yellow card up. A card also flips in at the top right of the screen with the player\'s name and the minute.',
+        detail: 'Before, a booking only appeared in the commentary line, which skips events when a lot is happening at once, so some bookings were never shown at all.',
+      },
+    ],
+  },
+  {
     version: 'v111',
     date: '2026-09-25',
     tag: 'Fixes',

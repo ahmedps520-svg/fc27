@@ -167,6 +167,10 @@ export function celebPose(kind, t, moving) {
       P.armL = arm(0.3, c < 0.08 ? -0.4 : 1.8, 0.1); P.armR = arm(0.3, c < 0.08 ? -0.4 : 1.8, 0.1);
       break;
     }
+    case 'refcard':
+      // v112: not a celebration — the referee holding a card up (game/referee.js)
+      P.armR = arm(0.2, 1.95, 0); P.armL = arm(0.08, 0.05, 0.2); P.mouth = 0;
+      break;
     default: cheer();
   }
   return P;

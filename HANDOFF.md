@@ -15,6 +15,49 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v112 — a referee on the pitch, and the booking card (backlog #15)
+**Before.** There was no referee figure at all. Bookings (yellows only,
+one per player, at `sim.js` ~1052, ~2516 and ~3040) reached the screen only
+as a commentary line. That line is rate-limited to one a second, so a busy
+moment could drop it.
+
+**`js/game/referee.js`** (new, precached). It is presentation only: the
+renderer moves him from `match.ball`, `match.phase` and
+`match.bookings`, and the sim is untouched (the sweep is identical).
+- **In play:** 15 m off the ball on the side nearer the middle, at `(±0.62,
+  ±0.78)·15`.
+- **Dead ball:** 7 m.
+- **Goal, kickoff or half-time:** near the centre circle.
+- He runs at up to 7.2 m/s and eases in. He is pushed off any player inside
+  2 m, clamped to the pitch, and turns towards the ball or the booked man.
+- **A new booking:** `card = { t: 2.5, player }`. He stops, turns to the
+  player, and sets `celebKind = 'refcard'` (a hidden pose in
+  `celebrations.js`: right arm straight up) so both figures raise the arm.
+
+**Renderer:**
+- Figures: `buildPlayer` all in black for Low/Med; `makeRig` with a black
+  kit (`index 23`) for High/Ultra, created in the model-load callback. The
+  built figure is hidden once the models are in.
+- The yellow card is a 7.5×10.5 cm plane at the raised hand (`parts.handR`
+  / `mixamorigRightHand`) and faces the camera.
+- He is hidden in replays and at full time, and absent on the street.
+
+**HUD (`play.js`):** `#gmBooking` sits top right under the HUD buttons. The
+card flips in with the name and "TEAM · booked N'" for 3 s; there is no
+animation under reduced motion.
+
+**Tests:** new `tests/unit/referee.test.mjs`.
+- Over 120 s of AI play he stays on the pitch, his median distance to the
+  ball is 6–28 m, and he is inside 1 m of a player less than 8% of samples.
+- A booking gives the card, he faces the player and stands still, and it
+  clears after 2.5 s.
+
+**Not done (the rest of this #15 item):**
+- The *advantage* rule. It is a real rules change (the sim decides whether
+  to stop for a foul), so it needs measuring against the sweep.
+- A red card or second yellow: the sim books each man at most once.
+- Online guests don't get `bookings` in snapshots, so they see no card.
+
 ### v111 — polish: the Mixamo root turned about the wrong axes
 **Found while building v110.** `playerModel.js` posed the root with Euler
 angles in three's default XYZ order: `rotation.x` for the sprint lean and

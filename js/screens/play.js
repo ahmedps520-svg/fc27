@@ -320,6 +320,7 @@ export function render(params) {
       <div class="gm-feed" id="gmFeed" aria-live="polite"></div>
       <div class="gm-setpiece" id="gmSetPiece" hidden></div>
       <div class="gm-hints" id="gmHints" hidden></div>
+      <div class="gm-booking" id="gmBooking" role="status" hidden><i class="gb-card" aria-hidden="true"></i><b></b><span></span></div>
 
       <div class="goal-card" id="goalCard" hidden>
         <span class="gc-word">GOAL</span>
@@ -557,6 +558,23 @@ export function mount(root, params) {
   /* ------------------------------- hints -------------------------------- *
    * Three matches of rotating tips for the new controls, then never again. */
   const hintsEl = root.querySelector('#gmHints');
+  /* v112: a booking gets a card on screen — the referee shows it on the pitch
+     (game/referee.js), but from the broadcast camera that is a speck, and the
+     commentary line can be skipped when the feed is busy */
+  const bookingEl = root.querySelector('#gmBooking');
+  let bookingsSeen = 0; let bookingT = 0;
+  const showBookings = (dt) => {
+    const n = match.bookings?.length || 0;
+    if (n > bookingsSeen) {
+      const bk = match.bookings[n - 1];
+      bookingEl.querySelector('b').textContent = bk.name;
+      bookingEl.querySelector('span').textContent = `${match.teams[bk.team]?.short || match.teams[bk.team]?.name || ''} · booked ${bk.minute}'`;
+      bookingEl.hidden = false; bookingEl.classList.remove('in'); void bookingEl.offsetWidth; bookingEl.classList.add('in');
+      bookingT = 3;
+    }
+    bookingsSeen = n;
+    if (bookingT > 0) { bookingT -= dt; if (bookingT <= 0) bookingEl.hidden = true; }
+  };
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
     () => (lastDevice() === 'touch'
@@ -1921,6 +1939,7 @@ export function mount(root, params) {
     for (const inp of inputs) latchFor(inp).absorb();
     dpadTactics?.();
     updateTouchContext();
+    if (!loading) showBookings(Math.min(0.1, raw));
     if (loading) tickLoading(now);
     /* When is the world actually stopped?
      * Offline: whenever the menu is up — the sim belongs to this machine.
