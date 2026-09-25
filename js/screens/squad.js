@@ -1,4 +1,5 @@
 import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE, ULTIMATE_RUNGS } from '../state.js';
+import { kitOf, kitSVG, KIT_PATTERNS, KIT_SWATCHES } from '../data/kitDesign.js';
 import { campaignNow, campaignEndsIn, baseOf } from '../data/promos.js';
 import { evolvedRef } from '../evolutions.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
@@ -43,7 +44,8 @@ let storeTab = 'packs';      // packs | locker | icons | market | binder — the
    top-level tabs sitting next to each other, which put "pick your eleven" and
    "pick your badge" at the same level as "play a match" — they are both the
    same job, so they are one tab with three faces now. */
-let clubTab = 'squad';       // squad | evos | badge | name
+let clubTab = 'squad';       // squad | evos | badge | kit | name
+let kitSide = 'home';        // v115: which strip the Kit page is designing
 let openChallenge = null;    // the SBC being filled in, if any
 let submission = [];         // card ids staged for it
 
@@ -126,7 +128,7 @@ export function ultimateSquad() {
     .map((p) => moddedRef(p, { level: levelOf(s.club, p.id) }));
   const id = clubIdentity();
   // v79: the instructions set in a match's Team Management travel to the next one
-  return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest, tactics: s.club.tactics || undefined };
+  return { xi, bench, name: id.name, short: id.short, colors: id.crest.colors, crest: id.crest, kit: id.kit, tactics: s.club.tactics || undefined };
 }
 
 /**
@@ -141,6 +143,7 @@ export function clubIdentity() {
   const d = { name: 'Ultimate XI', short: 'UXI',
     crest: { shape: 'shield', pattern: 'solid', device: 'star', colors: ['#41d3ff', '#0b1020'] } };
   const got = getState().club.identity || {};
+  const colors = got.crest?.colors?.length === 2 ? got.crest.colors : d.crest.colors;
   return {
     name: got.name || d.name,
     short: (got.short || d.short).slice(0, 3).toUpperCase(),
@@ -148,9 +151,19 @@ export function clubIdentity() {
       shape: got.crest?.shape || d.crest.shape,
       pattern: got.crest?.pattern || d.crest.pattern,
       device: got.crest?.device || d.crest.device,
-      colors: got.crest?.colors?.length === 2 ? got.crest.colors : d.crest.colors,
+      colors,
     },
+    kit: kitOf(got.kit, colors),        // v115: home and away, from the badge's colours until designed
   };
+}
+
+/** v115: what goes back into the save — the resolved identity, but the kit as
+ *  the player designed it (or nothing), so an undesigned kit keeps following
+ *  the badge's colours instead of being frozen at today's. */
+function identityToSave() {
+  const { kit, ...rest } = clubIdentity();
+  const saved = getState().club.identity?.kit;
+  return saved ? { ...rest, kit: saved } : rest;
 }
 
 /* ------------------------------- Your club ------------------------------ *
@@ -222,6 +235,51 @@ function badgeView() {
       ${row('shape', CREST_PARTS.shape)}
       ${row('pattern', CREST_PARTS.pattern)}
       ${row('device', CREST_PARTS.device)}
+    </section>`;
+}
+
+/**
+ * v115 (backlog #16): the kit designer. Home and away, each a shirt and a
+ * trim colour, shorts, socks and a pattern, from a football palette. Worn in
+ * every match your club plays; the away strip when the home one would clash.
+ */
+function kitView() {
+  const id = clubIdentity();
+  const k = id.kit[kitSide];
+  const swatches = (part) => `
+    <div class="ci-row">
+      <span class="ci-label">${part}</span>
+      <div class="ci-opts kd-swatches">
+        ${KIT_SWATCHES.map((c) => `<button class="kd-sw ${k[part] === c ? 'on' : ''}" data-kd="${part}" data-val="${c}" style="--c:${c}" aria-label="${part} ${c}" aria-pressed="${k[part] === c}"></button>`).join('')}
+      </div>
+    </div>`;
+  return `
+    <section class="panel glass">
+      <header class="panel-head"><h2>Kit</h2>
+        <div class="seg" id="kdSide">${['home', 'away'].map((sd) => `<button class="${kitSide === sd ? 'on' : ''}" data-kdside="${sd}">${sd === 'home' ? 'Home' : 'Away'}</button>`).join('')}</div>
+      </header>
+      <p class="hint">What your players run out in. The away kit is worn when the home one would clash with the other side's.</p>
+      <div class="ci-top">
+        <div class="ci-preview kd-preview" id="kdPreview">${kitSVG(k, 128)}</div>
+        <div class="ci-kitnote">
+          <b>${id.name}</b>
+          <span>${kitSide === 'home' ? 'Home' : 'Away'} kit</span>
+          <button class="btn ghost sm" id="kdReset">Back to the badge's colours</button>
+        </div>
+      </div>
+      <div class="ci-row">
+        <span class="ci-label">pattern</span>
+        <div class="ci-opts">
+          ${KIT_PATTERNS.map(([pid, label]) => `
+            <button class="ci-opt ${k.pattern === pid ? 'on' : ''}" data-kd="pattern" data-val="${pid}">
+              <span class="ci-badge">${kitSVG({ ...k, pattern: pid }, 30)}</span><em>${label}</em>
+            </button>`).join('')}
+        </div>
+      </div>
+      ${swatches('shirt')}
+      ${swatches('trim')}
+      ${swatches('shorts')}
+      ${swatches('socks')}
     </section>`;
 }
 
@@ -797,7 +855,7 @@ export function render() {
    * other read as a hierarchy instead of as fourteen buttons. */
   const sub = `
     <nav class="subtabs" id="cSubs">
-      ${[['squad', 'Squad'], ['evos', 'Evolutions'], ['badge', 'Club Badge'], ['name', 'Club Name']]
+      ${[['squad', 'Squad'], ['evos', 'Evolutions'], ['badge', 'Club Badge'], ['kit', 'Kit'], ['name', 'Club Name']]
         .map(([id, label]) =>
           `<button class="subtab ${clubTab === id ? 'on' : ''}" data-ctab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -805,6 +863,7 @@ export function render() {
   if (clubTab === 'evos') return tabs + sorry + sub + evosView();
   if (clubTab === 'badge') return tabs + sorry + sub + badgeView();
   if (clubTab === 'name') return tabs + sorry + sub + nameView();
+  if (clubTab === 'kit') return tabs + sorry + sub + kitView();
 
   return tabs + sorry + sub + `
     <div class="sb-head">
@@ -1080,6 +1139,30 @@ export function mount(root) {
   if (tab === 'objectives') mountTasks(root);
   if (tab === 'division') mountModes(root, ultimateSquad);
 
+  if (tab === 'club' && clubTab === 'kit') {
+    root.querySelector('.panel')?.addEventListener('click', (e) => {
+      const side = e.target.closest('[data-kdside]');
+      if (side) { kitSide = side.dataset.kdside; navigate('squad'); return; }
+      if (e.target.closest('#kdReset')) {
+        update((st) => { const cur = { ...(st.club.identity || {}) }; if (cur.kit) { const kit = { ...cur.kit }; delete kit[kitSide]; cur.kit = kit; } st.club.identity = cur; });
+        navigate('squad'); return;
+      }
+      const b = e.target.closest('[data-kd]');
+      if (!b) return;
+      update((st) => {
+        const cur = { ...(st.club.identity || {}) };
+        // only the strip being designed is written; the other keeps following the badge until it is touched
+        const now = kitOf(cur.kit, clubIdentity().crest.colors)[kitSide];
+        cur.kit = { ...(cur.kit || {}), [kitSide]: { ...now, [b.dataset.kd]: b.dataset.val } };
+        st.club.identity = cur;
+      });
+      const k = clubIdentity().kit[kitSide];
+      root.querySelector('#kdPreview').innerHTML = kitSVG(k, 128);
+      root.querySelectorAll(`[data-kd="${b.dataset.kd}"]`).forEach((x) => { x.classList.toggle('on', x === b); if (x.hasAttribute('aria-pressed')) x.setAttribute('aria-pressed', String(x === b)); });
+      if (b.dataset.kd !== 'pattern') root.querySelectorAll('[data-kd="pattern"] .ci-badge').forEach((slot) => { slot.innerHTML = kitSVG({ ...k, pattern: slot.closest('[data-kd]').dataset.val }, 30); });
+    });
+    return;
+  }
   if (tab === 'club' && clubTab !== 'squad') {
     const preview = root.querySelector('#ciPreview');
     const nameEl = root.querySelector('#ciName');
@@ -1105,7 +1188,7 @@ export function mount(root) {
     root.querySelector('.panel')?.addEventListener('click', (e) => {
       const part = e.target.closest('[data-part]');
       if (part) {
-        update((s) => { s.club.identity = { ...clubIdentity(), crest: { ...clubIdentity().crest, [part.dataset.part]: part.dataset.val } }; });
+        update((s) => { s.club.identity = { ...identityToSave(), crest: { ...clubIdentity().crest, [part.dataset.part]: part.dataset.val } }; });
         root.querySelectorAll(`[data-part="${part.dataset.part}"]`)
           .forEach((x) => x.classList.toggle('on', x === part));
         repaint();
@@ -1114,7 +1197,7 @@ export function mount(root) {
       const kit = e.target.closest('[data-kit]');
       if (kit) {
         const colors = kit.dataset.kit.split('|');
-        update((s) => { s.club.identity = { ...clubIdentity(), crest: { ...clubIdentity().crest, colors } }; });
+        update((s) => { s.club.identity = { ...identityToSave(), crest: { ...clubIdentity().crest, colors } }; });
         root.querySelectorAll('[data-kit]').forEach((x) => x.classList.toggle('on', x === kit));
         repaint();
       }
@@ -1123,13 +1206,13 @@ export function mount(root) {
     root.querySelector('#idBuilder')?.addEventListener('click', () => navigate('builder'));
     nameEl?.addEventListener('input', () => {
       const v = nameEl.value.trim() || 'Ultimate XI';
-      update((s) => { s.club.identity = { ...clubIdentity(), name: v }; });
+      update((s) => { s.club.identity = { ...identityToSave(), name: v }; });
     });
     shortEl?.addEventListener('input', () => {
       // three letters is what the scoreboard and the badge have room for
       shortEl.value = shortEl.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 3);
       const v = shortEl.value || 'UXI';
-      update((s) => { s.club.identity = { ...clubIdentity(), short: v }; });
+      update((s) => { s.club.identity = { ...identityToSave(), short: v }; });
       repaint();
     });
     return;

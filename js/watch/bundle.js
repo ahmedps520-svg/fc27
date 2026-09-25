@@ -10884,6 +10884,8 @@
       name: (custom == null ? void 0 : custom.name) || club.name,
       short: (custom == null ? void 0 : custom.short) || club.short,
       colors: (custom == null ? void 0 : custom.colors) || club.crest.colors,
+      kit: (custom == null ? void 0 : custom.kit) || null,
+      // v115: a designed club's home and away strips (data/kitDesign.js)
       dir,
       side,
       isHuman,

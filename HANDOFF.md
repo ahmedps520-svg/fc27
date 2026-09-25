@@ -15,6 +15,63 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v115 — the kit designer (backlog #16)
+**Before.** A club's kit was the badge's first colour. Shorts ×0.6 and
+socks ×0.8 of it, no pattern, no away kit of its own; the other side got a
+`pickAwayHex` colour.
+
+**`js/data/kitDesign.js`** (new, precached):
+- `KIT_PATTERNS`: plain, stripes, hoops, halves, sash, pinstripe.
+- `KIT_SWATCHES`: 16 football colours.
+- `kitOf(saved, crestColors)` returns `{ home, away }`, each `{ shirt,
+  trim, shorts, socks, pattern }`.
+  - Colours are hex-validated and patterns whitelisted.
+  - Defaults reproduce the old look exactly: home from `colors[0]`, away
+    from `colors[1]`, shorts/socks via `shade(×0.6/×0.8)`.
+- `patternMask(pattern, u, v)` is the one definition of each pattern.
+- `paintKit(g, strip, size)` draws the patterns on the shirt canvas as
+  shapes (a 64-cell raster lost the pinstripe).
+- `kitSVG` draws the preview.
+
+**Save and squad:**
+- `club.identity.kit` holds only the side(s) the player has touched.
+- `clubIdentity()` resolves `kit`, and `ultimateSquad` passes `kit` into the
+  match (`makeTeam` → `team.kit`).
+- The badge and name editors now save through `identityToSave()`, which
+  keeps the raw kit. Otherwise a resolved default kit would have been frozen
+  into the save and stopped following later badge-colour changes.
+
+**Club tab → Kit** (`squad.js` `kitView`):
+- a Home/Away switch, a live preview, pattern buttons (each previewed in
+  your colours), and four swatch rows;
+- "Back to the badge's colours" deletes that side;
+- swatches are 32 px with a 44 px tap area on touch.
+
+**Renderer:**
+- `renderGL` builds `strips[2]`. Home wears `team.kit.home`, or a plain
+  badge colour. The away side wears its designed home kit unless it
+  `clash()`es (the colour-blind-safe test) with the home shirt, then its
+  away kit, then a plain `pickAwayHex`.
+- Built figure: `kitTexture(base, no, name, size, strip)` paints the
+  pattern under the name and number; the cache key includes pattern and
+  trim.
+- Model: `recolour()` takes pattern, trim and the shirt mesh's bind-pose
+  bounding box. The tint shader normalises `position` to the box (u across,
+  v down) and applies the same masks in GLSL. The program cache key is
+  `apex-tint-v3-<pattern>`.
+- Checked on contact sheets of all six patterns on both figures.
+
+**Tests:** new `tests/unit/kit-design.test.mjs` covers:
+- an undesigned kit equals the old look;
+- saved kits are cleaned;
+- each pattern marks 8–60% of the shirt;
+- a match squad's kit reaches `team.kit`.
+
+**Not done:**
+- Online matches don't send your kit (the lobby carries name + ids only),
+  so the opponent sees your badge colours.
+- Career clubs keep their real colours.
+
 ### v114 — polish: online cards and advantage, the alerts moved
 **Online (`netplay.js`).** The snapshot gains three optional fields:
 - `bk`: the bookings count;
