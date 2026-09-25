@@ -5237,3 +5237,5 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .cup-tie small { grid-column: 1 / -1; color: var(--text-mute); font-size: 11px; }
 .cup-tie.mine { outline: 1px solid var(--accent); }
 .cup-end { text-align: center; }
+/* v119: a derby picked on Kick Off */
+.ts-derby { text-align: center; margin-bottom: 8px; font: 800 12px/1.2 system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #ffb347; }
