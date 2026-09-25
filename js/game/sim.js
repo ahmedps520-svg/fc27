@@ -160,7 +160,7 @@ const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
 /* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns") */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true };
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -403,6 +403,7 @@ export class Match {
     this.fouls = [0, 0];
     this.offsides = [0, 0];          // v79
     this.offsideWatch = null;
+    this.advantage = null; this.advantages = [0, 0]; this.advantageBack = [0, 0];   // v113
     this.bookings = [];          // { team, name, minute } — yellows
     this.lastOwnerTeam = null;
     this.kickoffSide = 1;
@@ -631,6 +632,7 @@ export class Match {
       if (this._adaptT <= 0) { this._adaptT = 5; this.adaptAI(false); }
     }
     this.updateMomentum(dt);
+    this.updateAdvantage(dt);
 
     if (this.half === 1 && this.t >= this.duration / 2) {
       this.phase = 'half'; this.phaseT = 1.8; this.banner = 'HALF TIME';
@@ -1802,6 +1804,7 @@ export class Match {
 
   /** Record a dead-ball restart. Called by bounds() and scoreGoal, read by whoever polls. */
   markStoppage(kind) {
+    this.advantage = null;   // v113: a stoppage ends any advantage being played
     this.offsideWatch = null;
     this.stoppages += 1;
     this.stoppage = kind;
@@ -2429,6 +2432,8 @@ export class Match {
    * further away, a late one is a clearer foul.
    */
   tackle(p, { slide = false } = {}) {
+    // v113: the man whose foul is being played on cannot have another go while it runs
+    if (this.advantage && this.advantage.offender === p) return;
     const b = this.ball;
     const owner = b.owner;
     const REACH = slide ? 4.3 : 3.1;
@@ -2501,6 +2506,17 @@ export class Match {
       if (Math.random() < chance) {
         this.fouls[p.team] += 1;
         this.cue('foul', p);
+        /* v113: advantage. Fouled in the other half with nobody else on him,
+           he rides it — stumbles, keeps the ball, and the referee lets play
+           go on; lose it inside 2.5 s and the free kick comes back. */
+        const adv = TUNE.advantage && !this.inPenaltyArea(owner, p.team) && this.advantageFor(owner, p);
+        if (adv) {
+          owner.stumble = Math.max(owner.stumble, 0.2);
+          p.stumble = Math.max(p.stumble, 1.0);      // the man who fouled is out of it: he is not the one to win it back
+          this.advantage = { team: owner.team, x: owner.x, y: owner.y, offender: p, t: 2.5 };
+          this.advantages[owner.team] += 1;
+          this.cue('advantage', owner);
+        } else {
         /* The man goes down — properly down, flat on the grass, for a second
          * or two while play stops and he gets up. It is the thing that makes
          * a foul read as a foul rather than as a turnover with a noise. */
@@ -2508,6 +2524,7 @@ export class Match {
         owner.downMax = owner.downT;          // the renderers read both to time the fall and the get-up
         owner.vx = p.dirX * 3.4; owner.vy = p.dirY * 3.4;     // knocked the way the challenge came in
         owner.stumble = Math.max(owner.stumble, owner.downT + 0.5);
+        }
         /* A foul can hurt. One in eight leaves the fouled man limping for the
          * rest of the match — slower, less accurate, a candidate for the next
          * substitution — and the career keeps him out for weeks. */
@@ -2515,9 +2532,35 @@ export class Match {
         // the lunge from distance is the bookable one
         if (frac > 0.82 && p.cards < 1) { p.cards += 1; this.cue('card', p); this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() }); }
         if (this.inPenaltyArea(owner, p.team)) this.awardPenalty(1 - p.team, p);
-        else this.awardFreeKick(1 - p.team, owner, p);
+        else if (!adv) this.awardFreeKick(1 - p.team, owner, p);
       }
     }
+  }
+
+  /** v113: may the referee play advantage? In the fouled side's attacking half but out of shooting range, going forward with pace, and nobody but the offender within 6 m of him. */
+  advantageFor(owner, offender) {
+    const dir = this.teams[owner.team].dir;
+    if ((owner.x - PITCH.w / 2) * dir <= 0) return false;
+    if (owner.vx * dir < 3.5) return false;       // a man breaking, not one shielding it with his back to goal
+    // within shooting range the free kick is the better chance: the referee gives it
+    if (Math.hypot((dir > 0 ? PITCH.w : 0) - owner.x, CY - owner.y) < 30) return false;
+    for (const q of this.teams[offender.team].players) if (q !== offender && dist(q, owner) < 6) return false;
+    return true;
+  }
+
+  /** v113: advantage running — the free kick comes back if the ball is lost; otherwise it is played. */
+  updateAdvantage(dt) {
+    const a = this.advantage;
+    if (!a) return;
+    const o = this.ball.owner;
+    if (o && o.team !== a.team) {
+      this.advantage = null;
+      this.advantageBack[a.team] += 1;
+      this.awardFreeKick(a.team, { x: a.x, y: a.y }, a.offender);
+      return;
+    }
+    a.t -= dt;
+    if (a.t <= 0) this.advantage = null;
   }
 
   /** A player is hurt: he stays on, diminished, until someone takes him off. */

@@ -62,6 +62,9 @@ export const CO = {
     'Soft one, I thought.', 'He has left a bit on him there.', 'Smart foul, if there is such a thing.',
     'You cannot dive in like that in your own half.', 'Frustration creeping in.',
   ],
+  advantage: [
+    'Good awareness from the referee.', 'That is how you referee a game.', 'He can always come back for it.',
+  ],
   card: [
     'He has to be careful now for the rest of the match.', 'No complaints. That was reckless.',
     'The referee had no choice.', 'That changes how he can defend.', 'A booking that could cost them later.',
@@ -222,6 +225,7 @@ export const AR = {
     penaltyAwarded: ['ضربة جزاء! ضربة جزاء!', 'الحكم يشير إلى نقطة الجزاء!', 'بلنتي لـ{team}!'],
     throwin: ['رمية تماس لـ{team}.', 'رمية جانبية.'],
     foul: ['خطأ.', 'مخالفة على {player}.', 'الحكم يصفر خطأ.', 'تدخل قوي من {player}.', 'عرقلة.'],
+    advantage: ['الحكم يشير بمواصلة اللعب!', 'أفضلية لـ{team}.', 'الحكم يطبق قانون الأفضلية.'],
     card: ['بطاقة صفراء لـ{player}.', 'إنذار لـ{player}.', 'الحكم يخرج البطاقة!', '{player} ينال البطاقة.'],
     injury: ['{player} على الأرض.', 'إصابة لـ{player}، نتمنى أن تكون بسيطة.', 'الجهاز الطبي يدخل الملعب.'],
     sub: ['تبديل في صفوف {team}.', 'تغيير لـ{team}.', 'دماء جديدة في {team}.'],

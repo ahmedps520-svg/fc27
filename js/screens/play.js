@@ -320,6 +320,7 @@ export function render(params) {
       <div class="gm-feed" id="gmFeed" aria-live="polite"></div>
       <div class="gm-setpiece" id="gmSetPiece" hidden></div>
       <div class="gm-hints" id="gmHints" hidden></div>
+      <div class="gm-adv" id="gmAdv" role="status" hidden>Advantage</div>
       <div class="gm-booking" id="gmBooking" role="status" hidden><i class="gb-card" aria-hidden="true"></i><b></b><span></span></div>
 
       <div class="goal-card" id="goalCard" hidden>
@@ -494,7 +495,7 @@ export function mount(root, params) {
   const CUE_KEY = {
     goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
     bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
-    throwin: 'throwin', foul: 'foul', card: 'card', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+    throwin: 'throwin', foul: 'foul', advantage: 'advantage', card: 'card', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
     offside: 'offside', volley: 'volley', bicycle: 'bicycle', knuckle: 'knuckle', heavyTouch: 'heavyTouch', tactic: 'tactic', adapt: 'adapt',
   };
   let lastCommentAt = -9;
@@ -502,7 +503,7 @@ export function mount(root, params) {
     const key = CUE_KEY[name];
     if (!key) return;
     // the feed is a voice, not a ticker: one line a second at most, goals always
-    if (name !== 'goal' && match.t - lastCommentAt < 1.1) return;
+    if (name !== 'goal' && name !== 'advantage' && match.t - lastCommentAt < 1.1) return;   // v113: the advantage call comes on the heels of the foul line
     if (name === 'shot' && Math.random() < 0.5) return;        // not every effort
     lastCommentAt = match.t;
     if (name === 'goal') {
@@ -574,7 +575,11 @@ export function mount(root, params) {
     }
     bookingsSeen = n;
     if (bookingT > 0) { bookingT -= dt; if (bookingT <= 0) bookingEl.hidden = true; }
+    // v113: advantage — a pill while the referee is letting it run
+    const adv = !!match.advantage;
+    if (advEl.hidden === adv) advEl.hidden = !adv;
   };
+  const advEl = root.querySelector('#gmAdv');
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
     () => (lastDevice() === 'touch'

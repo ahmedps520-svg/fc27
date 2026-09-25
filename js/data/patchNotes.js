@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v113',
+    date: '2026-09-25',
+    tag: 'Gameplay',
+    title: 'Play on: the advantage rule',
+    lede: 'The referee now plays advantage. If you are fouled while breaking forward and play goes on, the referee lets it run, and if your side loses the ball in the next few seconds you get the free kick anyway.',
+    entries: [
+      {
+        head: 'When he plays it',
+        summary: 'When you are fouled in the other team\'s half, going forward with pace and with no other defender close, you stumble but keep the ball, and play goes on. The referee sweeps both arms forward, the commentator calls it, and an Advantage label shows at the top of the screen.',
+        detail: 'Inside about 30 m of goal he gives the free kick instead, because that is the better chance. In your own half, or with a defender close by, it is a free kick as before. Penalties are always given, and bookings still happen.',
+      },
+      {
+        head: 'And if it goes wrong',
+        summary: 'If your side loses the ball within two and a half seconds, the free kick comes back to where the foul happened. The player who fouled you cannot challenge again while advantage is being played.',
+        detail: 'Measured over 480 computer-vs-computer matches, goals are unchanged, with about one fewer free kick and one fewer stoppage per match.',
+      },
+    ],
+  },
+  {
     version: 'v112',
     date: '2026-09-25',
     tag: 'Presentation',

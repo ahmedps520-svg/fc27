@@ -14,7 +14,7 @@
  * 3. What the paid levels cost, against a regular player's Apex a day
  *    (tools/economy-audit.mjs).
  *
- *   node tools/evo-audit.mjs [--matches 60] [--trials 4000]
+ *   node tools/evo-audit.mjs [--matches 120] [--trials 4000]
  */
 import '../tests/unit/_dom.mjs';
 const { Match } = await import('../js/game/sim.js');
@@ -23,7 +23,8 @@ const { EVO_TRACKS } = await import('../js/evolutions.js');
 const { apexCost, EVOLVE_MAX } = await import('../js/evolve.js');
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? Number(process.argv[i + 1]) : d; };
-const N = arg('--matches', 60); const TRIALS = arg('--trials', 4000);
+// v113: 120, not 60 — at 60 RW gets ~65 appearances and a track near the line swung either side of it on the dice alone
+const N = arg('--matches', 120); const TRIALS = arg('--trials', 4000);
 function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const realRandom = Math.random;
 

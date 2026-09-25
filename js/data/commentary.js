@@ -76,6 +76,10 @@ const L = {
     'The referee blows. {player} in the book?', 'Late, from {player}.', 'Free kick for that. {player} penalised.',
     'A clumsy challenge from {player}.', '{player} catches him. No arguments.',
   ],
+  advantage: [
+    'Advantage! The referee waves play on.', 'He plays the advantage — {team} keep going.', 'Arms out: advantage to {team}.',
+    'Good refereeing. Play on.', 'The referee lets it run.',
+  ],
   card: [
     'Yellow card for {player}. That was reckless.', '{player} is booked, and he cannot complain.',
     'Into the book goes {player}.', 'A caution for {player} — he has to be careful now.',

@@ -65,6 +65,9 @@ export function updateReferee(r, m, dt) {
   }
   r.seen = n;
   if (r.card) { r.card.t -= dt; if (r.card.t <= 0) r.card = null; }
+  // v113: advantage — both arms swept forward, the way play is going
+  if (m.advantage && m.advantage !== r.advSeen) { r.advSeen = m.advantage; r.signal = 1.2; }
+  if (r.signal > 0) r.signal -= dt;
 
   const a = aimFor(r, m);
   // steer: accelerate toward the spot, ease in over the last few metres
@@ -92,6 +95,6 @@ export function updateReferee(r, m, dt) {
     r.dirX += (tx - r.dirX) * turn; r.dirY += (ty - r.dirY) * turn;
     const dl = Math.hypot(r.dirX, r.dirY) || 1; r.dirX /= dl; r.dirY /= dl;
   }
-  r.celebrating = !!r.card; r.celebKind = r.card ? 'refcard' : null;
+  r.celebrating = !!r.card || r.signal > 0; r.celebKind = r.card ? 'refcard' : r.signal > 0 ? 'refadv' : null;
   return r;
 }

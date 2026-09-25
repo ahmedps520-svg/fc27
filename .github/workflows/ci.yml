@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 55   # v97: ~41 min with the attract step; 40 cut the soak off
+    timeout-minutes: 65   # v97: ~41 min with the attract step; 40 cut the soak off. v113: ~48 min by v112, and the evo audit doubled
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
