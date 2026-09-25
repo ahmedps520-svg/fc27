@@ -1172,7 +1172,9 @@ export class Match {
         c.passCharge = 0;
       }
       if (input.pressed('through')) this.pass(p, aim, true, 0.5);
-      else if (input.pressed('lob') && !input.held('skill')) this.pass(p, aim, true, 0.55, true);
+      /* v107: LOB added to a held SHOOT is the chip's modifier (below), not a
+         lob pass of its own — it was, and the chip could never be played */
+      else if (input.pressed('lob') && !input.held('skill') && !input.held('shoot')) this.pass(p, aim, true, 0.55, true);
       else if (input.pressed('cross')) {
         // v79: cross with the stick pulled back = cut-back; with the curl button held = driven; otherwise floated
         const back = (aim.x * this.teams[p.team].dir) < -0.35;

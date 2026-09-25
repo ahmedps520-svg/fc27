@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v107',
+    date: '2026-09-25',
+    tag: 'Touch',
+    title: 'Flick to chip',
+    lede: 'On a touch screen, flicking SHOOT or PASS now plays a different kick, and the chip now works on every device.',
+    entries: [
+      {
+        head: 'Flicks',
+        summary: 'Flick SHOOT up to chip the keeper, or sideways to bend it. Flick PASS for a through ball, or up for a lofted one. A plain tap or hold does what it always did.',
+        detail: 'Once your thumb moves 30 points off the button, a label over it names the kick. Hold still first if you want power: the hold still charges the shot. Flicks work in open play when you have the ball; when you are defending and at set pieces the buttons behave as before.',
+      },
+      {
+        head: 'The chip, fixed',
+        summary: 'Holding SHOOT and adding LOB before you let go now chips the keeper. Before, LOB fired a lofted pass the moment you pressed it, so the chip could not actually be played.',
+        detail: 'This affected keyboard and controller as well as touch. LOB on its own is still a lofted pass. The computer never uses these buttons, so AI matches are unchanged.',
+      },
+    ],
+  },
+  {
     version: 'v106',
     date: '2026-09-25',
     tag: 'Touch',

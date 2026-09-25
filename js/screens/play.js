@@ -56,6 +56,7 @@ import { CY } from '../game/field.js';
  */
 const LOADING_TIPS = [
   'Hold pass for a longer ball; a tap plays it short.',
+  'On a touch screen, flick SHOOT up to chip the keeper, or sideways to bend it.',
   'Hold the curl button as you shoot to bend it round the keeper.',
   'Pull the stick back when you cross from the byline for a cut-back.',
   'Quick tactics are on 1–5, or the flag button on touch.',
@@ -562,7 +563,9 @@ export function mount(root, params) {
       : `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`),
     () => `${lastDevice() === 'keyboard' ? 'Keys 1–5 or the flag button switch' : 'The flag button switches'} quick tactics, from Park the bus to All-out attack`,
     () => `LOB (${promptFor('lob')}) — chip it over the defence to a runner`,
-    () => `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting`,
+    () => (lastDevice() === 'touch'
+      ? 'Flick SHOOT up to chip the keeper, sideways to bend it · flick PASS for a through ball, up for a lofted one'
+      : `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting · hold ${promptFor('lob')} as you let go of a shot to chip it`),
     'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
     'Pause at any stoppage for Substitutions and Team Management',
     () => `Defending: ${promptFor('shoot')} slides in · hold ${promptFor('jockey')} to jockey · hold ${promptFor('press')} to send a team-mate to press`,
@@ -1621,6 +1624,13 @@ export function mount(root, params) {
       const slot = el.dataset.slot;
       let action = IN_POSSESSION[slot][0];
       let swipe = null;
+      /* v107: a flick on SHOOT or PASS, in open play with the ball. SHOOT
+         flicked up chips the keeper, sideways bends it (finesse); PASS flicked
+         up is a lofted ball, any other way a through ball. The flick holds the
+         same modifier a keyboard or pad would (LOB, CURL) or presses the same
+         button (THROUGH), so the sim sees nothing new. */
+      let flick = null;
+      const FLICK = 30;                 // px the thumb travels before a press becomes a flick
       const press = (e) => {
         e.preventDefault();
         if (!action) return;
@@ -1634,6 +1644,7 @@ export function mount(root, params) {
           return;
         }
         input.setTouchButton(action, true);
+        flick = (slot === 'shoot' || slot === 'pass') && attacking === true && action === slot ? { x0: e.clientX, y0: e.clientY, id: e.pointerId, mod: null } : null;
         if (getState().settings.rumble !== false) navigator.vibrate?.(8);   // v105: the Vibration switch covers the buttons' tick too
         // Capture keeps a thumb that slides off the button still holding it —
         // but it must never be what decides whether the press counted, so the
@@ -1641,6 +1652,18 @@ export function mount(root, params) {
         try { el.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
       };
       el.addEventListener('pointermove', (e) => {
+        if (flick && !flick.mod && e.pointerId === flick.id) {
+          const dx = e.clientX - flick.x0; const dy = e.clientY - flick.y0;
+          if (Math.hypot(dx, dy) >= FLICK) {
+            const up = -dy > Math.abs(dx) * 0.8;
+            flick.mod = slot === 'shoot' ? (up ? 'lob' : dy > Math.abs(dx) ? 'none' : 'curl') : (up ? 'lob' : 'through');
+            if (flick.mod !== 'none') {
+              input.setTouchButton(flick.mod, true);
+              el.dataset.flick = slot === 'shoot' ? (up ? 'CHIP' : 'FINESSE') : (up ? 'LOFTED' : 'THROUGH');
+              if (getState().settings.rumble !== false) navigator.vibrate?.(12);
+            }
+          }
+        }
         if (!swipe) return;
         swipe.n += 1;
         if (swipe.n === 4) { swipe.mx = e.clientX; swipe.my = e.clientY; }
@@ -1666,6 +1689,11 @@ export function mount(root, params) {
         // shot that never fires is worse than an extra clear
         input.setTouchButton(IN_POSSESSION[slot][0], false);
         if (DEFENDING[slot][0]) input.setTouchButton(DEFENDING[slot][0], false);
+        if (flick) {
+          // the modifier outlives the button by a frame: the sim reads it on the shot's release
+          const mod = flick.mod; flick = null; delete el.dataset.flick;
+          if (mod && mod !== 'none') requestAnimationFrame(() => requestAnimationFrame(() => input.setTouchButton(mod, false)));
+        }
       };
       el.addEventListener('pointerdown', press);
       el.addEventListener('pointerup', release);
