@@ -15,6 +15,68 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v105 — touch redesign, part 1: the arc pad (backlog #20)
+New `tools/touch-audit.mjs` (in CI, exits 1 on a problem). It runs a live
+match at 568×320, 667×375, 844×390 and 932×430 (touch, DPR 1) and measures
+every visible `.tbtn` and HUD button:
+- size (under 44 px, and under 48);
+- the gap to the nearest neighbour, as circle-to-circle for the round pad;
+- overlap with the score bug, player strip, tips, feed, `.bc-strap` and
+  `.bc-sub`;
+- reach from the right thumb's rest, in **mm** (0.17 mm per CSS px; a
+  comfortable reach is ≤ 45 mm).
+
+Screenshots go to `tests/tmp/touch/`.
+
+*Metric note.* The first cut used square gaps (diagonal round neighbours
+read as touching) and a 170 px reach bar (≈ 29 mm). That flagged the old
+SKILL/LOB as out of reach and missed the new layout's real overlap. With
+mm, the old worst was SKILL at 43 mm: at the edge, not beyond.
+
+**Before:**
+- One fixed grid on every phone: 72 px buttons, SPRINT 90, SKILL/LOB 50.
+  On a 568×320 SE the pad took about half the width.
+- HUD icon buttons were 32×32.
+- The broadcast name strap sat over CROSS and LOB on an SE.
+
+**`js/components/touchLayout.js`** (new, precached):
+- `arcLayout(W, H)` sizes buttons by height: B = clamp(56, 0.19H, 84);
+  SPRINT = 1.22B at the corner; SKILL/LOB = max(48, 0.7B).
+- Placement is around the thumb rest (the SPRINT centre):
+  - PASS, THROUGH and SHOOT at 4°, 47° and 90° on R1 = max(clear of
+    SPRINT, (B + 10)/(2·sin 21.5°)) + 1, so 43° neighbours keep 10 px;
+  - CROSS, LOB and SKILL at 8°, 40° and 68° on R2 = R1 + B/2 + max(B, s)/2
+    + 10.
+- `applyTouchLayout` writes inline right/bottom/size (and `--tb-font`) and
+  adds `.tpad.arc`. play.js calls it on mount and on resize.
+- `clearTouchLayout` is used when `one-hand` is on; that layout keeps its
+  CSS grid.
+
+**After:** 0 problems at all four sizes. Every button is ≥ 48 px, gaps are
+≥ 10 px, and the furthest button is 38 mm from the thumb (Pro Max).
+`tests/unit/touch-layout.test.mjs` holds this at five sizes, including a
+1180×820 tablet.
+
+**Also:**
+- HUD `.icon-btn.sm` gets an `::after` with inset −6 px on coarse pointers,
+  a 44 px hit area.
+- On touch (`#gmRoot:has(#gmTouch:not([hidden]))`), the strap moves to
+  top: 88 px (below the player strip) and the subtitles to 136 px.
+- Vibration:
+  - `rumbleCue` now treats a missing `settings.rumble` as on. It returned
+    unless the value was truthy, so older saves never rumbled although
+    Settings showed the switch on.
+  - Phones buzz `min(60, 0.4 × pad ms)` on the same cues where
+    `navigator.vibrate` exists (Android; iOS web has no Vibration API).
+  - The button tick (8 ms) respects the switch, and the Settings copy says
+    so.
+
+Unit tests 213/213; sweep identical; layout, a11y and play session clean.
+
+**Next for #20:** a layout editor (drag, size, reset, stored in settings),
+and gestures beyond the SKILL swipe (e.g. swipe-to-shoot power and
+direction on SHOOT).
+
 ### v104 — fix: v103 starved the strikers (CI caught it through the evolution audit)
 **What happened.** v103's CI failed on main at "every evolution track can be
 finished". The audit's per-position table showed why: ST goals per match

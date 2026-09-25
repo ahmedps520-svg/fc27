@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v105',
+    date: '2026-09-25',
+    tag: 'Touch',
+    title: 'Buttons around your thumb',
+    lede: 'On phones, the match buttons now fan out around your right thumb and scale to your screen, so a small phone keeps more of the pitch and a big one gets bigger buttons.',
+    entries: [
+      {
+        head: 'The pad',
+        summary: 'SPRINT sits under your thumb, with PASS, THROUGH and SHOOT in a ring around it and CROSS, LOB and SKILL just beyond. Every button is at least 48 points, none touch, and the furthest is about 4 cm from your thumb.',
+        detail: 'Before, every phone got the same fixed-size grid, which covered about half the screen of a small iPhone SE. SKILL and LOB sat furthest from the thumb, at about 4.3 cm. The one-handed layout is unchanged.',
+      },
+      {
+        head: 'Less in the way',
+        summary: 'The pause, camera, tactics and fullscreen buttons are easier to hit. On touch screens, the player name card and commentary subtitles now sit near the top instead of over your buttons.',
+        detail: '',
+      },
+      {
+        head: 'Vibration',
+        summary: 'The Vibration setting now covers Android phones too: a short buzz on goals, shots and tackles, plus the tick when you press a button. iPhones do not let web pages vibrate. Older saves that never rumbled on a controller now do.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v104',
     date: '2026-09-24',
     tag: 'Fix',
