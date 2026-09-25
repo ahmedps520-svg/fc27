@@ -33,6 +33,7 @@ for (const device of ONLY) {
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|WebSocket|net::/.test(m.text())) errors.push(m.text()); });
   await page.addInitScript((pad) => {
     localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
+    window.__apexFrames = 0; const count = () => { window.__apexFrames++; requestAnimationFrame(count); }; requestAnimationFrame(count);
     if (pad) {
       const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
       const p = { id: 'Xbox Wireless Controller (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons };
@@ -77,9 +78,15 @@ for (const device of ONLY) {
       }
     },
     async tap(action, holdMs = 90) {
-      if (device === 'keyboard') { const k = { pass: 'Space', shoot: 'KeyK' }[action]; await page.keyboard.down(k); await page.waitForTimeout(holdMs); await page.keyboard.up(k); }
-      else if (device === 'pad') { const b = { pass: 0, shoot: 1 }[action]; await page.evaluate((b) => { window.__simPad.buttons[b] = { pressed: true, value: 1 }; }, b); await page.waitForTimeout(holdMs); await page.evaluate((b) => { window.__simPad.buttons[b] = { pressed: false, value: 0 }; }, b); }
-      else { const c = await centre(`[data-slot="${action}"]`); if (!c) return; await touch.down(3, c.x, c.y); await page.waitForTimeout(holdMs); await touch.up(3); }
+      /* v107: a press lasts at least two drawn frames. On a software GPU the
+         page draws at ~2 fps, and a 260 ms press fell between two polls — the
+         pad "tried" four shots and the game never saw one (a real phone draws
+         a frame every 16–50 ms, well inside any thumb's tap). */
+      const f0 = await page.evaluate(() => window.__apexFrames || 0).catch(() => 0);
+      const held = async () => { await page.waitForTimeout(holdMs); await page.waitForFunction((f) => (window.__apexFrames || 0) >= f + 2, f0, { timeout: 15000 }).catch(() => {}); };
+      if (device === 'keyboard') { const k = { pass: 'Space', shoot: 'KeyK' }[action]; await page.keyboard.down(k); await held(); await page.keyboard.up(k); }
+      else if (device === 'pad') { const b = { pass: 0, shoot: 1 }[action]; await page.evaluate((b) => { window.__simPad.buttons[b] = { pressed: true, value: 1 }; }, b); await held(); await page.evaluate((b) => { window.__simPad.buttons[b] = { pressed: false, value: 0 }; }, b); }
+      else { const c = await centre(`[data-slot="${action}"]`); if (!c) return; await touch.down(3, c.x, c.y); await held(); await touch.up(3); }
     },
   };
 
