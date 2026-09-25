@@ -29,6 +29,19 @@ const box = (sel) => page.evaluate((s) => { const b = document.querySelector(s).
 const cdp = await ctx.newCDPSession(page);
 const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
 
+/* Done must close the editor. On a loaded CI runner one tap was once not taken
+   (the editor stayed open and everything after it cascaded), so: tap, wait for
+   the overlay to go, and if it has not, say so and tap again — a Done that
+   never works still fails, loudly. */
+const done = async () => {
+  await page.tap('#teDone');
+  const gone = await page.waitForSelector('.tedit', { state: 'detached', timeout: 4000 }).then(() => true, () => false);
+  if (gone) return;
+  console.log('  (Done: first tap not taken — tapping again)');
+  await page.tap('#teDone');
+  await page.waitForSelector('.tedit', { state: 'detached', timeout: 8000 });
+};
+
 try {
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.tap('#startBtn'); await page.waitForSelector('[data-go="squad"]');
@@ -49,7 +62,7 @@ try {
   const s2 = await box('.tedit [data-slot="shoot"]');
   check(Math.abs(s2.w / s0.w - 1.2) < 0.03, `the size slider scales the buttons (${(s2.w / s0.w * 100).toFixed(0)}%)`);
   const edited = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.tedit .tbtn')].map((b) => { const r = b.getBoundingClientRect(); return [b.dataset.slot, { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }]; })));
-  await page.tap('#teDone');
+  await done();
   const saved = await page.evaluate(async () => (await import('/js/state.js')).getState().settings.touchLayout);
   check(saved && saved.scale === 1.2 && saved.offsets?.shoot, 'Done saves the layout');
 
@@ -115,7 +128,7 @@ try {
   // Reset → the arc again
   await page.evaluate(async () => (await import('/js/app.js')).navigate('settings'));
   await page.waitForSelector('#touchLayoutBtn'); await page.tap('#touchLayoutBtn');
-  await page.waitForSelector('#teReset'); await page.tap('#teReset'); await page.tap('#teDone');
+  await page.waitForSelector('#teReset'); await page.tap('#teReset'); await done();
   check(await page.evaluate(async () => !(await import('/js/state.js')).getState().settings.touchLayout), 'Reset and Done bring back the arc');
   check(!errs.length, `no console errors${errs.length ? `: ${errs.slice(0, 3).join(' | ')}` : ''}`);
 } catch (e) { console.error(e); failed += 1; }
