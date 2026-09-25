@@ -271,6 +271,8 @@ try {
     };
     const A = await mk('hostA');
     const B = await mk('guestB');
+    // v116: the guest has designed a kit; it must reach the host's match through the server
+    await B.page.evaluate(async () => { const st = await import('/js/state.js'); st.update((s) => { s.club.identity = { ...(s.club.identity || {}), kit: { home: { shirt: '#ffd21f', trim: '#151515', shorts: '#151515', socks: '#ffd21f', pattern: 'hoops' } } }; }); });
     await click(A.page, '#olHost');
     await A.page.waitForFunction(() => /[A-Z0-9]{4}/.test(document.getElementById('olCodeOut')?.textContent || ''), null, { timeout: 15000 });
     const code = await A.page.evaluate(() => (document.getElementById('olCodeOut').textContent.match(/[A-Z0-9]{4}/) || [])[0]);
@@ -287,6 +289,9 @@ try {
     assert.ok(ma > 0, `host clock running (${ma})`);
     assert.ok(mb >= 0, `guest sees the match (${mb})`);
     step(`two clients in one match: host ${ma}', guest ${mb}'`);
+    const theirKit = await A.page.evaluate(() => window.__apexMatch.teams[1].kit?.home);
+    assert.ok(theirKit && theirKit.pattern === 'hoops' && theirKit.shirt === '#ffd21f', `the guest's designed kit reached the host (${JSON.stringify(theirKit)})`);
+    step('the guest\'s designed kit reached the host');
 
     /* A third client watches. Spectating is the guest path with everything
      * outbound switched off: it must get the host's picture, never send
