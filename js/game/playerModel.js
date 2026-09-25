@@ -150,22 +150,45 @@ function sockColour(kit, trait) {
  * muddy and a dark one black. This takes only the texture's *brightness* and
  * puts the new colour under it, so folds, seams and shadow survive the change.
  */
-function recolour(material, colour) {
+/* v115: a designed kit's pattern on the shirt, in the shirt mesh's own
+   bind-pose space normalised to its bounding box (u across the body, v down
+   it) — the same masks as data/kitDesign.js patternMask, so the model and the
+   built figure wear the same shirt. */
+const PATTERN_GLSL = {
+  stripes: 'fract(k.x * 7.0) < 0.5',
+  pinstripe: 'fract(k.x * 16.0) < 0.12',
+  hoops: 'fract(k.y * 6.0) < 0.5',
+  halves: 'k.x < 0.5',
+  sash: 'abs(k.x - k.y) < 0.13',
+};
+
+function recolour(material, colour, pattern = null, trim = null, box = null) {
   const mat = material.clone();
+  const glsl = pattern && trim && box ? PATTERN_GLSL[pattern] : null;
   mat.userData.tint = { uTint: { value: new THREE.Color(colour) } };
+  if (glsl) Object.assign(mat.userData.tint, { uTrim: { value: new THREE.Color(trim) }, uBoxMin: { value: box.min.clone() }, uBoxSize: { value: box.getSize(new THREE.Vector3()) } });
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, mat.userData.tint);
+    if (glsl) {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vKitPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvKitPos = position;');
+    }
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTint;')
+      .replace('#include <common>', `#include <common>\nuniform vec3 uTint;${glsl ? '\nuniform vec3 uTrim; uniform vec3 uBoxMin; uniform vec3 uBoxSize; varying vec3 vKitPos;' : ''}`)
       .replace('#include <map_fragment>', `#include <map_fragment>
         {
           float shade = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-          diffuseColor.rgb = uTint * (0.34 + shade * 0.92);
+          vec3 col = uTint;
+          ${glsl ? `vec3 kn = (vKitPos - uBoxMin) / max(uBoxSize, vec3(1e-4));
+          vec2 k = vec2(kn.x, 1.0 - kn.y);
+          if (${glsl}) col = uTrim;` : ''}
+          diffuseColor.rgb = col * (0.34 + shade * 0.92);
         }`);
   };
   // three keys its compiled programs by material type, and these variants are
   // the same type with different code — they need to be told apart
-  mat.customProgramCacheKey = () => 'apex-tint-v2';
+  mat.customProgramCacheKey = () => `apex-tint-v3-${glsl ? pattern : 'plain'}`;
   return mat;
 }
 
@@ -248,7 +271,10 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     if (/hair/i.test(part)) {
       if (trait.bald) { o.visible = false; return; }
       o.material = recolour(o.material, trait.hair);
-    } else if (/shirt|jersey/i.test(part)) o.material = recolour(o.material, strip.shirt);
+    } else if (/shirt|jersey/i.test(part)) {
+      if (kit.pattern && o.geometry && !o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      o.material = recolour(o.material, strip.shirt, kit.pattern, kit.trim, kit.pattern ? o.geometry?.boundingBox : null);
+    }
     else if (/short/i.test(part)) o.material = recolour(o.material, strip.shorts);
     else if (/sock/i.test(part)) o.material = recolour(o.material, strip.socks);
     else if (/shoe|boot/i.test(part)) o.material = recolour(o.material, strip.boots);

@@ -309,6 +309,7 @@ function makeTeam(clubId, side, isHuman, custom = null) {
     name: custom?.name || club.name,
     short: custom?.short || club.short,
     colors: custom?.colors || club.crest.colors,
+    kit: custom?.kit || null,          // v115: a designed club's home and away strips (data/kitDesign.js)
     dir, side, isHuman,
     players, bench, subsLeft: MAX_SUBS,
     score: 0, shots: 0, onTarget: 0, poss: 0, scorers: [],

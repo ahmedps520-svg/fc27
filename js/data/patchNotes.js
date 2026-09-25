@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v115',
+    date: '2026-09-25',
+    tag: 'Club',
+    title: 'Design your kit',
+    lede: 'Your club now has its own home and away kits. Pick a pattern and the colours of the shirt, trim, shorts and socks, and your players wear them in every match.',
+    entries: [
+      {
+        head: 'The designer',
+        summary: 'Club, then Kit. There are six patterns (plain, stripes, hoops, halves, sash and pinstripe) and a sixteen-colour palette for the shirt, the trim, the shorts and the socks. Design a home and an away kit.',
+        detail: 'The preview updates as you choose. "Back to the badge\'s colours" undoes a kit. Until you design one, your kit follows your badge\'s colours exactly as before.',
+      },
+      {
+        head: 'On the pitch',
+        summary: 'Your players wear your kit on every graphics setting. If your home shirt would clash with the other team\'s, you play in your away kit.',
+        detail: 'The clash check is the same colour-blind-safe test the game already uses for away kits. If both of your kits clash, the game picks a colour it knows is clearly different.',
+      },
+    ],
+  },
+  {
     version: 'v114',
     date: '2026-09-25',
     tag: 'Fixes',

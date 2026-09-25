@@ -5195,3 +5195,15 @@ body.pad-active [data-pad][data-pad-glyph]::after {
   font: 800 12px/1.2 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase;
 }
 .gm-adv[hidden] { display: none; }
+
+/* v115: the kit designer's colour swatches (a football palette, not a wheel) */
+.kd-swatches { gap: 8px; }
+.kd-sw {
+  position: relative; width: 32px; height: 32px; padding: 0; border-radius: 50%; cursor: pointer;
+  background: var(--c); border: 2px solid rgba(255, 255, 255, .22); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
+}
+.kd-sw.on { border-color: #fff; box-shadow: 0 0 0 3px var(--accent), inset 0 0 0 1px rgba(0, 0, 0, .35); }
+.kd-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (pointer: coarse) { .kd-sw::after { content: ''; position: absolute; inset: -6px; } }
+.ci-kitnote #kdReset { align-self: flex-start; width: auto; }
+.kd-preview svg { display: block; margin: auto; }

@@ -7,6 +7,7 @@
  */
 import * as THREE from '../vendor/three.module.js';
 import { celebPose, armDirs } from './celebrations.js';
+import { paintKit } from '../data/kitDesign.js';
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
 const _v = new THREE.Vector3();
@@ -20,14 +21,15 @@ const _q2 = new THREE.Quaternion();
  * the top, so the name sits above the number as it should.
  */
 const kitTexCache = new Map();
-export function kitTexture(kitCol, number, name, size = 256) {
-  const key = `${kitCol.getHexString()}|${number}|${name}|${size}`;
+export function kitTexture(kitCol, number, name, size = 256, strip = null) {
+  const pat = strip && strip.pattern !== 'plain' ? `${strip.pattern}:${strip.trim}` : '';
+  const key = `${kitCol.getHexString()}|${number}|${name}|${size}|${pat}`;
   if (kitTexCache.has(key)) return kitTexCache.get(key);
   const c = document.createElement('canvas');
   c.width = size; c.height = size;
   const g = c.getContext('2d');
-  g.fillStyle = `#${kitCol.getHexString()}`;
-  g.fillRect(0, 0, size, size);
+  // v115: a designed kit's pattern (data/kitDesign.js), under the name and number
+  paintKit(g, pat ? strip : { shirt: `#${kitCol.getHexString()}`, pattern: 'plain' }, size);
   // print colour: white on a dark shirt, near-black on a light one
   const lum = 0.2126 * kitCol.r + 0.7152 * kitCol.g + 0.0722 * kitCol.b;
   g.fillStyle = lum > 0.45 ? '#15181f' : '#f6f8ff';

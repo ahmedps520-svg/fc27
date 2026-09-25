@@ -16,7 +16,7 @@ import { groundProfile } from '../data/grounds.js';
 import { dressGround } from './groundDressing.js';
 import { dressStreet, courtTexture } from './streetDressing.js';
 import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
-import { pickAwayHex } from '../kits.js';
+import { pickAwayHex, clash } from '../kits.js';
 
 /* ------------------------------------------------------------------ *
  * WebGL renderer (three.js). Real meshes, real lights, real shadows.
@@ -2709,8 +2709,21 @@ export function createRenderer(canvas, match, quality, models = false) {
   }
 
   // players
-  const kitHome = new THREE.Color(hexOf(match.teams[0].colors[0]));
-  const kitAway = pickAwayKit(match);
+  /* v115: each side's strip — shirt, trim, shorts, socks, pattern. A club
+     with a designed kit (data/kitDesign.js) wears it: home, or away when the
+     home shirt would clash with the other side's; anyone else keeps the old
+     look — the badge colour, or a guaranteed-apart away colour. */
+  const vision = match.vision || 'normal';
+  const plainStrip = (hexS) => ({ shirt: hexS, trim: hexS, shorts: null, socks: null, pattern: 'plain' });
+  const homeKit = match.teams[0].kit;
+  const stripHome = homeKit ? homeKit.home : plainStrip(match.teams[0].colors[0]);
+  const awayKit = match.teams[1].kit;
+  const stripAway = awayKit && !clash(awayKit.home.shirt, stripHome.shirt, vision) ? awayKit.home
+    : awayKit && !clash(awayKit.away.shirt, stripHome.shirt, vision) ? awayKit.away
+      : plainStrip(pickAwayHex(stripHome.shirt, match.teams[1].colors, vision));
+  const strips = [stripHome, stripAway];
+  const kitHome = new THREE.Color(hexOf(stripHome.shirt));
+  const kitAway = new THREE.Color(hexOf(stripAway.shirt));
   const rigs = new Map();
   /* One player's figure. Built again when a substitute takes the slot: the
      look (skin, hair, build) and the name on the shirt are baked in, and the
@@ -2718,13 +2731,14 @@ export function createRenderer(canvas, match, quality, models = false) {
   const simpleRig = (p, t, shirtNo) => {
     const isGK = p.role === 'GK';
     const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
-    const shorts = base.clone().multiplyScalar(0.6);
+    const strip = isGK ? null : strips[t];
+    const shorts = strip?.shorts ? new THREE.Color(hexOf(strip.shorts)) : base.clone().multiplyScalar(0.6);
     // same look the card portrait uses, so a player on the pitch matches his card
     const look = faceOf(p.ref);
     const rig = buildPlayer(
       base, shorts,
       new THREE.Color(look.skin), new THREE.Color(look.hair),
-      base.clone().multiplyScalar(0.8),
+      strip?.socks ? new THREE.Color(hexOf(strip.socks)) : base.clone().multiplyScalar(0.8),
       buildFor(p.ref, p.role), { face: !lo && !med });
     /* The number and the name on the back — on every tier but Ultra Low,
        where a texture per shirt is twenty-two textures too many. */
@@ -2732,7 +2746,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       const no = p.ref?.number || (isGK ? 1 : shirtNo + 1);
       const surname = String(p.ref?.name || p.ref?.short || '').split(' ').pop().toUpperCase();
       rig.parts.torso.material = new THREE.MeshStandardMaterial({
-        map: kitTexture(base, no, surname, lo ? 128 : 256), roughness: 0.62, metalness: 0.02,
+        map: kitTexture(base, no, surname, lo ? 128 : 256, strip), roughness: 0.62, metalness: 0.02,
       });
       /* Cloth, on High and Ultra: the shirt's hem and back ripple with the
          player's speed — a few sine terms in the vertex shader on the
@@ -2962,11 +2976,15 @@ export function createRenderer(canvas, match, quality, models = false) {
   const modelRig = (p, t, index) => {
     const isGK = p.role === 'GK';
     const base = isGK ? new THREE.Color(GK_KIT) : (t === 0 ? kitHome : kitAway);
+    const strip = isGK ? null : strips[t];
     const rig = makeRig(loadedModel, {
       kit: {
         shirt: base,
-        shorts: base.clone().multiplyScalar(0.62),
-        socks: base.clone().multiplyScalar(0.82),
+        shorts: strip?.shorts ? new THREE.Color(hexOf(strip.shorts)) : base.clone().multiplyScalar(0.62),
+        socks: strip?.socks ? new THREE.Color(hexOf(strip.socks)) : base.clone().multiplyScalar(0.82),
+        // v115: a designed kit's pattern, drawn by the shirt's tint shader
+        pattern: strip && strip.pattern !== 'plain' ? strip.pattern : null,
+        trim: strip && strip.pattern !== 'plain' ? new THREE.Color(hexOf(strip.trim)) : null,
       },
       ref: p.ref,
       index,
