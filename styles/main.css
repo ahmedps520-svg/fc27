@@ -5132,3 +5132,17 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 #screen select { padding-right: 30px; }
 #screen input:is([type=text], [type=number], [type=search], [type=password], [type=email], :not([type])):focus-visible,
 #screen select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+/* v105 (backlog #20): the arc pad — buttons placed round the right thumb by
+   components/touchLayout.js, each from the bottom-right corner */
+.tpad.arc { display: block; inset: 0; padding: 0; }
+.tpad.arc .tbtn { position: absolute; margin-right: env(safe-area-inset-right); margin-bottom: env(safe-area-inset-bottom); opacity: 1; }
+.tpad.arc .tbtn b { font-size: var(--tb-font, 11px); }
+/* The HUD's small round buttons stay small to look at, but a thumb gets the
+   44 px Apple asks for (they measured 32 px) */
+@media (pointer: coarse) { .gm-hud .icon-btn.sm { position: relative; } .gm-hud .icon-btn.sm::after { content: ''; position: absolute; inset: -6px; } }
+/* On a touch screen the bottom-centre belongs to the pad: the name strap and
+   the subtitles move up under the score row (the strap sat over CROSS and LOB
+   on a first-gen SE) */
+#gmRoot:has(#gmTouch:not([hidden])) .bc-strap { bottom: auto; top: 88px; }   /* below the player strip (it covered it at 50px on an SE) */
+#gmRoot:has(#gmTouch:not([hidden])) .bc-sub { bottom: auto; top: 136px; }

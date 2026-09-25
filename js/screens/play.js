@@ -19,6 +19,7 @@ import { runShootout } from './shootout.js';
 import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
 import { createDirector } from '../broadcast/director.js';
 import { createPregame, previewText, teamRating } from '../broadcast/pregame.js';
+import { applyTouchLayout, clearTouchLayout } from '../components/touchLayout.js';
 import { formMap } from '../broadcast/context.js';
 import { potmHTML, ratingsHTML, statsHTML, momentumSVG, reaction, reactionHTML, drawResultCard, shareResultCard } from '../broadcast/postmatch.js';
 import { trophyScene } from '../components/ceremony.js';
@@ -1520,6 +1521,7 @@ export function mount(root, params) {
    * what they do and change with the situation.
    */
   const touchWrap = root.querySelector('#gmTouch');
+  const touchOffs = [];                  // v105: listeners the touch layer adds, removed on leaving
   let updateTouchContext = () => {};
   /* Career: the manager holds no stick, so the entire player touch layer —
    * stick zone, action buttons, contextual labels — must not exist. The wheel
@@ -1530,6 +1532,13 @@ export function mount(root, params) {
   if (splitTouch) buildSplitTouch(root, inputs);
   if (window.matchMedia('(pointer: coarse)').matches && mode !== 'career' && !splitTouch) {
     touchWrap.hidden = false;
+    /* v105: the buttons fan out round the right thumb, sized to the screen
+       (components/touchLayout.js); the one-handed layout keeps its column */
+    const tpad = root.querySelector('#tpad');
+    const layoutPad = () => { if (shell.classList.contains('one-hand')) clearTouchLayout(tpad); else applyTouchLayout(tpad, shell.clientWidth || innerWidth, shell.clientHeight || innerHeight); };
+    layoutPad();
+    window.addEventListener('resize', layoutPad);
+    touchOffs.push(() => window.removeEventListener('resize', layoutPad));
     const zone = root.querySelector('#stickZone');
     const stick = root.querySelector('#stick');
     const nub = stick.querySelector('i');
@@ -1625,7 +1634,7 @@ export function mount(root, params) {
           return;
         }
         input.setTouchButton(action, true);
-        navigator.vibrate?.(8);
+        if (getState().settings.rumble !== false) navigator.vibrate?.(8);   // v105: the Vibration switch covers the buttons' tick too
         // Capture keeps a thumb that slides off the button still holding it —
         // but it must never be what decides whether the press counted, so the
         // input is already set and a refusal here is ignored.
@@ -2337,11 +2346,15 @@ export function mount(root, params) {
      or a header only the pad of the person whose player it was. */
   const RUMBLE = { goal: [520, 1, 0.7], post: [220, 0.7, 0.5], shot: [110, 0.35, 0.5], slide: [160, 0.6, 0.3], foul: [200, 0.8, 0.4], save: [140, 0.4, 0.4], header: [90, 0.3, 0.4], volley: [120, 0.4, 0.5], bicycle: [160, 0.6, 0.6] };
   const rumbleCue = (c) => {
-    if (!getState().settings.rumble) return;
+    // v105: "not set" is on, as the Settings switch shows it (older saves never rumbled)
+    if (getState().settings.rumble === false) return;
     const fx = RUMBLE[c.name]; if (!fx) return;
-    if (c.name === 'goal' || c.name === 'post') { for (const inp of inputs) inp.rumble?.(...fx); return; }
+    /* v105: a phone buzzes too, where it can (Android; iOS Safari has no
+       vibration for web pages) — shorter than a pad's rumble, a tap not a shake */
+    const buzz = () => { if (!touchWrap.hidden) navigator.vibrate?.(Math.min(60, Math.round(fx[0] * 0.4))); };
+    if (c.name === 'goal' || c.name === 'post') { for (const inp of inputs) inp.rumble?.(...fx); buzz(); return; }
     const who = c.arg && typeof c.arg === 'object' && c.arg.ref ? c.arg : null; if (!who) return;
-    match.controllers.forEach((ct, i) => { if (match.playerOf(ct) === who) inputs[i]?.rumble?.(...fx); });
+    match.controllers.forEach((ct, i) => { if (match.playerOf(ct) === who) { inputs[i]?.rumble?.(...fx); buzz(); } });
   };
   /* v90: hot-plug. A controller dropping out pauses an offline match (the
      player has lost their hands); one arriving is announced. */
@@ -3126,6 +3139,7 @@ export function mount(root, params) {
     running = false;
     cancelAnimationFrame(raf);
     attractOff();
+    touchOffs.forEach((off) => off());
     /* Give the document back FIRST. `in-game` puts overflow:hidden on the
      * body, and it used to be removed after gl.dispose() — so a throwing GPU
      * teardown left the whole app unscrollable until a reload. The disposals
