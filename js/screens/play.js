@@ -1372,6 +1372,8 @@ export function mount(root, params) {
   const battery = !!getState().settings.battery;
   const governor = createGovernor({ start: battery ? 3 : 0, down: battery ? 45 : 38, up: battery ? 36 : 21 });
   window.__apexGov = governor;
+  // v117: the match's own frame average (stalls excluded), for the play session and the perf harness
+  window.__apexFps = () => (matchSeconds > 0 ? matchFrames / matchSeconds : null);
   let lastDraw = 0;
   let ctx = null;
   /* The renderer — and three.js under it, 1.3 MB of it — is loaded here and

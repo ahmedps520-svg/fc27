@@ -15,6 +15,41 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v117 — polish: the play-session bot fixed, shooting exercised, FPS reported
+**The bot's touch bug.** `tests/qa/play-session.mjs` `touch.up(id)` sent
+`touchEnd` listing the fingers that *remained*. Probed on a blank page, CDP's
+touchEnd releases exactly the points it lists, so:
+- each tap lifted the stick and SPRINT (both re-pressed the next loop);
+- it never lifted the tapping finger, so the first tap of the session (a
+  PASS) stayed down for good;
+- every later "tap" on SHOOT arrived as that finger moving: 8–20 shots tried
+  per touch session, 0 presses.
+
+The game itself was checked separately: a second finger on SHOOT, alone,
+with the stick held, and with SPRINT held too, fires every time. Fix: `up`
+sends touchEnd with just the lifted point.
+
+**Shooting exercised.** Three scripted chances per device (at 20/40/60 s the
+ball goes to the controlled man 22 m out, defenders within 8 m pushed off);
+the bot still carries and shoots with the device's own controls. `chances`
+is in the output.
+
+**FPS.** `window.__apexFps()` (new, `play.js`) is the match's own frame
+average, stalls excluded. The session has always read it, and it was always
+null.
+
+**This session (844×390 touch, 1280×720 keyboard/pad, SwiftShader):**
+
+| Device | FPS | Shots tried | Shots | Notes |
+|---|---|---|---|---|
+| touch | 5.3 | 3 | 2 | |
+| keyboard | 5.1 | 12 | 2 | scored |
+| pad | 5.5 | 10 | 1 | |
+
+0 errors on every device. Keyboard and pad tries outnumber shots because at
+~5 fps the bot's press can land after the ball is gone. That's the harness,
+not the game.
+
 ### v116 — the kit online and in the stands (backlog #16/#17)
 **Online:**
 - The client sends `kit: clubIdentity().kit` with queue, room and join.

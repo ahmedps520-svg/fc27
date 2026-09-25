@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v117',
+    date: '2026-09-25',
+    tag: 'Fixes',
+    title: 'Better testing, behind the scenes',
+    lede: 'A polish release focused on how the game is tested before each update. Nothing changes in how it plays.',
+    entries: [
+      {
+        head: 'Touch, tested properly',
+        summary: 'The automated player that tests every update on a phone had never pressed SHOOT. Because of a fault in how it lifted its fingers, its first tap stayed held down for the whole session. It now shoots, and it found nothing wrong with the game\'s own touch controls.',
+        detail: 'We double-checked by hand: shooting while holding the stick, and while holding SPRINT as well, works as it should.',
+      },
+      {
+        head: 'Every update gets chances in front of goal',
+        summary: 'Each test session now includes three chances in front of goal on touch, keyboard and controller, so shooting is checked on all three before every update, and frame rate is recorded too.',
+        detail: 'On the test machine\'s software graphics every device took shots, and the keyboard session scored.',
+      },
+    ],
+  },
+  {
     version: 'v116',
     date: '2026-09-25',
     tag: 'Club',
