@@ -59,7 +59,19 @@ for (const device of ONLY) {
   const touch = {
     async down(id, x, y) { touches.set(id, { x, y }); await sendTouch('touchStart'); },
     async move(id, x, y) { if (!touches.has(id)) return this.down(id, x, y); touches.set(id, { x, y }); await sendTouch('touchMove'); },
-    async up(id) { if (!touches.has(id)) return; touches.delete(id); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [...touches.entries()].map(([i, p]) => ({ x: p.x, y: p.y, id: i })) }); },
+    /* v117: lifting one finger of several. CDP's touchEnd releases the points
+       it *lists*; the bot listed the fingers that stayed down — so each tap
+       lifted the stick and SPRINT (re-pressed next loop) and never lifted the
+       tapping finger. The first one the bot ever tapped (a PASS) stayed down
+       for the whole session, and every later "tap" on SHOOT arrived as that
+       finger moving: nineteen shots tried on touch, not one press. (Probed on
+       a blank page: tests show end-listed releases exactly the listed point.) */
+    async up(id) {
+      const p = touches.get(id);
+      if (!p) return;
+      touches.delete(id);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ x: p.x, y: p.y, id }] });
+    },
   };
   const centre = async (sel) => page.$eval(sel, (b) => { const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }).catch(() => null);
   const hand = {
@@ -91,7 +103,21 @@ for (const device of ONLY) {
   };
 
   const startT = Date.now(); let mid = false; let lastShot = 0; let lastTackle = 0;
-  const stats = { shotsTried: 0, tacklesTried: 0 };
+  const stats = { shotsTried: 0, tacklesTried: 0, chances: 0 };
+  /* v117: three scripted chances a session. Left to itself the bot rarely got
+     the ball near goal (shots 0 on most devices, session after session), so
+     the shooting path of each device went unexercised. At 20, 40 and 60 s the
+     ball is put at the controlled man's feet 22 m out, in open play; the bot
+     still has to carry it and shoot with that device's own controls. */
+  const CHANCES = [20, 40, 60];
+  const chance = () => page.evaluate(() => {
+    const m = window.__apexMatch; if (!m || m.phase !== 'play') return false;
+    const c = m.controllers[0]; const me = m.teams[c.team].players[c.activeIdx]; const dir = m.teams[c.team].dir;
+    me.x = (dir > 0 ? 105 : 0) - dir * 22; me.y = 34; me.vx = me.vy = 0;
+    for (const q of m.teams[1 - c.team].players) if (q.role !== 'GK' && Math.hypot(q.x - me.x, q.y - me.y) < 8) q.x -= dir * 10;
+    m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0;
+    return true;
+  }).catch(() => false);
   while (Date.now() - startT < (SECS + 90) * 1000) {
     const s = await page.evaluate(() => {
       const m = window.__apexMatch; if (!m) return null;
@@ -103,6 +129,7 @@ for (const device of ONLY) {
     if (!s) { await page.waitForTimeout(300); continue; }
     if (s.ended) break;
     if (!mid && Date.now() - startT > SECS * 500) { mid = true; await page.screenshot({ path: `${OUT}/${device}-mid.png` }); }
+    if (stats.chances < CHANCES.length && (Date.now() - startT) / 1000 > CHANCES[stats.chances] && await chance()) stats.chances += 1;
     const goalX = s.dir > 0 ? s.W : 0;
     const tx = s.own ? goalX : s.bx; const ty = s.own ? s.H / 2 : s.by;
     let wx = tx - s.px; let wy = ty - s.py; const d = Math.hypot(wx, wy) || 1; wx /= d; wy /= d;
