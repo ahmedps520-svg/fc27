@@ -173,6 +173,7 @@ export function render() {
         </div>
         <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
         <button class="btn primary big" id="kickOff">${t('quick.go')}</button>
+        <button class="btn ghost" id="cupBtn">Custom Cup</button>
         <button class="btn ghost" id="worldBtn">${t('quick.world')}</button>
         <button class="btn ghost" id="stadiumsBtn">${t('quick.stadiums')}</button>
       </div>
@@ -239,6 +240,10 @@ export function mount(root) {
     paint();
   };
 
+  /* v118: the screen root outlives this screen; without taking these off
+     again, every visit to Kick Off stacked another pair — the third visit
+     moved three teams for one press of an arrow. */
+  const off = new AbortController(); const { signal } = off;
   root.addEventListener('change', (e) => {
     const sel = e.target.closest('[data-country-pick]');
     if (!sel) return;
@@ -247,7 +252,7 @@ export function mount(root) {
     pick[side].idx = 0;
     if (sameTeam()) pick[side].idx = 1;
     paint();
-  });
+  }, { signal });
 
   root.addEventListener('click', (e) => {
     const cc = e.target.closest('[data-country]');
@@ -296,7 +301,7 @@ export function mount(root) {
       weather = wt.dataset.weather;
       root.querySelectorAll('[data-weather]').forEach((x) => x.classList.toggle('on', x === wt));
     }
-  });
+  }, { signal });
 
   const onKey = (e) => {
     if (e.code === 'KeyR') {
@@ -341,9 +346,10 @@ export function mount(root) {
     kickOff();
   });
 
+  q('#cupBtn').addEventListener('click', () => navigate('cup'));
   q('#worldBtn').addEventListener('click', () => navigate('world'));
   q('#stadiumsBtn').addEventListener('click', () => navigate('stadiums'));
   seatText();
   const padTimer = setInterval(seatText, 900);
-  return () => { clearInterval(padTimer); window.removeEventListener('keydown', onKey); };
+  return () => { clearInterval(padTimer); window.removeEventListener('keydown', onKey); off.abort(); };
 }

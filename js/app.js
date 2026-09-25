@@ -29,6 +29,7 @@ const LAZY = {
   squad: () => import('./screens/squad.js'),
   career: () => import('./screens/career.js'),
   quick: () => import('./screens/quickmatch.js'),
+  cup: () => import('./screens/cup.js'),              // v118: the Custom Cup
   settings: () => import('./screens/settings.js'),
   match: () => import('./screens/match.js'),
   play: () => import('./screens/play.js'),
@@ -73,7 +74,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v117';
+export const APP_VERSION = 'v118';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
