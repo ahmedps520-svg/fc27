@@ -74,7 +74,11 @@ try {
     await page.evaluate(() => {
       const m = window.__apexMatch; const c = m.controllers[0]; const me = m.playerOf(c);
       const dir = m.teams[me.team].dir; const gx = dir > 0 ? 105 : 0;
-      me.x = gx - dir * 20; me.y = 34; me.vx = me.vy = 0; m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0;
+      // open play: the plain press above can slide in and give a free kick away
+      m.setPiece = null; m.phase = 'play'; m.banner = '';
+      me.x = gx - dir * 20; me.y = 34; me.vx = me.vy = 0;
+      // nobody close enough to win it back while a software GPU draws the hold (~2 fps)
+      for (const q of m.teams[1 - me.team].players) if (q.role !== 'GK' && Math.hypot(q.x - me.x, q.y - me.y) < 15) { q.x = me.x - dir * 18; q.vx = q.vy = 0; } m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0;
       window.__kicks = [];
       if (!m.__spied) {
         m.__spied = true;
@@ -83,7 +87,8 @@ try {
       }
     });
     // a few sim frames, so the pad reads "in possession" (a software GPU draws slowly)
-    const frames = async (n) => { const t0 = await page.evaluate(() => window.__apexMatch.t); await page.waitForFunction((t) => window.__apexMatch.t > t, t0 + n / 60, { timeout: 60000 }); };
+    // drawn frames, not the match clock (which stands still through a stoppage)
+    const frames = (n) => page.evaluate((k) => new Promise((res) => { let i = 0; const f = () => (++i >= k ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
     await frames(4);
     const b = await box(`#tpad [data-slot="${slot}"]`);
     await touch('touchStart', b.x, b.y);
@@ -92,7 +97,10 @@ try {
     const badge = await page.evaluate((s) => document.querySelector(`#tpad [data-slot="${s}"]`).dataset.flick || '', slot);
     await touch('touchEnd');
     await page.waitForFunction(() => window.__kicks.length, null, { timeout: 30000 }).catch(() => {});
-    await frames(4);
+    /* the kick is all this checks: take the ball back before it can go in —
+       a goal (the chip scored on CI) stops the clock for the celebration and
+       the replay, minutes at a software GPU's frame rate */
+    await page.evaluate(() => { const m = window.__apexMatch; const me = m.playerOf(m.controllers[0]); m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0; m.ball.vx = m.ball.vy = m.ball.vz = 0; });
     return { badge, kicks: await page.evaluate(() => window.__kicks) };
   };
   const chip = await flickTest('shoot', 0, -60);
