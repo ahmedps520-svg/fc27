@@ -32,6 +32,8 @@ import { navigate, refreshCoins, toast } from '../app.js';
 import { t, lang, isRTL } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
+import * as customCup from '../customCup.js';
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // v118: a cup's name is the player's own text
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
@@ -2882,6 +2884,7 @@ export function mount(root, params) {
     const theirScore = online ? theirs : a.score;
     let tourney = null;
     if (params.tournament) tourney = tournament.onResult(myScore, theirScore);
+    const cupRes = params.customCup ? customCup.onResult(myScore, theirScore) : null;   // v118
     const prog = spectating ? {} : progress.onMatch({
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
       scored: myScore, conceded: theirScore, online: !!online,
@@ -3004,6 +3007,7 @@ export function mount(root, params) {
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
               : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+          ${cupRes ? `<p class="season-line tourney-line">${cupRes.champion ? `🏆 ${esc(customCup.cup()?.name || 'Cup')} winners!` : !cupRes.won ? `Out of ${esc(customCup.cup()?.name || 'the cup')}${cupRes.pens ? ' on penalties' : ''}.` : `Through${cupRes.pens ? ' on penalties' : ''} — next: ${customCup.roundName(customCup.cup().rounds.at(-1).length * 2)}.`}</p>` : ''}
           ${tourney ? `<p class="season-line tourney-line">${tourney.champion ? `🏆 World Tournament champions!` : tourney.out ? 'Out of the World Tournament.' : tourney.advanced ? `Through to the next round: ${tourney.stage === 'r16' ? 'Round of 16' : tourney.stage === 'qf' ? 'Quarter-finals' : tourney.stage === 'sf' ? 'Semi-finals' : tourney.stage === 'final' ? 'the Final' : 'the knockouts'}.` : 'Group stage continues.'}</p>` : ''}
           <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
         </div>
@@ -3047,7 +3051,7 @@ export function mount(root, params) {
         return;
       }
       if (o === 'clip') { recordClip(); return; }
-      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.customCup) { navigate('cup'); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);

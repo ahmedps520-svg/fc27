@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v118',
+    date: '2026-09-25',
+    tag: 'Modes',
+    title: 'Make your own cup',
+    lede: 'Custom Cup: name a knockout cup, pick 4, 8 or 16 teams from any country (or nations), choose yours, and play it round by round.',
+    entries: [
+      {
+        head: 'Custom Cup',
+        summary: 'From Kick Off, tap Custom Cup. Pick teams country by country, or fill the rest at random, then star the one you will play as and draw it. You play your own ties; the other ties are decided from the teams\' ratings.',
+        detail: 'A draw in one of your ties goes to penalties. If you go out, the rest of the cup is played to a finish so you still find out who won. Your cup is saved between rounds. It awards nothing, so it is purely for fun.',
+      },
+      {
+        head: 'Fixed: Kick Off controls speeding up',
+        summary: 'Each time you went back into Kick Off, one press of an arrow skipped an extra team. By the third visit it skipped three at a time. It now moves one team per press every time.',
+        detail: 'The screen was adding its buttons\' actions again on every visit without clearing the old ones. The Evolutions tab had the same fault, which could start a track twice from one tap. Both are fixed, and a test now visits Kick Off repeatedly to check.',
+      },
+    ],
+  },
+  {
     version: 'v117',
     date: '2026-09-25',
     tag: 'Fixes',

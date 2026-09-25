@@ -5207,3 +5207,33 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @media (pointer: coarse) { .kd-sw::after { content: ''; position: absolute; inset: -6px; } }
 .ci-kitnote #kdReset { align-self: flex-start; width: auto; }
 .kd-preview svg { display: block; margin: auto; }
+
+/* v118: Custom Cup */
+.cup-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.cup-name { flex: 1 1 220px; }
+.cup-pick { margin-top: 14px; }
+.cup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.cup-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: var(--text); cursor: pointer; }
+.cup-chip b { font-size: 13px; font-weight: 650; } .cup-chip i { font-style: normal; font-size: 12px; color: var(--text-mute); }
+.cup-chip.on { border-color: var(--accent); background: var(--accent-soft); }
+.cup-picked { margin-top: 14px; }
+.cup-picked-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.cup-picked-head span { color: var(--text-mute); font-size: 13px; margin-right: auto; }
+.cup-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.cup-entry { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.cup-entry b { flex: 1; font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cup-entry.you { outline: 1px solid var(--accent); }
+.cup-star, .cup-x { min-width: 44px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; font-weight: 700; }
+.cup-entry.you .cup-star { color: var(--accent); border-color: var(--accent); }
+.cup-make #cupDraw { margin-top: 16px; }
+.cup-vs { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 8px 0 14px; }
+.cup-vs b { font-size: 18px; } .cup-vs span { color: var(--text-mute); font-weight: 800; }
+.cup-bracket { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.cup-round { display: flex; flex-direction: column; gap: 8px; min-width: 190px; justify-content: space-around; }
+.cup-tie { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 13px; }
+.cup-tie span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-mute); }
+.cup-tie span.w { color: var(--text); font-weight: 700; }
+.cup-tie em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cup-tie small { grid-column: 1 / -1; color: var(--text-mute); font-size: 11px; }
+.cup-tie.mine { outline: 1px solid var(--accent); }
+.cup-end { text-align: center; }

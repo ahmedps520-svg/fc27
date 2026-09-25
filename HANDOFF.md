@@ -15,6 +15,63 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v118 — Custom Cup (backlog #16: tournament creator), and stacked click handlers fixed
+**`js/customCup.js`** (new, precached):
+- Teams come from `countries.js`: every country's clubs plus the nations,
+  by stable id (`kc-england-mci`, `nat-Brazil`).
+- `createCup({ name, ids, you, seed })`: 4, 8 or 16 teams, and yours among
+  them. The name is trimmed to 32 characters. The draw is a seeded shuffle
+  into ties.
+- `onResult(scored, conceded)` records your tie. A draw goes to penalties
+  from the cup's seed.
+- `advance()` settles the rest of the round with `simTie` (Poisson on the
+  rating gap, seeded per cup/round/tie, the same approach as
+  `tournament.js`) and pairs the winners.
+- Out of the cup, it plays out to a champion.
+- `matchParams()` puts you at home, with both squads travelling as in Quick
+  Match.
+- It's saved in `club.customCup` and **pays nothing**, so the economy is
+  untouched.
+
+**Screen (`js/screens/cup.js`, route `cup`, a "Custom Cup" button on Kick
+Off):**
+- The creator: name, size (4/8/16), country select, team chips (44 px),
+  a picked list with a ★ to choose yours, Fill at random, Clear, and Draw.
+- The bracket: your next tie with Play, rounds as columns (horizontal
+  scroll on a phone), a champion panel, Abandon/Make another.
+- `play.js` calls `customCup.onResult` at full time, shows a
+  "Through / Out / winners" line (the cup name escaped, since it's the
+  player's text), and quit returns to `cup`.
+
+**Real bug found building it: stacked click handlers.** Screens that put a
+click listener on the screen `root` without removing it stacked one more
+listener per visit, because `root` outlives each render.
+- Kick Off: measured 1, 2, 3 teams per arrow press on visits 1–3.
+- Evolutions (`uxiHub.js` `mountEvos`, mounted from `squad.js` with no
+  cleanup returned): a tap could start a track twice.
+
+Both now use an `AbortController` whose `abort()` is the mount's cleanup
+(`squad.js` returns `mountEvos`'s cleanup). The cup screen was built the
+same way. Audit: the only other root listener, squad's drag, was already
+removed.
+
+**Tests:**
+- New `tests/unit/custom-cup.test.mjs` covers:
+  - sizes and your team;
+  - everyone drawn once;
+  - a winning run gives 3 rounds and the trophy, with Apex unchanged;
+  - losing plays it out to a champion;
+  - a drawn tie goes to penalties, and the same cup settles identically;
+  - the match parameters.
+- New `tests/qa/cup.mjs` (in CI):
+  - Kick Off moves one team per press on three visits;
+  - make and draw a 4-team cup;
+  - the cup name renders as text;
+  - play the semi (fast-forwarded, 2–0);
+  - "Through" shows at full time;
+  - back on the bracket in the final;
+  - no console errors.
+
 ### v117 — polish: the play-session bot fixed, shooting exercised, FPS reported
 **The bot's touch bug.** `tests/qa/play-session.mjs` `touch.up(id)` sent
 `touchEnd` listing the fingers that *remained*. Probed on a blank page, CDP's

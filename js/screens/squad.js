@@ -1133,7 +1133,7 @@ export function mount(root) {
    * Everything writes straight to state — there is no Save button, and nothing
    * here can be invalid enough to need one. */
   // v80 panels
-  if (tab === 'club' && clubTab === 'evos') { mountEvos(root); return; }
+  if (tab === 'club' && clubTab === 'evos') return mountEvos(root);
   if (tab === 'store' && storeTab === 'market') { mountMarket(root); return; }
   if (tab === 'store' && storeTab === 'binder') { mountBinder(root); return; }
   if (tab === 'objectives') mountTasks(root);

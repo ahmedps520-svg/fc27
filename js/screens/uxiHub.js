@@ -233,6 +233,8 @@ export function evosView() {
 }
 export function mountEvos(root) {
   root.querySelectorAll('[data-evo-pick]').forEach((sel) => sel.addEventListener('change', () => { evoPick[sel.dataset.evoPick] = sel.value; }));
+  // v118: taken off again when the tab goes (the root outlives it; stacked, a tap started a track twice)
+  const off = new AbortController();
   root.addEventListener('click', (e) => {
     const st = e.target.closest('[data-evo-start]');
     if (st) {
@@ -245,7 +247,8 @@ export function mountEvos(root) {
     }
     const c = e.target.closest('[data-evo-cancel]');
     if (c) { cancelEvolution(c.dataset.evoCancel); navigate('squad'); }
-  });
+  }, { signal: off.signal });
+  return () => off.abort();
 }
 
 /* ================================ Market ================================ */
