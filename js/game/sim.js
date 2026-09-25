@@ -2340,8 +2340,7 @@ export class Match {
     /* v79: wider than it was — four in five shots used to hit the target,
        against about a third in real football — narrowed again by a Finesse
        Finisher bending one in, and widened by a mistimed header or volley. */
-    const finesse = curl ? 1 - 0.22 * (p.tr?.finesse || 0) : 1;
-    const spread = ((1.05 - acc) * 0.34 + d / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
+    const spread = this.shotSpread(p, d, power, { curl, weak, sloppy });
     /* Expected goals: how good the chance was, before the strike decides it.
      * Distance and angle do most of the work, a defender within two metres
      * takes a third off. The stat sheet sums it; a chance over a quarter of a
@@ -2753,6 +2752,48 @@ export class Match {
     }
     this.charge = sp.charge;
     return true;
+  }
+
+  /** The angular error (radians, either side) a strike is drawn from. */
+  shotSpread(p, d, power, { curl = 0, weak = false, sloppy = 0 } = {}) {
+    const acc = p.ref.stats.shooting / 100;
+    const finesse = curl ? 1 - 0.22 * (p.tr?.finesse || 0) : 1;
+    return ((1.05 - acc) * 0.34 + d / 170 + (1 - power) * 0.07) * (weak ? 1.5 : 1) * (2 - this.formOf(p)) * finesse * (1 + sloppy * 0.8) * 1.5 * Math.min(1, 0.6 + 0.4 * GOAL_HALF / 5.5);
+  }
+
+  /**
+   * v109: the aim guide for a person's dead ball — what the renderer draws so
+   * a set piece is not taken blind. Null unless a person is taking one.
+   *   dir, len   the ground arrow: where the stick points, and roughly how
+   *              far a pass would go at the power held so far
+   *   goal       when the kick can be a shot (a penalty, a free kick within
+   *              35 m): where on the goal line it is aimed and how far either
+   *              side of that the strike can stray — the same spread the
+   *              shot is drawn from, at the power held so far
+   */
+  setPieceGuide() {
+    const sp = this.setPiece;
+    if (!sp || !sp.human || !sp.taker) return null;
+    const p = sp.taker; const team = this.teams[p.team];
+    const goalX = team.dir > 0 ? PITCH.w : 0;
+    const bx = this.ball.x; const by = this.ball.y;
+    const a = Math.hypot(sp.aim.x, sp.aim.y) > 0.2 ? sp.aim : { x: team.dir, y: 0 };
+    const m = Math.hypot(a.x, a.y) || 1;
+    const charge = sp.charge || 0;
+    const out = { kind: sp.kind, action: sp.action, x: bx, y: by, dir: { x: a.x / m, y: a.y / m }, len: sp.kind === 'throwin' ? 6 + charge * 16 : 9 + charge * 30, goal: null };
+    const toGoal = Math.hypot(goalX - bx, CY - by);
+    if (sp.kind === 'penalty' || (sp.kind === 'freekick' && toGoal < 35)) {
+      const pen = sp.kind === 'penalty';
+      const ay = pen ? clamp(a.y * 1.4, -1, 1) : clamp(a.y, -1, 1);
+      const ty = CY + (Math.abs(ay) > 0.2 ? ay * GOAL_HALF * 0.9 : 0);
+      const d = Math.hypot(goalX - bx, ty - by) || 1;
+      const power = pen ? clamp(Math.max(0.3, charge), 0.45, 1) : Math.max(0.3, charge);
+      const err = this.shotSpread(p, d, power, { curl: pen ? 0 : 1 });
+      out.goal = { x: goalX, y: ty, spread: Math.min(GOAL_HALF * 2, d * Math.tan(err)), power };
+      // a shot goes where the target is, not where the stick points: the arrow runs to it
+      if (pen || sp.action === 'shoot') { out.dir = { x: (goalX - bx) / d, y: (ty - by) / d }; out.len = d; out.shot = true; }
+    }
+    return out;
   }
 
   /** A person takes the dead ball. Also what the watch and tests call. */

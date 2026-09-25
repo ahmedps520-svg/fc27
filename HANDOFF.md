@@ -15,6 +15,61 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v109 — set-piece aim guide (backlog #15: penalty and free-kick aiming)
+**Finding.** A person's dead ball had no aim feedback at all.
+`readSetPieceInput` turned the stick into `sp.aim`, but nothing drew it.
+Penalties, free kicks, corners and throws were all aimed blind; only the
+charge ring showed power. Keepers (dives, parries, catches), headers,
+volleys and bicycles already exist in `sim.js`, so this was the biggest fun
+gap in #15.
+
+**Sim (`js/game/sim.js`):**
+- `shotSpread(p, d, power, { curl, weak, sloppy })`: the angular-error
+  formula lifted out of `shoot()` unchanged (same expression, same order).
+  The sweep is byte-identical.
+- `setPieceGuide()` returns `null` unless `setPiece.human`. Otherwise it
+  returns:
+  - `{ kind, action, x, y }`;
+  - `dir`, the stick, or straight at goal with no stick;
+  - `len`: `9 + 30·charge`, or `6 + 16·charge` for a throw;
+  - `goal`, for a penalty or a free kick within 35 m: `{ x, y, spread,
+    power }`. `y` is the exact target `shoot()` would use: penalty
+    `aim.y·1.4` clamped, free kick `aim.y`, with the same `|ay| > 0.2`
+    gate and `GOAL_HALF·0.9`. `spread` is `d·tan(shotSpread)` at the power
+    held so far, with penalty power clamped 0.45–1 and the free-kick shot
+    counted as curled.
+  - For a penalty or a held SHOOT, `shot: true`, and `dir`/`len` run to
+    the target.
+- It reads no randomness. `placed` kicks skip the weak-foot roll, so the
+  guide never calls `weakFoot`.
+
+**Renderer (`js/game/renderGL.js`):**
+- The guide is a flat ground arrow (shaft plus tip).
+- Colour follows the held button: pass blue, through yellow, cross orange,
+  shoot red. With no button it is white; a shot is always red.
+- The goal band is a vertical plane on the goal line, `2·spread` wide
+  (clipped to the posts, at least 0.5 m).
+- The aim line is 0.16 m wide.
+- The materials skip tone mapping and fog, since the first cut was nearly
+  invisible through post.
+- The guide is hidden in replays. It is not drawn by the WebGPU beta
+  renderer.
+
+**Tests:** new `tests/unit/setpiece-guide.test.mjs`:
+- no guide unless a person is taking it;
+- the penalty target follows the stick and stays inside the posts;
+- more power or a better finisher narrows the spread;
+- a deep free kick gives an arrow only, and the arrow grows with the hold;
+- at 22 m a free kick can be a shot;
+- a shot's arrow ends on the target.
+
+Checked visually with headless screenshots of a penalty and a 24 m free
+kick.
+
+**Not changed:** how set pieces play; no balance knobs. Whether the guide
+makes human penalties score more is worth measuring once there's a
+scripted-human bot (it's also on the difficulty list).
+
 ### v108 — polish: online buttons, QA flakes, small UI fixes
 **Online (`js/net/netplay.js`).** The wire mask sent only pass, shoot,
 cross, through, switch, curl, sprint and pause. So a guest's LOB (a lob pass,
