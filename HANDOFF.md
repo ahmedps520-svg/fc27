@@ -15,6 +15,60 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v108 — polish: online buttons, QA flakes, small UI fixes
+**Online (`js/net/netplay.js`).** The wire mask sent only pass, shoot,
+cross, through, switch, curl, sprint and pause. So a guest's LOB (a lob pass,
+or the chip with SHOOT), SKILL (held tricks), JOCKEY and PRESS never reached
+the host.
+- `lob`, `skill`, `jockey` and `press` are appended as bits 8–11.
+- It is backward compatible both ways: an old host iterates its own
+  8-name list and ignores the extra bits; an old guest never sets them.
+- Touch flicks work for a guest now, because they ride on `lob`, `curl` and
+  `through`.
+- Still not sent: the touch SKILL *swipe* gesture (`setGesture`), which is
+  local-only. A guest's swipe does nothing online, but a held SKILL + stick
+  does.
+- New `tests/unit/netplay-actions.test.mjs`:
+  - every `ACTIONS` entry but pause round-trips held, pressed and released;
+  - the chip ordering (LOB still held on SHOOT's release) survives;
+  - an 8-bit reader still reads the first eight bits the same.
+- The QA bot's online 2-client and 2v2 runs pass.
+
+**CI fix for v107.** CI on `00dc196` failed in `tests/qa/touch-editor.mjs`.
+The chip flick scored on the CI runner; the goal celebration and replay
+stopped `match.t`, and the next flick's frame wait (on `match.t`) timed out.
+Four fixes:
+- The wait now counts drawn frames (rAF).
+- The ball is taken back as soon as each kick registers.
+- Each flick starts from open play: the preceding synthetic SHOOT press can
+  slide in and concede a free kick, which put the pad in set-piece mode and
+  turned the chip into a plain shot.
+- Opponents within 15 m are moved off, so nobody wins it back at ~2 fps.
+
+Three consecutive local runs were green. Merged to main as `0dd7da6`.
+
+**Play session bot (`tests/qa/play-session.mjs`).** A bot tap now lasts at
+least two drawn frames (`window.__apexFrames`). At SwiftShader's ~2 fps a
+260 ms press fell between polls: "4 shots tried, 0 taken" was the bot, not
+the game (checked: an 800 ms pad hold shoots).
+
+The touch run stalling at 3' on a free kick is the machine's speed, not a
+regression:
+- a manual touch free kick works;
+- v106 and v107 both measure ~2 fps at 844×390 on this container.
+
+**UI audit fixes:**
+- `.setting-row span` (12 px, the grey description style) also caught the
+  row's `.tag`, so the version tag read 12 px against 11 everywhere else. It
+  is now `.setting-row div > span`.
+- The builder's `#bldLoad` sat beside a 40 px input as a stretched `.sm`
+  button (the only 40 px `.sm`). It is now a plain `.btn.ghost`.
+
+**Sweeps this release:** soak 20/20, 0 errors; QA bot ok; UI audit (the
+remaining single-screen variants are the owner-decision nav styles and the
+danger Reset); layout and a11y scans (see the verification line in the
+report).
+
 ### v107 — touch redesign, part 3: flicks, and the chip fixed (backlog #20)
 **The bug.** In `sim.js` `handleSeat`, `input.pressed('lob')` fired a lob
 pass even while SHOOT was held. The documented chip (SHOOT held + LOB, let

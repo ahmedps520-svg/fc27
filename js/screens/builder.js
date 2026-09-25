@@ -106,7 +106,7 @@ export function render(params = {}) {
         <p class="bld-code" id="bldCode" hidden></p>
         <div class="bld-load">
           <input id="bldIn" placeholder="SB1-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="40" aria-label="Share code" spellcheck="false">
-          <button class="btn ghost sm" id="bldLoad">${t('builder.load')}</button>
+          <button class="btn ghost" id="bldLoad">${t('builder.load')}</button>
         </div>
         ${saved.length ? `
           <span class="ol-kicker">${t('builder.saved')}</span>

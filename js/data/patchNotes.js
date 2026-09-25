@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v108',
+    date: '2026-09-25',
+    tag: 'Fixes',
+    title: 'Online guests get every button',
+    lede: 'A polish release. In online matches, the guest can now chip, hold SKILL for tricks, jockey and send a team-mate to press, the same as the host.',
+    entries: [
+      {
+        head: 'Online',
+        summary: 'Four buttons never reached the host from the guest\'s side: LOB, SKILL, JOCKEY and PRESS. All four do now, so touch flicks work online too.',
+        detail: 'Nothing about the connection changes for a player on an older build. A host a version behind simply ignores the new buttons, as before, and a guest a version behind never sends them.',
+      },
+      {
+        head: 'Small fixes',
+        summary: 'In Settings, the version label is the same size as every other label, and the builder\'s Load code button is a full-size button beside its box.',
+        detail: 'A style meant for the grey description under each Settings row was also shrinking the labels beside it.',
+      },
+    ],
+  },
+  {
     version: 'v107',
     date: '2026-09-25',
     tag: 'Touch',
