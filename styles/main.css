@@ -5185,3 +5185,10 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @keyframes gbFlip { from { transform: rotateY(90deg) scale(.6); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .gm-booking.in, .gm-booking.in .gb-card { animation: none; } }
 .reduce-motion .gm-booking.in, .reduce-motion .gm-booking.in .gb-card { animation: none; }
+/* v113: advantage being played */
+.gm-adv {
+  position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 6; pointer-events: none;
+  padding: 5px 14px; border-radius: 999px; background: rgba(6, 12, 10, .82); color: #7dffb0;
+  font: 800 12px/1.2 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase;
+}
+.gm-adv[hidden] { display: none; }

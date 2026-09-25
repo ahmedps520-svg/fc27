@@ -15,6 +15,77 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v113 — the advantage rule (backlog #15), sweep re-baselined deliberately
+**Rule (`sim.js`).** This applies only in the tackle-foul branch, the main
+foul path. The aggression fouls at ~1052 and ~3075 and the ~1090 shoulder
+foul still stop play.
+
+`advantageFor(owner, offender)` is true only when all of these hold:
+- the foul is in the fouled side's attacking half;
+- `owner.vx·dir ≥ 3.5`, so he is breaking;
+- he is ≥ 30 m from goal (inside that, the free kick is the better chance);
+- no opponent other than the offender is within 6 m.
+
+When it is true:
+- The carrier gets `stumble 0.2` and keeps the ball; the offender gets
+  `stumble 1.0`.
+- `this.advantage = { team, x, y, offender, t: 2.5 }` is set, and the
+  `advantage` cue fires.
+- `tackle()` returns at once for that offender while it runs.
+- `updateAdvantage(dt)` runs in play:
+  - opponents on the ball → `awardFreeKick(team, spot, offender)` and
+    `advantageBack++`;
+  - t ≤ 0 → it is over.
+- `markStoppage` clears it.
+- Penalties and bookings are unchanged. The injury roll is kept in the same
+  place so the dice order around it doesn't change.
+- Counters: `advantages[]` and `advantageBack[]`.
+- Switch: `TUNE.advantage` (default true).
+
+**How it was tuned (measured, not by feel):**
+
+| Version | Advantage played (share of fouls) | Called back |
+|---|---|---|
+| First cut (4 m of space) | 41% | 58% |
+| + offender barred from re-tackling | — | — (his re-wins fell from 23 to 6) |
+| + breaking pace, 6 m of space, out of shooting range | 25% | 53% |
+
+- The call-backs are mostly other defenders closing within ~1.3 s (median).
+  This game presses hard, and the fouled side never loses out because the
+  free kick comes back.
+- **Goals**, over 240 matches per arm with `TUNE.advantage` off vs on:
+  2.15 → 2.05 on one set of dice, 2.03 → 2.18 on another, so neutral. Free
+  kicks are about −1 a match and stoppages −0.8.
+- Goldens re-recorded (`tests/sweep-check.mjs --update`): seed 12345 goals
+  1.90, free kicks 7.82.
+
+**Presentation:**
+- The referee sweeps both arms forward for 1.2 s (`celebKind 'refadv'`).
+- An "Advantage" pill (`#gmAdv`) shows at top centre while it runs.
+- Commentary gains `advantage` lines in English and Arabic plus a co-comm
+  pool. The advantage line is exempt from the one-line-a-second limit,
+  since it comes right after the foul line.
+
+**Economy audit (`tools/evo-audit.mjs`).** `release.mjs` refused v113 on
+the evolution audit: `clinical` as RW, mean 80.8 against the 60 limit. At
+60 matches RW gets only ~65 appearances, so the audit is dice-driven near
+the line. At 240 matches:
+- with advantage, every track passes (RW clinical 51.7, RW goals 0.17);
+- the *pre-v113* code **fails** (`pace` as CAM, 56 → over the line).
+
+The default is now **120 matches**; with advantage it passes (RW clinical
+58.3, CAM pace 51.6) and takes ~1m46s. **For the owner:** RW-clinical
+(48–58 across samples) and CAM-pace (~52–56) sit just under 60 whatever
+this release does. They are the next evolution tracks to look at if one
+trips.
+
+**Tests:**
+- New `tests/unit/advantage.test.mjs` covers: who gets advantage (the five
+  conditions); the call-back puts the free kick at the spot for the fouled
+  side; it expires after 2.5 s and a stoppage clears it; the offender can't
+  re-tackle.
+- `setpieces.test.mjs` has the new TUNE default.
+
 ### v112 — a referee on the pitch, and the booking card (backlog #15)
 **Before.** There was no referee figure at all. Bookings (yellows only,
 one per player, at `sim.js` ~1052, ~2516 and ~3040) reached the screen only
