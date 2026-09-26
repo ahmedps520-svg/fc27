@@ -3,7 +3,7 @@
  * cage, the locker and the crew. Rules: streetMode.js; venues: data/street.js.
  */
 import { getState, update } from '../state.js';
-import { navigate, toast } from '../app.js';
+import { navigate, toast, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import { crestSVG } from '../components/crest.js';
 import { faceSVG, LOOK_SKINS, LOOK_HAIRS } from '../components/face.js';
@@ -131,7 +131,7 @@ export function mount(root) {
     });
     return;
   }
-  root.querySelectorAll('#stTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; rerender(); }));
+  root.querySelectorAll('#stTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { const moved = tab !== b.dataset.tab; tab = b.dataset.tab; if (moved) veil(rerender); else rerender(); }));
   root.querySelectorAll('[data-tour]').forEach((b) => b.addEventListener('click', () => {
     const [i, g] = b.dataset.tour.split(':').map(Number);
     const v = STREET_VENUES[i];

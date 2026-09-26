@@ -18,7 +18,7 @@ import {
 import { NATION_COLORS } from '../data/realPlayers.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { faceSVG, faceOf } from '../components/face.js';
-import { navigate, toast } from '../app.js';
+import { navigate, toast, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import * as v2 from '../careerV2.js';
 import * as v3 from '../careerV3.js';
@@ -750,7 +750,7 @@ function wire(root) {
   }));
 
   // hub
-  root.querySelectorAll('#cTabs [data-tab]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tab; rerender(); }));
+  root.querySelectorAll('#cTabs [data-tab]').forEach((el) => el.addEventListener('click', () => { const moved = tab !== el.dataset.tab; tab = el.dataset.tab; if (moved) veil(rerender); else rerender(); }));
   root.querySelector('#quitCareer')?.addEventListener('click', () => {
     update((s) => { s.career = null; }); step = 'modes'; rerender();
   });
@@ -762,7 +762,7 @@ function wire(root) {
   });
   root.querySelector('#nextSeason')?.addEventListener('click', rerender);
   // v2
-  root.querySelectorAll('[data-tab-go]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tabGo; rerender(); }));
+  root.querySelectorAll('[data-tab-go]').forEach((el) => el.addEventListener('click', () => { tab = el.dataset.tabGo; veil(rerender); }));
   root.querySelector('#groundDesign')?.addEventListener('click', () => navigate('builder', { target: 'career' }));
   root.querySelector('#groundExpand')?.addEventListener('click', () => {
     let r = null;

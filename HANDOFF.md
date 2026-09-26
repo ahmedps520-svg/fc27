@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v128 — the curtain on tab switches too (owner's ask)
+- `app.js` `veil(redraw)`: raises the curtain, runs `redraw`, then lifts it
+  the same way `navigate` does.
+- Used wherever the tab actually changes; clicking the open tab still
+  redraws, without the veil:
+  - `squad.js`: `#uTabs`, `#sSubs`, `#cSubs`;
+  - the tab rows in `career.js`, `pro.js`, `street.js`, `skills.js`;
+  - `world.js` `[data-tab]`.
+- Checked in a browser: Club → Division → Online → Club, the veil goes up
+  every time and lifts after 3–260 ms, no errors.
+
 ### v127 — a loading curtain on every screen change (owner's ask)
 - `app.js`: `curtainFor(name)` raises `#screenCurtain` (a blurred and
   darkened veil with a spinning SVG ring and an "A") on every navigation

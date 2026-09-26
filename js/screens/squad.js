@@ -23,7 +23,7 @@ import { screenHead } from '../components/screenHead.js';
 import { playerCard, radarSVG, fmtMoney, cardStrip } from '../components/playerCard.js';
 import { packArt } from '../components/packArt.js';
 import { crestSVG, flagSVG, CREST_PARTS } from '../components/crest.js';
-import { toast, refreshCoins, navigate } from '../app.js';
+import { toast, refreshCoins, navigate, veil } from '../app.js';
 import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
@@ -1121,26 +1121,29 @@ export function mount(root) {
   root.querySelector('#uTabs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-utab]');
     if (!b) return;
+    const moved = b.dataset.utab !== tab;
     tab = b.dataset.utab;
     pickSlot = null;
-    navigate('squad');
+    if (moved) veil(() => navigate('squad')); else navigate('squad');
   });
 
   // the Store tab's own row
   root.querySelector('#sSubs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-stab]');
     if (!b) return;
+    const moved = b.dataset.stab !== storeTab;
     storeTab = b.dataset.stab;
-    navigate('squad');
+    if (moved) veil(() => navigate('squad')); else navigate('squad');
   });
 
   // and the Club tab's own row
   root.querySelector('#cSubs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ctab]');
     if (!b) return;
+    const moved = b.dataset.ctab !== clubTab;
     clubTab = b.dataset.ctab;
     pickSlot = null;
-    navigate('squad');
+    if (moved) veil(() => navigate('squad')); else navigate('squad');
   });
 
   /* Your club.
