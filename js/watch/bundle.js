@@ -10822,7 +10822,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -11193,7 +11193,7 @@
         let mates = this.teams[carrier.team].players.filter((q) => q !== carrier && q.role !== "GK" && !q.parked).sort((a, z) => dist(a, carrier) - dist(z, carrier));
         this.supporters[carrier.team] = [mates[0], mates[1]];
       }
-      this.controllers.forEach((c, i) => {
+      this.boxRuns = [null, null], TUNE.boxRuns && carrier && (this.boxRuns[carrier.team] = this.pickBoxRuns(carrier, dt)), this.controllers.forEach((c, i) => {
         let inp = seats[i] || seats[0];
         inp && this.handleSeat(c, dt, inp);
       });
@@ -11678,7 +11678,9 @@
           }
           if (attacking && b.z > 0.85) {
             let jump = 2.25 + (((_f = best.tr) == null ? void 0 : _f.aerial) || 0) * 0.3 + (best.ref.stats.physical - 70) / 100, timing = clamp2(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
-            b.lastTouch = best, this.cue("header"), this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28, { loft: 0.2, placed: !0, sloppy: 1 - timing + ((_g = best.tr) != null && _g.aerial ? -0.2 : 0) });
+            b.lastTouch = best, this.cue("header");
+            let foeH = this.nearestTo(1 - best.team, best, !0), contested = foeH && dist(foeH, best) < 2.6 ? 1.3 : 0;
+            this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28 - (contested ? 0.12 : 0), { loft: 0.2, placed: !0, sloppy: 1 - timing + contested + ((_g = best.tr) != null && _g.aerial ? -0.2 : 0) });
             return;
           }
           if (attacking && b.z > 0.42 && b.z <= 0.85 && toGoal9 < 17 && Math.random() < 0.7) {
@@ -11911,7 +11913,7 @@
       this.cue("clear", p), this.release(p, Math.cos(a) * sp, Math.sin(a) * sp, 6 + Math.random() * 3), this.ball.noTouch = 0.3;
     }
     cross(p, aim, kind = "floated") {
-      var _a;
+      var _a, _b;
       this.tally(p, "passes");
       let team = this.teams[p.team], goalX = team.dir > 0 ? PITCH.w : 0;
       if (kind === "cutback") {
@@ -11934,6 +11936,21 @@
         if (t === p || t.role === "GK" || Math.abs(t.x - goalX) > 24) continue;
         let d2 = Math.hypot(t.x - tx, t.y - ty);
         d2 < bestD && (bestD = d2, best = t);
+      }
+      let runs = aim ? null : (_a = this.boxRuns) == null ? void 0 : _a[p.team];
+      if (!aim) {
+        let foes = this.teams[1 - p.team].players, bestScore = -1 / 0, pick = null;
+        for (let t of team.players) {
+          if (t === p || t.role === "GK" || Math.abs(t.x - goalX) > 20) continue;
+          let room = 99;
+          for (let f of foes) {
+            let d2 = Math.hypot(f.x - t.x, f.y - t.y);
+            d2 < room && (room = d2);
+          }
+          let score = Math.min(room, 6) * (runs != null && runs.has(t) ? 1.5 : 1) - Math.abs(t.x - goalX) * 0.15 + (kind === "driven" && Math.abs(t.y - p.y) < 12 ? 1 : 0);
+          score > bestScore && (bestScore = score, pick = t);
+        }
+        pick && (best = pick);
       }
       if (best) {
         let rough = clamp2(Math.hypot(best.x - p.x, best.y - p.y) / 20, 0.6, 1.9);
@@ -11959,7 +11976,25 @@
         this.release(p, 0, 0, 0), b0.lastTouch = blocker, b0.vx = team.dir * (4 + Math.random() * 4), b0.vy = (p.y < CY ? -1 : 1) * (4 + Math.random() * 4), b0.vz = 2 + Math.random() * 2, b0.noTouch = 0.25;
         return;
       }
-      this.noteOffside(p), this.release(p, dx / T, dy / T, 0.5 * GRAV * T * (kind === "driven" ? 0.62 : 1)), this.ball.noTouch = 0.26, kind === "driven" && ((_a = p.tr) != null && _a.deadball) && (this.ball.curl = (Math.sign(CY - p.y) || 1) * 18);
+      this.noteOffside(p);
+      let lead = null;
+      if (runs && runs.size) {
+        let ld = 1 / 0;
+        for (let q of runs.keys()) {
+          let d2 = Math.hypot(q.x - tx, q.y - ty);
+          d2 < ld && (ld = d2, lead = q);
+        }
+      }
+      let guard = null;
+      {
+        let gd = 1 / 0;
+        for (let q of this.teams[1 - p.team].players) {
+          if (q.role === "GK") continue;
+          let d2 = Math.hypot(q.x - tx, q.y - ty);
+          d2 < gd && (gd = d2, guard = q);
+        }
+      }
+      this.crossRun = runs && runs.size ? { team: p.team, runners: new Map(runs), lead, guard, until: this.t + T + 0.6, lx: tx, ly: ty } : null, this.release(p, dx / T, dy / T, 0.5 * GRAV * T * (kind === "driven" ? 0.62 : 1)), this.ball.noTouch = 0.26, kind === "driven" && ((_b = p.tr) != null && _b.deadball) && (this.ball.curl = (Math.sign(CY - p.y) || 1) * 18);
     }
     /**
      * @param {number} power 0-1. Reaches further and arrives harder, and is a
@@ -12409,7 +12444,7 @@
       return p.role === "DEF" && (x = this.holdLine(team, x)), weHave && p.role !== "DEF" && b.owner !== p && (x = this.onsideX(team, x)), { x, y: clamp2(y, 3, PITCH.h - 3) };
     }
     think(p, dt) {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e;
       if (p.role === "GK") return this.thinkGK(p, dt);
       let b = this.ball, team = this.teams[p.team];
       if (b.owner === p) return this.thinkOnBall(p, dt);
@@ -12445,11 +12480,27 @@
           return;
         }
       }
+      let cr = this.crossRun;
+      if (cr && cr.team === p.team && !b.owner && this.t < cr.until && cr.runners.has(p)) {
+        let sp = p === cr.lead ? { x: cr.lx, y: cr.ly } : cr.runners.get(p);
+        this.moveTo(p, clamp2(sp.x, 2, PITCH.w - 2), clamp2(sp.y, 2, PITCH.h - 2), dt, p === cr.lead ? 1.12 : 0.9);
+        return;
+      }
+      if (cr && cr.team !== p.team && cr.guard === p && !b.owner && this.t < cr.until) {
+        this.moveTo(p, clamp2(cr.lx, 2, PITCH.w - 2), clamp2(cr.ly, 2, PITCH.h - 2), dt, 1.12);
+        return;
+      }
+      let boxSpot = weHave ? (_d = (_c = this.boxRuns) == null ? void 0 : _c[p.team]) == null ? void 0 : _d.get(p) : null;
+      if (boxSpot) {
+        let tx = this.onsideX(team, boxSpot.x), far = Math.hypot(tx - p.x, boxSpot.y - p.y);
+        this.moveTo(p, clamp2(tx, 2, PITCH.w - 2), clamp2(boxSpot.y, 2, PITCH.h - 2), dt, far > 6 ? 1.1 : 0.8);
+        return;
+      }
       if (weHave && p.thirdUntil > 0) {
         p.thirdUntil -= dt, this.moveTo(p, clamp2(p.thirdX, 4, PITCH.w - 4), clamp2(p.thirdY, 4, PITCH.h - 4), dt, 1.14);
         return;
       }
-      let runner = p.role === "MID" || ((_c = ROLES[p.tRole]) == null ? void 0 : _c.flag) === "runs";
+      let runner = p.role === "MID" || ((_e = ROLES[p.tRole]) == null ? void 0 : _e.flag) === "runs";
       if (TUNE.runs && weHave && runner && p.role !== "DEF" && b.owner && b.owner !== p) {
         let finalThird = (b.x - PITCH.w / 2) * team.dir > 12;
         if (p.runClock = (p.runClock || 0) - dt, p.runClock <= 0 && finalThird && dist(p, b.owner) < 22 && Math.random() < 0.35 * dt && (p.runClock = 4 + Math.random() * 3, p.runUntil = 1.6, p.runY = clamp2(b.owner.y + (p.y > b.owner.y ? 9 : -9), 5, PITCH.h - 5), p.runSlack = Math.random() < 0.35 ? 2.4 : 0), p.runUntil > 0) {
@@ -12564,6 +12615,52 @@
         }
       }
       return best || { x: home.x, y: home.y };
+    }
+    /**
+     * v133: who attacks the box, and where. Only while the carrier is wide in
+     * the crossing zone (the same test his own cross decision uses); the spots
+     * are the near post, the far post and the penalty spot, relative to the side
+     * the ball is on. Assignments hold for half a second so runners do not swap
+     * spots every frame, and are dropped the moment the ball leaves the zone.
+     * @returns {Map<object, {x:number, y:number, tag:string}>|null}
+     */
+    pickBoxRuns(c, dt) {
+      var _a, _b;
+      let team = this.teams[c.team], goalX = team.dir > 0 ? PITCH.w : 0, k = PITCH.h / 68, wideM = 20 * k;
+      if (!(c.y < wideM || c.y > PITCH.h - wideM) || Math.abs(goalX - c.x) > 32 * SCALE || this.phase !== "play")
+        return team.boxRun = null, null;
+      let side = Math.sign(c.y - CY) || 1, spots = [
+        { x: goalX - team.dir * 5.5 * k, y: CY + side * 3.2 * k, tag: "near" },
+        { x: goalX - team.dir * 6.5 * k, y: CY - side * 4.5 * k, tag: "far" },
+        { x: goalX - team.dir * 11 * k, y: CY - side * 1.5 * k, tag: "spot" }
+      ];
+      if (team.boxRunT = (team.boxRunT || 0) - dt, team.boxRun && team.boxRunFor === c && team.boxRunT > 0) {
+        let m = /* @__PURE__ */ new Map();
+        for (let [q, tag] of team.boxRun) m.set(q, spots.find((s2) => s2.tag === tag));
+        return m;
+      }
+      let keep = (_a = this.supporters[c.team]) == null ? void 0 : _a[0], pool = team.players.filter((q) => q !== c && q !== keep && (q.role === "FWD" || q.role === "MID") && !q.parked && !this.isControlled(q) && Math.abs(goalX - q.x) < 40 * SCALE), out = /* @__PURE__ */ new Map(), tags = /* @__PURE__ */ new Map(), foes = this.teams[1 - c.team].players.filter((f) => f.role !== "GK");
+      for (let sp of spots) {
+        let near = null, nd = 1 / 0;
+        for (let f of foes) {
+          let d2 = Math.hypot(f.x - sp.x, f.y - sp.y);
+          d2 < nd && (nd = d2, near = f);
+        }
+        if (near && nd < 3) {
+          let dy = sp.y - near.y || side;
+          sp.y += Math.sign(dy) * (3 - nd) * 0.85;
+        }
+      }
+      for (let sp of spots) {
+        let best = null, bd = 30 * k;
+        for (let q of pool) {
+          if (out.has(q)) continue;
+          let cam = ((_b = q.ref) == null ? void 0 : _b.position) === "CAM", w = q.role === "FWD" ? sp.tag === "spot" ? 0.9 : 0.8 : cam ? sp.tag === "spot" ? 0.65 : 0.9 : 1, d2 = Math.hypot(q.x - sp.x, q.y - sp.y) * w;
+          d2 < bd && (bd = d2, best = q);
+        }
+        best && (out.set(best, sp), tags.set(best, sp.tag));
+      }
+      return team.boxRun = tags, team.boxRunFor = c, team.boxRunT = 0.5, out.size ? out : null;
     }
     onsideX(team, x, slack = 0) {
       if (!FIELD.offside || this.noOffside) return x;
