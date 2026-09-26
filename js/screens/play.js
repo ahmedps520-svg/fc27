@@ -1541,7 +1541,7 @@ export function mount(root, params) {
       const st = match.venue.stadium;
       const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
       const pa = `Welcome to ${st.name}. Today's match: ${match.teams[0].name} against ${match.teams[1].name}. Attendance ${gate.toLocaleString()}.`;
-      announce(pa);
+      if (!director?.desk.pack) announce(pa);   // v121: with a recorded pack the robot PA stays silent — caption only
       director?.desk.caption('pa', pa);
     }
     // the clock restarts here, or the match opens having "missed" the wait
@@ -2298,7 +2298,7 @@ export function mount(root, params) {
       goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
       chant('goal', 1);
-      if (t && match.scorerName && match.scorerName !== 'Own goal') announce(`Goal for ${t.name}. ${match.scorerName}.`);   // (the desk's goal call carries the subtitle)
+      if (t && match.scorerName && match.scorerName !== 'Own goal' && !director?.desk.pack) announce(`Goal for ${t.name}. ${match.scorerName}.`);   // (the desk's goal call carries the subtitle)
       if (t && director) { const lastGoal = t.scorers[t.scorers.length - 1]; director.goal({ team: match.teams.indexOf(t), scorerId: lastGoal?.id, scorerName: match.scorerName, own: !!lastGoal?.own || match.scorerName === 'Own goal' }); }
       gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
       void goalCard.offsetWidth;

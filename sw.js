@@ -129,6 +129,7 @@ const ASSETS = [
   './js/data/kitDesign.js',
   './js/customCup.js',
   './js/data/rivalries.js',
+  './js/data/voicePackUS.js',
   './js/screens/cup.js',
   './js/game/quality.js',
   './js/game/governor.js',

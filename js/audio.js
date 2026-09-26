@@ -381,11 +381,13 @@ export function startCrowd() {
   setCrowd(0.35);
 }
 
+let duck = 1;   // v121: the crowd dips while a commentator speaks
+
 export function setCrowd(level) {
   crowdLevel = Math.max(0, Math.min(1, level));
   if (!crowdNodes) return;
   const t = now();
-  crowdNodes.out.gain.setTargetAtTime(0.035 + crowdLevel * 0.16, t, 0.7);
+  crowdNodes.out.gain.setTargetAtTime((0.035 + crowdLevel * 0.16) * duck, t, duck < 1 ? 0.12 : 0.7);
   // excitement opens the upper formants — the crowd gets shriller, not just louder
   crowdNodes.bands.forEach((b, i) => {
     b.bg.gain.setTargetAtTime(FORMANTS[i].g * (0.75 + crowdLevel * 0.7), t, 0.9);
@@ -697,3 +699,56 @@ export function stopMusic() {
 }
 
 export const audioReady = () => ready && ctx && ctx.state === 'running';
+
+/* ---------------------------- recorded voices ---------------------------- */
+/*
+ * v121: the commentary packs. A clip is fetched and decoded the first time it
+ * is asked for and kept for the session; a match warms the common ones at
+ * kick-off so a goal call never waits on the network. Voices go straight to
+ * the master bus — they are not an effect, and the effects slider should not
+ * mute the commentary.
+ */
+const voiceCache = new Map();   // url → Promise<AudioBuffer|null>
+let voiceSrc = null;
+
+/** Fetch and decode a clip (cached). Resolves null when it cannot be had. */
+export function loadVoice(url) {
+  if (!ready && !initAudio()) return Promise.resolve(null);
+  if (!voiceCache.has(url)) {
+    voiceCache.set(url, fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((ab) => (ab ? new Promise((res) => ctx.decodeAudioData(ab, res, () => res(null))) : null))
+      .catch(() => null));
+  }
+  return voiceCache.get(url);
+}
+
+/**
+ * Speak a decoded clip; `onend` fires when it finishes or is cut off. Returns
+ * false when nothing can play (no context, or suspended), so the caller can
+ * pace the subtitles on its own.
+ */
+export function playVoice(buf, { volume = 0.9, onend = null } = {}) {
+  if (!ready || !buf || ctx.state !== 'running') return false;
+  stopVoice();
+  const src = ctx.createBufferSource();
+  const g = ctx.createGain();
+  g.gain.value = Math.min(1.2, volume * 1.1);
+  src.buffer = buf;
+  src.connect(g); g.connect(master);
+  voiceSrc = src;
+  duck = 0.55; setCrowd(crowdLevel);
+  src.onended = () => {
+    if (voiceSrc === src) { voiceSrc = null; duck = 1; setCrowd(crowdLevel); }
+    onend?.();
+  };
+  src.start();
+  return true;
+}
+
+/** Cut off whatever is being said. */
+export function stopVoice() {
+  const s = voiceSrc; voiceSrc = null;
+  if (s) { try { s.stop(); } catch { /* already done */ } }
+  duck = 1; if (ready) setCrowd(crowdLevel);
+}

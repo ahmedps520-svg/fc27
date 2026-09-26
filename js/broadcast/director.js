@@ -15,7 +15,8 @@
  * It reads the match and never writes to it: the sweep cannot tell it exists.
  */
 import { createGraphics, createHeat, createMomentum } from './graphics.js';
-import { createDesk, banks, lineFrom } from './voice.js';
+import { createDesk, banks, lineFrom, packLine } from './voice.js';
+import { PACK_US, VOICE_PACKS } from '../data/voicePackUS.js';
 import { derbyOf, weatherKey, formOf, goalKeys, fullTimeKeys, addedMinutes, broadcastMinute, clockLabel, offsideMargin, BOARD_AT } from './context.js';
 
 const CO_CHANCE = { goal: 0.9, save: 0.55, post: 0.7, bigChance: 0.7, card: 0.55, penaltyAwarded: 0.8, offside: 0.3, foul: 0.2, skill: 0.35, counter: 0.35, sub: 0.4, shotWide: 0.25, header: 0.2, volley: 0.5, bicycle: 0.9, ownGoal: 0.9, comeback: 0.6, lead: 0.5, extend: 0.5, halftime: 0.8, fulltime: 0.9, kickoff: 0.6 };
@@ -23,7 +24,10 @@ const CO_CHANCE = { goal: 0.9, save: 0.55, post: 0.7, bigChance: 0.7, card: 0.55
 export function createDirector({ match, host, pitch, clubs, settings = {}, lang = 'en', rtl = false, graphics = true, clock = true, final = false, form = new Map(), venue = '', atmo = {} }) {
   const gfx = graphics ? createGraphics(host, { reduceMotion: !!settings.reduceMotion, rtl }) : null;
   const subEl = gfx ? gfx.subtitleEl : null;
-  const desk = createDesk({ lang, voice: settings.commVoice !== false && settings.sound !== false, subtitles: settings.subtitles !== false, el: subEl });
+  // v121: a recorded pack unless the player chose the device's own voice (or the language has none)
+  const pack = lang === 'en' && settings.commPack !== 'device' ? VOICE_PACKS[settings.commPack || 'us'] || PACK_US : null;
+  const desk = createDesk({ lang, voice: settings.commVoice !== false && settings.sound !== false, subtitles: settings.subtitles !== false, el: subEl, pack });
+  if (pack) desk.warm(['pbp-goal-0', 'pbp-goal-1', 'pbp-goal-2', 'pbp-kickoff-0', 'pbp-save-0', 'pbp-shot-0', 'co-goal-0'].map((f) => `${f}.mp3`));
   const bank = banks(lang);
   const heat = createHeat();
   const mom = createMomentum();
@@ -46,13 +50,15 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
     team: match.teams[0].name, opp: match.teams[1].name, player: 'him', goals: 1, dist: 20, poss: match.possession?.()[0] ?? 50,
     keeper: match.teams[1].players.find((p) => p.role === 'GK')?.ref.name || 'the keeper',
   });
-  const say = (speaker, text, prio) => { if (text) desk.say(speaker, text, prio); };
+  const say = (speaker, text, prio, file) => { if (text) desk.say(speaker, text, prio, file); };
   const co = (key, ctx, delay = 1800) => {
     if (Math.random() > (CO_CHANCE[key] ?? 0.15)) return;
+    if (pack) { const l = packLine(pack, 'co', key, 'co'); if (l) later(() => say('co', l.text, 1, l.file), delay); return; }
     const text = lineFrom(bank.co, key, { ...ctxBase(), ...ctx }, 'co');
     if (text) later(() => say('co', text), delay);
   };
   const context = (key, ctx, speaker = 'co', delay = 2600) => {
+    if (pack) { const l = packLine(pack, 'context', key, speaker); if (l) later(() => say(speaker, l.text, 1, l.file), delay); return !!l; }
     const text = lineFrom(bank.context, key, { ...ctxBase(), ...ctx }, 'cx');
     if (text) later(() => say(speaker, text), delay);
     return !!text;
@@ -67,8 +73,16 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
     derby, desk, gfx, heat, mom,
     /** The play screen's own feed line, spoken by the play-by-play voice. */
     line(key, ctx = {}, fallback = '') {
+      const prio = key === 'goal' || key === 'ownGoal' ? 2 : 1;
+      if (pack) {
+        // the feed keeps its own line with the name in it; the voice says the pack's
+        const l = packLine(pack, 'pbp', key, 'pbp');
+        if (l) say('pbp', l.text, prio, l.file);
+        if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
+        return fallback;
+      }
       const text = lang === 'ar' ? lineFrom(bank.pbp, key, { ...ctxBase(), ...ctx }, 'pbp') : fallback;
-      say('pbp', text, key === 'goal' || key === 'ownGoal' ? 2 : 1);
+      say('pbp', text, prio);
       if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
       return text;
     },

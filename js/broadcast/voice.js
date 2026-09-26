@@ -15,6 +15,11 @@
  */
 import { COMMENTARY } from '../data/commentary.js';
 import { CO, CONTEXT, AR } from '../data/commentaryVoices.js';
+import { loadVoice, playVoice, stopVoice } from '../audio.js';
+
+/** v121: where a recorded pack's clips live. */
+const VOICE_BASE = new URL('../../assets/voice/', import.meta.url).href;
+export const clipUrl = (pack, file) => `${VOICE_BASE}${pack.id}/${file}`;
 
 /** Our two voices — invented people, the same in every match. */
 export const SPEAKERS = {
@@ -41,6 +46,21 @@ export function lineFrom(bank, key, ctx = {}, tag = '') {
 }
 
 /**
+ * v121: a line from a recorded pack — { text, file } for `bank` ('pbp' | 'co' |
+ * 'context') and `key`, said by `speaker`; null when the pack has nothing for
+ * it (the line then goes unsaid rather than switching voices mid-match).
+ */
+export function packLine(pack, bank, key, speaker) {
+  const pool = pack?.[bank]?.[key];
+  if (!pool || !pool.length) return null;
+  const k = `pack:${pack.id}:${bank}:${key}`;
+  let i = Math.floor(Math.random() * pool.length);
+  if (pool.length > 1 && i === lastPick.get(k)) i = (i + 1) % pool.length;
+  lastPick.set(k, i);
+  return { text: pool[i], file: `${speaker}-${bank === 'context' ? 'cx-' : ''}${key}-${i}.mp3` };
+}
+
+/**
  * Two distinct voices for a language from the platform's list, or nulls.
  * Prefers local voices (no network round trip mid-match).
  */
@@ -61,7 +81,7 @@ export function pickVoices(voices, lang) {
  *   el         the subtitle element
  *   volume     0–1
  */
-export function createDesk({ lang = 'en', voice = true, subtitles = true, el = null, volume = 0.9 } = {}) {
+export function createDesk({ lang = 'en', voice = true, subtitles = true, el = null, volume = 0.9, pack = null } = {}) {
   const synth = typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined' ? speechSynthesis : null;
   let voices = { pbp: null, co: null };
   const refreshVoices = () => { if (synth) voices = pickVoices(synth.getVoices?.() || [], lang); };
@@ -72,6 +92,7 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
   const canSpeak = () => !!(voice && synth && voices.pbp);
 
   const queue = [];
+  let current = null;   // the playing clip's done(), so a goal can cut it off
   let busy = false;
   let subTimer = 0;
   let dead = false;
@@ -81,7 +102,7 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
     shown.push({ speaker, text });
     if (shown.length > 40) shown.shift();
     if (!subtitles || !el) return;
-    const who = SPEAKERS[lang]?.[speaker] || speaker;
+    const who = (pack && pack.speakers[speaker]) || SPEAKERS[lang]?.[speaker] || speaker;
     el.hidden = false;
     el.className = `bc-sub ${speaker}`;
     el.innerHTML = `<b>${who}</b><span></span>`;
@@ -97,6 +118,23 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
     const item = queue.shift();
     if (!item) return;
     show(item.speaker, item.text);
+    // v121: a recorded clip — played through the game's own audio, never the device voice
+    if (item.file && pack) {
+      busy = true;
+      let settled = false;
+      const done = () => { if (settled) return; settled = true; clearTimeout(guard); if (current === done) current = null; busy = false; setTimeout(next, item.speaker === 'pbp' ? 160 : 280); };
+      current = done;
+      const guard = setTimeout(done, 7000);
+      const quiet = () => setTimeout(done, Math.min(2600, 700 + item.text.length * 45));
+      if (!voice) { clearTimeout(guard); quiet(); return; }
+      loadVoice(clipUrl(pack, item.file)).then((buf) => {
+        if (settled || dead) return;
+        // too late to be worth saying: the moment has gone
+        if (Date.now() - item.at > 4500) { done(); return; }
+        if (!playVoice(buf, { volume, onend: done })) { clearTimeout(guard); quiet(); }
+      });
+      return;
+    }
     if (!canSpeak()) { busy = true; setTimeout(() => { busy = false; next(); }, Math.min(2600, 700 + item.text.length * 45)); return; }
     try {
       const u = new SpeechSynthesisUtterance(item.text);
@@ -116,20 +154,25 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
 
   return {
     lang,
-    /** Queue a line. prio 2 (a goal) interrupts; lower ones wait their turn. */
-    say(speaker, text, prio = 1) {
+    pack,
+    /** Queue a line. prio 2 (a goal) interrupts; lower ones wait their turn. `file` is a pack clip. */
+    say(speaker, text, prio = 1, file = null) {
       if (dead || !text) return;
       if (prio >= 2) {
         queue.length = 0;
+        if (current) { const c = current; current = null; c(); }
+        stopVoice();
         if (busy && canSpeak()) { try { synth.cancel(); } catch { /* none */ } }
         busy = false;
       } else if (queue.length >= 2) queue.shift();
-      queue.push({ speaker, text, prio, at: Date.now() });
+      queue.push({ speaker, text, prio, at: Date.now(), file });
       next();
     },
+    /** v121: fetch the clips a match is sure to want, so the first goal call is instant. */
+    warm(files) { if (pack && voice) files.forEach((f) => loadVoice(clipUrl(pack, f))); },
     /** v87: a subtitle only — for lines another voice speaks (the stadium PA). */
     caption(speaker, text) { if (!dead && text) show(speaker, text); },
-    setVoice(on) { voice = !!on; if (!on && synth) { try { synth.cancel(); } catch { /* none */ } busy = false; } },
+    setVoice(on) { voice = !!on; if (!on) { stopVoice(); if (synth) { try { synth.cancel(); } catch { /* none */ } } busy = false; } },
     setSubtitles(on) { subtitles = !!on; if (!on && el) el.hidden = true; },
     /** What has been said, newest last (the tests and Match Facts read it). */
     log: () => shown.slice(),
@@ -137,6 +180,7 @@ export function createDesk({ lang = 'en', voice = true, subtitles = true, el = n
     destroy() {
       dead = true; queue.length = 0; clearTimeout(subTimer);
       synth?.removeEventListener?.('voiceschanged', onVoices);
+      stopVoice();
       if (voice && synth) { try { synth.cancel(); } catch { /* none */ } }
     },
   };
