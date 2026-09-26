@@ -325,6 +325,28 @@ export const STAR_TRAITS = {
 };
 
 /** What an icon is best at. Every icon is 99 overall; these shape the radar. */
+/**
+ * v126: the Saudi Icons — an XI of the Green Falcons' greats, for National
+ * Day and after it. Real names, the same decision and caveats as the Icons
+ * above (drawn portraits, no likenesses). Rated a little under the world
+ * Icons' 99, each at his own level, and emitted after every other card in
+ * the world so no existing id moves.
+ */
+const SA = ['#006c35', '#ffffff'];
+export const SAUDI_ICONS = [
+  { name: 'Mohamed Al-Deayea',     short: 'M. Al-Deayea',   position: 'GK',  nation: 'Saudi Arabia', colors: SA, trait: 'keeper',   foot: 'R', overall: 95 },
+  { name: 'Mohammed Al-Khilaiwi',  short: 'M. Al-Khilaiwi', position: 'RB',  nation: 'Saudi Arabia', colors: SA, trait: 'fullback', foot: 'R', overall: 91 },
+  { name: 'Osama Hawsawi',         short: 'O. Hawsawi',     position: 'CB',  nation: 'Saudi Arabia', colors: SA, trait: 'wall',     foot: 'R', overall: 92 },
+  { name: 'Saleh Al-Nuaimah',      short: 'S. Al-Nuaimah',  position: 'CB',  nation: 'Saudi Arabia', colors: SA, trait: 'wall',     foot: 'R', overall: 91 },
+  { name: 'Hussein Abdulghani',    short: 'H. Abdulghani',  position: 'LB',  nation: 'Saudi Arabia', colors: SA, trait: 'fullback', foot: 'L', overall: 92 },
+  { name: 'Mohammed Noor',         short: 'M. Noor',        position: 'CM',  nation: 'Saudi Arabia', colors: SA, trait: 'engine',   foot: 'R', overall: 94 },
+  { name: 'Nawaf Al-Temyat',       short: 'N. Al-Temyat',   position: 'CAM', nation: 'Saudi Arabia', colors: SA, trait: 'flair',    foot: 'R', overall: 94 },
+  { name: 'Saeed Al-Owairan',      short: 'S. Al-Owairan',  position: 'LW',  nation: 'Saudi Arabia', colors: SA, trait: 'flair',    foot: 'R', overall: 95 },
+  { name: 'Majed Abdullah',        short: 'M. Abdullah',    position: 'ST',  nation: 'Saudi Arabia', colors: SA, trait: 'power',    foot: 'R', overall: 97 },
+  { name: 'Sami Al-Jaber',         short: 'S. Al-Jaber',    position: 'ST',  nation: 'Saudi Arabia', colors: SA, trait: 'power',    foot: 'R', overall: 96 },
+  { name: 'Yasser Al-Qahtani',     short: 'Y. Al-Qahtani',  position: 'ST',  nation: 'Saudi Arabia', colors: SA, trait: 'power',    foot: 'R', overall: 94 },
+];
+
 export const ICON_TRAITS = {
   flair:  { pace: 99, shooting: 92, passing: 91, dribbling: 99, defending: 42, physical: 78 },
   power:  { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },

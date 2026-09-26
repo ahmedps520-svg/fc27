@@ -22,7 +22,8 @@ test('the original 731 cards are byte-stable', () => {
 
 test('world shape', () => {
   assert.equal(WORLD.clubs.length, 100);
-  assert.equal(WORLD.players.length, 6328 + 85);
+  assert.equal(WORLD.players.length, 6328 + 85 + 11);   // v126: the eleven Saudi Icons, appended last
+  assert.ok(WORLD.players.slice(0, 6413).every((p) => !p.saudiIcon), 'every card before v126 is where it was');
   assert.equal(WORLD.sbcCards.length, 28);
   // v72 world: the first 5612 cards are exactly what they were
   assert.ok(WORLD.players.slice(0, 5612).every((p) => !p.sbc || WORLD.sbcCards.slice(0, 12).includes(p.id)), 'the v72 cards are untouched');
@@ -38,7 +39,7 @@ test('world shape', () => {
   for (const id of WORLD.sbcCards) assert.ok(WORLD.playersById[id].sbc && WORLD.playersById[id].clubId === null);
   const ids = new Set(WORLD.players.map((p) => p.id));
   assert.equal(ids.size, WORLD.players.length, 'ids are unique');
-  assert.equal(WORLD.icons.length, 15);
+  assert.equal(WORLD.icons.length, 15 + 11);   // v126: the Saudi Icons
   assert.equal(WORLD.stars.length, 20);
 });
 

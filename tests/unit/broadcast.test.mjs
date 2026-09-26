@@ -138,7 +138,11 @@ test('seasonal themes by date, and the Settings override', () => {
 test('the playlist and the two voices', () => {
   assert.ok(TRACKS.length >= 5);
   assert.equal(new Set(TRACKS.map((t) => t.name)).size, TRACKS.length);
-  for (const t of TRACKS) { assert.ok(t.chords.length >= 3 && t.bars > 8 && t.bar > 1); for (const c of t.chords) assert.ok(c.every((f) => f > 80 && f < 1200)); }
+  for (const t of TRACKS) {
+    // v126: a rendered track is a file, played a number of times; the rest are live loops
+    if (t.file) { assert.ok(/^assets\/music\/.+\.mp3$/.test(t.file) && t.plays >= 1, t.name); continue; }
+    assert.ok(t.chords.length >= 3 && t.bars > 8 && t.bar > 1); for (const c of t.chords) assert.ok(c.every((f) => f > 80 && f < 1200));
+  }
   const vs = [{ name: 'A', lang: 'en-GB', localService: true }, { name: 'B', lang: 'en-US', localService: true }, { name: 'C', lang: 'ar-SA', localService: false }];
   const en = pickVoices(vs, 'en'); assert.ok(en.pbp && en.co && en.pbp !== en.co);
   const ar = pickVoices(vs, 'ar'); assert.equal(ar.pbp.name, 'C'); assert.equal(ar.co.name, 'C');

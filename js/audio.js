@@ -583,8 +583,32 @@ export function startAnthem(seed = 1) {
   anthemNodes = { out, stops };
   setTimeout(() => { if (anthemNodes && anthemNodes.out === out) anthemNodes = null; }, beat * 16 * 1000 + 800);
 }
+/**
+ * v126: a real anthem, from a file — Saudi Arabia's (the US Navy Band's
+ * public-domain recording, assets/music/CREDITS.md). Played for a Saudi side
+ * and on National Day; anything that stops it can't be had falls back to the
+ * generated fanfare.
+ */
+export function startAnthemFile(file, fallbackSeed = 1) {
+  if (!settings.enabled || !settings.music) return;
+  if (!ready && !initAudio()) return;
+  if (ctx.state === 'suspended') return;
+  stopAnthem();
+  const token = {};
+  anthemNodes = { out: null, stops: [], token };
+  loadVoice(new URL('../', import.meta.url).href + file).then((buf) => {
+    if (!anthemNodes || anthemNodes.token !== token) return;          // stopped while it loaded
+    if (!buf) { anthemNodes = null; startAnthem(fallbackSeed); return; }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const out = ctx.createGain(); out.gain.value = 0.0001; out.gain.setTargetAtTime(0.9, now(), 0.3);
+    src.connect(out).connect(musicBus); src.start();
+    anthemNodes = { out, stops: [src], token };
+    src.onended = () => { if (anthemNodes && anthemNodes.token === token) anthemNodes = null; };
+  });
+}
 export function stopAnthem() {
   if (!anthemNodes) return;
+  if (!anthemNodes.out) { anthemNodes = null; return; }   // a file still loading: forget it
   try { anthemNodes.out.gain.setTargetAtTime(0.0001, now(), 0.3); for (const o of anthemNodes.stops) o.stop(now() + 0.8); } catch { /* done */ }
   anthemNodes = null;
 }
@@ -604,7 +628,14 @@ export const TRACKS = [
   { name: 'Matchday Morning', bar: 2.2, bars: 32, chords: [tri(55, 'maj'), tri(52), tri(60, 'maj'), tri(62, 'maj')], arp: [0, 1, 2, 1, 2, 3, 2, 1], pad: 'square', beat: 'four' },
   { name: 'Tunnel Lights', bar: 3.0, bars: 24, chords: [tri(52), tri(48, 'maj'), tri(55, 'maj'), tri(50, 'maj')], arp: [0, 2, 0, 3, 0, 2, 0, 1], pad: 'sawtooth', beat: 'pulse' },
   { name: 'Rooftop Five', bar: 2.0, bars: 40, chords: [tri(58), tri(61, 'maj'), tri(63, 'maj'), tri(56, 'maj')], arp: [0, 1, 0, 2, 0, 3, 2, 1], pad: 'triangle', beat: 'break' },
+  /* v126: a rendered track rather than a live loop — a khaleeji groove in D
+     Hijaz for National Day (tools/music/khaleeji.mjs; oud, qanun, hand-drums
+     and claps, all modelled, nothing sampled). Plays twice through, then the
+     playlist moves on. */
+  { name: 'Green Nights', file: 'assets/music/green-nights.mp3', plays: 2, id: 'green-nights' },
 ];
+const MUSIC_BASE = new URL('../', import.meta.url).href;
+let fileSrc = null;
 /** The highlights bed: brighter and quicker, used only under the reel. */
 export const HIGHLIGHTS_BED = { name: 'Highlights', bar: 1.9, bars: 999, chords: [tri(60, 'maj'), tri(57), tri(53, 'maj'), tri(55, 'maj')], arp: [0, 1, 2, 3, 2, 1, 2, 3], pad: 'sawtooth', beat: 'four' };
 let trackIdx = 0;
@@ -650,11 +681,41 @@ function playBar(tr, step, gainK = 1) {
   else if (tr.beat === 'break') { kick(0); kick(bar * 0.375, 0.04); kick(bar * 0.625); for (let k = 0; k < 16; k += 2) hat(k * bar / 16); }
 }
 
+/* v126: a rendered track: fetched (and kept) the first time, played through
+   the music bus as many times as it asks, then on to the next track. */
+function playFileTrack(tr) {
+  musicTimer = -1;   // busy: not a bar timer, but not free either
+  loadVoice(MUSIC_BASE + tr.file).then((buf) => {
+    if (musicTimer !== -1 || TRACKS[trackIdx] !== tr) return;   // stopped or skipped while it loaded
+    if (!buf || ctx.state !== 'running') { musicTimer = null; trackIdx = (trackIdx + 1) % TRACKS.length; tellTrack(); if (armed) startMusic(); return; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const g = ctx.createGain(); g.gain.value = 0.0001; g.gain.setTargetAtTime(0.85, now(), 0.4);
+    src.connect(g).connect(musicBus); src.start();
+    fileSrc = { src, g };
+    musicTimer = setTimeout(() => {
+      stopFileTrack(); musicTimer = null;
+      trackIdx = (trackIdx + 1) % TRACKS.length; keepMusic(); tellTrack();
+      if (armed) startMusic();
+    }, buf.duration * (tr.plays || 1) * 1000);
+  });
+}
+function stopFileTrack() {
+  if (!fileSrc) return;
+  const { src, g } = fileSrc; fileSrc = null;
+  try { g.gain.setTargetAtTime(0.0001, now(), 0.25); src.stop(now() + 1); } catch { /* done */ }
+}
+/** v126: start the playlist on a given track (National Day opens on Green Nights). */
+export function preferTrack(id) {
+  const i = TRACKS.findIndex((t) => t.id === id);
+  if (i >= 0 && i !== trackIdx) setTrack(i);
+}
+
 function musicBar() {
   if (!ready || !settings.music || muted) { musicTimer = null; return; }
   // never write into a stopped clock — the loop is re-armed by onstatechange
   if (ctx.state !== 'running') { musicTimer = null; return; }
   const tr = TRACKS[trackIdx];
+  if (tr.file) { playFileTrack(tr); return; }
   playBar(tr, musicStep);
   musicStep += 1;
   trackBar += 1;
@@ -689,8 +750,9 @@ export function startMusic() {
 
 /** Stop the loop but keep wanting it — used when the context suspends. */
 function stopMusicLoop() {
-  if (musicTimer) clearTimeout(musicTimer);
+  if (musicTimer && musicTimer !== -1) clearTimeout(musicTimer);
   musicTimer = null;
+  stopFileTrack();
 }
 
 export function stopMusic() {

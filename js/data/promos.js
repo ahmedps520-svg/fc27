@@ -38,6 +38,18 @@ export const CAMPAIGNS = [
     eligible: (p) => p.age >= 30 && p.overall >= 76, boost: 5, stats: { pace: 1, dribbling: 3, shooting: 4, passing: 6, physical: 6, defending: 6 } },
 ];
 export const campaignNow = (now = Date.now()) => CAMPAIGNS[weekNow(now) % CAMPAIGNS.length];
+
+/**
+ * v126: dated campaigns, outside the weekly rotation (adding to CAMPAIGNS
+ * would reshuffle every week's campaign). National Day: every Saudi
+ * international, lifted hard, in green and white — pulled from the National
+ * Day pack while the event is on, and kept for good once packed.
+ */
+export const EVENT_CAMPAIGNS = [
+  { id: 'nationalday', name: 'National Day', blurb: 'The Green Falcons, lifted for the Kingdom\'s day.', colors: ['#0f7a41', '#ffffff'],
+    eligible: (p) => p.nation === 'Saudi Arabia' && p.overall >= 68 && p.rarity !== 'icon' && !/ Jr$| Nassr$| Shabab$/.test(p.name), boost: 10, stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 } },
+];
+const campaignById = (id) => CAMPAIGNS.find((x) => x.id === id) || EVENT_CAMPAIGNS.find((x) => x.id === id);
 /** Seconds until the campaign turns over. */
 export const campaignEndsIn = (now = Date.now()) => Math.ceil(((weekNow(now) + 1) * WEEK - now) / 1000);
 
@@ -54,6 +66,7 @@ export const PROMO_RARITY = {
   future: { label: 'Future Stars', color: '#19e3ff', glow: 'rgba(25,227,255,.7)' },
   desert: { label: 'Heroes of the Desert', color: '#f0b048', glow: 'rgba(240,176,72,.7)' },
   winter: { label: 'Winter Legends', color: '#d8f1ff', glow: 'rgba(216,241,255,.7)' },
+  nationalday: { label: 'National Day', color: '#1fbf62', glow: 'rgba(31,191,98,.75)' },
 };
 
 // the new rarities join the table every card component reads
@@ -130,7 +143,7 @@ function resolve(id) {
   if (!base) return undefined;
   let card;
   if (kind === 'pr') {
-    const c = CAMPAIGNS.find((x) => x.id === a);
+    const c = campaignById(a);
     if (!c || !c.eligible(base)) return undefined;
     card = derive(base, id, { boost: c.boost, stats: c.stats, rarity: c.id, promo: c.id, label: c.name });
   } else if (kind === 'if' || kind === 'tw') {

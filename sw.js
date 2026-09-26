@@ -131,6 +131,7 @@ const ASSETS = [
   './js/customCup.js',
   './js/data/rivalries.js',
   './js/data/voicePackUS.js',
+  './assets/music/anthem-sa.mp3',
   './js/screens/cup.js',
   './js/game/quality.js',
   './js/game/governor.js',

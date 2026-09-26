@@ -8,7 +8,7 @@ import { needsOnboarding, showWelcome } from '../onboarding.js';
 import { t, lang } from '../i18n.js';
 import { getState } from '../state.js';
 import { activeTheme, decorationHTML } from '../seasonal.js';
-import { currentTrack, nextTrack, prevTrack, setMusicMuted, onTrack } from '../audio.js';
+import { currentTrack, nextTrack, prevTrack, setMusicMuted, onTrack, preferTrack } from '../audio.js';
 
 export const TITLE = 'APEX XI';
 
@@ -91,6 +91,8 @@ export function render() {
   const ev = activeEvent();
   void dailyStatus();
   const theme = activeTheme(getState().settings.menuTheme || 'auto');
+  // v126: National Day opens on its own song, once a session (skipping away sticks)
+  if (theme === 'nationalDay' && !render.songPicked) { render.songPicked = true; preferTrack('green-nights'); }
   const tr = currentTrack();
   return `
     <section class="menu-screen${theme ? ` theme-${theme}` : ''}">
