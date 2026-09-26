@@ -279,10 +279,14 @@ async function api(req, res, route) {
     const club = String(body.club || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 40);
     const balance = shop.recordSale(DATA_DIR, bundle.cents);
     const mail = shop.purchaseEmail({ bundle, ref, club, player: acct ? store.publicProfile(acct).name : '', balance });
-    shop.sendMail({ ...mail, ref }, { dataDir: DATA_DIR })
-      .then((r) => console.log(`[shop] ${ref} ${shop.usd(bundle.cents)} mailed via ${r.via}`))
-      .catch((e) => console.warn(`[shop] ${ref} mail failed:`, e.message));
-    return json(res, 200, { ok: true, ref, test: true });
+    // v130: wait for the mail (bounded), and say how it went — the receipt shows it,
+    // so a refused send is visible without reading the server's logs
+    const mailed = await Promise.race([
+      shop.sendMail({ ...mail, ref }, { dataDir: DATA_DIR }).then((r) => r.via, (e) => `failed: ${String(e.message).slice(0, 160)}`),
+      new Promise((r) => setTimeout(() => r('pending'), 8000)),
+    ]);
+    console.log(`[shop] ${ref} ${shop.usd(bundle.cents)} mail: ${mailed}`);
+    return json(res, 200, { ok: true, ref, test: true, mail: mailed });
   }
 
   if (route === '/api/weekend') {
@@ -349,7 +353,7 @@ async function api(req, res, route) {
   // stored and whether that storage survives a restart.
   if (route === '/api/health') {
     return json(res, 200, {
-      ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(),
+      ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(), mail: shop.mailMode(),
     });
   }
 

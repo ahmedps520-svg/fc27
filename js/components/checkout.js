@@ -15,6 +15,15 @@ import { reportPurchase } from '../net/api.js';
 
 const BRAND = { visa: 'VISA', mastercard: 'Mastercard', amex: 'AMEX', discover: 'Discover', mada: 'mada' };
 
+/** What happened to the store's email, in words (v130: a refused send says why). */
+function receiptLine(mail) {
+  if (mail === 'resend') return 'Emailed to the store';
+  if (mail === 'outbox') return 'Saved on the server (no mail key)';
+  if (mail === 'pending') return 'Sending…';
+  if (mail === 'offline') return 'Not sent (offline)';
+  return `Not emailed — ${String(mail).replace(/^failed: /, '').replace(/[<>&]/g, '')}`;
+}
+
 export function openCheckout(bundle, { onDone } = {}) {
   document.getElementById('checkoutOverlay')?.remove();
   const got = bundle.ultimate + bundle.bonus;
@@ -93,7 +102,7 @@ export function openCheckout(bundle, { onDone } = {}) {
     sheet.classList.add('busy');
     sheet.innerHTML = '<div class="co-proc"><div class="sc-mark"><svg class="sc-ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle cx="32" cy="32" r="28" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="52 176"/></svg><b>A</b></div><p>Processing…</p></div>';
     const club = getState().club.identity?.name || 'Ultimate XI';
-    const sent = reportPurchase({ bundle: bundle.id, ref, club }).then(() => true, () => false);
+    const sent = reportPurchase({ bundle: bundle.id, ref, club }).then((r) => r.mail || 'resend', () => 'offline');
     const [ok] = await Promise.all([sent, new Promise((r) => setTimeout(r, 1400))]);
     sheet.classList.remove('busy');
     sheet.innerHTML = `
@@ -105,7 +114,7 @@ export function openCheckout(bundle, { onDone } = {}) {
         <dl class="co-receipt">
           <dt>Order</dt><dd>${ref}</dd>
           <dt>Paid</dt><dd>${price(bundle.cents)} · ${brand} •••• ${last4}</dd>
-          <dt>Receipt</dt><dd>${ok ? 'Sent to the store' : 'Not sent (offline)'}</dd>
+          <dt>Receipt</dt><dd class="co-mail">${receiptLine(ok)}</dd>
         </dl>
         ${TEST_MODE ? '<p class="co-test"><b>TEST MODE</b> Nothing was charged, and your Ultimate balance has not changed.</p>' : ''}
         <button type="button" class="btn primary co-wide" data-co-close>Done</button>

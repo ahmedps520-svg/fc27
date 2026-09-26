@@ -109,7 +109,8 @@ async function sendMail({ subject, html, text, ref }, { dataDir, env = process.e
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: env.MAIL_FROM || 'APEX XI Store <store@apexxi.online>', to: [env.STORE_INBOX || STORE_INBOX], subject, html, text }),
     });
-    if (!res.ok) throw new Error(`mail provider ${res.status}`);
+    // Resend explains a refusal in the body (an unverified domain, a bad key): keep that, not just the code
+    if (!res.ok) { let why = ''; try { why = (await res.json()).message || ''; } catch { /* no body */ } throw new Error(`Resend ${res.status}${why ? `: ${why}` : ''}`); }
     return { via: 'resend' };
   }
   const dir = path.join(dataDir, 'outbox');
@@ -121,4 +122,7 @@ async function sendMail({ subject, html, text, ref }, { dataDir, env = process.e
 
 const REF_RE = /^AX-[A-Z2-9]{8}$/;
 
-module.exports = { BUNDLES, bundleById, purchaseEmail, recordSale, sendMail, usd, REF_RE, STORE_INBOX };
+/** For /api/health: which way mail goes, never the key. */
+const mailMode = (env = process.env) => (env.RESEND_API_KEY ? 'resend' : 'outbox');
+
+module.exports = { mailMode, BUNDLES, bundleById, purchaseEmail, recordSale, sendMail, usd, REF_RE, STORE_INBOX };

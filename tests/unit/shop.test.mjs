@@ -59,3 +59,11 @@ test('without a mail key the email lands in the outbox; with one it goes to the 
   assert.deepEqual(sent.body.to, ['support@apexxi.online']);
   assert.equal(sent.auth, 'Bearer k');
 });
+
+test('a refused send carries Resend\'s reason, and health says which way mail goes', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'apex-shop-'));
+  const refuse = async () => ({ ok: false, status: 403, json: async () => ({ message: 'The apexxi.online domain is not verified.' }) });
+  await assert.rejects(shop.sendMail({ subject: 's', html: 'h', text: 't', ref: 'AX-ABCDEF23' }, { dataDir: dir, env: { RESEND_API_KEY: 'k' }, fetchImpl: refuse }), /Resend 403: The apexxi\.online domain is not verified/);
+  assert.equal(shop.mailMode({}), 'outbox');
+  assert.equal(shop.mailMode({ RESEND_API_KEY: 'k' }), 'resend');
+});

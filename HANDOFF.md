@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v130 — the store email's outcome is visible
+- The owner set `RESEND_API_KEY` on Render but no email arrived.
+- DNS is fine: apexxi.online's MX is iCloud; Resend's DKIM
+  (`resend._domainkey`) and `send.` MX/SPF are present.
+- Changes so the reason is visible without Render's logs:
+  - `/api/purchase` now awaits `sendMail` (8 s cap) and returns
+    `mail: 'resend' | 'outbox' | 'pending' | 'failed: <Resend message>'`;
+  - the receipt shows it (`receiptLine`);
+  - `sendMail` reads Resend's error body;
+  - `/api/health` gains `mail: 'resend'|'outbox'` (never the key).
+
 ### v129 — the Ultimate shop, test mode (owner's ask)
 - The owner asked for "micro transactions, with a fake place holder for now
   credit card cvv and everything else", plus one email per purchase to

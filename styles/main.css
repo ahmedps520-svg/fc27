@@ -5463,6 +5463,6 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .co-big { margin: 0; font-family: var(--font-num); font-size: 26px; font-weight: 800; }
 .co-receipt { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 6px 0; padding: 14px; border-radius: 12px; background: rgba(255,255,255,.04); font-size: 13px; text-align: left; }
 .co-receipt dt { color: #8b95a7; }
-.co-receipt dd { margin: 0; text-align: right; font-family: var(--font-num); }
+.co-receipt dd { margin: 0; text-align: right; font-family: var(--font-num); overflow-wrap: anywhere; }
 .co-done .co-test { margin: 0; }
 @media (max-width: 420px) { .co-sheet { padding: 18px 14px; } }
