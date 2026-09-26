@@ -213,6 +213,7 @@ test('the five-a-side field: five a side, small goals, and the full field restor
   while (m.phase !== 'end' && steps < 60 * 60 * 8) { m.update(1 / 60); steps++; }
   assert.equal(m.phase, 'end', 'the match finishes');
   for (const t of m.teams) for (const p of t.players) {
+    if (p.sentOff) continue;          // v134: a man sent off has left the pitch on purpose
     assert.ok(p.x >= -3 && p.x <= PITCH.w + 3 && p.y >= -3 && p.y <= PITCH.h + 3, 'players stay on the small pitch');
   }
   const full = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 60, human: null });

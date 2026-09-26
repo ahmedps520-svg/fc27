@@ -3281,7 +3281,7 @@ export function createRenderer(canvas, match, quality, models = false) {
   const fine = !lo;
   let focusDist = 40;
   let disposed = false;
-  let lastNetHit = -1;
+  let lastNetHit = -1; let netEcho = null;   // v135: the second, softer wave through the net
 
   // iOS drops the GL context under memory pressure; keep it recoverable rather
   // than letting the match freeze on a dead canvas.
@@ -3782,11 +3782,23 @@ export function createRenderer(canvas, match, quality, models = false) {
         const h = m.netHit;
         const near = nets.reduce((a, n) =>
           (Math.abs(h.x - n.gx) < Math.abs(h.x - a.gx) ? n : a), nets[0]);
-        const k = 0.021;
+        /* v135: a goal should shake the net. The old strike (k 0.021 over 2.8 m)
+           moved it a few centimetres — measured on a behind-the-goal camera it
+           barely read. Harder, wider, and a second, softer wave a moment later
+           as the ball drops, so the whole back panel rolls. */
+        const k = 0.05;
         // both panels of that goal — a ball into the back of it shakes the roof too
         for (const n of nets) {
           if (n.gx !== near.gx) continue;
-          n.cloth.impulse(h.x, h.y, h.z, 2.8, h.vx * k, h.vy * k, h.vz * k - 0.05);
+          n.cloth.impulse(h.x, h.y, h.z, 3.6, h.vx * k, h.vy * k, h.vz * k - 0.06);
+        }
+        netEcho = { near, x: h.x, y: h.y, z: Math.max(0.4, h.z - 0.5), t: 0.18, vx: h.vx * k * 0.4, vy: h.vy * k * 0.4 };
+      }
+      if (netEcho) {
+        netEcho.t -= dt || 0;
+        if (netEcho.t <= 0) {
+          for (const n of nets) if (n.gx === netEcho.near.gx) n.cloth.impulse(netEcho.x, netEcho.y, netEcho.z, 4.2, netEcho.vx, netEcho.vy, -0.04);
+          netEcho = null;
         }
       }
       const nd = Math.min(dt || 1 / 60, 1 / 30);

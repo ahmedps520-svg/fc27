@@ -15,6 +15,29 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v135 — polish: the net shakes, the purchase endpoint locked down (owner's #5 and #7)
+- **The net (#5).** `js/game/net.js` has been wired into renderGL since v76.
+  The audit note below, "nothing imports it", was stale and is corrected.
+  Filmed from behind the goal (medium), the v76 strike (k 0.021, radius
+  2.8 m) barely moved it. Now it is k 0.05 over 3.6 m, plus `netEcho`: a
+  second, softer impulse 0.18 s later, 0.5 m lower and 4.2 m wide. The back
+  panel now visibly bows and rolls. The WebGPU renderer (a beta option) has
+  no net cloth; that is left for its parity work.
+- **Purchases (#7).** `/api/purchase` now:
+  - returns 401 when signed out;
+  - allows 3 an hour per account (`buy:acct:`) and 5 an hour per address
+    (`buy:ip:`);
+  - emails a reference only once (`seenRefs`, in memory, capped at 5000;
+    a repeat answers `mail: 'duplicate'`).
+  The checkout shows a sign-in note when signed out and doesn't call the
+  server; the receipt line says "Not sent — sign in to send it" or "Not
+  sent — three an hour". `tests/qa/shop.mjs` covers the desktop run signed
+  in (emailed) and the phone run signed out, plus a direct 401, a
+  duplicate and the fourth call returning 429.
+- Tried and reverted: turning off shadows for far built figures on High.
+  `tests/perf/tris.mjs` showed no difference in the frame's triangles
+  (1,101k either way), so there was no evidence it saves anything.
+
 ### v134 — red cards, man down, the side reshapes (owner's #3)
 - `sim.js`:
   - `book(p)`: every caution goes through it, and a second is
@@ -5683,8 +5706,8 @@ which silently removed the wallet pills from the header.
 
 ## Found in an audit, not yet fixed
 
-- **`js/game/net.js` is a complete Verlet cloth simulation for goal netting that
-  nothing imports.** It was in the service worker's precache list *twice*, so
+- ~~**`js/game/net.js` is a complete Verlet cloth simulation for goal netting that
+  nothing imports.**~~ (Stale: renderGL has used it since v76 — see v135.) It was in the service worker's precache list *twice*, so
   every install downloaded it for nothing; that is now removed. The file is kept
   because it works and the nets are still static — wiring it up is a real visual
   improvement waiting to be picked up.

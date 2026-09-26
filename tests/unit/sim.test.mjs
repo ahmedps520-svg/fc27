@@ -56,7 +56,7 @@ test('the ball and every player stay inside a sane world', () => {
   assert.ok(m.ball.y > -10 && m.ball.y < PITCH.h + 10);
   for (const t of m.teams) for (const p of t.players) {
     assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), 'no NaN positions');
-    assert.ok(p.x > -8 && p.x < PITCH.w + 8 && p.y > -8 && p.y < PITCH.h + 8);
+    if (!p.sentOff) assert.ok(p.x > -8 && p.x < PITCH.w + 8 && p.y > -8 && p.y < PITCH.h + 8);   // v134: a man sent off is parked off the pitch
   }
 });
 
