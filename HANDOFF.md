@@ -15,6 +15,42 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v123 — controller support in the menus (owner: "fix controller support so they can use it in menu too")
+**Root cause:**
+- Every reader took the first connected gamepad (`live[0]` or
+  `pads.find(connected)`) and assumed the standard mapping:
+  `padMenu.js`, `splash.js`, `Input.poll` and `sideSelect.js`.
+- With a virtual pad in slot 0 (Steam, a DS4Windows ghost, a headset
+  exposing HID buttons), the menus read a device nobody touched.
+  `tests/qa/pad-real.mjs` on the v122 code: "A on the title did not reach
+  the menu", for both layouts.
+- Raw (`mapping: ''`) pads were a second failure:
+  - Firefox and generic pads put the D-pad on axes 6/7 or a hat axis 9.
+  - Start is raw 7.
+  - A raw DS4 has □ on 0 and ✕ on 1.
+  - The menu only read buttons 12–15, so the D-pad did nothing.
+
+**Fix: `js/game/padRead.js` (new, precached):**
+- `activePad()` picks the connected pad (≥4 buttons) whose buttons or
+  sticks changed last. A first sighting doesn't count, so a drifting stick
+  can't steal focus. Before any press, it takes the first standard pad.
+- `normPad()`:
+  - a standard pad is returned untouched;
+  - a raw pad is mapped to the standard layout: hat or 6/7 D-pad →
+    buttons 12–15; the XInput raw layout → Start 9, Back 8, triggers from
+    axes 2/5 → 6/7, right stick 3/4 → 2/3; the Sony raw layout → ✕ 0, ○ 1,
+    □ 2, △ 3.
+- `readPad = normPad(activePad())`.
+- Used by padMenu, splash and `Input.poll` (when no seat is assigned; seats
+  keep their index but are normalised). sideSelect normalises each pad and
+  skips non-pads.
+
+**Tests:**
+- `tests/unit/pad-read.test.mjs` (7).
+- `tests/qa/pad-real.mjs`, a new CI step: phantom in slot 0, raw pad in
+  slot 1, xpad and ds4. It covers the title A, the ring moving on the D-pad,
+  A opening a screen, and B/Start going back.
+
 ### v122 — less text, part 2, and the pause menu bug
 **Found by screenshots of a real match** (landscape phone, 844×390):
 - **Pause menu.** The touch pad (`.gm-touch`) was drawn over the pause menu:

@@ -46,6 +46,7 @@ const ASSETS = [
   './js/game/drills.js',
   './js/game/streetDressing.js',
   './js/game/input.js',
+  './js/game/padRead.js',
   './js/game/render3d.js',
   './js/game/renderGL.js',
   './js/game/cinematic.js',

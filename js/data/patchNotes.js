@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v123',
+    date: '2026-09-26',
+    tag: 'Controllers',
+    title: 'Your controller, everywhere',
+    lede: 'Menus now answer the controller in your hands, even when your computer lists another device first, and even when the browser does not recognise the pad.',
+    entries: [
+      {
+        head: 'The pad you are holding',
+        summary: 'With Steam running, a headset plugged in or a second pad connected, the game used to listen to the first device in the list, often not your controller, and the menus ignored you. Now the last pad you pressed is the one it reads.',
+        detail: 'This applies to the title screen, every menu, the pause menu and the match.',
+      },
+      {
+        head: 'D-pad and buttons on more pads',
+        summary: 'Some browsers report pads in their own layout, including Firefox and many generic, 8BitDo and Android controllers. The D-pad now moves around the menus on these pads, Start goes home, and on a PlayStation pad ✕ confirms and ○ goes back.',
+        detail: 'A new check in every build drives the menus with a controller behind a virtual one, in both the raw Xbox and raw PlayStation layouts.',
+      },
+    ],
+  },
+  {
     version: 'v122',
     date: '2026-09-26',
     tag: 'Polish',

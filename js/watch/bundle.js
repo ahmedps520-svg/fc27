@@ -12685,8 +12685,55 @@
     }
   };
 
+  // js/game/padRead.js
+  var lastSig = /* @__PURE__ */ new Map(), lastUsed = /* @__PURE__ */ new Map(), tick = 0, sig = (g) => g.buttons.map((b) => b.pressed ? 1 : 0).join("") + g.axes.map((a) => Math.abs(a) > 0.5 ? Math.sign(a) : 0).join(""), usable = (g) => g && g.connected && g.buttons && g.buttons.length >= 4;
+  function activePad(pads = typeof navigator < "u" && navigator.getGamepads ? [...navigator.getGamepads()] : []) {
+    var _a;
+    tick += 1;
+    let live2 = pads.filter(usable);
+    if (!live2.length) return null;
+    for (let g of live2) {
+      let s = sig(g);
+      lastSig.get(g.index) !== s && (lastSig.has(g.index) && lastUsed.set(g.index, tick), lastSig.set(g.index, s));
+    }
+    let best = null, bestT = -1;
+    for (let g of live2) {
+      let t = (_a = lastUsed.get(g.index)) != null ? _a : -1;
+      t > bestT && (bestT = t, best = g);
+    }
+    return bestT >= 0 ? best : live2.find((g) => g.mapping === "standard") || live2[0];
+  }
+  var btn = (pressed, value = pressed ? 1 : 0) => ({ pressed, value, touched: pressed });
+  function hat(v) {
+    if (!(v >= -1.05 && v <= 1.05)) return { up: !1, down: !1, left: !1, right: !1 };
+    let pos = Math.round((v + 1) / 2 * 7) % 8;
+    return { up: pos === 7 || pos <= 1, right: pos >= 1 && pos <= 3, down: pos >= 3 && pos <= 5, left: pos >= 5 };
+  }
+  function normPad(g) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    if (!g || g.mapping === "standard") return g;
+    let b = [...g.buttons], ax = g.axes || [], out = b.slice(0, 17).map((x) => {
+      var _a2;
+      return btn(!!(x != null && x.pressed), (_a2 = x == null ? void 0 : x.value) != null ? _a2 : 0);
+    });
+    for (; out.length < 17; ) out.push(btn(!1));
+    let up = !1, down = !1, left = !1, right = !1, hatIdx = ax.findIndex((v, i) => i >= 4 && Math.abs(v) > 1.05);
+    if (hatIdx >= 0 || ax.length === 10)
+      ({ up, down, left, right } = hat(ax[hatIdx >= 0 ? hatIdx : 9]));
+    else if (ax.length >= 8) {
+      let dx = ax[6] || 0, dy = ax[7] || 0;
+      left = dx < -0.5, right = dx > 0.5, up = dy < -0.5, down = dy > 0.5;
+    }
+    if (out[12] = btn(up || !!((_a = b[12]) != null && _a.pressed)), out[13] = btn(down || !!((_b = b[13]) != null && _b.pressed)), out[14] = btn(left || !!((_c = b[14]) != null && _c.pressed)), out[15] = btn(right || !!((_d = b[15]) != null && _d.pressed)), b.length <= 11 && ax.length >= 6) {
+      out[9] = btn(!!((_e = b[7]) != null && _e.pressed)), out[8] = btn(!!((_f = b[6]) != null && _f.pressed)), out[10] = btn(!!((_g = b[9]) != null && _g.pressed)), out[11] = btn(!!((_h = b[10]) != null && _h.pressed));
+      let tl = (((_i = ax[2]) != null ? _i : -1) + 1) / 2, tr = (((_j = ax[5]) != null ? _j : -1) + 1) / 2;
+      return out[6] = btn(tl > 0.5, tl), out[7] = btn(tr > 0.5, tr), { id: g.id, index: g.index, connected: !0, mapping: "standard", timestamp: g.timestamp, vibrationActuator: g.vibrationActuator, axes: [ax[0] || 0, ax[1] || 0, ax[3] || 0, ax[4] || 0], buttons: out };
+    }
+    return { id: g.id, index: g.index, connected: !0, mapping: "standard", timestamp: g.timestamp, vibrationActuator: g.vibrationActuator, axes: [ax[0] || 0, ax[1] || 0, ax[2] || 0, ax[3] || 0], buttons: out };
+  }
+
   // js/game/input.js
-  var PAD_DEAD = 0.22, PAD_CURVE = 1;
+  var DEAD = 0.22, PAD_DEAD = DEAD, PAD_CURVE = 1;
   var shape = (ax, ay) => {
     let am = Math.hypot(ax, ay);
     if (am <= PAD_DEAD) return [0, 0];
@@ -12800,8 +12847,8 @@
     /** Call once per frame before reading anything. */
     poll(dt = 0) {
       var _a, _b, _c, _d, _e, _f;
-      let live2 = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
-      this.pad = this.padSlot === -1 ? null : this.padSlot !== null ? live2.find((g) => g.index === this.padSlot) || null : this.padIndex === null ? live2[0] || null : live2[this.padIndex] || null, this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
+      let pads = navigator.getGamepads ? [...navigator.getGamepads()] : [], live2 = pads.filter((g) => g && g.connected);
+      this.pad = normPad(this.padSlot === -1 ? null : this.padSlot !== null ? live2.find((g) => g.index === this.padSlot) || null : this.padIndex === null ? activePad(pads) : live2[this.padIndex] || null), this.padName = this.pad ? this.pad.id : "", this.was = this.now, this.now = /* @__PURE__ */ new Set();
       let x = 0, y = 0;
       for (let [code, v] of Object.entries(this.moveMap))
         this.keys.has(code) && (x += v[0], y += v[1]);
@@ -14149,25 +14196,25 @@
     }
     return out.map((o) => o.id);
   }
-  function tick() {
+  function tick2() {
     d = d || read() || { date: "", streak: 0, ids: [], prog: {}, done: [], bonus: 0 };
     let t = today();
     return d.date === t ? !1 : (d.streak = d.date === yesterday() ? d.streak + 1 : 1, d.date = t, d.ids = pickFor(t), d.prog = {}, d.done = [], d.bonus = 100 * Math.min(7, d.streak), write(), !0);
   }
-  var streak = () => (tick(), d.streak);
+  var streak = () => (tick2(), d.streak);
   function claimBonus() {
-    tick();
+    tick2();
     let b = d.bonus || 0;
     return d.bonus = 0, write(), b;
   }
   function objectives() {
-    return tick(), d.ids.map((id) => {
+    return tick2(), d.ids.map((id) => {
       let o = POOL.find((x) => x.id === id), have = Math.min(o.n, d.prog[o.ev] || 0);
       return { ...o, have, done: d.done.includes(id), complete: have >= o.n };
     });
   }
   function event(ev, n = 1) {
-    tick(), d.prog[ev] = (d.prog[ev] || 0) + n;
+    tick2(), d.prog[ev] = (d.prog[ev] || 0) + n;
     let pay = 0;
     for (let id of d.ids) {
       let o = POOL.find((x) => x.id === id);

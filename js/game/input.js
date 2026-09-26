@@ -1,4 +1,5 @@
 /* Unified input: DualSense / any standard gamepad, keyboard, and touch. */
+import { activePad, normPad } from './padRead.js';
 
 const DEAD = 0.22;
 /* v90: stick tuning from Settings → Controller: the deadzone (how far the
@@ -176,9 +177,11 @@ export class Input {
   poll(dt = 0) {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()] : [];
     const live = pads.filter((g) => g && g.connected);
-    this.pad = this.padSlot === -1 ? null
+    /* v123: with no seat assigned, the pad in use (not whatever is in slot
+       0), read in the standard layout — see padRead.js */
+    this.pad = normPad(this.padSlot === -1 ? null
       : this.padSlot !== null ? (live.find((g) => g.index === this.padSlot) || null)
-        : this.padIndex === null ? (live[0] || null) : (live[this.padIndex] || null);
+        : this.padIndex === null ? activePad(pads) : (live[this.padIndex] || null));
     this.padName = this.pad ? this.pad.id : '';
 
     this.was = this.now;
