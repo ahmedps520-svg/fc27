@@ -4,7 +4,7 @@
  * set-piece training in a real match engine).
  */
 import { getState, update } from '../state.js';
-import { navigate, toast, refreshCoins } from '../app.js';
+import { navigate, toast, refreshCoins, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import { Input } from '../game/input.js';
 import { DRILLS, createDrill, step, draw } from '../game/drills.js';
@@ -68,7 +68,7 @@ function practiceHTML() {
 
 export function mount(root) {
   const rerender = () => navigate('skills');
-  root.querySelectorAll('#skTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; rerender(); }));
+  root.querySelectorAll('#skTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { const moved = tab !== b.dataset.tab; tab = b.dataset.tab; if (moved) veil(rerender); else rerender(); }));
   // boards
   if (tab === 'drills' && api.isSignedIn()) {
     for (const el of root.querySelectorAll('[data-board]')) {

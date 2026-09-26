@@ -74,7 +74,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v127';
+export const APP_VERSION = 'v128';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -206,6 +206,13 @@ function curtainFor(name) {
       setTimeout(() => { if (token === curtainToken) { el.classList.add('out'); el.classList.remove('on'); } }, wait);
     });
   };
+}
+
+/** v128: a tab change inside a screen (Ultimate XI's Club → Division →
+ * Online, Career's rows) goes behind the same curtain as a screen change. */
+export function veil(redraw) {
+  const lift = curtainFor(current);
+  try { redraw(); } finally { lift(); }
 }
 
 export function navigate(name, params = {}) {

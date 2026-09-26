@@ -2,7 +2,7 @@
  * The World: four league tables, today's fixtures, promotion and relegation.
  * Read-only apart from one thing — any of today's fixtures can be played.
  */
-import { navigate } from '../app.js';
+import { navigate, veil } from '../app.js';
 import { WORLD } from '../data/generator.js';
 import { crestSVG } from '../components/crest.js';
 import { screenHead } from '../components/screenHead.js';
@@ -245,8 +245,9 @@ let viewNation = 'Saudi Arabia';
 
 export function mount(root) {
   root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+    const moved = tab !== +b.dataset.tab;
     tab = +b.dataset.tab;
-    navigate('world');
+    if (moved) veil(() => navigate('world')); else navigate('world');
   }));
   root.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => {
     const [homeId, awayId] = b.dataset.play.split('|');

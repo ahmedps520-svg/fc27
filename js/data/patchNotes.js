@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v128',
+    date: '2026-09-26',
+    tag: 'Polish',
+    title: 'Tabs load smoothly too',
+    lede: 'Switching tabs now shows the same loading veil as changing screens.',
+    entries: [
+      {
+        head: 'The veil on every tab row',
+        summary: 'Ultimate XI (Club, Division, Online and the rest, plus the Store and Club rows), Career, Pro, Street, Skills and World all show the blurred backdrop and the green ring when you switch tabs.',
+        detail: 'Tapping the tab you are already on does not show it, and neither does a tab redrawing itself after you do something on it.',
+      },
+    ],
+  },
+  {
     version: 'v127',
     date: '2026-09-26',
     tag: 'Polish',

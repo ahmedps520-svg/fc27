@@ -4,7 +4,7 @@
  * `params.pro` (stick and camera locked to him).
  */
 import { getState } from '../state.js';
-import { navigate, toast } from '../app.js';
+import { navigate, toast, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
 import { crestSVG, flagSVG } from '../components/crest.js';
 import { faceSVG, LOOK_SKINS, LOOK_HAIRS } from '../components/face.js';
@@ -284,8 +284,8 @@ export function mount(root) {
     return;
   }
   celebrate(p);
-  root.querySelectorAll('#proTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; rerender(); }));
-  root.querySelectorAll('[data-tab-go]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tabGo; rerender(); }));
+  root.querySelectorAll('#proTabs [data-tab]').forEach((b) => b.addEventListener('click', () => { const moved = tab !== b.dataset.tab; tab = b.dataset.tab; if (moved) veil(rerender); else rerender(); }));
+  root.querySelectorAll('[data-tab-go]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tabGo; veil(rerender); }));
   root.querySelector('#proSim')?.addEventListener('click', () => {
     const r = P.advancePro();
     if (r?.line) toast(`${r.line.rating.toFixed(1)} — ${r.line.goals ? `${r.line.goals} goal${r.line.goals > 1 ? 's' : ''}` : r.line.mins < 90 ? `${r.line.mins} minutes` : 'full match'}`, r.line.rating >= 7 ? 'good' : undefined);
