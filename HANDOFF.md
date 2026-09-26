@@ -15,6 +15,83 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v126 — owner's National Day / store / menu asks
+**Owner's requests:**
+- National Day and the other seasonal themes were "stretched out bad quality
+  flags".
+- Add Saudi packs and player icons.
+- Fix the theme and add a Saudi song.
+- The anthem is official and not copyrighted (owner's word; verified public
+  domain via the US Navy Band recording).
+- The menu background is low bitrate with old models, and the menu player
+  model is outdated.
+- Remove old packs, add a Promo section, and retire packs over time.
+
+**Seasonal (`seasonal.js`):**
+- Root cause: the v83 SVGs used `preserveAspectRatio="none"` (the pennants)
+  and `slice` (the palms and lanterns), so wide screens smeared or cropped
+  them.
+- Now everything is fixed-size, tiled with SVG `<pattern>`s or placed:
+  - National Day: a Najdi parapet band, two palms (160×220), five firework
+    bursts, confetti, and the chip with `nationalDayNumber()` (year − 1930,
+    so 96 in 2026).
+  - Ramadan: a gold 8-point-star band, 6 lanterns (sway plus flame glow;
+    the last two hidden under 700px), a crescent and star, twinkles.
+  - Winter: an icicle fringe band, 26 six-arm SVG flakes with sway, a snow
+    drift.
+- Reduced motion freezes them all.
+- The palm hides when the menu hero is live (`:has`).
+
+**Cards (`pools.js`, `generator.js`, `promos.js`):**
+- `SAUDI_ICONS`: 11, rated 91–97, with a `saudiIcon` flag.
+  - Appended after sbc2, so ids p6414–p6424 and no earlier id moves.
+  - The sweep is identical. `generator.test` counts were updated.
+- `EVENT_CAMPAIGNS.nationalday` is outside the weekly rotation, so
+  `campaignNow` is unchanged:
+  - Saudi, 68+, filler "Jr/Nassr/Shabab" names excluded;
+  - +10;
+  - rarity `nationalday`, with its own card CSS.
+- `.pcard.sa-icon` is green and gold.
+
+**Store (`packs.js`, `squad.js` storeView):**
+- 13 `CORE_PACKS` plus `rotationFor(week)`: 4 of the 15 others, shuffled per
+  cycle so every pack comes round.
+- `season` packs only appear in their theme.
+- `storeCatalog()` returns badges: new/updated (by `added`/`updated` within
+  14 days), back, season. Non-core packs show a leaves-in countdown.
+- The Promo shelf leads.
+- The `nationalday` pack:
+  - variant slot: an ND card, or 1/12 a Saudi Icon;
+  - Saudi filler with silver/gold only, because only one Saudi special
+    exists, so two special rolls would repeat him (this was caught by
+    `packs.test`);
+  - `tests/unit/store-rotation.test.mjs`.
+
+**Music (`audio.js`):**
+- `TRACKS` gains file tracks (`{ file, plays }`), played by
+  `playFileTrack`. The fetch and decode go through the `loadVoice` cache.
+- `preferTrack('green-nights')` runs on National Day.
+- `startAnthemFile()` plays `assets/music/anthem-sa.mp3` (US Navy Band,
+  public domain, see `assets/music/CREDITS.md`). It is used for a Saudi side
+  or on National Day, falls back to the generated anthem, and is precached.
+- `tools/music/khaleeji.mjs` renders `green-nights.mp3` and
+  `ardah-walkout.mp3` offline: Karplus–Strong oud and qanun, membrane drums,
+  claps, riq, strings, Schroeder reverb. `ardah-walkout` is rendered but not
+  wired yet (the anthem took the walk-out).
+
+**Menu hero (`menuHero.js`):**
+- The WebGPU branch drew a cylinder stand-in; that was the "outdated model".
+  It is removed.
+- High/Ultra use the scanned model (`makeRig` + `poseRig`) with the card's
+  hair.
+- Medium uses the built figure.
+- `canvas.dataset.figure` is 'scanned' or 'built'.
+
+**Key art:**
+- `tools/keyart/shoot.mjs` is self-contained: its own server, and it
+  patches the `updateCamera` hook in via `page.route`, so the shipped code is
+  never touched. See the result below.
+
 ### v125 — dreads, braids, bun, mohawk; portrait hair on the scanned model (owner's ask)
 **Styles:**
 - `face.js`: `style` 6 dreads, 7 braids, 8 bun, 9 mohawk. About 30% of

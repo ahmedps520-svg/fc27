@@ -67,8 +67,9 @@ export function mountHero(canvas) {
 
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
     camera.up.set(0, 0, 1);
-    camera.position.set(0, -4.6, 1.25);
-    camera.lookAt(0, 0, 0.95);
+    // v126: a step further back, so the scanned model's head has air above it
+    camera.position.set(0, -5.3, 1.2);
+    camera.lookAt(0, 0, 0.98);
 
     const { faceOf } = await import('./components/face.js');
     const club = player.clubId ? WORLD.clubsById[player.clubId] : null;
@@ -98,8 +99,15 @@ export function mountHero(canvas) {
       scene.add(figure.grp);
     } else scene.add(model.rig.root);
     // a disc of turf to stand on
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.9, 40),
-      new THREE.MeshStandardMaterial({ color: 0x1f6b36, roughness: 0.95 }));
+    // v126: a patch of dark turf, fading at its edge, not a bright green plate
+    const discTex = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+      const gr = g.createRadialGradient(64, 64, 8, 64, 64, 64); gr.addColorStop(0, 'rgba(22,70,38,.95)'); gr.addColorStop(0.7, 'rgba(14,48,26,.6)'); gr.addColorStop(1, 'rgba(8,24,14,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    })();
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.8, 48),
+      new THREE.MeshStandardMaterial({ map: discTex, transparent: true, roughness: 1, depthWrite: false }));
     scene.add(disc);
 
     const proxy = { x: 0, y: 0, vx: 0, vy: 0, dirX: 0, dirY: -1, celebrating: false, diveT: 0 };

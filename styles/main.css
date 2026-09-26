@@ -4135,6 +4135,8 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   color: var(--text-dim); opacity: 0; transition: opacity .8s ease .2s; text-shadow: 0 1px 8px rgba(0,0,0,.8);
 }
 .menu-hero-canvas.is-live + .menu-hero-tag { opacity: 1; }
+/* v126: the hero stands where the right-hand palm would; one of them has to give way */
+.menu-screen:has(.menu-hero-canvas.is-live) .sz-palm.flip { display: none; }
 .menu-wordmark, .hub, .menu-screen .disclaimer { position: relative; z-index: 1; }
 /* On a wide screen the figure gets a column of his own to the right of the
    hub, full height, so all of him is in frame; on anything narrower he stands

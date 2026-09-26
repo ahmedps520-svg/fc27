@@ -1354,6 +1354,9 @@ export function mount(root) {
         const pack = findPack(btn.dataset.buyPack);
         const s = getState();
         if (pack.cost > (s.club.apex || 0)) return toast('Not enough Apex', 'warn');
+        // v126: a pack that left the shelf while the store was open is not for sale (the event's own pack is)
+        const onSale = pack.id === eventPack()?.id || storeCatalog(Date.now(), { season: activeTheme(s.settings.menuTheme || 'auto') }).some((x) => x.pack.id === pack.id);
+        if (!onSale) { toast(`${pack.name} has left the shelf for now`, 'warn'); navigate('squad'); return; }
         /* The free pack is a timer, not a ratio. The old gate was
          * `packsOpened % 3` — but *claiming* never increments packsOpened,
          * only opening does, so whenever the count sat on a multiple of three

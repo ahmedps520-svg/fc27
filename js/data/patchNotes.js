@@ -18,6 +18,40 @@
  */
 export const RELEASES = [
   {
+    version: 'v126',
+    date: '2026-09-26',
+    tag: 'National Day',
+    title: 'National Day, done properly',
+    lede: 'The menu decoration is redrawn, the Saudi greats arrive as Icons with a National Day pack, a Saudi song plays in the menu, and the anthem plays at walk-outs. The store is tidier, and the menu shows a real player model.',
+    entries: [
+      {
+        head: 'A real celebration',
+        summary: 'A Najdi parapet across the top, palm trees, fireworks, green and white confetti, and the day\'s number: 96 this year. Ramadan and winter are redrawn too, with proper lanterns and a crescent for Ramadan, and snowflakes and icicles for winter.',
+        detail: 'The old decorations were stretched to fit the screen, which smeared them on wide monitors. Everything is now drawn at a fixed size and repeated, so it stays sharp on any screen.',
+      },
+      {
+        head: 'Saudi Icons and the National Day pack',
+        summary: 'Eleven Saudi greats join the Icons: Majed Abdullah, Sami Al-Jaber, Mohamed Al-Deayea, Saeed Al-Owairan, Yasser Al-Qahtani and more. The National Day pack gives a green-and-white National Day card of a current Green Falcon, and one pack in twelve gives a Saudi Icon instead.',
+        detail: 'National Day cards are +10 on every Saudi international. The pack is only on sale during National Day. The Icons can also be found in the Legends Vault and the Icon Exchange.',
+      },
+      {
+        head: 'The anthem and a Saudi song',
+        summary: 'The Saudi national anthem plays at walk-outs on National Day and whenever Saudi Arabia plays. "Green Nights", a khaleeji groove with oud, qanun, hand drums and claps, opens the menu music.',
+        detail: 'The anthem is the United States Navy Band\'s public-domain recording. Green Nights is our own, generated note by note.',
+      },
+      {
+        head: 'A tidier store',
+        summary: 'Thirteen core packs are always on sale. Four more rotate each week and leave when the week is up. A Promo shelf at the top shows what is new, updated, back or seasonal.',
+        detail: 'Packs you have already bought still open after they leave the shelf.',
+      },
+      {
+        head: 'A real player on the menu',
+        summary: 'On High and Ultra, the menu now shows your best card as the same detailed player model you play with, with his card\'s hair. It used to be a figure made of cylinders.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v125',
     date: '2026-09-26',
     tag: 'Look',
