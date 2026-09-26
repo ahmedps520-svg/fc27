@@ -152,6 +152,62 @@ function ghostOut(back) {
   setTimeout(drop, 600);
 }
 
+/* ------------------------------ the curtain ------------------------------ *
+ * v127: every screen change goes behind a curtain — a blurred, darkened
+ * veil with the APEX ring spinning — and it lifts when the new screen is
+ * actually there: its images decoded, the fonts in, the menu's key art
+ * loaded. Before this a screen appeared the instant it was asked for, and on
+ * a slow connection that was a layout with holes where the pictures went.
+ *
+ * Never for a screen redrawing itself (the stores and squads re-render
+ * through navigate() after every action), never for the match (it has its
+ * own loading screen), and never shorter than a blink or longer than a
+ * wait: MIN_MS so it reads as a transition rather than a flicker, MAX_MS so
+ * one slow image cannot hold anyone hostage. */
+const CURTAIN_MIN_MS = 260;
+const CURTAIN_MAX_MS = 2500;
+let curtainEl = null;
+let curtainToken = 0;
+const imageReady = new Map();   // url → Promise (a background that has loaded once is not waited for again)
+function preloadImage(url) {
+  if (!imageReady.has(url)) {
+    imageReady.set(url, new Promise((res) => {
+      const im = new Image(); im.onload = im.onerror = () => res(); im.src = url;
+      im.decode?.().then(res, res);
+    }));
+  }
+  return imageReady.get(url);
+}
+function curtain() {
+  if (curtainEl) return curtainEl;
+  curtainEl = document.createElement('div');
+  curtainEl.id = 'screenCurtain';
+  curtainEl.setAttribute('aria-hidden', 'true');
+  curtainEl.innerHTML = `<div class="sc-mark">
+    <svg class="sc-ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/>
+      <circle cx="32" cy="32" r="28" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="52 176"/></svg>
+    <b>A</b></div>`;
+  document.body.appendChild(curtainEl);
+  return curtainEl;
+}
+/** Veil the screen change; lift it when `root`'s pictures (and the menu art) are in. */
+function curtainFor(name) {
+  const token = ++curtainToken;
+  const el = curtain();
+  el.classList.remove('out'); el.classList.add('on');
+  const t0 = performance.now();
+  return () => {
+    // after the new screen has rendered: wait for what it shows
+    const waits = [document.fonts?.ready || Promise.resolve()];
+    for (const img of root.querySelectorAll('img')) if (!img.complete) waits.push(new Promise((res) => { img.addEventListener('load', res, { once: true }); img.addEventListener('error', res, { once: true }); }));
+    if (name === 'menu') waits.push(preloadImage(new URL(innerWidth <= 900 ? '../assets/keyart-1600.webp' : '../assets/keyart.webp', import.meta.url).href));
+    Promise.race([Promise.all(waits), new Promise((res) => setTimeout(res, CURTAIN_MAX_MS))]).then(() => {
+      const wait = Math.max(0, CURTAIN_MIN_MS - (performance.now() - t0));
+      setTimeout(() => { if (token === curtainToken) { el.classList.add('out'); el.classList.remove('on'); } }, wait);
+    });
+  };
+}
+
 export function navigate(name, params = {}) {
   if (LOCKED[name]) {
     toast(LOCKED[name], 'info');
@@ -160,18 +216,22 @@ export function navigate(name, params = {}) {
   }
   const token = ++navToken;
   if (!SCREENS[name]) {
-    // not fetched yet: show a light spinner if it takes a moment, then come back
+    // not fetched yet: the curtain goes up now (v127), and comes down when the screen is in
+    if (name !== 'play' && current !== name) { ++curtainToken; const el = curtain(); el.classList.remove('out'); el.classList.add('on'); }
     const spin = setTimeout(() => { if (token === navToken) document.body.classList.add('screen-loading'); }, 150);
     loadScreen(name).then(() => {
       clearTimeout(spin); document.body.classList.remove('screen-loading');
       if (token === navToken) navigate(name, params);
     }, (err) => {
       clearTimeout(spin); document.body.classList.remove('screen-loading');
+      curtainEl?.classList.remove('on');
       crashGuard.crash(err, `load:${name}`);
       toast('That screen could not load — check your connection', 'warn');
     });
     return;
   }
+  // v127: a change of screen (not a screen redrawing itself, not the match) goes behind the curtain
+  const lift = current !== name && name !== 'play' && current !== null ? curtainFor(name) : null;
   if (typeof activeCleanup === 'function') activeCleanup();
   activeCleanup = null;
   // v93: a screen that was listening for a controller button (Settings, the
@@ -241,6 +301,7 @@ export function navigate(name, params = {}) {
   // music belongs to the front end only; the match runs its own crowd bed
   if (name === 'play') stopMusic(); else startMusic();
   refreshCoins();
+  lift?.();
 }
 
 /** Toast notification used across screens. */

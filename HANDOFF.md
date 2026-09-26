@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v127 — a loading curtain on every screen change (owner's ask)
+- `app.js`: `curtainFor(name)` raises `#screenCurtain` (a blurred and
+  darkened veil with a spinning SVG ring and an "A") on every navigation
+  where `current !== name`, except to `play`.
+- It lifts after the new screen has rendered and these have loaded:
+  - its `<img>`s;
+  - `document.fonts.ready`;
+  - for the menu, the key art (`preloadImage`, cached).
+- Timing is `CURTAIN_MIN_MS` 260 and `CURTAIN_MAX_MS` 2500.
+- It also goes up immediately when a screen module still has to be
+  fetched; the old 150ms spinner is hidden.
+- It blocks pointer events while on. Playwright waits for it, and the
+  whole QA suite was run against it.
+
 ### v126 — owner's National Day / store / menu asks
 **Owner's requests:**
 - National Day and the other seasonal themes were "stretched out bad quality

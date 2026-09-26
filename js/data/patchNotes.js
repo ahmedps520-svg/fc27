@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v127',
+    date: '2026-09-26',
+    tag: 'Polish',
+    title: 'Smooth screen changes',
+    lede: 'Changing screens now shows a short loading veil (a blurred backdrop and the spinning APEX ring) until the new screen has actually loaded, instead of snapping to a half-drawn page.',
+    entries: [
+      {
+        head: 'A curtain between screens',
+        summary: 'Every screen change goes behind the veil, which lifts once the new screen\'s pictures, fonts and background are in. It never lasts longer than two and a half seconds.',
+        detail: 'A screen redrawing itself, for example after you buy a pack, does not show it. The match keeps its own loading screen.',
+      },
+    ],
+  },
+  {
     version: 'v126',
     date: '2026-09-26',
     tag: 'National Day',
