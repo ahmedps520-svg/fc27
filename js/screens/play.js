@@ -245,12 +245,12 @@ export function render(params) {
         <div class="gm-left">
         <div class="gm-bug">
           <span class="bug-team" style="--team:${home.crest.colors[0]}">
-            ${crestSVG(home.crest, home.short, 20)}<b>${home.short}</b>
+            ${crestSVG(home.crest, home.short, 20)}<b>${home.short}</b><i class="bug-reds" id="gmRedsH" hidden></i>
           </span>
           <b class="bug-score" id="gmScore">0</b>
           <b class="bug-score" id="gmScoreA">0</b>
           <span class="bug-team" style="--team:${away.crest.colors[0]}">
-            <b>${away.short}</b>${crestSVG(away.crest, away.short, 20)}
+            <i class="bug-reds" id="gmRedsA" hidden></i><b>${away.short}</b>${crestSVG(away.crest, away.short, 20)}
           </span>
           <span class="bug-clock" id="gmClock">0'</span>
         </div>
@@ -507,7 +507,7 @@ export function mount(root, params) {
   const CUE_KEY = {
     goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
     bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
-    throwin: 'throwin', foul: 'foul', advantage: 'advantage', card: 'card', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+    throwin: 'throwin', foul: 'foul', advantage: 'advantage', card: 'card', red: 'red', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
     offside: 'offside', volley: 'volley', bicycle: 'bicycle', knuckle: 'knuckle', heavyTouch: 'heavyTouch', tactic: 'tactic', adapt: 'adapt',
   };
   let lastCommentAt = -9;
@@ -581,7 +581,9 @@ export function mount(root, params) {
     if (n > bookingsSeen) {
       const bk = match.bookings[n - 1];
       bookingEl.querySelector('b').textContent = bk.name;
-      bookingEl.querySelector('span').textContent = `${match.teams[bk.team]?.short || match.teams[bk.team]?.name || ''} · booked ${bk.minute}'`;
+      // v134: a red says so, and why
+      bookingEl.classList.toggle('red', !!bk.red);
+      bookingEl.querySelector('span').textContent = `${match.teams[bk.team]?.short || match.teams[bk.team]?.name || ''} · ${bk.red ? `sent off ${bk.minute}' · ${bk.why || 'red card'}` : `booked ${bk.minute}'`}`;
       bookingEl.hidden = false; bookingEl.classList.remove('in'); void bookingEl.offsetWidth; bookingEl.classList.add('in');
       bookingT = 3;
     }
@@ -619,6 +621,7 @@ export function mount(root, params) {
 
   const scoreH = root.querySelector('#gmScore');
   const scoreA = root.querySelector('#gmScoreA');
+  const redsH = root.querySelector('#gmRedsH'); const redsA = root.querySelector('#gmRedsA');
   const clockEl = root.querySelector('#gmClock');
   const padEl = root.querySelector('#gmPad');
   const overlay = root.querySelector('#gmOverlay');
@@ -2352,6 +2355,11 @@ export function mount(root, params) {
 
     scoreH.textContent = match.teams[0].score;
     scoreA.textContent = match.teams[1].score;
+    // v134: a red card on the bug for every man a side is down
+    for (const [el, t] of [[redsH, 0], [redsA, 1]]) {
+      const n = match.teams[t].players.filter((q) => q.sentOff).length;
+      if (el && +el.dataset.n !== n) { el.dataset.n = n; el.hidden = !n; el.innerHTML = '<b></b>'.repeat(n); }
+    }
     clockEl.textContent = director ? director.clock() : `${match.minute()}'`;
     if (twoUp) {
       padEl.textContent = inputs.map((inp, i) => `P${i + 1} ${inp.pad ? '✓' : 'kbd'}`).join(' · ');

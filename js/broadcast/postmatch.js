@@ -52,7 +52,8 @@ export function teamStats(match) {
     ['Tackles won', sum(0, 'tackles'), sum(1, 'tackles')],
     ['Saves', sum(0, 'saves'), sum(1, 'saves')],
     ['Distance (km)', (sum(0, 'dist') / 1000).toFixed(1), (sum(1, 'dist') / 1000).toFixed(1)],
-    ['Bookings', (match.bookings || []).filter((b) => b.team === 0).length, (match.bookings || []).filter((b) => b.team === 1).length],
+    ['Bookings', (match.bookings || []).filter((b) => b.team === 0 && !b.red).length, (match.bookings || []).filter((b) => b.team === 1 && !b.red).length],
+    ...((match.bookings || []).some((b) => b.red) ? [['Sent off', (match.bookings || []).filter((b) => b.team === 0 && b.red).length, (match.bookings || []).filter((b) => b.team === 1 && b.red).length]] : []),
   ];
 }
 export function statsHTML(match) {

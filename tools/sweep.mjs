@@ -122,7 +122,8 @@ for (let i = 0; i < N; i++) {
   total.onTarget += m.teams[0].onTarget + m.teams[1].onTarget;
   total.poss += m.possession()[0];
   total.fouls += m.fouls[0] + m.fouls[1];
-  total.yellows += m.bookings.length;
+  total.yellows += m.bookings.filter((b) => !b.red).length;
+  total.reds = (total.reds || 0) + m.reds[0] + m.reds[1];
   total.offside += m.offsides ? m.offsides[0] + m.offsides[1] : 0;
 }
 
@@ -145,6 +146,7 @@ const vs = (k, real) => `${per(total[k]).padEnd(7)} (real, scaled to these shots
 console.log(`  on target %  ${((total.onTarget / total.shots) * 100).toFixed(1)}%       (real ~34%)`);
 console.log(`  fouls        ${vs('fouls', 22)}`);
 console.log(`  yellows      ${vs('yellows', 3.8)}`);
+console.log(`  reds         ${vs('reds', 0.12)}`);
 console.log(`  corners      ${vs('corner', 10)}`);
 console.log(`  throw-ins    ${vs('throwin', 44)}`);
 console.log(`  goal kicks   ${vs('goalkick', 17)}`);

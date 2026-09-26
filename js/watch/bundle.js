@@ -10957,7 +10957,7 @@
   var namedTaker = (team, kind) => {
     var _a;
     let id = (_a = team.takers) == null ? void 0 : _a[kind];
-    return id && team.players.find((p) => p.ref.id === id && p.role !== "GK" && !p.injured) || null;
+    return id && team.players.find((p) => p.ref.id === id && p.role !== "GK" && !p.injured && !p.parked) || null;
   }, Match = class {
     constructor(homeId, awayId, opts = {}) {
       var _a, _b, _c, _d, _e, _f;
@@ -10977,7 +10977,7 @@
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
       ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
-      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = RESPONSIVENESS, this.celebration = typeof opts.celebration == "string" ? opts.celebration : "random", this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.advantage = null, this.advantages = [0, 0], this.advantageBack = [0, 0], this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = RESPONSIVENESS, this.celebration = typeof opts.celebration == "string" ? opts.celebration : "random", this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.reds = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.advantage = null, this.advantages = [0, 0], this.advantageBack = [0, 0], this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -11112,7 +11112,7 @@
         for (let p of team.players)
           half && p.x > PITCH.w / 2 - 2 && (p.x = PITCH.w / 2 - 2 - (p.role === "FWD" ? 3 : 8)), !half && p.x < PITCH.w / 2 + 2 && (p.x = PITCH.w / 2 + 2 + (p.role === "FWD" ? 3 : 8));
       }
-      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD") || takers.find((p) => p.role === "MID") || takers[takers.length - 1];
+      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD" && !p.parked) || takers.find((p) => p.role === "MID" && !p.parked) || takers.filter((p) => !p.parked).pop();
       taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6, taker.y = CY, this.kickoffTaker = taker, this.selectForKickoff(), Object.assign(this.ball, {
         x: PITCH.w / 2,
         y: CY,
@@ -11216,8 +11216,8 @@
       this.parkedAny = !0, this.noOffside = !0, this.repark();
     }
     repark() {
-      if (this.phase !== "freekick")
-        for (let t of this.teams) for (let p of t.players) p.parked && (p.x = -300, p.y = -300, p.vx = p.vy = 0);
+      let fk = this.phase === "freekick";
+      for (let t of this.teams) for (let p of t.players) p.parked && (!fk || p.sentOff) && (p.x = -300, p.y = -300, p.vx = p.vy = 0);
     }
     /**
      * Player lock (v81, the Player Career): a seat with `lockId` only ever
@@ -11231,7 +11231,7 @@
       let ok = !0;
       for (let c of this.controllers) {
         if (!c.lockId) continue;
-        let i = this.teams[c.team].players.findIndex((p) => p.ref.id === c.lockId);
+        let i = this.teams[c.team].players.findIndex((p) => p.ref.id === c.lockId && !p.sentOff);
         i >= 0 ? (c.activeIdx = i, c.benched = !1) : (c.benched = !0, ok = !1);
       }
       return ok;
@@ -11292,7 +11292,7 @@
       let team = this.teams[teamIdx];
       if (!team || team.subsLeft <= 0) return !1;
       let p = team.players[pitchIdx], incoming = (_a = team.bench) == null ? void 0 : _a[benchIdx];
-      return !p || !incoming || this.cameOff(incoming.id) || p.role === "GK" && incoming.position !== "GK" ? !1 : (this.tally(p, "dist", 0), this.pst[p.ref.id].off = this.t, team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.downT = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.tally(p, "dist", 0), this.pst[incoming.id] && (this.pst[incoming.id].on = this.t), this.cue("whistle"), !0);
+      return !p || !incoming || p.sentOff || this.cameOff(incoming.id) || p.role === "GK" && incoming.position !== "GK" ? !1 : (this.tally(p, "dist", 0), this.pst[p.ref.id].off = this.t, team.bench[benchIdx] = p.ref, p.ref = incoming, Object.assign(p, attributesOf(incoming)), p.touchLock = 0, p.stumble = 0, p.slide = 0, p.downT = 0, p.diveT = 0, p.injured = !1, p.skillT = 0, p.spinT = 0, p.burst = null, p.skillKind = null, team.subsLeft -= 1, this.tally(p, "dist", 0), this.pst[incoming.id] && (this.pst[incoming.id].on = this.t), this.cue("whistle"), !0);
     }
     /* ----------------------------- movement ---------------------------- */
     /**
@@ -11405,7 +11405,9 @@
       if (carrier) {
         let def = carrier === a ? b : a, cs = Math.hypot(carrier.vx, carrier.vy), ds = Math.hypot(def.vx, def.vy), beaten = (def.x - carrier.x) * (carrier.dirX || 0) + (def.y - carrier.y) * (carrier.dirY || 0) < 0.3;
         if (cs > ds + 0.6 && beaten && def.downT <= 0 && Math.random() < (0.7 + this.aggressionOf(def) * 1.6) * (this.inPenaltyArea(carrier, def.team) ? TUNE.boxCare : 1) * dt) {
-          this.fouls[def.team] += 1, this.cue("foul", def), carrier.downT = 1.2, carrier.downMax = 1.2, carrier.stumble = Math.max(carrier.stumble, 1.6), this.aggressionOf(def) > 0.75 && def.cards < 1 && Math.random() < 0.3 && (def.cards += 1, this.cue("card", def), this.bookings.push({ team: def.team, name: def.ref.name, minute: this.minute() })), this.inPenaltyArea(carrier, def.team) ? this.awardPenalty(1 - def.team, def) : this.awardFreeKick(1 - def.team, carrier, def);
+          this.fouls[def.team] += 1, this.cue("foul", def), carrier.downT = 1.2, carrier.downMax = 1.2, carrier.stumble = Math.max(carrier.stumble, 1.6);
+          let inBoxT = this.inPenaltyArea(carrier, def.team), deniedT = this.deniedChance(carrier, def);
+          deniedT && !inBoxT ? this.sendOff(def, "denied a goal-scoring chance") : (deniedT || this.aggressionOf(def) > 0.75 && Math.random() < 0.3) && this.book(def), def.sentOff && this.ball.owner === def && this.release(def, 0, 0, 0), inBoxT ? this.awardPenalty(1 - def.team, def) : this.awardFreeKick(1 - def.team, carrier, def);
           return;
         }
       }
@@ -11486,7 +11488,7 @@
       if (!c || c.lockId) return;
       let dm = Math.hypot(dir.x, dir.y) || 1, taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o)), best = null, bestScore = -1 / 0;
       for (let q of this.teams[c.team].players) {
-        if (q === from || q.role === "GK" || taken.includes(q)) continue;
+        if (q === from || q.role === "GK" || q.parked || taken.includes(q)) continue;
         let dx = q.x - from.x, dy = q.y - from.y, d2 = Math.hypot(dx, dy) || 1, align = (dx * dir.x + dy * dir.y) / (d2 * dm);
         if (align < 0.5) continue;
         let score = align * 2 - d2 / 40;
@@ -11499,7 +11501,7 @@
       if (!c || c.lockId) return;
       let taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o)), best = null, bestD = 1 / 0;
       for (let p of this.teams[c.team].players) {
-        if (p.role === "GK" || taken.includes(p)) continue;
+        if (p.role === "GK" || p.parked || taken.includes(p)) continue;
         let d2 = dist(p, this.ball);
         d2 < bestD && (bestD = d2, best = p);
       }
@@ -11789,7 +11791,7 @@
     startCorner(attacking, cornerY, cornerX) {
       let b = this.ball, atk = this.teams[attacking], def = this.teams[1 - attacking];
       b.x = cornerX < PITCH.w / 2 ? 0.6 : PITCH.w - 0.6, b.y = cornerY < CY ? 0.6 : PITCH.h - 0.6, b.z = 0, b.vx = b.vy = b.vz = 0, b.owner = null, b.curl = 0, b.shotBy = null;
-      let goalX = cornerX < PITCH.w / 2 ? 0 : PITCH.w, inw = goalX < PITCH.w / 2 ? 1 : -1, taker = namedTaker(atk, "corner") || atk.players.filter((p) => p.role !== "GK").sort((a, z) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(z.x - b.x, z.y - b.y))[0];
+      let goalX = cornerX < PITCH.w / 2 ? 0 : PITCH.w, inw = goalX < PITCH.w / 2 ? 1 : -1, taker = namedTaker(atk, "corner") || atk.players.filter((p) => p.role !== "GK" && !p.parked).sort((a, z) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(z.x - b.x, z.y - b.y))[0];
       taker.x = b.x + inw * 1.4, taker.y = b.y + (b.y < CY ? 1.2 : -1.2), taker.vx = taker.vy = 0;
       let ATTACK_IN_BOX = 4, DEFEND_IN_BOX = 5, attackers = atk.players.filter((p) => p !== taker && p.role !== "GK").sort((a, z) => z.ref.stats.physical + z.ref.overall - (a.ref.stats.physical + a.ref.overall));
       attackers.forEach((p, i) => {
@@ -12144,9 +12146,77 @@
         if (Math.random() < chance) {
           this.fouls[p.team] += 1, this.cue("foul", p);
           let adv = TUNE.advantage && !this.inPenaltyArea(owner, p.team) && this.advantageFor(owner, p);
-          adv ? (owner.stumble = Math.max(owner.stumble, 0.2), p.stumble = Math.max(p.stumble, 1), this.advantage = { team: owner.team, x: owner.x, y: owner.y, offender: p, t: 2.5 }, this.advantages[owner.team] += 1, this.cue("advantage", owner)) : (owner.downT = 1.1 + frac * 0.9, owner.downMax = owner.downT, owner.vx = p.dirX * 3.4, owner.vy = p.dirY * 3.4, owner.stumble = Math.max(owner.stumble, owner.downT + 0.5)), !owner.injured && Math.random() < 0.125 && this.injure(owner), frac > 0.82 && p.cards < 1 && (p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() })), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : adv || this.awardFreeKick(1 - p.team, owner, p);
+          adv ? (owner.stumble = Math.max(owner.stumble, 0.2), p.stumble = Math.max(p.stumble, 1), this.advantage = { team: owner.team, x: owner.x, y: owner.y, offender: p, t: 2.5 }, this.advantages[owner.team] += 1, this.cue("advantage", owner)) : (owner.downT = 1.1 + frac * 0.9, owner.downMax = owner.downT, owner.vx = p.dirX * 3.4, owner.vy = p.dirY * 3.4, owner.stumble = Math.max(owner.stumble, owner.downT + 0.5)), !owner.injured && Math.random() < 0.125 && this.injure(owner);
+          let inBoxK = this.inPenaltyArea(owner, p.team), aggK = this.aggressionOf(p);
+          (slide ? frac > 0.95 : frac > 0.97 && aggK > 0.6) && Math.random() < 0.05 + 0.22 * aggK ? this.sendOff(p, "serious foul play") : !inBoxK && !adv && this.deniedChance(owner, p) ? this.sendOff(p, "denied a goal-scoring chance") : frac > 0.82 && this.book(p), this.inPenaltyArea(owner, p.team) ? this.awardPenalty(1 - p.team, p) : adv || this.awardFreeKick(1 - p.team, owner, p);
         }
       }
+    }
+    /**
+     * v134: a caution. A second one is a red — he goes, and his side plays on a
+     * man short. Keepers are cautioned but never sent off: there is no keeper on
+     * the pitch to take the gloves, so a keeper's second yellow is not shown.
+     */
+    book(p) {
+      if (!(!p || p.sentOff)) {
+        if (p.cards >= 1) {
+          if (p.role === "GK") return;
+          p.cards += 1, this.sendOff(p, "second yellow");
+          return;
+        }
+        p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() });
+      }
+    }
+    /**
+     * v134: off. The card is recorded where it was shown (the referee turns to
+     * that spot), he leaves the pitch at once — parked, like the practice arena's
+     * missing men, so no AI, tackle, pickup or taker ever reaches him — and his
+     * side reshapes around the gap (reshapeAfterRed). A keeper is never sent off.
+     * @param {string} why  'second yellow' | 'denied a goal-scoring chance' | 'serious foul play'
+     */
+    sendOff(p, why) {
+      if (!p || p.sentOff) return;
+      if (p.role === "GK") {
+        this.book(p);
+        return;
+      }
+      let team = this.teams[p.team];
+      p.sentOff = !0, this.reds[p.team] += 1, this.cue("red", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute(), red: !0, why, x: p.x, y: p.y }), this.feed.unshift("".concat(this.minute(), "'  ").concat(team.short, " — ").concat(p.ref.name, " sent off (").concat(why, ")")), this.ball.owner === p && this.release(p, 0, 0, 0), this.reshapeAfterRed(team, p), p.parked = !0, this.parkedAny = !0;
+      for (let c of this.controllers) this.playerOf(c) === p && this.cycleActive(c);
+      let r = this.pst[p.ref.id];
+      r && (r.off = this.t), this.repark();
+    }
+    /**
+     * v134: a man short. The line behind the gap fills it from the line in front
+     * — a defender off and the nearest midfielder drops into his slot (and his
+     * job); a midfielder off and a forward drops in, if there is one to spare —
+     * so the side goes 4-4-1 rather than playing with a hole in the back four.
+     * `team.short` men down also sit a touch deeper (shapeTarget).
+     */
+    reshapeAfterRed(team, off) {
+      team.down = (team.down || 0) + 1;
+      let from = off.role === "DEF" ? "MID" : off.role === "MID" ? "FWD" : null;
+      if (!from) return;
+      let pool = team.players.filter((q2) => q2.role === from && !q2.parked && q2 !== off);
+      if (from === "FWD" && pool.length < 2 || !pool.length) return;
+      pool.sort((a, b) => Math.abs(a.sy - off.sy) - Math.abs(b.sy - off.sy));
+      let q = pool[0];
+      q.sx = off.sx, q.sy = off.sy, q.role = off.role, q.tRole = off.tRole;
+    }
+    /**
+     * v134: was he through on goal? Heading for it, within about 30 m and not
+     * out wide, with no defender but the offender (and the keeper) between him
+     * and the goal. Stopping that man, outside the area, is a red.
+     */
+    deniedChance(victim, offender) {
+      if (!victim || !offender || victim.team === offender.team) return !1;
+      let atk = this.teams[victim.team], goalX = atk.dir > 0 ? PITCH.w : 0, k = PITCH.h / 68;
+      if (Math.hypot(goalX - victim.x, CY - victim.y) > 30 * SCALE || Math.abs(victim.y - CY) > 17 * k || (victim.vx || 0) * atk.dir + Math.max(0, (victim.dirX || 0) * atk.dir) * 1.5 < 0.8) return !1;
+      let his = Math.abs(goalX - victim.x);
+      for (let q of this.teams[offender.team].players)
+        if (!(q === offender || q.role === "GK" || q.parked) && Math.abs(goalX - q.x) < his + 0.5 && Math.abs(q.y - victim.y) < 11 * k)
+          return !1;
+      return !0;
     }
     /** v113: may the referee play advantage? In the fouled side's attacking half but out of shooting range, going forward with pace, and nobody but the offender within 6 m of him. */
     advantageFor(owner, offender) {
@@ -12226,7 +12296,7 @@
     awardFreeKick(attacking, at, offender) {
       let atk = this.teams[attacking], def = this.teams[1 - attacking], goalX = atk.dir > 0 ? PITCH.w : 0, b = this.ball;
       Object.assign(b, { x: clamp2(at.x, 2, PITCH.w - 2), y: clamp2(at.y, 2, PITCH.h - 2), z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null, inNet: null, curl: 0, shotBy: null });
-      let toGoal = Math.hypot(goalX - b.x, CY - b.y), shootingRange = toGoal < 32, taker = shootingRange && namedTaker(atk, "fk") || atk.players.filter((q) => q.role !== "GK").sort((x, y) => shootingRange ? y.ref.stats.shooting - x.ref.stats.shooting : dist(x, b) - dist(y, b))[0];
+      let toGoal = Math.hypot(goalX - b.x, CY - b.y), shootingRange = toGoal < 32, taker = shootingRange && namedTaker(atk, "fk") || atk.players.filter((q) => q.role !== "GK" && !q.parked).sort((x, y) => shootingRange ? y.ref.stats.shooting - x.ref.stats.shooting : dist(x, b) - dist(y, b))[0];
       taker.x = b.x - atk.dir * 2.6, taker.y = b.y + (b.y < CY ? -0.8 : 0.8), taker.vx = taker.vy = 0, taker.touchLock = 0, offender && (offender.stumble = Math.max(offender.stumble, 0.6));
       let wallN = toGoal < 24 ? 4 : shootingRange ? 3 : 0, wx = goalX - b.x, wy = CY - b.y, wd = Math.hypot(wx, wy) || 1;
       def.players.filter((q) => q.role !== "GK").sort((x, y) => y.ref.stats.physical - x.ref.stats.physical).forEach((q, i) => {
@@ -12366,7 +12436,7 @@
         curl: 0,
         shotBy: null
       });
-      let taker = namedTaker(atk, "pen") || atk.players.filter((p) => p.role !== "GK").sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
+      let taker = namedTaker(atk, "pen") || atk.players.filter((p) => p.role !== "GK" && !p.parked).sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
       taker.x = spotX - atk.dir * 2.2, taker.y = CY, taker.vx = taker.vy = 0, taker.touchLock = 0;
       let n = 0;
       for (let t of [0, 1])
@@ -12430,7 +12500,7 @@
     }
     shapeTarget(p) {
       var _a, _b, _c, _d;
-      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = (((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16) * SCALE, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
+      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), shortOf = team.down ? team.down * 2.2 * SCALE : 0, squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = (((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16) * SCALE, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop - shortOf + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
       if (role) {
         let adj = weHave ? role.has : role.not;
         x += team.dir * adj.fwd;
@@ -12458,7 +12528,7 @@
         let agg = this.aggressionOf(p), opp = this.teams[1 - p.team];
         if (b.owner && b.owner.team !== p.team && opp.counterT > 0 && dist(p, b.owner) < 2.6 && p.downT <= 0 && Math.abs(b.owner.x - PITCH.w / 2) < 30 && p.cards < 1 && Math.random() < (0.5 + agg) * dt) {
           let o = b.owner;
-          this.fouls[p.team] += 1, this.cue("foul", p), o.downT = 0.8, o.downMax = 0.8, Math.random() < 0.7 && (p.cards += 1, this.cue("card", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() })), opp.counterT = 0, this.awardFreeKick(1 - p.team, o, p);
+          this.fouls[p.team] += 1, this.cue("foul", p), o.downT = 0.8, o.downMax = 0.8, Math.random() < 0.7 && this.book(p), opp.counterT = 0, this.awardFreeKick(1 - p.team, o, p);
           return;
         }
         let commit = 2.3 + agg * 1.6;
@@ -14024,6 +14094,13 @@
       "Into the book goes {player}.",
       "A caution for {player} — he has to be careful now.",
       "The referee reaches for his pocket. {player} is shown yellow."
+    ],
+    red: [
+      "Red card! {player} is sent off!",
+      "Off he goes. {player} sees red.",
+      "{player} is dismissed, and {team} are down to ten.",
+      "The referee shows red to {player}!",
+      "That is a red card. {player} walks."
     ],
     injury: [
       "{player} is down, and he is not getting up quickly.",
