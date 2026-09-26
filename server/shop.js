@@ -44,53 +44,62 @@ function recordSale(dataDir, cents) {
 /* ------------------------------- the email ------------------------------- */
 /**
  * The receipt. Tables and inline styles only — that is all mail clients
- * render reliably — in the game's colours: near-black, the APEX green, the
- * Ultimate violet for the currency.
+ * render reliably. v131: the game's own look. The swoosh, the ladder and the
+ * lit rules are pictures from assets/email (tools/email/art.mjs), because no
+ * mail client draws a glowing SVG line; the glow on the type and the panels is
+ * text-shadow and box-shadow, which Apple Mail shows and the rest ignore.
  */
-function purchaseEmail({ bundle, ref, club, player, balance, at = new Date() }) {
+const ART_VERSION = '131';
+function purchaseEmail({ bundle, ref, club, player, balance, at = new Date(), origin = process.env.PUBLIC_ORIGIN || 'https://fc27.onrender.com' }) {
   const got = bundle.ultimate + bundle.bonus;
   const when = at.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
   const subject = `New purchase ${usd(bundle.cents)} · ${got} Ultimate · ${ref}`;
-  const row = (k, v) => `<tr><td style="padding:10px 0;border-bottom:1px solid #1b2230;color:#8b95a7;font-size:13px">${k}</td><td align="right" style="padding:10px 0;border-bottom:1px solid #1b2230;color:#f2f5fa;font-size:14px;font-weight:600">${v}</td></tr>`;
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="dark"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#05070e;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05070e;padding:28px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
-  <tr><td style="padding:0 4px 18px">
-    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-      <td width="34" height="34" style="width:34px;height:34px;border-radius:50%;border:3px solid #23c55e;text-align:center;vertical-align:middle;line-height:34px;color:#fff;font-weight:900;font-style:italic;font-size:18px">A</td>
-      <td style="padding-left:12px;color:#fff;font-weight:900;font-style:italic;letter-spacing:3px;font-size:18px">APEX <span style="color:#23c55e">XI</span></td>
+  const art = (f) => `${origin}/assets/email/${f}?v=${ART_VERSION}`;
+  const NUM = "font-family:Bahnschrift,'DIN Alternate',Oswald,'Arial Narrow','Helvetica Neue',Arial,sans-serif";
+  const G = '#23c55e';
+  const rule = `<tr><td style="padding:0;line-height:0;font-size:0"><img src="${art('divider.png')}" width="560" height="14" alt="" style="display:block;width:100%;max-width:560px;height:auto;border:0"></td></tr>`;
+  const row = (k, v) => `<tr><td style="padding:11px 0;border-bottom:1px solid #182131;color:#7d889c;font-size:12px;letter-spacing:1.6px;text-transform:uppercase">${k}</td><td align="right" style="padding:11px 0;border-bottom:1px solid #182131;color:#f2f5fa;font-size:14px;font-weight:600">${v}</td></tr>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#05070e;font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<div style="display:none;max-height:0;overflow:hidden">+${usd(bundle.cents)} · ${got} Ultimate · ${esc(ref)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05070e;padding:24px 10px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0c111b;border:1px solid #1b2536;border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px rgba(35,197,94,.12),0 0 40px rgba(35,197,94,.14)">
+  <tr><td style="padding:0;line-height:0;font-size:0"><img src="${art('header.jpg')}" width="560" height="170" alt="APEX XI · Store · new order" style="display:block;width:100%;max-width:560px;height:auto;border:0;color:${G};font-size:14px"></td></tr>
+  <tr><td style="padding:22px 26px 20px;border-left:3px solid ${G}">
+    <div style="${NUM};color:#f6f9ff;font-size:28px;font-weight:800;font-style:italic;letter-spacing:-.5px;line-height:1.05">You just got a purchase</div>
+    <div style="${NUM};color:${G};font-size:58px;font-weight:800;font-style:italic;letter-spacing:-2px;line-height:1;margin-top:10px;text-shadow:0 0 18px rgba(35,197,94,.65),0 0 2px rgba(35,197,94,.9)">+${usd(bundle.cents)}</div>
+  </td></tr>
+  <tr><td style="padding:0 26px 18px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#110d22;border:1px solid #4a3a82;border-left:3px solid #b892ff;border-radius:10px;box-shadow:0 0 22px rgba(184,146,255,.22)"><tr>
+      <td style="padding:14px 16px;${NUM};color:#c9b0ff;font-size:30px;font-weight:800;font-style:italic;text-shadow:0 0 14px rgba(184,146,255,.7)">&#10022; ${got}</td>
+      <td align="right" style="padding:14px 16px;color:#cbbcf5;font-size:12px;letter-spacing:1.4px;text-transform:uppercase">${bundle.ultimate} Ultimate${bundle.bonus ? `<br><span style="color:${G};font-weight:700">+${bundle.bonus} bonus</span>` : ''}</td>
     </tr></table>
   </td></tr>
-  <tr><td style="background:linear-gradient(135deg,#0f9e56,#23c55e);background-color:#15b05a;border-radius:16px 16px 0 0;padding:26px 26px 22px">
-    <div style="color:#d9ffe8;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Store · new order</div>
-    <div style="color:#fff;font-size:26px;font-weight:900;margin-top:6px">You just got a purchase</div>
-    <div style="color:#fff;font-size:44px;font-weight:900;margin-top:10px;letter-spacing:-1px">+${usd(bundle.cents)}</div>
-  </td></tr>
-  <tr><td style="background:#0c111b;border:1px solid #1b2230;border-top:0;border-radius:0 0 16px 16px;padding:22px 26px 8px">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#141026;border:1px solid #3a2d63;border-radius:12px;margin-bottom:14px"><tr>
-      <td style="padding:14px 16px;color:#b892ff;font-size:28px;font-weight:900">✦ ${got}</td>
-      <td align="right" style="padding:14px 16px;color:#cbbcf5;font-size:13px">${bundle.ultimate} Ultimate${bundle.bonus ? `<br><span style="color:#23c55e;font-weight:700">+${bundle.bonus} bonus</span>` : ''}</td>
-    </tr></table>
+  ${rule}
+  <tr><td style="padding:8px 26px 6px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      ${row('Order', esc(ref))}
+      ${row('Order', `<span style="${NUM};letter-spacing:1px">${esc(ref)}</span>`)}
       ${row('Player', esc(player || 'Guest (not signed in)'))}
       ${row('Club', esc(club || '—'))}
       ${row('Time', when)}
       ${row('Payment', 'Test card · no charge')}
     </table>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 18px;background:#08140e;border:1px solid #174d31;border-radius:12px"><tr>
-      <td style="padding:16px">
-        <div style="color:#7fdca4;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700">Store balance</div>
-        <div style="color:#fff;font-size:30px;font-weight:900;margin-top:4px">${usd(balance.cents)}</div>
-        <div style="color:#8b95a7;font-size:12px;margin-top:4px">${balance.count.toLocaleString('en-US')} purchase${balance.count === 1 ? '' : 's'} · up ${usd(bundle.cents)} with this one</div>
+  </td></tr>
+  <tr><td style="padding:14px 26px 22px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#06150d;border:1px solid ${G};border-radius:10px;box-shadow:0 0 0 1px rgba(35,197,94,.25),0 0 26px rgba(35,197,94,.3),inset 0 0 18px rgba(35,197,94,.12)"><tr>
+      <td style="padding:16px 18px">
+        <div style="${NUM};color:${G};font-size:11px;letter-spacing:3.4px;text-transform:uppercase;font-weight:700">Store balance</div>
+        <div style="${NUM};color:#ffffff;font-size:36px;font-weight:800;font-style:italic;letter-spacing:-1px;margin-top:4px;text-shadow:0 0 16px rgba(35,197,94,.45)">${usd(balance.cents)}</div>
+        <div style="color:#8b95a7;font-size:12px;margin-top:4px">${balance.count.toLocaleString('en-US')} purchase${balance.count === 1 ? '' : 's'} · <span style="color:${G};font-weight:700">&#9650; ${usd(bundle.cents)}</span> with this one</div>
       </td>
     </tr></table>
   </td></tr>
-  <tr><td style="padding:16px 6px;color:#5d6778;font-size:11px;line-height:1.6;text-align:center">
-    TEST MODE — no card was charged and no money moved. The balance above is a running total of test orders, not real revenue.<br>APEX XI · sent to ${STORE_INBOX}
-  </td></tr>
-</table></td></tr></table></body></html>`;
+  <tr><td style="padding:0;line-height:0;font-size:0"><img src="${art('footer.png')}" width="560" height="60" alt="" style="display:block;width:100%;max-width:560px;height:auto;border:0"></td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px"><tr><td style="padding:16px 8px;color:#5d6778;font-size:11px;line-height:1.6;text-align:center">
+  TEST MODE — no card was charged and no money moved. The balance above is a running total of test orders, not real revenue.<br>APEX XI · sent to ${STORE_INBOX}
+</td></tr></table>
+</td></tr></table></body></html>`;
   const text = [
     'APEX XI — you just got a purchase',
     `+${usd(bundle.cents)}  ·  ${got} Ultimate (${bundle.ultimate}${bundle.bonus ? ` + ${bundle.bonus} bonus` : ''})`,

@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v131',
+    date: '2026-09-26',
+    tag: 'Store',
+    title: 'Store receipts in the game\'s colours',
+    lede: 'The store\'s order emails now use the game\'s own look: the glowing green lines, the division ladder and the APEX XI wordmark.',
+    entries: [
+      {
+        head: 'A redesigned order email',
+        summary: 'Sharp glowing lines top and bottom, a lit amount, and a glowing store-balance panel.',
+        detail: 'The line art is drawn as images, because no mail app can draw a glowing line itself. Text stays text, so the email still reads with images turned off.',
+      },
+    ],
+  },
+  {
     version: 'v130',
     date: '2026-09-26',
     tag: 'Fix',
