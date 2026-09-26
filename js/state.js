@@ -46,7 +46,6 @@ const defaults = () => ({
     pregame: 'full',            // full | short | off — the pre-match show
     broadcastGfx: true,         // straps, boards, pop-ups, momentum bar
     menuTheme: 'auto',          // auto | off | nationalDay | ramadan | winter
-    responsiveness: 0.7,        // v84 hotfix: how quickly your player answers the stick (0–1)
     // v87: performance and accessibility
     battery: false,             // 30 fps cap, lighter picture
     governor: true,             // drop effects before frames drop

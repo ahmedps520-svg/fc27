@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v120',
+    date: '2026-09-26',
+    tag: 'Fair play',
+    title: 'Same feel for everyone, fewer words',
+    lede: 'Everyone now turns at the same speed: the Responsiveness setting is gone. The Ultimate XI and Career screens trade their paragraphs for icons and numbers, and a Start button that did nothing on most SBCs now works.',
+    entries: [
+      {
+        head: 'One feel for everyone',
+        summary: 'The Responsiveness slider is gone. Every player\'s footballer now turns at the default speed, because a sharper turn was an advantage.',
+        detail: 'The match engine fixes it, so an old save\'s slider value or an edited setting changes nothing. The stick deadzone stays: it is about your controller, not your player.',
+      },
+      {
+        head: 'Icons, not paragraphs',
+        summary: 'The Ultimate XI and Career screens show short icon chips and big numbers instead of sentences. Tap the small ⓘ on a panel for the full explanation.',
+        detail: 'The next fixture shows the two ratings face to face. The full-time stats have a bar showing each side\'s share. Pro and Street results, and your career record, are shown as big numbers. The Binder is a grid of tiles.',
+      },
+      {
+        head: 'SBCs fixed and folded',
+        summary: 'Start did nothing on every Squad and Legend SBC. It works now, and the three SBC groups fold so the page is a sixth of the length.',
+        detail: 'Only the first group\'s buttons were listened to. A new check in every build opens each group and starts a challenge in it.',
+      },
+    ],
+  },
+  {
     version: 'v119',
     date: '2026-09-25',
     tag: 'Atmosphere',

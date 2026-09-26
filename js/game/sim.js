@@ -13,6 +13,9 @@ import { DEF_STYLES, BUILD_UPS, ROLES, QUICK_TACTICS, defaultTactics, defaultRol
 import { PITCH, CY, GOAL_HALF, GOAL_HEIGHT, BOX, FIELD, SCALE, setField } from './field.js';
 export { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX, FIELD, setField };
 
+/** v120: how quickly the person's player answers the stick — the same for everyone (it used to be a setting, and a sharper turn is an edge). */
+export const RESPONSIVENESS = 0.7;
+
 /**
  * Gameplay presets.
  *
@@ -369,7 +372,8 @@ export class Match {
     // gets the football one rather than the esports one.
     this.preset = PRESETS[opts.preset] || PRESETS.authentic;
     // v84 hotfix: how quickly a person's player answers the stick (0–1, Settings → Controls)
-    this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7;
+    // v120: one feel for everyone — a setting that sharpens your turning is an edge, so it is fixed
+    this.responsiveness = RESPONSIVENESS;
     // v87: a person's assists (Settings → Accessibility); the CPU never reads them
     this.celebration = typeof opts.celebration === 'string' ? opts.celebration : 'random';   // v110: a person's own side's goal celebration
     this.assist = { shoot: opts.assist?.shoot ? 1 : 0, pass: [0, 1, 2].includes(opts.assist?.pass) ? opts.assist.pass : 1 };
@@ -910,8 +914,8 @@ export class Match {
    * took 1.7 s, swinging out wide, and the player felt like a brick. Here the
    * velocity chases the stick directly, so any direction, straight back
    * included, is where the player goes within a few frames; the only weight
-   * left is a slight softening at full sprint. `responsiveness` (Settings →
-   * Controls, 0–1) scales the rates.
+   * left is a slight softening at full sprint. `responsiveness` (0–1) scales
+   * the rates; since v120 it is the same fixed value for every player.
    */
   driveHuman(p, dx, dy, dt, factor = 1) {
     if (p.slide > 0 || p.downT > 0) return;

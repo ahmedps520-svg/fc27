@@ -15,6 +15,74 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v120 — owner's asks: responsiveness locked, fewer words, bug hunt
+**Owner's requests (2026-09-26):**
+- Lock responsiveness for everyone, because it was an edge.
+- Too much text: start with Squad / Ultimate XI / Career and the in-match
+  HUD and results.
+- Hunt the bugs.
+- Replace the commentary voice with recorded AI voice packs.
+- Only responsiveness gets locked; assists stay as they are.
+
+**Responsiveness:**
+- `sim.js` exports `RESPONSIVENESS = 0.7`. The `Match` ignores
+  `opts.responsiveness`.
+- The Settings slider, the state default and play.js's pass-through are
+  removed.
+- `responsiveness.test.mjs` now asserts that 0 and 1 are ignored.
+- `pad-reach` slides `#padDead` instead.
+
+**Fewer words (`js/components/facts.js`, new, precached):**
+- `facts([[icon, text, tone]])` draws icon chips. `about(text)` is a
+  `<details>` ⓘ in the panel head. `bigStat(value, label, icon, tone)` draws
+  a big number with a label.
+- The icons are drawn in the menu's line style.
+- Applied to `uxiHub.js`, `squad.js`, `career.js`, `careerDepth.js`, and
+  play.js's full-time screen:
+  - the next fixture is a VS strip;
+  - the full-time stats have split bars (`.gm-stats.split`, `--l`);
+  - Pro and Street results and the career record use `bigStat`;
+  - the Binder is a tile grid (`.bset.open` spans the row);
+  - evolution tracks show a lock chip.
+- Left for v121/122: the remaining `.hint` data lines (fixture, offers,
+  cup-alive list), the pause menu and other in-match notes.
+
+**Bug found (the worst): SBC Start was dead outside the Quick group.**
+- `squad.js` listened on `querySelector('.sbc-list')`, which is only the
+  first list, so every Squad and Legend SBC's Start did nothing.
+- Now delegated on `#sbcGroups`.
+- The groups are `<details>`, one open at a time (`sbcOpen`). The page on a
+  390px phone went from 13,212 px to 2,277 px.
+- New CI step `tests/qa/sbc.mjs`.
+
+**Sweeps before the fixes:** unit, balance sweep (identical), bot, cup,
+pad-reach, touch-audit, touch-editor, layout, a11y and the 20-match soak all
+passed. The SBC bug was found by eye on screenshots; no test covered it.
+
+**Commentary voice packs: blocked, plan ready.**
+- The owner chose recorded AI voice packs.
+- Higgsfield: 0.1 credits on the free plan against 0.3 per clip. Three
+  packs of about 300 clips each is about 270 credits.
+- Kokoro-82M (Apache-2.0) is the plan. huggingface.co answers 403 through
+  the egress proxy. The owner added it to the environment, but this
+  container kept its start-up policy.
+- Fetching the weights via npm was refused by the permission classifier as a
+  bypass. Do not retry that.
+- On a fresh container:
+  1. `curl huggingface.co` first. Also needs `cdn-lfs.huggingface.co` and
+     `cas-bridge.xethub.hf.co`.
+  2. Get `onnx-community/Kokoro-82M-v1.0-ONNX` via pip `kokoro-onnx`.
+- Design:
+  - 184 of the 238 play-by-play lines carry `{player}`/`{team}`, so a pack
+    needs its own name-free bank per event key. Subtitles show exactly what
+    is spoken.
+  - Two speakers per pack, about 25 keys × 5 lines.
+  - Opus files under `assets/voice/<pack>/`, loaded lazily. They should not
+    go in the service-worker precache, to keep the install small.
+  - `broadcast/voice.js` plays the clips through the audio bus and falls
+    back to device speech.
+  - A Settings select to choose the pack.
+
 ### v119 — real rivalries (backlog #16), and the v118 CI red explained
 **v118 CI.** The run on `01ad46e` failed in `touch-editor.mjs`: the Done tap
 did not close the editor, and 7 checks cascaded from it.

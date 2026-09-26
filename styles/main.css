@@ -239,6 +239,54 @@ body.on-menu .disclaimer { text-shadow: 0 1px 10px rgba(0, 0, 0, .85); }
 .lede { color: var(--text-dim); margin: 0 0 18px; line-height: 1.55; max-width: 62ch; }
 .hint { color: var(--text-mute); font-size: 12.5px; margin: -6px 0 12px; }
 .empty { color: var(--text-mute); text-align: center; padding: 26px 12px; margin: 0; line-height: 1.5; }
+
+/* v120: facts, not paragraphs — icon chips, a folded explanation, big numbers */
+.ico { flex: none; display: inline-block; vertical-align: -3px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 12px; }
+.fact {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--text-dim);
+  font-size: 12px; line-height: 1.2; white-space: nowrap;
+}
+.fact .ico { color: var(--accent); }
+.fact b { font-weight: 700; color: var(--text); font-family: var(--font-num); letter-spacing: .01em; }
+.fact.good .ico, .fact.good b { color: var(--good); }
+.fact.gold .ico, .fact.gold b { color: #ffd166; }
+.fact.warn .ico, .fact.warn b { color: #ff9f5a; }
+.about { position: relative; }
+.panel-head:has(> .about) > h2 { margin-inline-end: auto; }
+.about > summary {
+  list-style: none; cursor: pointer; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 12px/1 var(--font-num); font-style: italic;
+  color: var(--text-mute); border: 1.5px solid var(--line-strong); user-select: none;
+}
+.about > summary::-webkit-details-marker { display: none; }
+.about[open] > summary, .about > summary:hover { color: var(--accent); border-color: var(--accent); }
+.about > p {
+  position: absolute; z-index: 30; right: 0; top: 28px; width: min(300px, 78vw); margin: 0;
+  padding: 12px 14px; border-radius: 12px; background: var(--bg-2, #111827); border: 1px solid var(--line-strong);
+  color: var(--text-dim); font-size: 13px; line-height: 1.5; box-shadow: 0 14px 40px rgba(0, 0, 0, .45);
+}
+[dir="rtl"] .about > p { right: auto; left: 0; }
+.big-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; margin: 4px 0 12px; }
+.big-stat {
+  display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: 14px;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line); text-align: center;
+}
+.big-stat .ico { color: var(--accent); }
+.big-stat b { font: 800 22px/1.1 var(--font-num); color: var(--text); }
+.big-stat span { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-mute); }
+.vs-strip {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 0 0 12px;
+  padding: 12px; border-radius: 16px; background: linear-gradient(90deg, var(--accent-soft), rgba(255, 255, 255, .03) 50%, rgba(255, 90, 90, .12));
+  border: 1px solid var(--line);
+}
+.vs-strip > em { font: 900 italic 18px/1 var(--font-num); color: var(--text-mute); letter-spacing: .08em; }
+.vs-side { display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.vs-side b { font: 900 34px/1 var(--font-num); color: var(--text); }
+.vs-side.you b { color: var(--accent); }
+.vs-side span { font-size: 12px; color: var(--text-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.big-stat.good b { color: var(--good); } .big-stat.gold b { color: #ffd166; } .big-stat.warn b { color: #ff9f5a; }
 .tag {
   font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
   padding: 5px 10px; border-radius: 999px;
@@ -2602,6 +2650,10 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .gm-stats { display: flex; flex-direction: column; gap: 5px; margin-bottom: 18px; }
 .gm-stats > div { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px 4px; border-radius: 8px; background: rgba(255, 255, 255, .035); }
 .gm-stats b { font-family: var(--font-num); font-size: 14px; }
+/* v120: each row carries a split bar — home's share in the accent, away's in red */
+.gm-stats.split > div {
+  background: linear-gradient(90deg, var(--accent) var(--l, 50%), #ff5a6a var(--l, 50%)) bottom / 100% 3px no-repeat, rgba(255, 255, 255, .035);
+}
 .gm-stats span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-mute); }
 .gm-btns { display: flex; gap: 8px; justify-content: center; }
 
@@ -3178,6 +3230,18 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 
 /* ------------------------ squad-building challenges ------------------------ */
 .sbc-list { display: flex; flex-direction: column; gap: 10px; }
+/* v120: SBC groups fold — one open at a time */
+.sbc-grp { border-top: 1px solid var(--line); }
+.sbc-grp:first-of-type { border-top: 0; }
+.sbc-grp > .sbc-list { padding-bottom: 12px; }
+.sbc-group {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 2px;
+  font: 800 15px/1.2 var(--font-num); letter-spacing: .04em; text-transform: uppercase; color: var(--text);
+}
+.sbc-group::-webkit-details-marker { display: none; }
+.sbc-group::after { content: '▾'; margin-inline-start: auto; color: var(--text-mute); transition: transform .2s; }
+.sbc-grp:not([open]) > .sbc-group::after { transform: rotate(-90deg); }
+.sbc-group em { font-style: normal; font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .sbc {
   display: grid; grid-template-columns: 1fr auto; gap: 14px;
   padding: 14px; border-radius: 13px;
@@ -4562,7 +4626,8 @@ html.large-text .tile-name { font-size: 27px; }
 .mkt-mine { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .mkt-mine li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .82rem; padding: 4px 0; border-bottom: 1px solid var(--line); }
 
-.binder-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.binder-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }   /* v120: tiles, two to a phone */
+.bset.open { grid-column: 1 / -1; }
 .bset { display: grid; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); min-width: 0; }
 .bset header { display: grid; gap: 2px; cursor: pointer; }
 .bset header span { font-size: .74rem; opacity: .7; }

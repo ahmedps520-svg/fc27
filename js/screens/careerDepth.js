@@ -10,6 +10,7 @@ import { resolveEntry, fmtCoins, careerClub, sortedCareerTable } from '../career
 import * as v2 from '../careerV2.js';
 import * as v3 from '../careerV3.js';
 import { rateOf, ageOf, potOf, valueIn } from '../careerPeople.js';
+import { facts, about } from '../components/facts.js';
 
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (v) => `${Math.round(v * 100)}`;
@@ -27,9 +28,9 @@ export function trainingHTML(car) {
   const opt = (sel) => `<option value="">Automatic</option>${list.filter((x) => x.pos !== 'GK').map((x) => `<option value="${esc(x.name)}" ${sel === x.name ? 'selected' : ''}>${esc(x.name)} (${x.rating})</option>`).join('')}`;
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Training schedule</h2></header>
+      <header class="panel-head"><h2>Training schedule</h2>${about('Light keeps legs fresh and sharpness drifts; Intense sharpens and grows players faster but tires them and risks injuries. The medical centre speeds recovery.')}</header>
       <div class="chips" id="trSched">${Object.entries(v3.TRAINING).map(([id, t]) => `<button class="chip ${car.training === id ? 'on' : ''}" data-sched="${id}">${t.name}</button>`).join('')}</div>
-      <p class="hint">Light keeps legs fresh and sharpness drifts; Intense sharpens and grows players faster but tires them and risks injuries. The medical centre speeds recovery.</p>
+      ${facts([['heart', 'Light · fresh legs'], ['up', 'Intense · faster growth', 'good'], ['bolt', 'Intense · injury risk', 'warn']])}
     </section>
     <section class="panel glass">
       <header class="panel-head"><h2>Set-piece takers</h2></header>
@@ -69,8 +70,7 @@ export function dressingHTML(car) {
     ${req.length ? `<section class="panel glass ov-offer"><header class="panel-head"><h2>Transfer requests</h2></header><p class="hint">${req.map((x) => esc(x.name)).join(' · ')} want out. Talk to them, give them games — or sell.</p></section>` : ''}
     ${who ? talkHTML(car, who, roles[who.name]) : ''}
     <section class="panel glass">
-      <header class="panel-head"><h2>Squad hierarchy</h2><span class="tag">${unhappy.length} unhappy</span></header>
-      <p class="hint">Every player knows where he stands, and expects the minutes that go with it. Fall short and morale drops; broken promises are remembered.</p>
+      <header class="panel-head"><h2>Squad hierarchy</h2><span class="tag">${unhappy.length} unhappy</span>${about('Every player knows where he stands, and expects the minutes that go with it. Fall short and morale drops; broken promises are remembered.')}</header>
       <div class="dep-rows">
         ${list.map((x) => { const pl = v3.plOf(car, x.name); const role = v3.roleById(roles[x.name]); const share = pl.apps ? Math.round(pl.mins / Math.max(1, (car.week - 1) * 90) * 100) : 0; return `
           <button class="dep-row as-btn ${talkTo === x.name ? 'on' : ''}" data-talkto="${esc(x.name)}">
@@ -109,7 +109,7 @@ export function financeHTML(car) {
       </div>
       <h3 class="p-sub">Wage budget</h3>
       <div class="ov-meters"><div class="ov-meter"><span>${fmtCoins(wk)} of ${fmtCoins(wb)} a round</span><i><b style="width:${Math.min(100, (wk / Math.max(1, wb)) * 100)}%" class="${wk > wb ? 'over' : ''}"></b></i></div></div>
-      <p class="hint">Tickets scale with the seats in your ground — expand it in the Club tab. The board sets the wage budget from last season's income.</p>
+      ${facts([['players', 'More seats, more tickets'], ['book', 'Budget from last season']])}
       ${car.fin.history.length ? `<h3 class="p-sub">History</h3>${car.fin.history.slice().reverse().slice(0, 6).map((h) => `<div class="rr"><span>Season ${h.season}</span><b>${fmtCoins(h.tickets + h.tv + h.merch + h.prize + h.sales)} in · ${fmtCoins(h.wages + h.buys + h.facilities + h.agents)} out</b></div>`).join('')}` : ''}
     </section>
     <section class="panel glass">
@@ -125,8 +125,8 @@ export function networkHTML(car) {
   v3.ensureV3(car);
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Scouting network</h2><span class="tag">${car.scouts.length}/3 scouts</span></header>
-      <p class="hint">A scout's stars are how close his potential estimates land. Point each at a region; reports arrive every few weeks, quicker with a better scouting HQ.</p>
+      <header class="panel-head"><h2>Scouting network</h2><span class="tag">${car.scouts.length}/3 scouts</span>${about('A scout\'s stars are how close his potential estimates land. Point each at a region; reports arrive every few weeks, quicker with a better scouting HQ.')}</header>
+      ${facts([['star', 'Stars = accuracy', 'gold'], ['target', 'Pick a region'], ['clock', 'Reports every few weeks']])}
       ${car.scouts.map((s) => `
         <div class="scout">
           <div class="scout-head"><b>${esc(s.name)}</b><span class="stars">${'★'.repeat(s.rating)}${'☆'.repeat(5 - s.rating)}</span>
@@ -151,8 +151,8 @@ export function loansHTML(car) {
   const hosts = v2.allClubs().filter((c) => c.id !== car.clubId).map((c) => ({ c, avg: v2.squadOverall(car.squads[c.id] || [], car) })).sort((a, b) => a.avg - b.avg).slice(0, 8);
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Loans</h2></header>
-      <p class="hint">Send a young player where he will play: minutes grow him, and he comes back in the summer. Loaned-in players return to their clubs at season end.</p>
+      <header class="panel-head"><h2>Loans</h2>${about('Send a young player where he will play: minutes grow him, and he comes back in the summer. Loaned-in players return to their clubs at season end.')}</header>
+      ${facts([['boot', 'Minutes grow him', 'good'], ['calendar', 'Back in summer']])}
       ${car.loans.length ? car.loans.map((l) => `<div class="rr"><span>${esc(l.name)} · ${l.out ? `out at ${esc(careerClub(l.to)?.short)}` : `in from ${esc(careerClub(l.from)?.short)}`}</span><b>until summer</b></div>`).join('') : ''}
       ${mine.length ? `<div class="dep-loan"><select id="loanWho">${mine.map((x) => `<option value="${esc(x.name)}">${esc(x.name)} (${x.rating}, ${x.age})</option>`).join('')}</select>
         <select id="loanTo">${hosts.map(({ c, avg }) => `<option value="${c.id}">${esc(c.name)} (${avg})</option>`).join('')}</select>
@@ -186,7 +186,7 @@ export function pillarsHTML(car) {
   const sc = v3.pillarScores(car, pos);
   return `<h3 class="p-sub">Five pillars · overall ${sc.overall}</h3>
     ${v3.PILLARS.map((p) => `<div class="ov-meter pillar"><span><b>${p.name}</b> — ${esc(t[p.id]?.text || '')}</span><i><b style="width:${Math.round(sc[p.id])}%" class="${sc[p.id] < 35 ? 'over' : ''}"></b></i></div>`).join('')}
-    <p class="hint">Success counts double. The overall score moves the board's patience at season's end.</p>`;
+    ${facts([['trophy', 'Success counts ×2', 'gold'], ['up', 'Moves board patience']])}`;
 }
 
 /* ------------------------------ wiring ------------------------------ */

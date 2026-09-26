@@ -52,6 +52,8 @@ jobs:
         run: node tests/qa/pad-reach.mjs
       - name: Custom Cup end to end (make, draw, play a tie, bracket) and Kick Off on a revisit
         run: node tests/qa/cup.mjs
+      - name: SBCs (every group unfolds, Start opens a challenge in each)
+        run: node tests/qa/sbc.mjs
       - name: Offline play (service worker)
         run: node tests/qa/offline.mjs
       - name: Attract demo (idle title plays itself; any input leaves; nothing paid)

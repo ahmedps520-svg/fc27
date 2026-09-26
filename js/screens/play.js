@@ -35,6 +35,8 @@ import * as tournament from '../tournament.js';
 import * as customCup from '../customCup.js';
 import { rivalryOf } from '../data/rivalries.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // v118: a cup's name is the player's own text
+/** v120: home's share of a stat, 0–100, for the full-time split bars (level when neither has any). */
+const split = (a, b) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : 50);
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
@@ -49,6 +51,7 @@ import {
 
 export const TITLE = 'Match';
 import { CY } from '../game/field.js';
+import { bigStat } from '../components/facts.js';
 
 /**
  * What the loading screen says while it waits.
@@ -403,7 +406,6 @@ export function mount(root, params) {
   const useModels = quality === 'high' || quality === 'ultra' || quality === 'cinema';
 
   const match = new Match(params.homeId, params.awayId, {
-    responsiveness: getState().settings.responsiveness ?? 0.7,   // v84 hotfix
     celebration: getState().settings.celebration || 'random',     // v110: your side's goal celebration
     assist: { shoot: getState().settings.shootAssist, pass: getState().settings.passAssist ?? 1 },
     duration: params.duration || 240,
@@ -2948,11 +2950,11 @@ export function mount(root, params) {
           </div>` : ''}
         ${goals.length ? `<ul class="gm-goals">${goals.map(([t, s]) =>
           `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>` : ''}
-        <div class="gm-stats">
-          <div><b>${ph}%</b><span>Possession</span><b>${pa}%</b></div>
-          <div><b>${h.shots}</b><span>Shots (${h.onTarget} on)</span><b>${a.shots}</b></div>
-          <div><b>${(h.xg || 0).toFixed(2)}</b><span>Expected goals</span><b>${(a.xg || 0).toFixed(2)}</b></div>
-          <div><b>${h.bigChances || 0}</b><span>Big chances</span><b>${a.bigChances || 0}</b></div>
+        <div class="gm-stats split">
+          <div style="--l:${split(ph, pa)}%"><b>${ph}%</b><span>Possession</span><b>${pa}%</b></div>
+          <div style="--l:${split(h.shots, a.shots)}%"><b>${h.shots}</b><span>Shots (${h.onTarget} on)</span><b>${a.shots}</b></div>
+          <div style="--l:${split(h.xg || 0, a.xg || 0)}%"><b>${(h.xg || 0).toFixed(2)}</b><span>Expected goals</span><b>${(a.xg || 0).toFixed(2)}</b></div>
+          <div style="--l:${split(h.bigChances || 0, a.bigChances || 0)}%"><b>${h.bigChances || 0}</b><span>Big chances</span><b>${a.bigChances || 0}</b></div>
         </div>
         ${goalClips.length ? `<button class="btn ghost" data-o="highlights">▶ Highlights · ${goalClips.length} goal${goalClips.length > 1 ? 's' : ''}</button>` : ''}
         ${goalClips.length && clipSupported() ? '<button class="btn ghost" data-o="clip">⬇ Save highlights as a clip (WebM)</button>' : ''}
@@ -2983,7 +2985,7 @@ export function mount(root, params) {
           <div class="div-result ${streetRes.won ? 'up' : ''}">
             <span class="dr-kicker">Street · ${'★'.repeat(streetRes.stars)}${'☆'.repeat(3 - streetRes.stars)}</span>
             <b>${streetRes.style.points} style</b>
-            <span class="dr-reward">${streetRes.style.skills} skills · ${streetRes.style.walls} off the wall · ${streetRes.style.stylish} stylish goals · +${streetRes.xp} XP · ◈ ${streetRes.apex}</span>
+            <div class="big-stats">${bigStat(streetRes.style.skills, 'Skills', 'boot')}${bigStat(streetRes.style.walls, 'Off the wall', 'swap')}${bigStat(streetRes.style.stylish, 'Stylish goals', 'star', 'gold')}${bigStat(`+${streetRes.xp}`, 'XP', 'up', 'good')}${bigStat(`◈${streetRes.apex}`, 'Apex', 'coin', 'gold')}</div>
             ${streetRes.recruit ? `<span class="dr-ladder">${streetRes.recruit} joins your crew</span>` : ''}
             ${streetRes.unlocked.length ? `<span class="dr-ladder">Unlocked: ${streetRes.unlocked.join(', ')}</span>` : ''}
           </div>` : ''}
@@ -2991,7 +2993,7 @@ export function mount(root, params) {
           <div class="div-result ${proLine.rating >= 7 ? 'up' : proLine.rating < 6 ? 'down' : ''}">
             <span class="dr-kicker">${proLine.motm ? 'Player of the match' : 'Your rating'}</span>
             <b>${proLine.rating.toFixed(1)}</b>
-            <span class="dr-reward">${proLine.goals} goal${proLine.goals === 1 ? '' : 's'} · ${proLine.assists} assist${proLine.assists === 1 ? '' : 's'} · ${proLine.passes} passes · ${proLine.tackles} tackles won · ${proLine.km} km</span>
+            <div class="big-stats">${bigStat(proLine.goals, 'Goals', 'ball', proLine.goals ? 'good' : '')}${bigStat(proLine.assists, 'Assists', 'boot')}${bigStat(proLine.passes, 'Passes', 'swap')}${bigStat(proLine.tackles, 'Tackles', 'shield')}${bigStat(proLine.km, 'km', 'up')}</div>
           </div>` : ''}
         ${evoDone.length ? `<ul class="dr-objs evo-done">${evoDone.map((e) => `<li>✦ ${e.track}: stage ${e.stage} complete</li>`).join('')}</ul>` : ''}
         ${mgr ? `

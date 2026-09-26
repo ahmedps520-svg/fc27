@@ -26,6 +26,7 @@ import { DEPTH_TABS, trainingHTML, dressingHTML, financeHTML, networkHTML, loans
 import { pressScene, signingScene, trophyScene } from '../components/ceremony.js';
 import { GROUND_LEVELS, groundLevel, groundCapacity, gateIncome, groundOf, expansionOffer, expand } from '../builder.js';
 import { sfx } from '../audio.js';
+import { facts, about, bigStat } from '../components/facts.js';
 
 export const TITLE = 'Career';
 
@@ -320,8 +321,8 @@ function offersHTML(car) {
 function youthHTML(car) {
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Academy <small>${(car.youth || []).length} prospects</small></h2></header>
-      <p class="hint">Prospects train every week and grow toward their potential — faster when the dressing room is happy. Promote one to your squad when he is ready.</p>
+      <header class="panel-head"><h2>Academy <small>${(car.youth || []).length} prospects</small></h2>${about('Prospects train every week and grow toward their potential — faster when the dressing room is happy. Promote one to your squad when he is ready.')}</header>
+      ${facts([['calendar', 'Train weekly'], ['up', 'Grow to potential', 'good'], ['heart', 'Faster when happy']])}
       ${(car.youth || []).map((y) => `
         <div class="offer">
           <div><b>${y.name}</b><span>${y.position} · ${y.nation} · ${y.age + (car.season - 1)} · ${y.weeks} weeks in</span></div>
@@ -356,8 +357,8 @@ function cupHTML(car) {
   const status = cup.winner ? (cup.winner === car.clubId ? 'Winners!' : `${careerClub(cup.winner)?.name} won the cup`) : cup.alive.includes(car.clubId) ? `Still in · ${cupRoundName(car, cup.results.length ? cup.results[cup.results.length - 1].round + 1 : 0)} next` : 'Out';
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>The Cup <small>${status}</small></h2></header>
-      <p class="hint">Every club in the country, one leg, a round every fifth week. Penalties settle a draw.</p>
+      <header class="panel-head"><h2>The Cup <small>${status}</small></h2>${about('Every club in the country, one leg, a round every fifth week. Penalties settle a draw.')}</header>
+      ${facts([['players', 'Every club'], ['ball', 'One leg'], ['calendar', 'Every 5th week'], ['target', 'Pens on a draw']])}
       ${mine.length ? mine.map((r) => `<div class="rr ${r.winner === car.clubId ? 'win' : 'loss'}"><span>${cupRoundName(car, r.round)} · ${careerClub(r.h)?.short} ${r.hg} – ${r.ag} ${careerClub(r.a)?.short}${r.pens ? ' (pens)' : ''}</span><b>${r.winner === car.clubId ? 'W' : 'L'}</b></div>`).join('') : '<p class="ov-empty">Your first tie is coming.</p>'}
       <h3 class="p-sub">Still in</h3>
       <p class="hint">${cup.alive.map((id) => careerClub(id)?.short).join(' · ')}</p>
@@ -374,10 +375,11 @@ function boardHTML(car) {
       ${b ? `<p class="lede">This season: <b>${b.text}</b> You are ${pos}${ordinal(pos)}.</p>
       <div class="ov-meters">${meter('Patience', b.patience)}</div>
       ${pillarsHTML(car)}
-      <p class="hint">Patience drops when you sit well below the objective and with careless answers to the press; it recovers with results. Below a third of it at season's end, with the objective missed, and you are gone — a cup or a promotion saves you.</p>` : ''}
+      ${facts([['up', 'Results raise it', 'good'], ['bolt', 'Bad press drops it', 'warn'], ['trophy', 'A cup saves you', 'gold']])}
+      ${about('Patience drops when you sit well below the objective and with careless answers to the press; it recovers with results. Below a third of it at season\'s end, with the objective missed, and you are gone — a cup or a promotion saves you.', 'How patience works')}` : ''}
       <h3 class="p-sub">History</h3>
       ${(car.history || []).map((h) => `<div class="rr"><span>Season ${h.season}</span><b>${h.pos}${ordinal(h.pos)} · ${h.pts} pts</b></div>`).join('') || '<p class="ov-empty">First season.</p>'}
-      <p class="hint">Trophies ${car.stats.trophies} · Cups ${car.stats.cups | 0} · Sackings ${car.stats.sackings | 0} · Sold ${car.stats.sold | 0} · Academy graduates ${car.stats.youthPromoted | 0}</p>
+      <div class="big-stats">${bigStat(car.stats.trophies | 0, 'Trophies', 'trophy', 'gold')}${bigStat(car.stats.cups | 0, 'Cups', 'star')}${bigStat(car.stats.youthPromoted | 0, 'Graduates', 'up', 'good')}${bigStat(car.stats.sold | 0, 'Sold', 'money')}${bigStat(car.stats.sackings | 0, 'Sackings', 'bolt', 'warn')}</div>
     </section>`;
 }
 
