@@ -141,3 +141,6 @@ export const liveMatches = () => call('/api/live');
 /* v82: skill-game boards */
 export const skillBoard = (game) => call(`/api/skills?game=${encodeURIComponent(game)}`);
 export const postSkill = (game, score) => call('/api/skills', { method: 'POST', body: { game, score } });
+
+/** v129: tell the server a test-mode order went through (it emails the store). No card data. */
+export const reportPurchase = (body) => call('/api/purchase', { method: 'POST', body });

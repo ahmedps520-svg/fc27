@@ -56,6 +56,8 @@ jobs:
         run: node tests/qa/cup.mjs
       - name: SBCs (every group unfolds, Start opens a challenge in each)
         run: node tests/qa/sbc.mjs
+      - name: Ultimate shop (test-mode checkout, receipt, store email in the outbox, balance untouched)
+        run: node tests/qa/shop.mjs
       - name: Offline play (service worker)
         run: node tests/qa/offline.mjs
       - name: Attract demo (idle title plays itself; any input leaves; nothing paid)

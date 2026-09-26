@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v129',
+    date: '2026-09-26',
+    tag: 'Store',
+    title: 'The Ultimate shop (test mode)',
+    lede: 'A new Ultimate shelf in the Store, with a proper checkout. It is in test mode: nothing is charged and your balance does not change.',
+    entries: [
+      {
+        head: 'Ultimate bundles',
+        summary: 'Store → ✦ Ultimate: five bundles from 20 to 650 Ultimate, with bonus Ultimate on the bigger ones.',
+        detail: 'Ultimate is still earned the usual way, from the Division ladder and the Weekend League. The shelf shows what buying it will look like.',
+      },
+      {
+        head: 'A real checkout, no real charge',
+        summary: 'Card number, expiry, CVV, name and postcode, checked as you type, with a live card preview. Tap "Use the test card" to try it; please do not enter a real card.',
+        detail: 'Card details are checked on your device and never sent or stored. Each test order gets a receipt with an order number.',
+      },
+    ],
+  },
+  {
     version: 'v128',
     date: '2026-09-26',
     tag: 'Polish',

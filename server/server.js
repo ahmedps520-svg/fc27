@@ -20,6 +20,7 @@ const ws = require('./ws');
 const store = require('./store');
 const guard = require('./guard');
 const mm = require('./matchmaking');
+const shop = require('./shop');
 
 const ROOT = path.resolve(__dirname, '..');
 // Hosting platforms inject the port they want you on; locally an argument wins.
@@ -89,7 +90,8 @@ const BUILD = computeBuild();
  * accounts (so it is on the same disk and under the same gitignore), capped so
  * it can never grow past a few megabytes — the oldest half is dropped when it
  * does. Read it with `tail -f server/data/crashes.log`. */
-const CRASH_FILE = path.join(process.env.APEX_DATA_DIR || path.join(__dirname, 'data'), 'crashes.log');
+const DATA_DIR = process.env.APEX_DATA_DIR || path.join(__dirname, 'data');
+const CRASH_FILE = path.join(DATA_DIR, 'crashes.log');
 const CRASH_MAX = 4 * 1024 * 1024;
 function crashLog(line) {
   try {
@@ -261,6 +263,26 @@ async function api(req, res, route) {
     });
     crashLog(line);
     return json(res, 202, { ok: true });
+  }
+
+  /* v129: a test-mode purchase. Priced here from the server's own table, one
+   * email to the store inbox per order, a running test balance. No card data
+   * is sent to this route or kept by it, and nothing is granted. */
+  if (route === '/api/purchase') {
+    if (req.method !== 'POST') return json(res, 405, { error: 'POST' });
+    if (!guard.allow(`buy:${guard.clientIP(req)}`, 5, 5 / 600)) return json(res, 429, { error: 'Too many purchases. Wait a few minutes.' });
+    const body = await readBody(req).catch(() => ({}));
+    const bundle = shop.bundleById(String(body.bundle || ''));
+    const ref = String(body.ref || '');
+    if (!bundle || !shop.REF_RE.test(ref)) return json(res, 400, { error: 'Unknown order.' });
+    const acct = authOf(req);
+    const club = String(body.club || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 40);
+    const balance = shop.recordSale(DATA_DIR, bundle.cents);
+    const mail = shop.purchaseEmail({ bundle, ref, club, player: acct ? store.publicProfile(acct).name : '', balance });
+    shop.sendMail({ ...mail, ref }, { dataDir: DATA_DIR })
+      .then((r) => console.log(`[shop] ${ref} ${shop.usd(bundle.cents)} mailed via ${r.via}`))
+      .catch((e) => console.warn(`[shop] ${ref} mail failed:`, e.message));
+    return json(res, 200, { ok: true, ref, test: true });
   }
 
   if (route === '/api/weekend') {

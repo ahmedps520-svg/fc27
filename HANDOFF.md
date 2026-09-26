@@ -15,6 +15,43 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v129 — the Ultimate shop, test mode (owner's ask)
+- The owner asked for "micro transactions, with a fake place holder for now
+  credit card cvv and everything else", plus one email per purchase to
+  support@apexxi.online with the game's design, a "you just got a purchase"
+  message and a fake balance update.
+- The owner chose "No, show only": a test purchase does **not** change
+  `club.ultimate`.
+- `js/data/shop.js`:
+  - `TEST_MODE`, `TEST_CARD` (4242…), `BUNDLES` (5), `checkCard` (Luhn,
+    expiry, CVV length by brand, name, postcode);
+  - `cardBrand`, `formatCard`, `formatExp`, `orderRef` (`AX-XXXXXXXX`).
+- `js/components/checkout.js` `openCheckout(bundle)`:
+  - an overlay with a live card preview;
+  - inputs have no `name` and use `autocomplete=off`;
+  - on Pay the fields are blanked, then `reportPurchase({bundle, ref,
+    club})` is sent — **no card data**;
+  - the receipt shows only the brand and last four, computed locally.
+- Store subtab `ultimate` in `squad.js` (`ultimateShopView`).
+  `checkoutOverlay` is removed on navigate. Both new files are precached.
+- `server/shop.js` + `POST /api/purchase`:
+  - the server prices from its own table; a unit test holds it equal to
+    the client's;
+  - rate limit `buy:<ip>` is 5 per 10 minutes;
+  - the running test balance is in `<data>/store-ledger.json`;
+  - `purchaseEmail()` builds table/inline-style HTML in the game's
+    colours, plus a text part.
+- Sending:
+  - with `RESEND_API_KEY`, it posts to Resend. `MAIL_FROM` defaults to
+    `APEX XI Store <store@apexxi.online>`, which must be on a domain
+    verified in Resend; `STORE_INBOX` overrides the recipient.
+  - without a key, the email is written to `<data>/outbox/<ref>.html`.
+- **The owner needs to set `RESEND_API_KEY` on the server for real email.**
+  The game on GitHub Pages only reaches the server if `SERVER_ORIGIN`
+  is set; otherwise the receipt says "Not sent (offline)".
+- Tests: `tests/unit/shop.test.mjs`; `tests/qa/shop.mjs` (a CI step,
+  desktop and phone). `startServer()` now returns `dataDir`.
+
 ### v128 — the curtain on tab switches too (owner's ask)
 - `app.js` `veil(redraw)`: raises the curtain, runs `redraw`, then lifts it
   the same way `navigate` does.
