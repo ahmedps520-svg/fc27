@@ -365,7 +365,19 @@
     wall: { pace: 78, shooting: 56, passing: 80, dribbling: 68, defending: 92, physical: 91 },
     keeper: { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
     fullback: { pace: 93, shooting: 72, passing: 86, dribbling: 86, defending: 88, physical: 84 }
-  }, ICON_TRAITS = {
+  }, SA = ["#006c35", "#ffffff"], SAUDI_ICONS = [
+    { name: "Mohamed Al-Deayea", short: "M. Al-Deayea", position: "GK", nation: "Saudi Arabia", colors: SA, trait: "keeper", foot: "R", overall: 95 },
+    { name: "Mohammed Al-Khilaiwi", short: "M. Al-Khilaiwi", position: "RB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "R", overall: 91 },
+    { name: "Osama Hawsawi", short: "O. Hawsawi", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 92 },
+    { name: "Saleh Al-Nuaimah", short: "S. Al-Nuaimah", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 91 },
+    { name: "Hussein Abdulghani", short: "H. Abdulghani", position: "LB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "L", overall: 92 },
+    { name: "Mohammed Noor", short: "M. Noor", position: "CM", nation: "Saudi Arabia", colors: SA, trait: "engine", foot: "R", overall: 94 },
+    { name: "Nawaf Al-Temyat", short: "N. Al-Temyat", position: "CAM", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 94 },
+    { name: "Saeed Al-Owairan", short: "S. Al-Owairan", position: "LW", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 95 },
+    { name: "Majed Abdullah", short: "M. Abdullah", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 97 },
+    { name: "Sami Al-Jaber", short: "S. Al-Jaber", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 96 },
+    { name: "Yasser Al-Qahtani", short: "Y. Al-Qahtani", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 94 }
+  ], ICON_TRAITS = {
     flair: { pace: 99, shooting: 92, passing: 91, dribbling: 99, defending: 42, physical: 78 },
     power: { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },
     engine: { pace: 88, shooting: 88, passing: 99, dribbling: 94, defending: 78, physical: 88 },
@@ -9705,6 +9717,10 @@
       for (let k of Object.keys(p.stats)) p.stats[k] = clamp(Math.round(p.stats[k] + (overall - 80) * 0.6), 40, 99);
       p.rarity = "special", p.sbc = !0, p.value = marketValue(overall, age), players.push(p), sbcCards.push(p.id);
     }
+    for (let def of SAUDI_ICONS) {
+      let drop = 99 - def.overall, st = Object.fromEntries(Object.entries(ICON_TRAITS[def.trait]).map(([k, v]) => [k, clamp(Math.round(v - drop * 0.8), 30, 99)])), p = namedCard(def, st, def.overall, "icon", Math.round(25e7 * (def.overall / 99) ** 8), ++idCounter);
+      p.saudiIcon = !0, players.push(p), freeAgents.push(p.id), icons.push(p.id);
+    }
     let byId = Object.fromEntries(players.map((p) => [p.id, p]));
     return {
       leagueName: LEAGUE_NAME,
@@ -9792,7 +9808,17 @@
       boost: 5,
       stats: { pace: 1, dribbling: 3, shooting: 4, passing: 6, physical: 6, defending: 6 }
     }
-  ], campaignNow = (now = Date.now()) => CAMPAIGNS[weekNow(now) % CAMPAIGNS.length];
+  ], campaignNow = (now = Date.now()) => CAMPAIGNS[weekNow(now) % CAMPAIGNS.length], EVENT_CAMPAIGNS = [
+    {
+      id: "nationalday",
+      name: "National Day",
+      blurb: "The Green Falcons, lifted for the Kingdom's day.",
+      colors: ["#0f7a41", "#ffffff"],
+      eligible: (p) => p.nation === "Saudi Arabia" && p.overall >= 68 && p.rarity !== "icon" && !/ Jr$| Nassr$| Shabab$/.test(p.name),
+      boost: 10,
+      stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 }
+    }
+  ], campaignById = (id) => CAMPAIGNS.find((x) => x.id === id) || EVENT_CAMPAIGNS.find((x) => x.id === id);
   var ICON_TIERS = [
     { id: "early", name: "Early", drop: 7 },
     { id: "peak", name: "Peak", drop: 4 },
@@ -9802,7 +9828,8 @@
     totw: { label: "Team of the Week", color: "#ffe066", glow: "rgba(255,224,102,.7)" },
     future: { label: "Future Stars", color: "#19e3ff", glow: "rgba(25,227,255,.7)" },
     desert: { label: "Heroes of the Desert", color: "#f0b048", glow: "rgba(240,176,72,.7)" },
-    winter: { label: "Winter Legends", color: "#d8f1ff", glow: "rgba(216,241,255,.7)" }
+    winter: { label: "Winter Legends", color: "#d8f1ff", glow: "rgba(216,241,255,.7)" },
+    nationalday: { label: "National Day", color: "#1fbf62", glow: "rgba(31,191,98,.75)" }
   };
   Object.assign(RARITY, PROMO_RARITY);
   var cap = (v) => Math.max(1, Math.min(99, Math.round(v)));
@@ -9875,7 +9902,7 @@
     if (!base) return;
     let card;
     if (kind === "pr") {
-      let c = CAMPAIGNS.find((x) => x.id === a);
+      let c = campaignById(a);
       if (!c || !c.eligible(base)) return;
       card = derive(base, id, { boost: c.boost, stats: c.stats, rarity: c.id, promo: c.id, label: c.name });
     } else if (kind === "if" || kind === "tw") {
@@ -10189,11 +10216,32 @@
   }
 
   // js/data/packs.js
-  var WEEK_NATIONS = ["France", "Brazil", "England", "Spain", "Argentina", "Germany", "Italy", "Portugal", "Netherlands", "Saudi Arabia", "Morocco", "Belgium"], nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 6048e5) % WEEK_NATIONS.length], PACKS = [
+  var saudiIcons = () => (WORLD.icons || []).map(getPlayer).filter((p) => p == null ? void 0 : p.saudiIcon), WEEK_NATIONS = ["France", "Brazil", "England", "Spain", "Argentina", "Germany", "Italy", "Portugal", "Netherlands", "Saudi Arabia", "Morocco", "Belgium"], nationOfWeek = (now = Date.now()) => WEEK_NATIONS[Math.floor(now / 6048e5) % WEEK_NATIONS.length], PACKS = [
     /* v80: the promo shelf. Each promises one card of its kind in the first slot,
        on top of gold filler, and says exactly what that slot can be. */
     { id: "campaign", cat: "promo", name: "Campaign", cost: 25e3, size: 3, variant: "campaign", odds: { bronze: 0, silver: 0, gold: 0.9, special: 0.1 }, floor: "gold", note: "3 cards · 1 campaign card", promise: "1 guaranteed card from this week's campaign", variantOdds: [["Campaign card", 1]] },
     { id: "inform", cat: "promo", name: "In-Form", cost: 18e3, size: 3, variant: "inform", odds: { bronze: 0, silver: 0, gold: 0.92, special: 0.08 }, floor: "gold", note: "3 cards · 1 in-form", promise: "1 guaranteed In-Form (1 in 8 is Team of the Week)", variantOdds: [["In-Form", 0.875], ["Team of the Week", 0.125]] },
+    /* v126: National Day — dated, shown only in its window (seasonal.js). One
+       National Day card (every Saudi international, +10, green and white); one
+       time in twelve that slot is a Saudi Icon instead. Saudi filler. */
+    {
+      id: "nationalday",
+      cat: "promo",
+      name: "National Day",
+      cost: 2e4,
+      size: 3,
+      variant: "nationalday",
+      season: "nationalDay",
+      added: "2026-09-20",
+      odds: { bronze: 0, silver: 0.4, gold: 0.6, special: 0 },
+      floor: "silver",
+      filter: { nations: ["Saudi Arabia"] },
+      tone: "nationalday",
+      // one Saudi special exists: two special slots would repeat him
+      note: "3 · Saudi only",
+      promise: "1 National Day card — 1 in 12 is a Saudi Icon",
+      variantOdds: [["National Day card", 11 / 12], ["Saudi Icon", 1 / 12]]
+    },
     { id: "vault", cat: "limited", name: "Legends Vault", cost: 12e4, size: 1, limited: !0, variant: "icontier", odds: { bronze: 0, silver: 0, gold: 0, special: 1 }, note: "1 Icon · any tier", promise: "1 guaranteed Icon — Early, Peak or Prime", variantOdds: [["Early Icon (92)", 0.7], ["Peak Icon (95)", 0.25], ["Prime Icon (99)", 0.05]] },
     { id: "bronze", cat: "free", name: "Bronze", cost: 0, size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0 }, note: "4 cards" },
     /* v73: SBC fodder. Six cheap bodies — bronzes and silvers — for the quick
@@ -10399,7 +10447,8 @@
       promise: "1 guaranteed Icon · best odds in the game"
     }
   ], FREE_MS = 360 * 60 * 1e3;
-  var packTone = (p) => p.tone || p.guarantee || p.id, RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, star: 4, icon: 5 };
+  var DAY = 864e5, WEEK_MS = 7 * DAY;
+  var packTone = (p) => p.tone || p.guarantee || p.id, RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, nationalday: 4, star: 4, icon: 5 };
   function rollRarity(odds) {
     let r = Math.random(), acc = 0;
     for (let [rarity, chance] of Object.entries(odds))
@@ -10435,7 +10484,7 @@
     let wantPos = pack.forcePosition || (needGK ? "GK" : null);
     if (wantPos && !pulls.some((x) => x.p.position === wantPos) && (pulls[0] = draw2(rollRarity(pack.odds), (p) => p.position === wantPos)), pack.variant) {
       let r = Math.random(), pool = [];
-      if (pack.variant === "campaign" ? pool = campaignCards(campaignNow()) : pack.variant === "inform" ? pool = r < 0.125 ? weekCards("totw", weekNow()) : weekCards("inform", weekNow()) : pack.variant === "icontier" && (pool = iconTierCards(r < 0.7 ? "early" : r < 0.95 ? "peak" : "prime")), pool.length) {
+      if (pack.variant === "campaign" ? pool = campaignCards(campaignNow()) : pack.variant === "inform" ? pool = r < 0.125 ? weekCards("totw", weekNow()) : weekCards("inform", weekNow()) : pack.variant === "icontier" ? pool = iconTierCards(r < 0.7 ? "early" : r < 0.95 ? "peak" : "prime") : pack.variant === "nationalday" && (pool = r < 1 / 12 ? saudiIcons() : campaignCards(EVENT_CAMPAIGNS[0])), pool.length) {
         let fresh = pool.filter((p2) => !seen.has(p2.id)), sorted = (fresh.length ? fresh : pool).slice().sort((a, b) => a.overall - b.overall), p = sorted[Math.floor(Math.pow(Math.random(), 1.8) * sorted.length)], dup = seen.has(p.id);
         seen.add(p.id), pulls[0] = { p, dup };
       }

@@ -67,6 +67,14 @@ body.on-menu::before {
     linear-gradient(180deg, rgba(4, 6, 13, .22) 0%, rgba(4, 6, 13, .18) 34%, rgba(4, 6, 13, .72) 100%),
     url('../assets/keyart.webp') center center / cover no-repeat;
 }
+/* v126: the new art is 2560 wide for big screens; a phone takes the 1600 cut */
+@media (max-width: 900px) {
+  body.on-menu::before {
+    background:
+      linear-gradient(180deg, rgba(4, 6, 13, .22) 0%, rgba(4, 6, 13, .18) 34%, rgba(4, 6, 13, .72) 100%),
+      url('../assets/keyart-1600.webp') center center / cover no-repeat;
+  }
+}
 /* The wordmark is back: the art it was hidden for carried its own lockup, and
    this one does not. If the art is ever swapped for one that does, hide it
    again rather than stacking two titles. */

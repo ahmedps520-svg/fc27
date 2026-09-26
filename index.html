@@ -37,7 +37,8 @@
   <link rel="modulepreload" href="js/tutorial.js" />
   <link rel="modulepreload" href="js/audio.js" />
   <!-- the menu backdrop, fetched at low priority while the splash is up -->
-  <link rel="preload" as="image" href="assets/keyart.webp" type="image/webp" fetchpriority="low" />
+  <link rel="preload" as="image" href="assets/keyart.webp" type="image/webp" fetchpriority="low" media="(min-width: 901px)" />
+  <link rel="preload" as="image" href="assets/keyart-1600.webp" type="image/webp" fetchpriority="low" media="(max-width: 900px)" />
 </head>
 <body>
   <!-- v87: colour-vision filters for the match picture (Settings → Accessibility).
