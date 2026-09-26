@@ -29,6 +29,7 @@ import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
 import { t } from '../i18n.js';
 import { trade, kindOf } from '../economy.js';
+import { facts, about } from '../components/facts.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -209,9 +210,7 @@ function badgeView() {
 
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Club badge</h2></header>
-      <p class="hint">Worn on the pitch, on the scoreboard, and shown to whoever
-        you play online. The two colours are the kit your players run out in.</p>
+      <header class="panel-head"><h2>Club badge</h2>${about('Worn on the pitch, on the scoreboard, and shown to whoever you play online. The two colours are the kit your players run out in.')}</header>
 
       <div class="ci-top">
         <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 148)}</div>
@@ -257,8 +256,8 @@ function kitView() {
     <section class="panel glass">
       <header class="panel-head"><h2>Kit</h2>
         <div class="seg" id="kdSide">${['home', 'away'].map((sd) => `<button class="${kitSide === sd ? 'on' : ''}" data-kdside="${sd}">${sd === 'home' ? 'Home' : 'Away'}</button>`).join('')}</div>
+        ${about('What your players run out in. The away kit is worn when the home one would clash with the other side\'s.')}
       </header>
-      <p class="hint">What your players run out in. The away kit is worn when the home one would clash with the other side's.</p>
       <div class="ci-top">
         <div class="ci-preview kd-preview" id="kdPreview">${kitSVG(k, 128)}</div>
         <div class="ci-kitnote">
@@ -288,9 +287,7 @@ function nameView() {
   const id = clubIdentity();
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Club name</h2><button class="btn ghost sm" id="idBuilder">Design your stadium →</button></header>
-      <p class="hint">What your side is called on the team sheet, the scoreboard
-        and in an opponent\u2019s match report.</p>
+      <header class="panel-head"><h2>Club name</h2><button class="btn ghost sm" id="idBuilder">Design your stadium →</button>${about('What your side is called on the team sheet, the scoreboard and in an opponent\u2019s match report.')}</header>
 
       <div class="ci-top">
         <div class="ci-preview" id="ciPreview">${crestSVG(id.crest, id.short, 148)}</div>
@@ -343,12 +340,18 @@ export function divisionView() {
   const myRating = mine
     ? Math.round(mine.xi.reduce((t, p) => t + p.overall, 0) / mine.xi.length) : 0;
   const opp = mine ? divisionOpponent(u.divIdx, myRating) : null;
-  const oppLine = opp
-    ? `Next up: <b>${opp.name}</b>, rated ${opp.rating} against your ${myRating}. `
-      + (opp.rating > myRating + 1 ? 'You are the underdog here.'
-        : opp.rating < myRating - 1 ? 'You should be favourite.'
-          : 'Evenly matched.')
-    : 'Opponents are built to match your squad, and get harder the higher you climb.';
+  // v120: the match-up as a picture — two ratings, face to face — not a sentence
+  const verdict = !opp ? null
+    : opp.rating > myRating + 1 ? ['bolt', 'Underdog', 'warn']
+      : opp.rating < myRating - 1 ? ['star', 'Favourite', 'good'] : ['swap', 'Even', ''];
+  const matchUp = opp ? `
+      <div class="vs-strip">
+        <div class="vs-side you"><b>${myRating}</b><span>You</span></div>
+        <em>VS</em>
+        <div class="vs-side"><b>${opp.rating}</b><span>${opp.name}</span></div>
+      </div>
+      ${facts([verdict, ['trophy', `◈${div.reward.toLocaleString()} + pack`, 'gold']])}`
+    : facts([['players', 'Fill your XI to meet them']]);
 
   return `
     <section class="panel glass div-hero">
@@ -373,9 +376,8 @@ export function divisionView() {
 
     <section class="panel glass">
       <header class="panel-head"><h2>Next fixture</h2>
-        <span class="tag">Win ◈${div.reward.toLocaleString()} + pack</span></header>
-      <p class="hint">${oppLine}</p>
-      <p class="preset-note"><b>${PRESETS.competitive.name}</b> ${PRESETS.competitive.blurb}</p>
+        <span class="tag">${PRESETS.competitive.name}</span>${about(`Opponents are built to match your squad, and get harder the higher you climb. ${PRESETS.competitive.blurb}`)}</header>
+      ${matchUp}
       <div class="nm-actions">
         <button class="btn primary big" id="playDivision" ${ready ? '' : 'disabled'}>
           ${ready ? 'Play match' : `Fill your XI (${chem.placedCount}/11)`}
@@ -549,9 +551,8 @@ function iconExchangeView() {
       <header class="panel-head">
         <h2>Icon Exchange</h2>
         <span class="coin-chip ult">✦ ${bank.toLocaleString()}</span>
+        ${about('A pack gives you a random Icon. This gives you the one you want. Ultimate is only paid for wins in Division 1 and Apex Elite.')}
       </header>
-      <p class="hint">A pack gives you a random Icon. This gives you the one you
-        want. Ultimate is only paid for wins in Division 1 and Apex Elite.</p>
       <div class="xchg-grid">
         ${icons.map((p) => {
           const owned = have.has(p.id);
@@ -586,6 +587,8 @@ function oddsLine(p) {
 /** The cards staged for the open challenge, as player objects. */
 const submittedCards = () => submission.map(getPlayer).filter(Boolean);
 
+let sbcOpen = 'starter';   // v120: which SBC group is unfolded
+
 function challengesView() {
   const s = getState();
   const doneIds = new Set(s.club.challengesDone || []);
@@ -593,20 +596,23 @@ function challengesView() {
   if (!openChallenge) {
     return `
       <section class="panel glass">
-        <header class="panel-head"><h2>SBC <small>Squad Building Challenges</small></h2></header>
-        <p class="hint">Submit cards that meet the conditions and they are
-          spent — this is what a duplicate is really for. The quick ones take
-          a handful of cards; the legends take eleven.</p>
-        ${SBC_GROUPS.map(([g, title, blurb]) => `
-        <h3 class="sbc-group"><span>${title}</span><small>${blurb}</small></h3>
+        <header class="panel-head"><h2>SBC <small>Squad Building Challenges</small></h2>${about('Submit cards that meet the conditions and they are spent — this is what a duplicate is really for. The quick ones take a handful of cards; the legends take eleven.')}</header>
+        ${facts([['card', 'Hand in cards'], ['swap', 'Dupes → rewards', 'good']])}
+        <div id="sbcGroups">
+        ${SBC_GROUPS.map(([g, title, blurb]) => {
+          // v120: one group open at a time — the page was 13,000 px tall on a phone
+          const list = CHALLENGES.filter((c) => groupOf(c) === g);
+          const left = list.filter((c) => c.repeatable || !doneIds.has(c.id)).length;
+          return `
+        <details class="sbc-grp" data-sbcgrp="${g}" ${sbcOpen === g ? 'open' : ''}>
+        <summary class="sbc-group" title="${blurb}"><span>${title}</span><em>${left}/${list.length}</em></summary>
         <div class="sbc-list sbc-${g}">
-          ${CHALLENGES.filter((c) => groupOf(c) === g).map((c) => {
+          ${list.map((c) => {
             const done = doneIds.has(c.id) && !c.repeatable;
             return `
-              <article class="sbc ${done ? 'done' : ''}">
+              <article class="sbc ${done ? 'done' : ''}" title="${c.brief}">
                 <div class="sbc-body">
                   <b>${c.name}</b>
-                  <span class="sbc-brief">${c.brief}</span>
                   <ul class="sbc-reqs">${c.reqs.map((r) => `<li>${r.text}</li>`).join('')}</ul>
                 </div>
                 <div class="sbc-side">
@@ -621,7 +627,10 @@ function challengesView() {
                 </div>
               </article>`;
           }).join('')}
-        </div>`).join('')}
+        </div>
+        </details>`;
+        }).join('')}
+        </div>
       </section>`;
   }
 
@@ -709,10 +718,8 @@ export function objectivesView() {
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>Objectives</h2>
-        <span class="tag">${claimed}/${LADDER_SIZE} done</span></header>
-      <p class="hint">Seven at a time out of ${LADDER_SIZE}, and they get harder and pay
-        better the further down you go. The deepest ${ULTIMATE_RUNGS} are the only
-        objectives in the game that pay Ultimate.</p>
+        <span class="tag">${claimed}/${LADDER_SIZE} done</span>${about(`Seven at a time out of ${LADDER_SIZE}, and they get harder and pay better the further down you go. The deepest ${ULTIMATE_RUNGS} are the only objectives in the game that pay Ultimate.`)}</header>
+      ${facts([['target', '7 at a time'], ['up', 'Deeper pays more', 'good'], ['star', `Last ${ULTIMATE_RUNGS} pay ✦`, 'gold']])}
 
       <!-- The climb, as one bar. The per-objective bars say how a slot is
            going; this says how the *ladder* is going, which is the thing the
@@ -967,7 +974,7 @@ function hubPanel(chem) {
         <select id="mgrSel"><option value="">No manager</option>
           ${managersOpen(s.club).map((m) => `<option value="${m.id}" ${mgr?.id === m.id ? 'selected' : ''} ${m.open ? '' : 'disabled'}>${m.name} · ${m.nation} · ${m.league}${m.open ? '' : ` (club level ${m.unlock})`}</option>`).join('')}
         </select></label>
-      <p class="hint">A manager who shares a card's nation or league gives it a point of chemistry, up to the cap of 3.</p>
+      ${facts([['players', 'Same nation or league'], ['up', '+1 chem · max 3', 'good']])}
       <div id="hubBreak">${breakdownHTML(chem)}</div>
       <div class="chem-key"><i class="cl-club"></i>Club <i class="cl-nation"></i>Nation <i class="cl-league"></i>League <i class="cl-none"></i>No link</div>
       <h3 class="hub-h">Saved squads</h3>
@@ -1260,7 +1267,12 @@ export function mount(root) {
   if (tab === 'challenges') {
     const refresh = () => navigate('squad');
 
-    root.querySelector('.sbc-list')?.addEventListener('click', (e) => {
+    /* v120: on the groups, not the first list — Start did nothing on every
+       Squad and Legend SBC, because only the Quick list was listened to */
+    root.querySelectorAll('.sbc-grp').forEach((d) => d.addEventListener('toggle', () => {
+      if (d.open) { sbcOpen = d.dataset.sbcgrp; root.querySelectorAll('.sbc-grp').forEach((o) => { if (o !== d) o.open = false; }); }
+    }));
+    root.querySelector('#sbcGroups')?.addEventListener('click', (e) => {
       const b = e.target.closest('[data-sbc]');
       if (!b) return;
       openChallenge = challengeById(b.dataset.sbc);
@@ -2067,6 +2079,6 @@ function evolvePanel(p) {
           <button class="btn ${info.dupes ? 'primary' : 'ghost'}" data-evolve="dupe" ${info.dupes ? '' : 'disabled'}>Use duplicate <small>${info.dupes} banked</small></button>
           <button class="btn ${(s.club.apex || 0) >= info.cost ? '' : 'ghost'}" data-evolve="apex" ${(s.club.apex || 0) >= info.cost ? '' : 'disabled'}>◈ ${info.cost.toLocaleString()}</button>
         </div>
-        <p class="hint">+1 overall and +1% on every stat per level. Duplicates pulled from packs are banked here.</p>`}
+        ${facts([['up', '+1 OVR a level', 'good'], ['percent', '+1% every stat'], ['card', 'Dupes bank here']])}`}
     </div>`;
 }

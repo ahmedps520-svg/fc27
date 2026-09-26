@@ -26,6 +26,7 @@ import { EVO_TRACKS, MAX_ACTIVE, trackById, startEvolution, cancelEvolution, evo
 import { settle, search, buyNow, placeBid, listCard, priceRange, historySVG, marketValue, TAX } from '../market.js';
 import { sets, setProgress, claimSet, binderSummary } from '../binder.js';
 import { weekendWindow, untilText } from '../weekend.js';
+import { facts, about } from '../components/facts.js';
 
 const money = (n) => `◈${Math.round(n).toLocaleString()}`;
 const packName = (id) => ({ gold: 'Gold', silver: 'Silver', prime: 'Prime', inform: 'In-Form', campaign: 'Campaign', vault: 'Legends Vault' }[id] || id);
@@ -49,9 +50,8 @@ export function modesView(squad) {
 
   return `
     <section class="panel glass mode-card fives-card">
-      <header class="panel-head"><h2>Quickfire Fives</h2><span class="tag">2½ minutes · 5 a side</span></header>
-      <p class="hint">Your keeper and four best outfielders on a small pitch. Short, sharp, pays straight away:
-        ${money(FIVES.reward.win)} a win, ${money(FIVES.reward.goal)} a goal.</p>
+      <header class="panel-head"><h2>Quickfire Fives</h2>${about('Your keeper and four best outfielders on a small pitch. Short, sharp, and it pays straight away.')}</header>
+      ${facts([['clock', '2½ min'], ['players', '5v5'], ['trophy', `${money(FIVES.reward.win)} win`, 'gold'], ['ball', `${money(FIVES.reward.goal)} goal`, 'gold']])}
       <div class="fives-five">${five.map((p) => `<span class="ff-p"><b>${p.overall}</b><i>${p.position}</i>${p.short || p.name}</span>`).join('') || '<span class="empty">Fill your XI first.</span>'}</div>
       <div class="mode-rec"><span>${f.won}W ${f.drawn}D ${f.lost}L</span><span>${f.gf}–${f.ga}</span><span>Best run ${f.best}</span>
         ${f.last ? `<span>Last: ${f.last.scored}–${f.last.conceded}</span>` : ''}</div>
@@ -59,10 +59,8 @@ export function modesView(squad) {
     </section>
 
     <section class="panel glass mode-card clash-card">
-      <header class="panel-head"><h2>Squad Clash</h2><span class="tag">${cs.rank.name} · ${cs.points} pts</span></header>
-      <p class="hint">Twelve curated squads this week, one match each, at the difficulty you choose. Points for the result,
-        goals and clean sheets set your weekly rank, paid next week.
-        ${nextRank ? `${nextRank.points - cs.points} points to ${nextRank.name}.` : 'Top rank reached.'}</p>
+      <header class="panel-head"><h2>Squad Clash</h2><span class="tag">${cs.rank.name} · ${cs.points} pts</span>${about('Twelve curated squads this week, one match each, at the difficulty you choose. Points for the result, goals and clean sheets set your weekly rank, paid next week.')}</header>
+      ${facts([['players', '12 squads'], ['calendar', 'Weekly'], nextRank ? ['up', `${nextRank.points - cs.points} to ${nextRank.name}`, 'good'] : ['star', 'Top rank', 'gold']])}
       ${cs.pending ? `<div class="claim-row"><span>Last week: ${cs.pending.points} pts — ${rewardLine(CLASH_RANKS.slice().reverse().find((r) => cs.pending.points >= r.points))}</span>
         <button class="btn primary" id="claimClash">Claim</button></div>` : ''}
       <div class="chips" id="clashLevels">${CLASH_LEVELS.map((l) => `<button class="chip ${l.id === clashLevel ? 'on' : ''}" data-clash-level="${l.id}">${l.name}<small> ${l.points}</small></button>`).join('')}</div>
@@ -81,17 +79,15 @@ export function modesView(squad) {
     </section>
 
     <section class="panel glass mode-card">
-      <header class="panel-head"><h2>Division weekly rewards</h2><span class="tag">${rv.current.wins} wins this week</span></header>
-      <p class="hint">Apex Division wins also count toward a weekly reward, paid once the week turns.</p>
+      <header class="panel-head"><h2>Division weekly rewards</h2><span class="tag">${rv.current.wins} wins this week</span>${about('Apex Division wins also count toward a weekly reward, paid once the week turns.')}</header>
       <div class="rank-strip">${RIVAL_TIERS.map((t) => `<span class="${rv.current.wins >= t.wins ? 'on' : ''}"><b>${t.wins} wins</b><em>${rewardLine(t)}</em></span>`).join('')}</div>
       ${rv.pending ? `<div class="claim-row"><span>Last week: ${rv.pending.wins} wins</span><button class="btn primary" id="claimRivals">Claim</button></div>` : ''}
     </section>
 
     <section class="panel glass mode-card">
       <header class="panel-head"><h2>Weekend League qualification</h2>
-        <span class="tag ${q.qualified ? 'good' : ''}">${q.qualified ? 'Qualified' : `${q.points}/${q.need} points`}</span></header>
-      <p class="hint">${q.qualified ? 'You are in for the weekend.' : 'Earn qualification points before the weekend opens: a Division win or a Fives win is 1, a Squad Clash win 2.'}
-        ${w.open ? `Open now, closes in ${untilText(w.closesAt)}.` : `Opens in ${untilText(w.opensAt)}.`}</p>
+        <span class="tag ${q.qualified ? 'good' : ''}">${q.qualified ? 'Qualified' : `${q.points}/${q.need} points`}</span>${about('Earn qualification points before the weekend opens: a Division win or a Fives win is 1, a Squad Clash win 2.')}</header>
+      ${facts([q.qualified ? ['check', 'You are in', 'good'] : ['trophy', 'Win = 1 · Clash win = 2'], ['clock', w.open ? `Closes in ${untilText(w.closesAt)}` : `Opens in ${untilText(w.opensAt)}`, w.open ? 'good' : '']])}
       <i class="obj-bar"><b style="width:${Math.min(100, (q.points / q.need) * 100)}%"></b></i>
       <button class="btn ${q.qualified ? 'primary' : 'ghost'}" id="goWeekend">Weekend League</button>
     </section>`;
@@ -155,9 +151,9 @@ export function tasksView() {
   };
   return `
     <section class="panel glass club-level">
-      <header class="panel-head"><h2>Club level ${lvl.level}</h2><span class="tag">${lvl.need ? `${lvl.into}/${lvl.need} XP` : 'Max level'}</span></header>
+      <header class="panel-head"><h2>Club level ${lvl.level}</h2><span class="tag">${lvl.need ? `${lvl.into}/${lvl.need} XP` : 'Max level'}</span>${about('Every match, task and Season Pass tier adds club XP. It never resets, and every level pays.')}</header>
       <i class="obj-bar"><b style="width:${lvl.need ? (lvl.into / lvl.need) * 100 : 100}%"></b></i>
-      <p class="hint">Every match, task and Season Pass tier adds club XP. It never resets, and every level pays.</p>
+      ${facts([['ball', 'Matches'], ['check', 'Tasks'], ['star', 'Season Pass'], ['lock', 'Never resets', 'good']])}
       <div class="lvl-track">${next.map(([l, r]) => `<span class="${l % 5 === 0 ? 'big' : ''}"><b>${l}</b>${r.text}</span>`).join('')}</div>
     </section>
     <section class="panel glass" id="taskBoard">
@@ -207,11 +203,11 @@ export function evosView() {
       && !Object.values(evos).some((e) => e.card === p.id)).sort((a, b) => b.overall - a.overall);
     const pick = evoPick[t.id] && fits.find((p) => p.id === evoPick[t.id]) ? evoPick[t.id] : fits[0]?.id;
     return `<article class="evo-track">
-      <header><b>${t.name}</b><span>${t.blurb}</span></header>
+      <header title="${t.blurb}"><b>${t.name}</b></header>
       ${path(t, -1, 0)}
       ${fits.length ? `<div class="evo-start"><select data-evo-pick="${t.id}">${fits.slice(0, 60).map((p) => `<option value="${p.id}" ${p.id === pick ? 'selected' : ''}>${p.overall} ${p.position} ${p.name}</option>`).join('')}</select>
         <button class="btn primary" data-evo-start="${t.id}" ${active >= MAX_ACTIVE ? 'disabled' : ''}>Start</button></div>`
-        : '<p class="empty">No eligible card in your collection yet.</p>'}
+        : facts([['lock', 'No card fits yet', 'warn']], 'evo-none')}
     </article>`;
   }).join('');
 
@@ -223,10 +219,9 @@ export function evosView() {
 
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Evolutions</h2><span class="tag">${active}/${MAX_ACTIVE} running</span></header>
-      <p class="hint">Pick a card that fits a track and play Ultimate XI matches with him in the XI — Division, Fives, Squad Clash
-        or the Weekend League. Each stage done adds stats and a stage of glow to the card, for good.</p>
-      ${running || '<p class="empty">Nothing evolving. Start a track below.</p>'}
+      <header class="panel-head"><h2>Evolutions</h2><span class="tag">${active}/${MAX_ACTIVE} running</span>${about('Pick a card that fits a track and play Ultimate XI matches with him in the XI — Division, Fives, Squad Clash or the Weekend League. Each stage done adds stats and a stage of glow to the card, for good.')}</header>
+      ${facts([['card', 'Pick a card'], ['ball', 'Play with him'], ['up', 'Stats up', 'good'], ['glow', 'Glow, for good', 'gold']])}
+      ${running}
     </section>
     <section class="panel glass"><header class="panel-head"><h2>Tracks</h2></header><div class="evo-tracks">${tracks}</div></section>
     ${finished ? `<section class="panel glass"><header class="panel-head"><h2>Evolved</h2></header><div class="evo-done-grid">${finished}</div></section>` : ''}`;
@@ -276,9 +271,8 @@ export function marketView() {
 
   return `
     <section class="panel glass mkt">
-      <header class="panel-head"><h2>Transfer Market</h2><span class="coin-chip">${money(s.club.apex || 0)}</span></header>
-      <p class="hint">Every card has a price range — nothing lists or sells outside it — and sales pay ${Math.round(TAX * 100)}% tax.
-        New listings every four hours. No real money, ever.</p>
+      <header class="panel-head"><h2>Transfer Market</h2><span class="coin-chip">${money(s.club.apex || 0)}</span>${about(`Every card has a price range — nothing lists or sells outside it — and sales pay ${Math.round(TAX * 100)}% tax. New listings every four hours. No real money, ever.`)}</header>
+      ${facts([['percent', `${Math.round(TAX * 100)}% tax`], ['refresh', 'New every 4 h'], ['lock', 'No real money', 'good']])}
       <form class="mkt-filters" id="mktFilters">
         <input name="text" placeholder="Name" value="${mf.text}" maxlength="24">
         <select name="position"><option value="">Any position</option>${Object.keys(POSITIONS).map((p) => `<option ${mf.position === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
@@ -369,14 +363,13 @@ export function binderView() {
   const all = sets();
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>The Binder</h2><span class="tag">${sum.cards} cards collected · ${sum.setsDone}/${sum.sets} sets</span></header>
-      <p class="hint">Every card you have ever owned stays in the binder, even after you sell it. Finish a set and it pays once.</p>
+      <header class="panel-head"><h2>The Binder</h2><span class="tag">${sum.cards} cards · ${sum.setsDone}/${sum.sets} sets</span>${about('Every card you have ever owned stays in the binder, even after you sell it. Finish a set and it pays once.')}</header>
       <div class="binder-sets" id="binderSets">
         ${all.map((set) => {
           const pr = setProgress(set, club);
           const open = binderOpen === set.id;
-          return `<article class="bset ${pr.done ? 'done' : ''} ${pr.claimed ? 'claimed' : ''}">
-            <header data-bset="${set.id}"><b>${set.name}</b><span>${set.blurb}</span></header>
+          return `<article class="bset ${pr.done ? 'done' : ''} ${pr.claimed ? 'claimed' : ''} ${open ? 'open' : ''}">
+            <header data-bset="${set.id}" title="${set.blurb}"><b>${set.name}</b>${open ? `<span>${set.blurb}</span>` : ''}</header>
             <i class="obj-bar"><b style="width:${(pr.have / pr.need) * 100}%"></b></i>
             <div class="bset-foot"><span>${pr.have}/${pr.need}</span><em>${rewardLine(set.reward)}</em>
               ${pr.claimed ? '<span class="tag">Claimed</span>' : pr.done ? `<button class="mini-btn" data-bclaim="${set.id}">Claim</button>` : ''}</div>
