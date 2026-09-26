@@ -6,7 +6,9 @@ import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
 import { screenHead } from '../components/screenHead.js';
-import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx } from '../audio.js';
+import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, loadVoice, playVoice } from '../audio.js';
+import { VOICE_PACKS } from '../data/voicePackUS.js';
+import { clipUrl } from '../broadcast/voice.js';
 import { startTutorial, tutorialSeen } from '../tutorial.js';
 import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
 import { describeRenderer } from '../game/gpu.js';
@@ -127,12 +129,17 @@ export function render() {
     <section class="panel glass" id="broadcastSet">
       <header class="panel-head"><h2>Broadcast</h2></header>
       <div class="setting-row">
-        <div><b>Spoken commentary</b><span>Two voices, play-by-play and analysis, through your device's speech.</span></div>
+        <div><b>Spoken commentary</b><span>Two voices: play-by-play and analysis.</span></div>
         <button class="switch ${s.commVoice !== false ? 'on' : ''}" id="commVoiceTgl" role="switch" aria-checked="${s.commVoice !== false}"><i></i></button>
       </div>
       <div class="setting-row">
         <div><b>Subtitles</b><span>Every commentary line on screen, with who said it.</span></div>
         <button class="switch ${s.subtitles !== false ? 'on' : ''}" id="subsTgl" role="switch" aria-checked="${s.subtitles !== false}"><i></i></button>
+      </div>
+      <div class="setting-row">
+        <div><b>Commentators</b><span>English only. Arabic uses your device's voice.</span></div>
+        <div class="seg seg-wrap">${[['us', 'American'], ['device', 'Device voice']].map(([v, l]) => `<button class="${(s.commPack || 'us') === v ? 'on' : ''}" data-setseg="commPack:${v}">${l}</button>`).join('')}
+          <button class="btn ghost sm" id="commHear" aria-label="Hear the commentators">▶ Hear</button></div>
       </div>
       ${segRow('Commentary language', 'commLang', [['auto', 'Game language'], ['en', 'English'], ['ar', 'العربية']], s.commLang || 'auto')}
       ${segRow('Pre-match show', 'pregame', [['full', 'Full'], ['short', 'Walk-out only'], ['off', 'Off']], s.pregame || 'full')}
@@ -506,6 +513,15 @@ export function mount(root) {
     el.classList.toggle('on', next); el.setAttribute('aria-checked', String(next));
   });
   toggleOn(root.querySelector('#commVoiceTgl'), 'commVoice');
+  // v121: a taste of the chosen commentators — the pack's own clip, or the device reading the same line
+  root.querySelector('#commHear')?.addEventListener('click', async () => {
+    const pk = getState().settings.commPack || 'us';
+    if (pk === 'device') { announce('What a strike! That is an absolute worldie!'); return; }
+    await resumeAudio();
+    const pack = VOICE_PACKS[pk];
+    const buf = await loadVoice(clipUrl(pack, `pbp-goal-${Math.floor(Math.random() * pack.pbp.goal.length)}.mp3`));
+    if (!playVoice(buf)) toast('Sound is off or not ready yet', 'warn');
+  });
   toggleOn(root.querySelector('#subsTgl'), 'subtitles');
   toggleOn(root.querySelector('#bcGfxTgl'), 'broadcastGfx');
   root.querySelectorAll('[data-setseg]').forEach((b) => b.addEventListener('click', () => {

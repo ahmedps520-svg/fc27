@@ -9,7 +9,7 @@
  * deletes every cache that is not the current one, so a new name is what
  * actually clears out an old build's bytes.
  */
-const CACHE = 'apexxi-v120';
+const CACHE = 'apexxi-v121';
 
 const ASSETS = [
   './',
@@ -129,6 +129,7 @@ const ASSETS = [
   './js/data/kitDesign.js',
   './js/customCup.js',
   './js/data/rivalries.js',
+  './js/data/voicePackUS.js',
   './js/screens/cup.js',
   './js/game/quality.js',
   './js/game/governor.js',
