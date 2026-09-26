@@ -18,28 +18,41 @@ const OUT = arg('--out', 'tests/tmp/hair');
 mkdirSync(OUT, { recursive: true });
 
 const PAGE = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#1d2a22}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "/js/vendor/three.module.js" } }</script>
 <script type="module">
 import * as THREE from '/js/vendor/three.module.js';
 import * as rig from '/js/game/rig.js';
+import { loadPlayerModel, makeRig, poseRig } from '/js/game/playerModel.js';
 const W = 220, H = 220;
 const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); ren.setSize(W, H); document.body.appendChild(ren.domElement);
 const scene = new THREE.Scene(); scene.background = new THREE.Color('#9fc2df');
 scene.add(new THREE.HemisphereLight(0xffffff, 0x335533, 1.7)); const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(6, -8, 12); scene.add(sun);
 const cam = new THREE.PerspectiveCamera(26, W / H, 0.05, 50); cam.up.set(0, 0, 1);
 const p0 = () => ({ x: 0, y: 0, vx: 0, vy: 0, dirX: 0, dirY: -1, _phase: 0, stumble: 0, holdT: 0, ref: { id: 'x', name: 'x', stats: {} } });
-window.__shoot = () => {
+window.__shoot = async (which) => {
   const shots = [];
+  const model = which === 'model' ? await loadPlayerModel() : null;
   for (const [view, beard] of [['front', false], ['front', true], ['side', false], ['side', true]]) {
-    for (let style = 0; style < 6; style++) {
+    for (let style = 0; style < 10; style++) {
+      const skin = ['#e9bd95', '#8c5733', '#d5a072'][style % 3]; const hair = ['#2b1b12', '#101010', '#8d6a35'][style % 3];
+      let obj; let z;
+      if (model) {
+        const m = makeRig(model, { kit: { shirt: new THREE.Color('#d33a3a'), shorts: new THREE.Color('#f4f4f4'), socks: new THREE.Color('#d33a3a') }, ref: { id: 'h' + style, name: 'h', stats: {}, look: { style, beard, hair, skin } }, index: 3, isGK: false });
+        scene.add(m.root); obj = m.root;
+        for (let i = 0; i < 12; i++) poseRig(m, p0(), 1 / 30);
+        m.root.updateMatrixWorld(true);
+        const hb = m.root.getObjectByName('apexHair') || m.root; const w = new THREE.Vector3(); hb.getWorldPosition(w); z = w.z - 0.02;
+      } else {
       const fig = rig.buildPlayer(new THREE.Color('#d33a3a'), new THREE.Color('#f4f4f4'), new THREE.Color(['#e9bd95', '#8c5733', '#d5a072'][style % 3]), new THREE.Color(['#2b1b12', '#101010', '#8d6a35'][style % 3]), new THREE.Color('#d33a3a'), { height: 1, girth: 1, shoulders: 1 }, { hairStyle: style, beard });
-      scene.add(fig.grp);
+      scene.add(fig.grp); obj = fig.grp;
       rig.posePlayer(fig, p0(), 0, true, 0);
-      const z = fig.parts.head.position.z;
+      z = fig.parts.head.position.z;
+      }
       if (view === 'front') cam.position.set(0.25, -1.35, z + 0.08); else cam.position.set(1.35, -0.25, z + 0.08);
       cam.lookAt(0, 0, z + 0.01);
       ren.render(scene, cam);
       shots.push({ id: style + (beard ? ' + beard' : '') + ' · ' + view, png: ren.domElement.toDataURL('image/png') });
-      scene.remove(fig.grp);
+      scene.remove(obj);
     }
   }
   return shots;
@@ -62,9 +75,12 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 220, height: 220 } });
 page.on('pageerror', (e) => console.log('error', e.message));
 await page.goto(`${base}/sheet.html`); await page.waitForFunction(() => window.__ready);
-const shots = await page.evaluate(() => window.__shoot());
-const sheet = await browser.newPage({ viewport: { width: 1320, height: 880 } });
-await sheet.setContent(`<body style="margin:0;display:grid;grid-template-columns:repeat(6,220px);font:600 12px system-ui">${shots.map((s) => `<div style="position:relative"><img src="${s.png}" style="width:220px;height:220px;display:block"><span style="position:absolute;left:6px;top:4px;color:#fff;text-shadow:0 1px 2px #000">${s.id}</span></div>`).join('')}</body>`);
-await sheet.screenshot({ path: join(OUT, 'hair.png') });
+for (const which of ['rig', 'model']) {
+const shots = await page.evaluate((w) => window.__shoot(w), which);
+const sheet = await browser.newPage({ viewport: { width: 2200, height: 880 } });
+await sheet.setContent(`<body style="margin:0;display:grid;grid-template-columns:repeat(10,220px);font:600 12px system-ui">${shots.map((s) => `<div style="position:relative"><img src="${s.png}" style="width:220px;height:220px;display:block"><span style="position:absolute;left:6px;top:4px;color:#fff;text-shadow:0 1px 2px #000">${s.id}</span></div>`).join('')}</body>`);
+await sheet.screenshot({ path: join(OUT, `hair-${which}.png`) });
+await sheet.close();
+}
 await browser.close(); server.close();
-console.log(`✔ ${join(OUT, 'hair.png')}`);
+console.log(`✔ ${OUT}/hair-rig.png, ${OUT}/hair-model.png`);

@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v125',
+    date: '2026-09-26',
+    tag: 'Look',
+    title: 'Dreads, braids and every player\'s own hair',
+    lede: 'Four new hairstyles (dreadlocks, braids, a bun and a mohawk), and players on High and Ultra graphics now wear their own hair too, matching their card.',
+    entries: [
+      {
+        head: 'Ten hairstyles',
+        summary: 'Dreadlocks, braids with plaits, a man-bun and a mohawk join crop, fringe, quiff, long, buzz and afro. About three players in ten wear one of the new four, on the pitch and on their card.',
+        detail: 'Player Career and Street let you pick any of the ten for your own player.',
+      },
+      {
+        head: 'On every graphics setting',
+        summary: 'On High and Ultra, every player used to have the same sculpted haircut in a different colour. Now each wears his card\'s style and colour, and it moves with his head.',
+        detail: 'Beards show on Low and Medium, and in the portraits.',
+      },
+    ],
+  },
+  {
     version: 'v124',
     date: '2026-09-26',
     tag: 'Look',

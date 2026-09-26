@@ -7,12 +7,13 @@ import assert from 'node:assert/strict';
 import './_dom.mjs';
 
 const THREE = await import('../../js/vendor/three.module.js');
-const { hairGeometry, buildPlayer } = await import('../../js/game/rig.js');
-const { faceOf } = await import('../../js/components/face.js');
+const { hairGeometry, buildPlayer, HAIR_STYLES } = await import('../../js/game/rig.js');
+const { faceOf, LOOK_STYLES } = await import('../../js/components/face.js');
 
-test('six shapes, each with and without a beard, all different and cached', () => {
+test('ten shapes (v125: dreads, braids, bun, mohawk), each with and without a beard, all different and cached', () => {
+  assert.equal(HAIR_STYLES, LOOK_STYLES.length, 'the figure has a shape for every portrait style');
   const seen = new Set();
-  for (let st = 0; st < 6; st++) {
+  for (let st = 0; st < HAIR_STYLES; st++) {
     for (const beard of [false, true]) {
       const g = hairGeometry(st, beard);
       assert.equal(hairGeometry(st, beard), g, 'built once, shared');
@@ -21,13 +22,13 @@ test('six shapes, each with and without a beard, all different and cached', () =
       g.computeBoundingBox();
       const b = g.boundingBox;
       // it stays on a head: nothing reaches past the shoulders or far off the crown
-      assert.ok(b.max.x < 1.6 && b.min.x > -1.6 && b.max.z < 1.6 && b.min.z > -1.4, `style ${st}${beard ? '+beard' : ''} box ${JSON.stringify(b)}`);
+      assert.ok(b.max.x < 1.6 && b.min.x > -1.6 && b.max.z < 1.6 && b.min.z > -1.5, `style ${st}${beard ? '+beard' : ''} box ${JSON.stringify(b)}`);
       seen.add(`${pos.length}:${pos[0].toFixed(3)}:${b.max.z.toFixed(3)}:${b.min.z.toFixed(3)}`);
     }
     assert.ok(hairGeometry(st, true).attributes.position.count > hairGeometry(st, false).attributes.position.count, 'a beard adds to the mesh');
   }
-  assert.equal(seen.size, 12, 'twelve distinct looks');
-  assert.equal(hairGeometry(8), hairGeometry(2), 'styles wrap');
+  assert.equal(seen.size, HAIR_STYLES * 2, 'every look distinct');
+  assert.equal(hairGeometry(12), hairGeometry(2), 'styles wrap');
 });
 
 test('a figure is built with its portrait hair, as one mesh', () => {
@@ -41,7 +42,9 @@ test('a figure is built with its portrait hair, as one mesh', () => {
 
 test('a squad has a spread of looks, not eleven of one', () => {
   const styles = new Set(); let beards = 0;
-  for (let i = 0; i < 60; i++) { const f = faceOf({ id: `card-${i}` }); styles.add(f.style); beards += f.beard ? 1 : 0; }
-  assert.equal(styles.size, 6);
-  assert.ok(beards > 3 && beards < 30, `${beards} beards in 60`);
+  const n = {};
+  for (let i = 0; i < 400; i++) { const f = faceOf({ id: `card-${i}` }); styles.add(f.style); n[f.style] = (n[f.style] || 0) + 1; beards += f.beard ? 1 : 0; }
+  assert.equal(styles.size, 10, 'every style turns up');
+  for (const st of [6, 7, 8, 9]) assert.ok(n[st] >= 15, `style ${st} (${LOOK_STYLES[st]}): ${n[st]} in 400`);
+  assert.ok(beards > 40 && beards < 140, `${beards} beards in 400`);
 });

@@ -29,13 +29,17 @@ export function faceOf(player) {
   return player.look ? { ...faceBase(h, pick), ...player.look } : faceBase(h, pick);
 }
 export const LOOK_SKINS = SKINS;
+/** v125: every hair style, in the order the creators list them. */
+export const LOOK_STYLES = ['Crop', 'Fringe', 'Quiff', 'Long', 'Buzz', 'Afro', 'Dreads', 'Braids', 'Bun', 'Mohawk'];
 export const LOOK_HAIRS = HAIRS;
 function faceBase(h, pick) {
   return {
     skin: pick(SKINS, 0),
     hair: pick(HAIRS, 4),
     eye: pick(EYES, 8),
-    style: (h >> 11) % 6,          // hair silhouette
+    // hair silhouette: the six originals, and (v125) about three players in ten
+    // in dreadlocks, braids, a bun or a mohawk
+    style: ((h >>> 26) % 10) < 3 ? 6 + (((h >>> 3) ^ (h >>> 19)) % 4) : (h >> 11) % 6,
     beard: ((h >> 14) % 5) === 0,
     brow: 0.9 + ((h >> 17) % 5) * 0.06,
     jaw: 0.92 + ((h >> 20) % 6) * 0.035,
@@ -68,7 +72,22 @@ export function faceSVG(player, size = 64, kit = '#243049') {
     `<path d="M18 31 Q17 10 32 10 Q47 10 46 31 Q46 17 32 17 Q18 17 18 31 Z" fill="${f.hair}"/>
      <circle cx="21" cy="16" r="5" fill="${f.hair}"/><circle cx="43" cy="16" r="5" fill="${f.hair}"/>
      <circle cx="32" cy="9" r="6" fill="${f.hair}"/>`,
-  ][f.style];
+    // v125 — dreadlocks: a crown and locks hanging past the ears
+    `<path d="M18 29 Q17 11 32 11 Q47 11 46 29 Q45 18 32 18 Q19 18 18 29 Z" fill="${f.hair}"/>
+     <g stroke="${f.hair}" stroke-width="3.4" stroke-linecap="round" fill="none">
+       <path d="M19 22 Q16 32 17 44"/><path d="M22 18 Q19 30 20 46"/><path d="M45 22 Q48 32 47 44"/><path d="M42 18 Q45 30 44 46"/>
+     </g>`,
+    // braids: tight rows front to back, and two plaits behind
+    `<path d="M20 27 Q21 13 32 13 Q43 13 44 27 Q38 18 32 18 Q26 18 20 27 Z" fill="${f.hair}"/>
+     <g stroke="rgba(0,0,0,.35)" stroke-width="1" fill="none"><path d="M26 15 L25 21"/><path d="M30 14 L29.6 19"/><path d="M34 14 L34.4 19"/><path d="M38 15 L39 21"/></g>
+     <g stroke="${f.hair}" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="2 1.2"><path d="M20 26 L18 40"/><path d="M44 26 L46 40"/></g>`,
+    // a bun: short sides, the knot on top
+    `<path d="M20 27 Q21 14 32 14 Q43 14 44 27 Q38 19 32 19 Q26 19 20 27 Z" fill="${f.hair}"/>
+     <circle cx="32" cy="10" r="5.5" fill="${f.hair}"/>`,
+    // a mohawk: faded sides, a tall strip down the middle
+    `<path d="M20 27 Q21 15 32 15 Q43 15 44 27 Q38 20 32 20 Q26 20 20 27 Z" fill="${f.hair}" opacity=".45"/>
+     <rect x="28" y="5" width="8" height="16" rx="4" fill="${f.hair}"/>`,
+  ][f.style] || '';
 
   return `
 <svg class="face" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">
