@@ -46,7 +46,12 @@ Everything below is on the local machine only.
     `APEX XI Store <store@apexxi.online>`, which must be on a domain
     verified in Resend; `STORE_INBOX` overrides the recipient.
   - without a key, the email is written to `<data>/outbox/<ref>.html`.
-- **The owner needs to set `RESEND_API_KEY` on the server for real email.**
+- The owner made the Resend account and verified apexxi.online.
+  `render.yaml` now declares `RESEND_API_KEY` (`sync: false`, set it in the
+  Render dashboard) and `MAIL_FROM`. The live game is served by the same
+  Render service, so `SERVER_ORIGIN` is not needed there.
+- The store ledger lives on the instance's disk and resets on each deploy.
+- **Until `RESEND_API_KEY` is set on Render, no email is sent.**
   The game on GitHub Pages only reaches the server if `SERVER_ORIGIN`
   is set; otherwise the receipt says "Not sent (offline)".
 - Tests: `tests/unit/shop.test.mjs`; `tests/qa/shop.mjs` (a CI step,

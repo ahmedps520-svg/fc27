@@ -38,3 +38,10 @@ services:
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN
         sync: false
+      # v129: the store's purchase emails (server/shop.js). Without the key each
+      # email is only written to server/data/outbox. MAIL_FROM must be on the
+      # domain verified in Resend.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: "APEX XI Store <store@apexxi.online>"
