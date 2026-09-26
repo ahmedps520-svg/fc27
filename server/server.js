@@ -108,6 +108,8 @@ function crashLog(line) {
 
 /* Watch pairing codes, in memory: a code that does not survive a restart is a
  * code an attacker cannot grind across one. */
+// v135: order references already emailed (in memory; a restart forgets, which only allows one repeat)
+const seenRefs = new Set();
 const PAIR_TTL = 3 * 60 * 1000;
 const pairings = new Map();
 setInterval(() => {
@@ -270,12 +272,20 @@ async function api(req, res, route) {
    * is sent to this route or kept by it, and nothing is granted. */
   if (route === '/api/purchase') {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST' });
-    if (!guard.allow(`buy:${guard.clientIP(req)}`, 5, 5 / 600)) return json(res, 429, { error: 'Too many purchases. Wait a few minutes.' });
+    /* v135: signed-in players only, and few of them — every order is an email
+       to the store's inbox, and an open endpoint was a way to fill it. Three
+       an hour per account, five an hour per address, and an order reference
+       is emailed once however many times it is sent. */
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Sign in to make a test purchase.' });
+    if (!guard.allow(`buy:ip:${guard.clientIP(req)}`, 5, 5 / 3600)) return json(res, 429, { error: 'Too many purchases from here. Try again later.' });
+    if (!guard.allow(`buy:acct:${acct.name}`, 3, 3 / 3600)) return json(res, 429, { error: 'Three test purchases an hour. Try again later.' });
     const body = await readBody(req).catch(() => ({}));
     const bundle = shop.bundleById(String(body.bundle || ''));
     const ref = String(body.ref || '');
     if (!bundle || !shop.REF_RE.test(ref)) return json(res, 400, { error: 'Unknown order.' });
-    const acct = authOf(req);
+    if (seenRefs.has(ref)) return json(res, 200, { ok: true, ref, test: true, mail: 'duplicate' });
+    seenRefs.add(ref); if (seenRefs.size > 5000) seenRefs.delete(seenRefs.values().next().value);
     const club = String(body.club || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 40);
     const balance = shop.recordSale(DATA_DIR, bundle.cents);
     const mail = shop.purchaseEmail({ bundle, ref, club, player: acct ? store.publicProfile(acct).name : '', balance });

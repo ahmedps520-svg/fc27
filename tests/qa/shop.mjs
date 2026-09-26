@@ -23,6 +23,8 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 800 }], ['phone', 
   await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: 'low', tutorialDone: true, reduceMotion: true } })), appVersion);
   await page.goto(server.url + '/');
   await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
+  // v135: the desktop run signs in (its order is emailed); the phone run stays signed out
+  if (label === 'desktop') await page.evaluate(async () => { const api = await import('/js/net/api.js'); await api.register(`shopqa${Date.now() % 1e6}`, 'shop-pass-123'); });
   await page.waitForFunction(() => !document.querySelector('#screenCurtain.on'));
   await page.click('[data-go="squad"]'); await page.waitForSelector('#uTabs');
   await page.waitForFunction(() => !document.querySelector('#screenCurtain.on'));
@@ -43,7 +45,8 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 800 }], ['phone', 
   await page.waitForSelector('.co-done', { timeout: 8000 }).catch(() => problems.push(`${label}: no receipt`));
   const receipt = await page.$eval('.co-receipt', (e) => e.textContent).catch(() => '');
   if (!/AX-[A-Z2-9]{8}/.test(receipt)) problems.push(`${label}: receipt has no order reference`);
-  if (!/Saved on the server/.test(receipt)) problems.push(`${label}: the server was not told (${receipt})`);
+  const wantLine = label === 'desktop' ? /Saved on the server/ : /sign in/i;
+  if (!wantLine.test(receipt)) problems.push(`${label}: receipt line wrong (${receipt})`);
   if (!/•••• 4242/.test(receipt)) problems.push(`${label}: receipt does not show the card's last four`);
   await page.screenshot({ path: join(OUT, `${label}-receipt.png`) });
   if (await page.$('#coNumber')) problems.push(`${label}: the card field is still in the page`);
@@ -55,13 +58,23 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 800 }], ['phone', 
   await page.close();
 }
 await new Promise((r) => setTimeout(r, 400));
+// v135: the endpoint itself — signed out is refused, three an hour, a reference is emailed once
+const post = (body, token) => fetch(`${server.url}/api/purchase`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+if ((await post({ bundle: 'ult-20', ref: 'AX-SIGNEDOT' })).status !== 401) problems.push('a signed-out purchase was not refused');
+const reg = await fetch(`${server.url}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `shopqb${Date.now() % 1e6}`, pass: 'shop-pass-123' }) }).then((r) => r.json());
+const r1 = await post({ bundle: 'ult-20', ref: 'AX-DUPEREFA' }, reg.token).then((r) => r.json());
+const r2 = await post({ bundle: 'ult-20', ref: 'AX-DUPEREFA' }, reg.token).then((r) => r.json());
+if (r2.mail !== 'duplicate') problems.push(`a repeated reference was mailed again (${JSON.stringify(r1)} / ${JSON.stringify(r2)})`);
+await post({ bundle: 'ult-20', ref: 'AX-THIRDREF' }, reg.token);
+const r4 = await post({ bundle: 'ult-20', ref: 'AX-FOURTHRF' }, reg.token);
+if (r4.status !== 429) problems.push(`a fourth purchase in the hour was allowed (${r4.status})`);
 const mails = readdirSync(join(server.dataDir, 'outbox'));
-if (mails.length !== 2) problems.push(`expected two emails in the outbox, found ${mails.length}`);
-const html = readFileSync(join(server.dataDir, 'outbox', mails[0]), 'utf8');
+if (mails.length !== 3) problems.push(`expected three emails in the outbox (the desktop order and two direct), found ${mails.length}`);
+const html = mails.map((f) => readFileSync(join(server.dataDir, 'outbox', f), 'utf8')).find((h) => h.includes('$9.99')) || '';
 if (!html.includes('You just got a purchase') || !html.includes('$9.99')) problems.push('the email is not the receipt');
 if (/4242|cvv/i.test(html)) problems.push('the email carries card details');
 const ledger = JSON.parse(readFileSync(join(server.dataDir, 'store-ledger.json'), 'utf8'));
-if (ledger.cents !== 1998 || ledger.count !== 2) problems.push(`ledger ${JSON.stringify(ledger)}`);
+if (ledger.cents !== 999 + 199 * 2 || ledger.count !== 3) problems.push(`ledger ${JSON.stringify(ledger)}`);
 await browser.close(); server.stop();
 if (problems.length) { console.error(`✘ shop\n  - ${problems.join('\n  - ')}`); process.exit(1); }
-console.log(`✔ the Ultimate shop: checkout, receipt, two store emails (${join(server.dataDir, 'outbox')}), balance untouched`);
+console.log(`✔ the Ultimate shop: checkout, receipt, signed-out and rate limits, three store emails (${join(server.dataDir, 'outbox')}), balance untouched`);

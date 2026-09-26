@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v135',
+    date: '2026-09-26',
+    tag: 'Polish',
+    title: 'The net shakes',
+    lede: 'A goal now properly shakes the net, and the test store only sends receipts for signed-in players.',
+    entries: [
+      {
+        head: 'A net that moves',
+        summary: 'A shot into the net now bags it and sends a wave rolling through the back panel, instead of barely moving it.',
+        detail: 'The net was already simulated, but the strike was too gentle to see from most cameras. It is now harder and wider, with a softer second wave as the ball drops.',
+      },
+      {
+        head: 'Store receipts need a sign-in',
+        summary: 'Test purchases only reach the store when you are signed in, at most three an hour. You can still try the checkout signed out.',
+        detail: 'The receipt tells you if it was not sent and why.',
+      },
+    ],
+  },
+  {
     version: 'v134',
     date: '2026-09-26',
     tag: 'Rules',

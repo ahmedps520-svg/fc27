@@ -11,7 +11,7 @@
  */
 import { getState } from '../state.js';
 import { TEST_MODE, TEST_CARD, price, cardBrand, formatCard, formatExp, checkCard, orderRef, digits } from '../data/shop.js';
-import { reportPurchase } from '../net/api.js';
+import { reportPurchase, isSignedIn } from '../net/api.js';
 
 const BRAND = { visa: 'VISA', mastercard: 'Mastercard', amex: 'AMEX', discover: 'Discover', mada: 'mada' };
 
@@ -21,6 +21,9 @@ function receiptLine(mail) {
   if (mail === 'outbox') return 'Saved on the server (no mail key)';
   if (mail === 'pending') return 'Sending…';
   if (mail === 'offline') return 'Not sent (offline)';
+  if (mail === 'signedout') return 'Not sent — sign in to send it';
+  if (mail === 'limited') return 'Not sent — three an hour';
+  if (mail === 'duplicate') return 'Already sent';
   return `Not emailed — ${String(mail).replace(/^failed: /, '').replace(/[<>&]/g, '')}`;
 }
 
@@ -34,6 +37,7 @@ export function openCheckout(bundle, { onDone } = {}) {
     <form class="co-sheet" novalidate autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="coTitle">
       <button type="button" class="co-x" data-co-close aria-label="Close">✕</button>
       ${TEST_MODE ? '<p class="co-test"><b>TEST MODE</b> No real charge. Do not enter a real card — use the test card.</p>' : ''}
+      ${isSignedIn() ? '' : '<p class="co-test co-signin">Sign in (Ultimate XI → Online) to send the store a receipt. You can still try the checkout.</p>'}
       <header class="co-head">
         <span class="co-gem">✦</span>
         <div><h2 id="coTitle">${got} Ultimate</h2><p>${bundle.ultimate}${bundle.bonus ? ` + <b>${bundle.bonus} bonus</b>` : ''}</p></div>
@@ -102,7 +106,9 @@ export function openCheckout(bundle, { onDone } = {}) {
     sheet.classList.add('busy');
     sheet.innerHTML = '<div class="co-proc"><div class="sc-mark"><svg class="sc-ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle cx="32" cy="32" r="28" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="52 176"/></svg><b>A</b></div><p>Processing…</p></div>';
     const club = getState().club.identity?.name || 'Ultimate XI';
-    const sent = reportPurchase({ bundle: bundle.id, ref, club }).then((r) => r.mail || 'resend', () => 'offline');
+    // v135: only a signed-in player's order reaches the server (and the store's inbox)
+    const sent = !isSignedIn() ? Promise.resolve('signedout')
+      : reportPurchase({ bundle: bundle.id, ref, club }).then((r) => r.mail || 'resend', (e) => (/sign in/i.test(e.message) ? 'signedout' : /try again later/i.test(e.message) ? 'limited' : 'offline'));
     const [ok] = await Promise.all([sent, new Promise((r) => setTimeout(r, 1400))]);
     sheet.classList.remove('busy');
     sheet.innerHTML = `
