@@ -1,6 +1,6 @@
 import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
-  ICONS, ICON_TRAITS, STARS, STAR_TRAITS,
+  ICONS, ICON_TRAITS, STARS, STAR_TRAITS, SAUDI_ICONS,
 } from './pools.js';
 import { REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, REAL_PLAYERS_WAVE7, NATION_COLORS } from './realPlayers.js';
 
@@ -667,6 +667,18 @@ function buildWorld() {
     p.value = marketValue(overall, age);
     players.push(p);
     sbcCards.push(p.id);
+  }
+
+  /* v126: the Saudi Icons. Last of all, so every id above stays where saves
+     expect it; no random draws, so nothing after them could shift either. */
+  for (const def of SAUDI_ICONS) {
+    const drop = 99 - def.overall;
+    const st = Object.fromEntries(Object.entries(ICON_TRAITS[def.trait]).map(([k, v]) => [k, clamp(Math.round(v - drop * 0.8), 30, 99)]));
+    const p = namedCard(def, st, def.overall, 'icon', Math.round(250_000_000 * (def.overall / 99) ** 8), ++idCounter);
+    p.saudiIcon = true;
+    players.push(p);
+    freeAgents.push(p.id);
+    icons.push(p.id);
   }
 
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));

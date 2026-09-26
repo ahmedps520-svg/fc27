@@ -32,7 +32,7 @@ const p0 = () => ({ x: 0, y: 0, vx: 0, vy: 0, dirX: 0, dirY: -1, _phase: 0, stum
 window.__shoot = async (which) => {
   const shots = [];
   const model = which === 'model' ? await loadPlayerModel() : null;
-  for (const [view, beard] of [['front', false], ['front', true], ['side', false], ['side', true]]) {
+  for (const [view, beard] of [['front', false], ['side', false], ['back', false], ['backq', false]]) {
     for (let style = 0; style < 10; style++) {
       const skin = ['#e9bd95', '#8c5733', '#d5a072'][style % 3]; const hair = ['#2b1b12', '#101010', '#8d6a35'][style % 3];
       let obj; let z;
@@ -48,7 +48,7 @@ window.__shoot = async (which) => {
       rig.posePlayer(fig, p0(), 0, true, 0);
       z = fig.parts.head.position.z;
       }
-      if (view === 'front') cam.position.set(0.25, -1.35, z + 0.08); else cam.position.set(1.35, -0.25, z + 0.08);
+      if (view === 'front') cam.position.set(0.25, -1.35, z + 0.08); else if (view === 'side') cam.position.set(1.35, -0.25, z + 0.08); else if (view === 'back') cam.position.set(0.1, 1.35, z + 0.25); else cam.position.set(0.9, 0.9, z + 0.3);
       cam.lookAt(0, 0, z + 0.01);
       ren.render(scene, cam);
       shots.push({ id: style + (beard ? ' + beard' : '') + ' · ' + view, png: ren.domElement.toDataURL('image/png') });

@@ -12,7 +12,7 @@ import { eventPack, activeEvent } from '../live.js';
 import { evolveInfo, evolve } from '../evolve.js';
 import {
   PACKS, PACK_BY_ID, packTone, RARITY_RANK, rollRarity, drawPlayer, openPack, dupValue,
-  FREE_MS, fmtLeft, hasKeeper, samplePulls, nationOfWeek } from '../data/packs.js';
+  FREE_MS, fmtLeft, hasKeeper, samplePulls, nationOfWeek, storeCatalog } from '../data/packs.js';
 
 /** The player ids a pull would be a repeat of: the collection as it stands. */
 const ownedIds = () => new Set(getState().club.collection);
@@ -29,7 +29,8 @@ import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
 import { t } from '../i18n.js';
 import { trade, kindOf } from '../economy.js';
-import { facts, about } from '../components/facts.js';
+import { facts, about, icon } from '../components/facts.js';
+import { activeTheme } from '../seasonal.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -426,13 +427,14 @@ export function storeView() {
    * when it must — which also means a shelf never dictates the layout of the
    * one below it. The free pack gets a shelf to itself because it is the one
    * everybody comes back for. */
-  const packCard = (p) => {
+  const packCard = (p, meta = {}) => {
     const free = p.cost === 0;
     const locked = !free && p.cost > (s.club.apex || 0);
     const freeReady = free && Date.now() >= (s.club.freeAt || 0);
     return `
       <article class="store-pack rar-${packTone(p)}">
-        ${p.limited ? '<span class="sp-tag">Limited</span>' : ''}
+        ${meta.badge ? `<span class="sp-badge b-${meta.badge}">${{ new: 'New', updated: 'Updated', back: 'Back', season: 'Event' }[meta.badge]}</span>` : p.limited ? '<span class="sp-tag">Limited</span>' : ''}
+        ${meta.leavesIn ? `<span class="sp-leaves">${icon('clock', 12)} ${fmtLeft(meta.leavesIn)}</span>` : ''}
         <div class="sp-art">
           <span class="sp-fan" aria-hidden="true"><i></i><i></i></span>
           <span class="sp-face">
@@ -457,12 +459,20 @@ export function storeView() {
       </article>`;
   };
 
+  /* v126: what is on sale now (data/packs.js storeCatalog) — a core set, four
+     on rotation, the season's own. The Promo shelf leads with everything new,
+     updated, back this week or seasonal, then the promo packs themselves. */
+  const catalog = storeCatalog(Date.now(), { season: activeTheme(s.settings.menuTheme || 'auto') });
+  const promoFirst = { season: 0, new: 1, updated: 2, back: 3 };
+  const promo = catalog.filter((x) => x.pack.cat === 'promo' || x.badge)
+    .sort((a, b) => (promoFirst[a.badge] ?? 9) - (promoFirst[b.badge] ?? 9));
+  const onShelf = catalog.filter((x) => !(x.pack.cat === 'promo' || x.badge));
   const SHELVES = [
-    ['free', 'On the house', 'A free bronze pack, every six hours.'],
-    ['standard', 'Standard', 'The everyday packs — squad filler, a keeper, a cheap gamble.'],
-    ['premium', 'Premium', 'Higher floors and better odds, priced like it.'],
-    ['promo', `This week: ${campaignNow().name}`, `${campaignNow().blurb} Ends in ${fmtLeft(campaignEndsIn() * 1000)}. In-Forms and the Team of the Week come from the world's own round of matches.`],
-    ['limited', 'Limited & Icons', 'Guaranteed headline cards. The top of the store.'],
+    ['promo', 'Promo', `New, updated and back this week · ${campaignNow().name} ends in ${fmtLeft(campaignEndsIn() * 1000)}`, promo],
+    ['free', 'On the house', 'A free bronze pack, every six hours.', null],
+    ['standard', 'Standard', 'The everyday packs.', null],
+    ['premium', 'Premium', 'Higher floors and better odds.', null],
+    ['limited', 'Limited & Icons', 'Guaranteed headline cards.', null],
   ];
 
   return subs + shelfEvent + `
@@ -470,13 +480,13 @@ export function storeView() {
       <h2>Packs</h2>
       <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
     </div>
-    ${SHELVES.map(([cat, title, blurb]) => {
-      const shelf = PACKS.filter((p) => p.cat === cat);
+    ${SHELVES.map(([cat, title, blurb, items]) => {
+      const shelf = items || onShelf.filter((x) => x.pack.cat === cat);
       if (!shelf.length) return '';
       return `
         <section class="panel glass store-cat cat-${cat}">
           <header class="panel-head"><h2>${title}</h2><span class="sc-blurb">${blurb}</span></header>
-          <div class="store-row">${shelf.map(packCard).join('')}</div>
+          <div class="store-row">${shelf.map((x) => packCard(x.pack, x)).join('')}</div>
         </section>`;
     }).join('')}`;
 }
@@ -1344,6 +1354,9 @@ export function mount(root) {
         const pack = findPack(btn.dataset.buyPack);
         const s = getState();
         if (pack.cost > (s.club.apex || 0)) return toast('Not enough Apex', 'warn');
+        // v126: a pack that left the shelf while the store was open is not for sale (the event's own pack is)
+        const onSale = pack.id === eventPack()?.id || storeCatalog(Date.now(), { season: activeTheme(s.settings.menuTheme || 'auto') }).some((x) => x.pack.id === pack.id);
+        if (!onSale) { toast(`${pack.name} has left the shelf for now`, 'warn'); navigate('squad'); return; }
         /* The free pack is a timer, not a ratio. The old gate was
          * `packsOpened % 3` — but *claiming* never increments packsOpened,
          * only opening does, so whenever the count sat on a multiple of three

@@ -16,7 +16,7 @@ import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
 import { settleStreet } from '../streetMode.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, startAnthemFile, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
 import { createDirector } from '../broadcast/director.js';
 import { createPregame, previewText, teamRating } from '../broadcast/pregame.js';
 import { applyTouchLayout, clearTouchLayout } from '../components/touchLayout.js';
@@ -34,6 +34,7 @@ import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import * as customCup from '../customCup.js';
 import { rivalryOf } from '../data/rivalries.js';
+import { activeTheme } from '../seasonal.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // v118: a cup's name is the player's own text
 /** v120: home's share of a stat, 0–100, for the full-time split bars (level when neither has any). */
 const split = (a, b) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : 50);
@@ -753,7 +754,10 @@ export function mount(root, params) {
   const startWalkout = () => {
     walkout = { t: 0, dur: 7 };
     lineUp(); linedUp = true;
-    startAnthem(match.venue?.stadium?.name?.length || 1);
+    // v126: Saudi Arabia's own anthem for a Saudi side, and for everyone on National Day
+    const saudi = match.teams.some((tm) => /saudi arabia/i.test(tm.name || ''));
+    if (saudi || activeTheme(getState().settings.menuTheme || 'auto') === 'nationalDay') startAnthemFile('assets/music/anthem-sa.mp3', match.venue?.stadium?.name?.length || 1);
+    else startAnthem(match.venue?.stadium?.name?.length || 1);
   };
   /** Both XIs on the halfway line, facing the near touchline, keepers at the ends. */
   const lineUp = () => {

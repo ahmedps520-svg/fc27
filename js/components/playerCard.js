@@ -89,7 +89,7 @@ export function playerCard(p, opts = {}) {
      </span>`;
 
   return `
-    <article class="pcard pc-${size} rar-${p.rarity}${selected ? ' is-selected' : ''}${opts.evo ? ` evo-${opts.evo}` : ''}"
+    <article class="pcard pc-${size} rar-${p.rarity}${p.saudiIcon ? ' sa-icon' : ''}${selected ? ' is-selected' : ''}${opts.evo ? ` evo-${opts.evo}` : ''}"
              data-player="${p.id}" style="--rar:${r.color};--rar-glow:${r.glow}" tabindex="0"
              aria-label="${p.name}, ${p.position}, rated ${p.overall}">
       <div class="pc-sheen"></div>

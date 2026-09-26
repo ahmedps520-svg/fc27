@@ -12,7 +12,9 @@
 import { WORLD, getPlayer } from './generator.js';
 import { RARITY } from './pools.js';
 import { price } from '../economy.js';
-import { campaignNow, campaignCards, weekCards, iconTierCards, weekNow } from './promos.js';
+import { campaignNow, campaignCards, weekCards, iconTierCards, weekNow, EVENT_CAMPAIGNS } from './promos.js';
+/** v126: the Saudi Icons (generator.js), for the National Day pack. */
+const saudiIcons = () => (WORLD.icons || []).map(getPlayer).filter((p) => p?.saudiIcon);
 
 /** The nation the Nations Week pack is drawn from: one of twelve, rotating weekly. */
 const WEEK_NATIONS = ['France', 'Brazil', 'England', 'Spain', 'Argentina', 'Germany', 'Italy', 'Portugal', 'Netherlands', 'Saudi Arabia', 'Morocco', 'Belgium'];
@@ -23,6 +25,12 @@ export const PACKS = [
      on top of gold filler, and says exactly what that slot can be. */
   { id: 'campaign', cat: 'promo', name: 'Campaign', cost: 25000, size: 3, variant: 'campaign', odds: { bronze: 0, silver: 0, gold: 0.9, special: 0.1 }, floor: 'gold', note: '3 cards · 1 campaign card', promise: '1 guaranteed card from this week\'s campaign', variantOdds: [['Campaign card', 1]] },
   { id: 'inform', cat: 'promo', name: 'In-Form', cost: 18000, size: 3, variant: 'inform', odds: { bronze: 0, silver: 0, gold: 0.92, special: 0.08 }, floor: 'gold', note: '3 cards · 1 in-form', promise: '1 guaranteed In-Form (1 in 8 is Team of the Week)', variantOdds: [['In-Form', 0.875], ['Team of the Week', 0.125]] },
+  /* v126: National Day — dated, shown only in its window (seasonal.js). One
+     National Day card (every Saudi international, +10, green and white); one
+     time in twelve that slot is a Saudi Icon instead. Saudi filler. */
+  { id: 'nationalday', cat: 'promo', name: 'National Day', cost: 20000, size: 3, variant: 'nationalday', season: 'nationalDay', added: '2026-09-20',
+    odds: { bronze: 0, silver: 0.4, gold: 0.6, special: 0 }, floor: 'silver', filter: { nations: ['Saudi Arabia'] }, tone: 'nationalday',   // one Saudi special exists: two special slots would repeat him
+    note: '3 · Saudi only', promise: '1 National Day card — 1 in 12 is a Saudi Icon', variantOdds: [['National Day card', 11 / 12], ['Saudi Icon', 1 / 12]] },
   { id: 'vault', cat: 'limited', name: 'Legends Vault', cost: 120000, size: 1, limited: true, variant: 'icontier', odds: { bronze: 0, silver: 0, gold: 0, special: 1 }, note: '1 Icon · any tier', promise: '1 guaranteed Icon — Early, Peak or Prime', variantOdds: [['Early Icon (92)', 0.7], ['Peak Icon (95)', 0.25], ['Prime Icon (99)', 0.05]] },
 
   { id: 'bronze', cat: 'free',  name: 'Bronze',  cost: 0,     size: 4, odds: { bronze: 0.68, silver: 0.28, gold: 0.04, special: 0.00 }, note: '4 cards' },
@@ -180,6 +188,53 @@ export const fmtLeft = (ms) => {
 };
 
 /** Limited Edition is also the reward for the hardest objective. */
+/* ------------------------------ the shelf ------------------------------ *
+ * v126: the store had grown to twenty-eight packs, every one of them on the
+ * shelf every day. Now a core set is always there — the packs a squad needs —
+ * and the rest take turns: four at a time, a week each, retired when their
+ * week is up and back in a later one. New and updated packs, the ones back
+ * this week and the seasonal ones sit on a Promo shelf at the top. Retiring a
+ * pack only takes it off the shelf; one already bought still opens. */
+export const CORE_PACKS = new Set(['bronze', 'fodder', 'silver', 'keeper', 'striker', 'gold', 'prime', 'mega', 'vault', 'stars', 'limited', 'campaign', 'inform']);
+export const ROTATION_SIZE = 4;
+const DAY = 86_400_000;
+const WEEK_MS = 7 * DAY;
+/** Packs added or changed recently, shown as NEW or UPDATED on the Promo shelf. */
+const FRESH_DAYS = 14;
+/** The packs on rotation in a given week (deterministic: the same week, the same four). */
+export function rotationFor(week = Math.floor(Date.now() / WEEK_MS)) {
+  const pool = PACKS.filter((p) => !CORE_PACKS.has(p.id) && !p.season).map((p) => p.id).sort();
+  // a shuffle seeded by the week, walked in blocks so every pack comes round
+  const order = pool.slice();
+  const cycle = Math.floor(week / Math.ceil(pool.length / ROTATION_SIZE));
+  let a = (cycle * 2654435761) >>> 0 || 1;
+  const rnd = () => { a ^= a << 13; a >>>= 0; a ^= a >> 17; a ^= a << 5; a >>>= 0; return a / 4294967296; };
+  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  const slot = week % Math.ceil(pool.length / ROTATION_SIZE);
+  return order.slice(slot * ROTATION_SIZE, slot * ROTATION_SIZE + ROTATION_SIZE);
+}
+/**
+ * What the store sells right now, and how to badge it: `{ pack, badge, leavesIn }`
+ * — badge 'new' | 'updated' | 'back' | 'season' | null; leavesIn in ms for a
+ * pack that will leave the shelf (rotation, season).
+ */
+export function storeCatalog(now = Date.now(), { season = null } = {}) {
+  const week = Math.floor(now / WEEK_MS);
+  const rot = new Set(rotationFor(week));
+  const last = new Set(rotationFor(week - 1));
+  const weekEnd = (week + 1) * WEEK_MS - now;
+  const fresh = (d) => d && now - Date.parse(d) < FRESH_DAYS * DAY && now >= Date.parse(d);
+  const out = [];
+  for (const p of PACKS) {
+    if (p.season) { if (p.season === season) out.push({ pack: p, badge: 'season', leavesIn: null }); continue; }
+    const core = CORE_PACKS.has(p.id);
+    if (!core && !rot.has(p.id)) continue;
+    const badge = fresh(p.added) ? 'new' : fresh(p.updated) ? 'updated' : !core && !last.has(p.id) ? 'back' : null;
+    out.push({ pack: p, badge, leavesIn: core ? null : weekEnd });
+  }
+  return out;
+}
+
 export const PACK_BY_ID = (id) => PACKS.find((p) => p.id === id) || PACKS[0];
 
 /* Which colour a pack wears in the store and the locker.
@@ -195,7 +250,7 @@ export const packTone = (p) => p.tone || p.guarantee || p.id;
 /* Cheapest to rarest. `rarityFor` only ever returns the first four — star and
  * icon are set by hand on the named cards — but they rank above `special` so a
  * "gold or better" floor is satisfied by an Icon rather than overwritten by one. */
-export const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, star: 4, icon: 5 };
+export const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, nationalday: 4, star: 4, icon: 5 };
 
 export function rollRarity(odds) {
   const r = Math.random();
@@ -314,6 +369,7 @@ export function openPack(pack, seen = new Set(), needGK = false) {
     if (pack.variant === 'campaign') pool = campaignCards(campaignNow());
     else if (pack.variant === 'inform') pool = r < 0.125 ? weekCards('totw', weekNow()) : weekCards('inform', weekNow());
     else if (pack.variant === 'icontier') pool = iconTierCards(r < 0.7 ? 'early' : r < 0.95 ? 'peak' : 'prime');
+    else if (pack.variant === 'nationalday') pool = r < 1 / 12 ? saudiIcons() : campaignCards(EVENT_CAMPAIGNS[0]);
     if (pool.length) {
       const fresh = pool.filter((p) => !seen.has(p.id));
       const from = fresh.length ? fresh : pool;
@@ -345,7 +401,9 @@ export function openPack(pack, seen = new Set(), needGK = false) {
 export function samplePulls(pack, n = 3, day = Math.floor(Date.now() / 86_400_000)) {
   // v80: a promo pack shows the best of its promo slot
   if (pack.variant) {
-    const pool = pack.variant === 'campaign' ? campaignCards(campaignNow()) : pack.variant === 'inform' ? weekCards('totw', weekNow()) : iconTierCards('prime');
+    const pool = pack.variant === 'campaign' ? campaignCards(campaignNow()) : pack.variant === 'inform' ? weekCards('totw', weekNow())
+      : pack.variant === 'nationalday' ? [...saudiIcons().slice(-1), ...campaignCards(EVENT_CAMPAIGNS[0])] : iconTierCards('prime');
+    if (pack.variant === 'nationalday') return [pool[0], ...pool.slice(1).sort((a, b) => b.overall - a.overall)].slice(0, n);
     return pool.slice().sort((a, b) => b.overall - a.overall).slice(0, n);
   }
   const scope = filterOf(pack.filter) || (() => true);
