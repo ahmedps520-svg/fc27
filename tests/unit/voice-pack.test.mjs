@@ -62,11 +62,13 @@ test('packLine picks a real clip and does not repeat itself', () => {
 });
 
 test('the desk shows the pack line it plays, under the pack speaker name', async () => {
-  const el = document.createElement('div');
+  const span = { textContent: '' };
+  const el = { hidden: true, className: '', innerHTML: '', querySelector: () => span };
   const desk = createDesk({ lang: 'en', voice: true, subtitles: true, el, pack: PACK_US });
   const l = packLine(PACK_US, 'pbp', 'save', 'pbp');
   desk.say('pbp', l.text, 1, l.file);
   assert.deepEqual(desk.log().at(-1), { speaker: 'pbp', text: l.text });
   assert.match(el.innerHTML, new RegExp(PACK_US.speakers.pbp));
+  assert.equal(span.textContent, l.text);
   desk.destroy();
 });

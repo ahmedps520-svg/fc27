@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v121',
+    date: '2026-09-26',
+    tag: 'Sound',
+    title: 'Real commentators',
+    lede: 'The robotic commentary is gone. Mike calls the play and Harper adds the analysis: two recorded American voices with more than 350 lines, and the crowd dips when they speak.',
+    entries: [
+      {
+        head: 'A recorded commentary team',
+        summary: 'Goals, saves, fouls, cards, derbies, finals and full time each have their own recorded lines. Subtitles show exactly what is said.',
+        detail: 'The voices are generated with Kokoro, an open-licensed voice model, and ship with the game, so they sound the same on every device. A clip downloads the first time it is needed and is then kept for offline play. The commentators do not say player or team names, but the names are still in the match feed.',
+      },
+      {
+        head: 'Your choice',
+        summary: 'Settings → Commentators: American, or your device\'s own voice. Press ▶ Hear to try them.',
+        detail: 'Arabic commentary still uses the device voice. With the recorded team on, the stadium announcer shows as a caption instead of speaking over the call.',
+      },
+    ],
+  },
+  {
     version: 'v120',
     date: '2026-09-26',
     tag: 'Fair play',

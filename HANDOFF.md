@@ -15,6 +15,58 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v121 — recorded commentary (owner's pick: the American pack)
+**How it was made:**
+- huggingface.co opened once the owner allowed it; this container picked it
+  up mid-session.
+- Kokoro-82M (onnx-community, Apache-2.0) runs via `kokoro-js` installed in
+  the scratchpad, not in the game's deps. Node needs `NODE_USE_ENV_PROXY=1`
+  to fetch through the proxy.
+- ffmpeg comes from the `imageio-ffmpeg` wheel.
+- The owner heard 11 sample voices and chose the American pack: Mike
+  (`am_michael`, the caller) and Harper (`af_heart`, the analyst).
+
+**Files:**
+- `js/data/voicePackUS.js` (new, precached):
+  - name-free lines per event key for pbp, co and context;
+  - `packClips()` lists every file; context lines are rendered for both
+    speakers;
+  - `VOICE_PACKS`.
+- `tools/voice-pack.mjs --kokoro <dir>` renders
+  `assets/voice/us/*.mp3`: 359 clips, 3.13 MB, 48 kbps mono, silence
+  trimmed, loudnorm -16 LUFS. It skips existing files, so to change a line,
+  delete its file and re-run. The file index is the contract.
+- `audio.js`:
+  - `loadVoice` (cached fetch plus decode), `playVoice` and `stopVoice`;
+  - voices go to master, not the effects bus;
+  - the crowd ducks to 0.55 while a voice speaks.
+- `broadcast/voice.js`:
+  - `packLine()` and `clipUrl()`;
+  - the desk plays `item.file` through `playVoice`, never falling back to
+    device speech mid-match. A clip older than 4.5 s is dropped. A goal cuts
+    the current clip.
+  - `warm()` preloads the goal and kick-off clips.
+- `director.js`: `pack` is set when lang is `en` and `settings.commPack` is
+  not `'device'`. `line()` keeps the feed's named text but voices the pack
+  line.
+- `play.js`: with a pack, the robot PA (`announce`) is caption-only.
+- Settings → Commentators: American / Device voice, plus a ▶ Hear button.
+- MP3s are not precached; the service worker's network-first fetch caches
+  each clip on first play.
+
+**Tests and checks:**
+- `tests/unit/voice-pack.test.mjs`: every clip exists and there are no
+  extras; no placeholders; keys are real; no repeats; the desk subtitle
+  equals the clip.
+- Verified in Chromium: decode and play; the ▶ Hear button; a Quick Match
+  fetched the warm set and played a context line under "Mike".
+
+**Next:**
+- The owner's less-text pass continues: pause menu, in-match notes and the
+  remaining `.hint` data lines.
+- A second pack is possible (bm_george plus bf_emma sampled well).
+- An Arabic pack is not possible with Kokoro.
+
 ### v120 — owner's asks: responsiveness locked, fewer words, bug hunt
 **Owner's requests (2026-09-26):**
 - Lock responsiveness for everyone, because it was an edge.
