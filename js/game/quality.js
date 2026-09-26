@@ -22,7 +22,7 @@
  * a tablet is any other touch device.
  */
 export function deviceClass() {
-  if (typeof window === 'undefined') return 'desktop';
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'desktop';
   const touch = window.matchMedia('(pointer: coarse)').matches;
   if (!touch) return 'desktop';
   const short = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
@@ -35,9 +35,16 @@ export function resolveQuality(setting, env = null) {
   if (setting === 'ultra') setting = 'cinema';
   if (setting === 'min') setting = 'low';
   if (['high', 'low', 'medium', 'cinema'].includes(setting)) return setting;
-  // Auto on a phone is Performance (Medium), the one tier tuned for it
-  if (!env && deviceClass() === 'phone') return 'medium';
+  /* v132: Auto on a phone is conservative — Medium (the built figures, the
+   * one tier tuned for phones) at best, and Low when the GPU is a budget or
+   * old one, or the phone is short of memory. Never the scanned models: those
+   * are High and Ultra, which on a phone are only ever an explicit choice. */
   const e = env || readEnv();
+  const phone = env ? !!e.phone : deviceClass() === 'phone';
+  if (phone) {
+    const g = classifyGPU(e.gpu || '');
+    return g === 'weak' || (e.memory || 8) <= 3 || (e.cores || 8) <= 4 ? 'low' : 'medium';
+  }
   const gpu = classifyGPU(e.gpu || '');
   const weak = (e.cores || 8) <= 2 || (e.memory || 8) <= 2;
   if (weak) return gpu === 'strong' ? 'low' : 'min';

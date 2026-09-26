@@ -15,6 +15,46 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v132 — player LODs, per-tier triangle caps, conservative Auto on phones (owner's #1)
+- `assets/candidates/player-lod1.glb` (453 KB), from `tools/models/lod.mjs`:
+  gltf-transform weld + meshoptimizer simplify at a ratio of 0.22. It keeps
+  JOINTS/WEIGHTS/UVs; eyelashes, hair, textures and animations are
+  stripped. About 9.2k triangles, against about 38.6k visible for the full
+  scan.
+- `playerModel.js` loads it alongside the full model (optional).
+  `makeRig` stores both geometries per mesh in `userData.lod`, and
+  `setRigLod(rig, 0|1)` swaps them (same skeleton, clips and materials).
+- `lodPolicy.js` `pickLods(list, tier, close)` ranks players by distance
+  (anyone behind the lens goes last; a player keeps his level until he is
+  12% past the line):
+  - High in play: 4 full within 24 m, up to 12 full-or-light within 62 m,
+    and the rest are the built figure (renderGL's `rigs`);
+  - High close (a replay, `cam.hfov` < 30, or a goal): 10 full, rest light;
+  - Ultra in play: 10 full within 40 m, rest light;
+  - Ultra close: all full.
+  `capFor(tier)` is the triangle cap; `tests/unit/lod.test.mjs` holds it.
+  The referee is light, and full when close or on Ultra.
+- Triangles for the players (22 plus the referee), then the whole frame
+  including the shadow pass, from `tests/perf/tris.mjs`:
+
+  | Tier | Players before | Players after | Frame before | Frame after |
+  |---|---|---|---|---|
+  | Low | 95k | 95k | 289k | 289k |
+  | Medium | 131k | 131k | 703k | 703k |
+  | High | 898k | 174k | 1,825k | 1,101k |
+  | Ultra | 898k | 310k | 3,033k | 2,444k |
+
+  In a 40° close shot on High it was 300k (4 full, 9 light, 10 built).
+- Auto on a phone (`quality.js`): Medium, or Low for a weak GPU, ≤3 GB
+  of memory or ≤4 cores. It never picks the scanned tiers.
+- `state.js` migration: on a phone, `quality` ultra/high with
+  `!qualityPicked` becomes auto. Settings sets `qualityPicked`.
+- `deviceClass()` tolerates a window without `matchMedia` (the unit DOM shim).
+- Next for performance:
+  - the stadium and crowd are now most of the frame (about 750k on High,
+    about 1.9M on Ultra);
+  - far players could stop casting shadows.
+
 ### v131 — the store email in the game's look (owner's ask: "sharp glowing lines just like the game")
 - `tools/email/art.mjs` renders:
   - `assets/email/header.jpg`: the screen-head banner (the swoosh with a

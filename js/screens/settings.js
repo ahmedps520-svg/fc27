@@ -620,7 +620,7 @@ export function mount(root) {
     const b = e.target.closest('[data-quality]');
     if (!b) return;
     const q = b.dataset.quality;
-    update((s) => { s.settings.quality = q; });
+    update((s) => { s.settings.quality = q; s.settings.qualityPicked = true; });
     root.querySelectorAll('[data-quality]').forEach((x) => x.classList.toggle('on', x === b));
     const note = root.querySelector('#qualityNote');
     note.classList.toggle('warn', q === 'cinema');
