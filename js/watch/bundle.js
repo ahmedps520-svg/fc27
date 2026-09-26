@@ -10002,8 +10002,6 @@
       // straps, boards, pop-ups, momentum bar
       menuTheme: "auto",
       // auto | off | nationalDay | ramadan | winter
-      responsiveness: 0.7,
-      // v84 hotfix: how quickly your player answers the stick (0–1)
       // v87: performance and accessibility
       battery: !1,
       // 30 fps cap, lighter picture
@@ -10626,7 +10624,7 @@
   }
 
   // js/game/sim.js
-  var PRESETS = {
+  var RESPONSIVENESS = 0.7, PRESETS = {
     authentic: {
       id: "authentic",
       name: "Authentic",
@@ -10928,7 +10926,7 @@
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
         { team: 0, activeIdx: last2 - 1, charge: 0, passCharge: 0 }
       ] : this.controllers = [{ team: this.human, activeIdx: last2, charge: 0, passCharge: 0 }];
-      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = Number.isFinite(opts.responsiveness) ? Math.max(0, Math.min(1, opts.responsiveness)) : 0.7, this.celebration = typeof opts.celebration == "string" ? opts.celebration : "random", this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.advantage = null, this.advantages = [0, 0], this.advantageBack = [0, 0], this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
+      this.duration = (_c = opts.duration) != null ? _c : 240, this.skill = (_d = opts.skill) != null ? _d : 1, this.momentum = 0, this.preset = PRESETS[opts.preset] || PRESETS.authentic, this.responsiveness = RESPONSIVENESS, this.celebration = typeof opts.celebration == "string" ? opts.celebration : "random", this.assist = { shoot: (_e = opts.assist) != null && _e.shoot ? 1 : 0, pass: [0, 1, 2].includes((_f = opts.assist) == null ? void 0 : _f.pass) ? opts.assist.pass : 1 }, this.ball = { x: PITCH.w / 2, y: CY, z: 0, vx: 0, vy: 0, vz: 0, owner: null, lastTouch: null }, this.stoppages = 0, this.stoppage = null, this.pst = {}, this.t = 0, this.half = 1, this.phase = "kickoff", this.phaseT = 1.4, this.banner = "KICK OFF", this.activeIdx = 10, this.basis = null, this.charge = 0, this.feed = [], this.cues = [], this.setPiece = null, this.injuries = [], this.fouls = [0, 0], this.offsides = [0, 0], this.offsideWatch = null, this.advantage = null, this.advantages = [0, 0], this.advantageBack = [0, 0], this.bookings = [], this.lastOwnerTeam = null, this.kickoffSide = 1, this.resetPositions(0);
     }
     /* ------------------------------ state ------------------------------ */
     get humanTeam() {
@@ -11291,8 +11289,8 @@
      * took 1.7 s, swinging out wide, and the player felt like a brick. Here the
      * velocity chases the stick directly, so any direction, straight back
      * included, is where the player goes within a few frames; the only weight
-     * left is a slight softening at full sprint. `responsiveness` (Settings →
-     * Controls, 0–1) scales the rates.
+     * left is a slight softening at full sprint. `responsiveness` (0–1) scales
+     * the rates; since v120 it is the same fixed value for every player.
      */
     driveHuman(p, dx, dy, dt, factor = 1) {
       if (p.slide > 0 || p.downT > 0) return;

@@ -202,10 +202,10 @@ if (!process.argv.includes('--explore')) {
   });
   await feature('a slider moves with the D-pad', async () => {
     if (!(await via(ROUTES.settings))) return 'could not reach Settings';
-    if (!(await focusOnly('#respRange'))) return 'could not focus the Responsiveness slider';
-    const v0 = await page.$eval('#respRange', (e) => Number(e.value));
+    if (!(await focusOnly('#padDead'))) return 'could not focus the Stick deadzone slider';
+    const v0 = await page.$eval('#padDead', (e) => Number(e.value));
     await press(DPAD.right); await page.waitForTimeout(200);
-    const v1 = await page.$eval('#respRange', (e) => Number(e.value));
+    const v1 = await page.$eval('#padDead', (e) => Number(e.value));
     await press(DPAD.left); await page.waitForTimeout(200);
     return v1 > v0 ? '' : `value stayed ${v0} → ${v1}`;
   });

@@ -298,10 +298,6 @@ export function render() {
     <section class="panel glass" id="rebind">
       <header class="panel-head"><h2>Button map</h2><button class="btn ghost sm" id="bindReset">Defaults</button></header>
       <div class="setting-row">
-        <div><b>Responsiveness</b><span>How quickly your player answers the stick. Higher turns sharper; lower carries more weight at a sprint.</span></div>
-        <input type="range" id="respRange" min="0" max="100" step="5" value="${Math.round((s.responsiveness ?? 0.7) * 100)}" aria-label="Responsiveness">
-      </div>
-      <div class="setting-row">
         <div><b>Stick deadzone</b><span>How far the stick moves before it counts. Raise it if your player drifts on his own.</span></div>
         <input type="range" id="padDead" min="5" max="45" step="1" value="${Math.round((s.padDeadzone ?? 0.22) * 100)}" aria-label="Stick deadzone">
       </div>
@@ -468,10 +464,6 @@ export function mount(root) {
     root.querySelectorAll('[data-speed]').forEach((x) => x.classList.toggle('on', x === b));
   });
 
-  root.querySelector('#respRange')?.addEventListener('change', (e) => {
-    const v = Math.max(0, Math.min(1, Number(e.target.value) / 100));
-    update((st) => { st.settings.responsiveness = v; });
-  });
   // v87: backup and restore
   root.querySelector('#exportBtn')?.addEventListener('click', () => {
     const blob = new Blob([exportSave(getState(), APP_VERSION)], { type: 'application/json' });

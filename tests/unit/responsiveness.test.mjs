@@ -10,8 +10,8 @@
  *   90 at a jog     heading within reach of the new line        ≤ 0.15 s
  *   straight back   from standing, facing forward, in 0.5 s     ≥ 2.5 m
  *
- * and the person's player turns quicker than the CPU model does, and the
- * Responsiveness setting moves the numbers the right way.
+ * and the person's player turns quicker than the CPU model does. Since v120
+ * responsiveness is fixed: nothing a player passes in changes it.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +22,7 @@ globalThis.removeEventListener ??= () => {};
 globalThis.matchMedia ??= () => ({ matches: false, addEventListener() {} });
 let PAD = null;
 globalThis.navigator.getGamepads = () => (PAD ? [PAD] : []);
-const { Match, PITCH, setField } = await import('../../js/game/sim.js');
+const { Match, PITCH, setField, RESPONSIVENESS } = await import('../../js/game/sim.js');
 const { Input } = await import('../../js/game/input.js');
 const { WORLD } = await import('../../js/data/generator.js');
 
@@ -104,7 +104,7 @@ test('a light touch on the stick walks; half a push is full speed', () => {
   }
 });
 
-test('the person turns quicker than the CPU model, and the Responsiveness setting is honoured', () => {
+test('the person turns quicker than the CPU model, and responsiveness is the same for everyone', () => {
   // the CPU's own turn at a jog, through drive() directly
   const { m, p } = setup(false);
   for (let i = 0; i < 120; i++) { m.drive(p, 1, 0, DT); p.x += p.vx * DT; }
@@ -113,9 +113,11 @@ test('the person turns quicker than the CPU model, and the Responsiveness settin
   for (let i = 0; i < 300; i++) { m.drive(p, -1, 0, DT); if (p.vx < -0.8 * v0) { cpu = (i + 1) * DT; break; } }
   const human = measure('keyboard', false).jog180;
   assert.ok(human < cpu, `human ${human}s vs CPU ${cpu}s`);
-  const low = measure('keyboard', false, 0); const high = measure('keyboard', false, 1);
-  assert.ok(low.sprint180 > high.sprint180, `sprint 180: low ${low.sprint180}s, high ${high.sprint180}s`);
-  assert.ok(low.sprint180 <= 0.5, 'even the heaviest setting turns within half a second');
+  // v120: an old save's slider value (or a hand-edited option) changes nothing
+  const low = measure('keyboard', false, 0); const high = measure('keyboard', false, 1); const def = measure('keyboard', false);
+  assert.deepEqual(low, def, 'responsiveness 0 is ignored');
+  assert.deepEqual(high, def, 'responsiveness 1 is ignored');
+  assert.equal(new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { responsiveness: 1 }).responsiveness, RESPONSIVENESS);
 });
 
 test('v86: the CPU is light on its feet too — quick turns, and it never orbits a target', () => {
