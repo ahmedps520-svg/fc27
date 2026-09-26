@@ -55,6 +55,7 @@ function runMatch(seed, homeId, awayId) {
       // finite, and on the ground
       for (const v of [b.x, b.y, b.z, b.vx, b.vy, b.vz]) if (!Number.isFinite(v)) { fail('ball state not finite'); break; }
       for (const t of m.teams) for (const p of t.players) {
+        if (p.sentOff) continue;          // v134: a man sent off has left the pitch, on purpose
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) fail(`${p.name} position not finite`);
         else if (p.x < -9 || p.x > PITCH.w + 9 || p.y < -9 || p.y > PITCH.h + 9) fail(`${p.name} left the ground at ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
         if (p.downT > 3) fail(`${p.name} down for ${p.downT.toFixed(1)} s`);

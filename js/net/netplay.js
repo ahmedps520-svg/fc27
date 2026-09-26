@@ -170,6 +170,8 @@ export function encodeSnapshot(match) {
     // v114: bookings (a count and the latest) and whether advantage is being
     // played — the referee's card and signal, and the HUD's card and pill
     bk: match.bookings?.length || 0,
+    // v134: who has been sent off, so the guest drops him from the picture
+    so: all.map((p) => (p.sentOff ? 1 : 0)).join(''),
     bl: match.bookings?.length ? match.bookings[match.bookings.length - 1] : null,
     av: match.advantage ? 1 : 0,
     bn: match.banner || '',
@@ -295,6 +297,7 @@ export class SnapshotView {
       // an older host does not send this, and a full tank is the safe read
       p.stamina = sa[7] ?? 1;
       p.celebrating = a.ce?.[i] === '1';
+      if (a.so?.[i] === '1') p.sentOff = true;
       p.celebKind = a.ck && a.ck[0] === i ? a.ck[1] : null;
     }
     if (a.ct != null) m.celebT = a.ct;

@@ -70,6 +70,10 @@ export const CO = {
     'The referee had no choice.', 'That changes how he can defend.', 'A booking that could cost them later.',
     'Needless. Completely needless.', 'You could see that coming.',
   ],
+  red: [
+    'That changes the whole game.', 'They will have to dig in now with ten men.', 'He has let his team-mates down there.',
+    'You simply cannot make that challenge.', 'The referee had no option.',
+  ],
   injury: [
     'That does not look good. He landed awkwardly.', 'You never like to see that.', 'Hopefully it is only a knock.',
   ],
@@ -227,6 +231,7 @@ export const AR = {
     foul: ['خطأ.', 'مخالفة على {player}.', 'الحكم يصفر خطأ.', 'تدخل قوي من {player}.', 'عرقلة.'],
     advantage: ['الحكم يشير بمواصلة اللعب!', 'أفضلية لـ{team}.', 'الحكم يطبق قانون الأفضلية.'],
     card: ['بطاقة صفراء لـ{player}.', 'إنذار لـ{player}.', 'الحكم يخرج البطاقة!', '{player} ينال البطاقة.'],
+    red: ['بطاقة حمراء! طرد {player}!', 'الحكم يطرد {player}!', '{team} بعشرة لاعبين الآن.', 'حمراء مباشرة لـ{player}!'],
     injury: ['{player} على الأرض.', 'إصابة لـ{player}، نتمنى أن تكون بسيطة.', 'الجهاز الطبي يدخل الملعب.'],
     sub: ['تبديل في صفوف {team}.', 'تغيير لـ{team}.', 'دماء جديدة في {team}.'],
     offside: ['تسلل.', 'الراية ترتفع: تسلل.', '{player} في موقف تسلل.', 'مصيدة تسلل ناجحة.'],
@@ -268,6 +273,7 @@ export const AR = {
     bigChance: ['هذه الفرص لا تُهدر.', 'أفضل فرصة في المباراة ضاعت.', 'ظننتها هدفاً!'],
     foul: ['تدخل متأخر.', 'خطأ تكتيكي لإيقاف الهجمة.', 'تدخل متهور.', 'الإحباط بدأ يظهر.'],
     card: ['عليه الحذر الآن.', 'قرار صحيح من الحكم.', 'بطاقة قد تكلفهم لاحقاً.', 'لا داعي لهذا التدخل.'],
+    red: ['هذا يغير كل شيء.', 'خذل زملاءه.', 'لم يترك للحكم خياراً.'],
     injury: ['لا نحب رؤية ذلك.', 'نتمنى له السلامة.'],
     sub: ['الأقدام الجديدة قد تصنع الفارق.', 'تغيير هجومي واضح.', 'المدرب رأى ما لا يعجبه.'],
     offside: ['تسرع في الانطلاق.', 'خط الدفاع تقدم في الوقت المناسب.'],

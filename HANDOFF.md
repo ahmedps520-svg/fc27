@@ -15,6 +15,51 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v134 — red cards, man down, the side reshapes (owner's #3)
+- `sim.js`:
+  - `book(p)`: every caution goes through it, and a second is
+    `sendOff(p, 'second yellow')`. Keepers never get a second.
+  - `sendOff(p, why)`: sets `p.sentOff` and `p.parked` (repark puts him at
+    −300 every step, including in the free-kick phase), `reds[team]++`,
+    cues `red`, and adds a booking with `{red, why, x, y}` and a feed line.
+    The ball is released, `reshapeAfterRed` runs, any seat on him cycles,
+    and `pst.off` is set.
+  - `reshapeAfterRed`: a DEF off, the nearest MID (by sy) takes his
+    sx/sy/role/tRole; a MID off, the nearest FWD, if there are 2+.
+    `team.down` makes `shapeTarget` sit 2.2·SCALE deeper per man.
+  - `deniedChance(victim, offender)` is true when he is going to goal,
+    within 30·SCALE of it, |y−CY| < 17, and no outfield defender (not the
+    offender) is goal-side within 11 m laterally.
+  - Trip foul: denied outside the box → red; denied inside → penalty and a
+    yellow.
+  - Tackle foul, serious foul play: a slide with frac > 0.95, or the CPU
+    (which never slides) with frac > 0.97 and aggression > 0.6, is a red with
+    chance 0.05 + 0.22·agg. A denied chance outside the box (no advantage)
+    → red.
+  - The old `cards < 1` guards are gone from the trip and tackle sites; the
+    tactical foul keeps its guard.
+  - Takers (named, kickoff, corner, free kick, penalty), `switchToward`,
+    `cycleActive` and `substitute` all skip a sent-off man. `lockSeats`
+    treats him as gone (the Player Career seat watches).
+- Measured over 120 matches:
+  - reds per match: 0.06 (seed 12345) and 0.07 (seed 777);
+  - by kind: denied chance 4, second yellow 2, serious foul play 1;
+  - goals, shots and possession within noise of v133.
+  The goldens were re-recorded (the sweep prints reds, and yellows exclude
+  reds).
+- Presentation:
+  - the HUD card (`.gm-booking.red`, "sent off N' · why") and the
+    broadcast card (red face);
+  - the referee shows a red card at the foul spot (referee.js uses bk.x/y);
+  - the scorebug has `.bug-reds`;
+  - the renderer hides a sent-off man's rigs;
+  - a post-match "Sent off" row appears when there was one;
+  - commentary adds a `red` key: EN text, AR text, and the US voice pack
+    (+8 clips rendered with Kokoro);
+  - netplay sends `so` (a sent-off flag per player).
+- Tests: `tests/unit/red-cards.test.mjs`. `sim-invariants` skips a sent-off
+  man.
+
 ### v133 — attacking runs into the box (owner's #2); the sweep re-baselined deliberately
 - `sim.js`:
   - `TUNE.boxRuns`.

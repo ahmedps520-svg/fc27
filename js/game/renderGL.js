@@ -3638,6 +3638,12 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
+          // v134: sent off — gone from the picture
+          if (p.sentOff) {
+            const a = rigs.get(p); if (a) a.grp.visible = false;
+            const b2 = modelRigs.get(p); if (b2) b2.root.visible = false;
+            continue;
+          }
           // a substitute has come on in this slot: dress him as himself
           const simple = rigs.get(p);
           if (simple && simple.refId !== p.ref?.id) {
@@ -3699,6 +3705,7 @@ export function createRenderer(canvas, match, quality, models = false) {
           }
         }
         refCard.visible = live && !!refState.card;
+        if (refCard.visible) refCard.material.color.setHex(refState.card.red ? 0xe0242e : 0xffd21f);
         if (refCard.visible) {
           const hand = fig ? fig.hand : refRig?.parts.handR;
           if (hand) { hand.getWorldPosition(_hand); refCard.position.set(_hand.x, _hand.y, _hand.z + 0.09); }

@@ -328,7 +328,7 @@ function makeTeam(clubId, side, isHuman, custom = null) {
 /** A named set-piece taker, if the side has one on the pitch (v81). */
 const namedTaker = (team, kind) => {
   const id = team.takers?.[kind];
-  return id ? team.players.find((p) => p.ref.id === id && p.role !== 'GK' && !p.injured) || null : null;
+  return id ? team.players.find((p) => p.ref.id === id && p.role !== 'GK' && !p.injured && !p.parked) || null : null;
 };
 
 export class Match {
@@ -406,6 +406,7 @@ export class Match {
     this.setPiece = null;
     this.injuries = [];          // { team, name, minute }
     this.fouls = [0, 0];
+    this.reds = [0, 0];            // v134: sent off, per side
     this.offsides = [0, 0];          // v79
     this.offsideWatch = null;
     this.advantage = null; this.advantages = [0, 0]; this.advantageBack = [0, 0];   // v113
@@ -562,8 +563,8 @@ export class Match {
       }
     }
     const takers = this.teams[kickoffSide].players;
-    const taker = takers.find((p) => p.role === 'FWD')
-      || takers.find((p) => p.role === 'MID') || takers[takers.length - 1];
+    const taker = takers.find((p) => p.role === 'FWD' && !p.parked)
+      || takers.find((p) => p.role === 'MID' && !p.parked) || takers.filter((p) => !p.parked).pop();
     taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6;
     taker.y = CY;
     this.kickoffTaker = taker;
@@ -744,8 +745,8 @@ export class Match {
     this.repark();
   }
   repark() {
-    if (this.phase === 'freekick') return;            // practice keeps a wall to beat
-    for (const t of this.teams) for (const p of t.players) if (p.parked) { p.x = -300; p.y = -300; p.vx = p.vy = 0; }
+    const fk = this.phase === 'freekick';             // practice keeps a wall to beat (a man sent off never stands in it)
+    for (const t of this.teams) for (const p of t.players) if (p.parked && (!fk || p.sentOff)) { p.x = -300; p.y = -300; p.vx = p.vy = 0; }
   }
 
   /**
@@ -763,7 +764,8 @@ export class Match {
     let ok = true;
     for (const c of this.controllers) {
       if (!c.lockId) continue;
-      const i = this.teams[c.team].players.findIndex((p) => p.ref.id === c.lockId);
+      // v134: sent off counts as gone, like substituted — the seat watches the rest
+      const i = this.teams[c.team].players.findIndex((p) => p.ref.id === c.lockId && !p.sentOff);
       if (i >= 0) { c.activeIdx = i; c.benched = false; } else { c.benched = true; ok = false; }
     }
     return ok;
@@ -836,6 +838,7 @@ export class Match {
     const p = team.players[pitchIdx];
     const incoming = team.bench?.[benchIdx];
     if (!p || !incoming) return false;
+    if (p.sentOff) return false;                       // v134: a man sent off is not replaced
     // Once off, off: a man who has been substituted cannot come back on (he used
     // to — fresh, and cured if he had gone off injured).
     if (this.cameOff(incoming.id)) return false;
@@ -1059,8 +1062,13 @@ export class Match {
         this.cue('foul', def);
         carrier.downT = 1.2; carrier.downMax = 1.2;
         carrier.stumble = Math.max(carrier.stumble, 1.6);
-        if (this.aggressionOf(def) > 0.75 && def.cards < 1 && Math.random() < 0.3) { def.cards += 1; this.cue('card', def); this.bookings.push({ team: def.team, name: def.ref.name, minute: this.minute() }); }
-        if (this.inPenaltyArea(carrier, def.team)) this.awardPenalty(1 - def.team, def);
+        // v134: pulled down with only the keeper to beat, outside the box, is a red; inside it is a penalty and a yellow
+        const inBoxT = this.inPenaltyArea(carrier, def.team);
+        const deniedT = this.deniedChance(carrier, def);
+        if (deniedT && !inBoxT) this.sendOff(def, 'denied a goal-scoring chance');
+        else if (deniedT || (this.aggressionOf(def) > 0.75 && Math.random() < 0.3)) this.book(def);
+        if (def.sentOff && this.ball.owner === def) this.release(def, 0, 0, 0);
+        if (inBoxT) this.awardPenalty(1 - def.team, def);
         else this.awardFreeKick(1 - def.team, carrier, def);
         return;
       }
@@ -1248,7 +1256,7 @@ export class Match {
     const taken = this.controllers.filter((o) => o !== c).map((o) => this.playerOf(o));
     let best = null; let bestScore = -Infinity;
     for (const q of this.teams[c.team].players) {
-      if (q === from || q.role === 'GK' || taken.includes(q)) continue;
+      if (q === from || q.role === 'GK' || q.parked || taken.includes(q)) continue;
       const dx = q.x - from.x; const dy = q.y - from.y; const d = Math.hypot(dx, dy) || 1;
       const align = (dx * dir.x + dy * dir.y) / (d * dm);
       if (align < 0.5) continue;
@@ -1265,7 +1273,7 @@ export class Match {
     let best = null;
     let bestD = Infinity;
     for (const p of this.teams[c.team].players) {
-      if (p.role === 'GK' || taken.includes(p)) continue;
+      if (p.role === 'GK' || p.parked || taken.includes(p)) continue;
       const d = dist(p, this.ball);
       if (d < bestD) { bestD = d; best = p; }
     }
@@ -1846,7 +1854,7 @@ export class Match {
 
     // taker: the closest attacker to the flag
     const taker = namedTaker(atk, 'corner') || atk.players
-      .filter((p) => p.role !== 'GK')
+      .filter((p) => p.role !== 'GK' && !p.parked)
       .sort((a, z) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(z.x - b.x, z.y - b.y))[0];
     taker.x = b.x + inw * 1.4;
     taker.y = b.y + (b.y < CY ? 1.2 : -1.2);
@@ -2564,12 +2572,101 @@ export class Match {
          * rest of the match — slower, less accurate, a candidate for the next
          * substitution — and the career keeps him out for weeks. */
         if (!owner.injured && Math.random() < 0.125) this.injure(owner);
-        // the lunge from distance is the bookable one
-        if (frac > 0.82 && p.cards < 1) { p.cards += 1; this.cue('card', p); this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() }); }
+        // the lunge from distance is the bookable one; v134: from the very edge of his reach, sliding in, it can be a red,
+        // and stopping a man through on goal outside the box is one
+        const inBoxK = this.inPenaltyArea(owner, p.team);
+        const aggK = this.aggressionOf(p);
+        const reckless = slide ? frac > 0.95 : frac > 0.97 && aggK > 0.6;      // the CPU never slides: its version is the full-stretch lunge from a hot head
+        if (reckless && Math.random() < 0.05 + 0.22 * aggK) this.sendOff(p, 'serious foul play');
+        else if (!inBoxK && !adv && this.deniedChance(owner, p)) this.sendOff(p, 'denied a goal-scoring chance');
+        else if (frac > 0.82) this.book(p);
         if (this.inPenaltyArea(owner, p.team)) this.awardPenalty(1 - p.team, p);
         else if (!adv) this.awardFreeKick(1 - p.team, owner, p);
       }
     }
+  }
+
+  /**
+   * v134: a caution. A second one is a red — he goes, and his side plays on a
+   * man short. Keepers are cautioned but never sent off: there is no keeper on
+   * the pitch to take the gloves, so a keeper's second yellow is not shown.
+   */
+  book(p) {
+    if (!p || p.sentOff) return;
+    if (p.cards >= 1) {
+      if (p.role === 'GK') return;
+      p.cards += 1;
+      this.sendOff(p, 'second yellow');
+      return;
+    }
+    p.cards += 1;
+    this.cue('card', p);
+    this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() });
+  }
+
+  /**
+   * v134: off. The card is recorded where it was shown (the referee turns to
+   * that spot), he leaves the pitch at once — parked, like the practice arena's
+   * missing men, so no AI, tackle, pickup or taker ever reaches him — and his
+   * side reshapes around the gap (reshapeAfterRed). A keeper is never sent off.
+   * @param {string} why  'second yellow' | 'denied a goal-scoring chance' | 'serious foul play'
+   */
+  sendOff(p, why) {
+    if (!p || p.sentOff) return;
+    if (p.role === 'GK') { this.book(p); return; }
+    const team = this.teams[p.team];
+    p.sentOff = true;
+    this.reds[p.team] += 1;
+    this.cue('red', p);
+    this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute(), red: true, why, x: p.x, y: p.y });
+    this.feed.unshift(`${this.minute()}'  ${team.short} — ${p.ref.name} sent off (${why})`);
+    if (this.ball.owner === p) this.release(p, 0, 0, 0);
+    this.reshapeAfterRed(team, p);
+    p.parked = true; this.parkedAny = true;
+    // a seat on him moves to whoever is nearest the ball
+    for (const c of this.controllers) if (this.playerOf(c) === p) this.cycleActive(c);
+    const r = this.pst[p.ref.id]; if (r) r.off = this.t;
+    this.repark();
+  }
+
+  /**
+   * v134: a man short. The line behind the gap fills it from the line in front
+   * — a defender off and the nearest midfielder drops into his slot (and his
+   * job); a midfielder off and a forward drops in, if there is one to spare —
+   * so the side goes 4-4-1 rather than playing with a hole in the back four.
+   * `team.short` men down also sit a touch deeper (shapeTarget).
+   */
+  reshapeAfterRed(team, off) {
+    team.down = (team.down || 0) + 1;
+    const from = off.role === 'DEF' ? 'MID' : off.role === 'MID' ? 'FWD' : null;
+    if (!from) return;
+    const pool = team.players.filter((q) => q.role === from && !q.parked && q !== off);
+    if (from === 'FWD' && pool.length < 2) return;             // the last striker stays up
+    if (!pool.length) return;
+    pool.sort((a, b) => Math.abs(a.sy - off.sy) - Math.abs(b.sy - off.sy));
+    const q = pool[0];
+    q.sx = off.sx; q.sy = off.sy; q.role = off.role; q.tRole = off.tRole;
+  }
+
+  /**
+   * v134: was he through on goal? Heading for it, within about 30 m and not
+   * out wide, with no defender but the offender (and the keeper) between him
+   * and the goal. Stopping that man, outside the area, is a red.
+   */
+  deniedChance(victim, offender) {
+    if (!victim || !offender || victim.team === offender.team) return false;
+    const atk = this.teams[victim.team];
+    const goalX = atk.dir > 0 ? PITCH.w : 0;
+    const k = PITCH.h / 68;
+    if (Math.hypot(goalX - victim.x, CY - victim.y) > 30 * SCALE || Math.abs(victim.y - CY) > 17 * k) return false;
+    const going = (victim.vx || 0) * atk.dir + Math.max(0, (victim.dirX || 0) * atk.dir) * 1.5;
+    if (going < 0.8) return false;
+    const his = Math.abs(goalX - victim.x);
+    for (const q of this.teams[offender.team].players) {
+      if (q === offender || q.role === 'GK' || q.parked) continue;
+      if (Math.abs(goalX - q.x) < his + 0.5 && Math.abs(q.y - victim.y) < 11 * k) return false;   // someone covering
+    }
+    return true;
   }
 
   /** v113: may the referee play advantage? In the fouled side's attacking half but out of shooting range, going forward with pace, and nobody but the offender within 6 m of him. */
@@ -2707,7 +2804,7 @@ export class Match {
     const toGoal = Math.hypot(goalX - b.x, CY - b.y);
     const shootingRange = toGoal < 32;
     // taker: the best striker of a dead ball in range, else the nearest passer
-    const taker = (shootingRange && namedTaker(atk, 'fk')) || atk.players.filter((q) => q.role !== 'GK')
+    const taker = (shootingRange && namedTaker(atk, 'fk')) || atk.players.filter((q) => q.role !== 'GK' && !q.parked)
       .sort((x, y) => (shootingRange ? y.ref.stats.shooting - x.ref.stats.shooting : dist(x, b) - dist(y, b)))[0];
     taker.x = b.x - atk.dir * 2.6; taker.y = b.y + (b.y < CY ? -0.8 : 0.8);
     taker.vx = taker.vy = 0; taker.touchLock = 0;
@@ -2940,7 +3037,7 @@ export class Match {
     });
 
     const taker = namedTaker(atk, 'pen') || atk.players
-      .filter((p) => p.role !== 'GK')
+      .filter((p) => p.role !== 'GK' && !p.parked)
       .sort((x, y) => y.ref.stats.shooting - x.ref.stats.shooting)[0];
     taker.x = spotX - atk.dir * 2.2;
     taker.y = CY;
@@ -3042,6 +3139,8 @@ export class Match {
     // Without the ball the block drops and narrows — more so for a cautious
     // side — so a shape is a shape when defending, not a line of statues.
     const drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team));
+    // v134: a man short, the block sits deeper and plays for the break
+    const shortOf = team.down ? team.down * 2.2 * SCALE : 0;
     const squeeze = weHave ? 1 : TUNE.squeeze;
     /* v79: the instructions. Line height and the defensive style move the
        block up or down (the back line most, the forwards least); width
@@ -3051,7 +3150,7 @@ export class Match {
     const lineShift = ((DEF_STYLES[tac.defStyle]?.line ?? 0) + ((tac.line ?? 0.5) - 0.5) * 16) * SCALE;
     const k = p.role === 'DEF' ? 1 : p.role === 'MID' ? 0.6 : 0.3;
     const width = weHave ? 0.84 + (tac.width ?? 0.5) * 0.5 : squeeze;
-    let x = p.sx * PITCH.w + team.dir * (shift - drop + lineShift * k);
+    let x = p.sx * PITCH.w + team.dir * (shift - drop - shortOf + lineShift * k);
     let y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42;
     const role = ROLES[p.tRole];
     if (role) {
@@ -3115,7 +3214,7 @@ export class Match {
         this.fouls[p.team] += 1;
         this.cue('foul', p);
         o.downT = 0.8; o.downMax = 0.8;
-        if (Math.random() < 0.7) { p.cards += 1; this.cue('card', p); this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute() }); }
+        if (Math.random() < 0.7) this.book(p);
         opp.counterT = 0;
         this.awardFreeKick(1 - p.team, o, p);
         return;

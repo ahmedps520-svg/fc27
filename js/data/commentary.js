@@ -85,6 +85,10 @@ const L = {
     'Into the book goes {player}.', 'A caution for {player} — he has to be careful now.',
     'The referee reaches for his pocket. {player} is shown yellow.',
   ],
+  red: [
+    'Red card! {player} is sent off!', 'Off he goes. {player} sees red.', '{player} is dismissed, and {team} are down to ten.',
+    'The referee shows red to {player}!', 'That is a red card. {player} walks.',
+  ],
   injury: [
     '{player} is down, and he is not getting up quickly.', 'That looks like a problem for {player}.', 'The physio is on for {player}.',
     '{player} is struggling. He may not last.', 'A worry for {team} — {player} is hurt.', '{player} limps back into position.',

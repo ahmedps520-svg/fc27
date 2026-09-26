@@ -60,8 +60,9 @@ export function updateReferee(r, m, dt) {
   const n = m.bookings?.length || 0;
   if (n > r.seen) {
     const bk = m.bookings[n - 1];
-    const player = m.teams[bk.team]?.players.find((q) => q.ref?.name === bk.name) || null;
-    r.card = { t: CARD_SECONDS, player };
+    // v134: a red is shown where it happened — the man himself has already left the pitch
+    const player = bk.red && bk.x != null ? { x: bk.x, y: bk.y } : m.teams[bk.team]?.players.find((q) => q.ref?.name === bk.name) || null;
+    r.card = { t: CARD_SECONDS, player, red: !!bk.red };
   }
   r.seen = n;
   if (r.card) { r.card.t -= dt; if (r.card.t <= 0) r.card = null; }

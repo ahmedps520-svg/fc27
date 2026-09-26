@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v134',
+    date: '2026-09-26',
+    tag: 'Rules',
+    title: 'Red cards',
+    lede: 'Players can now be sent off: for a second yellow, for stopping a man who is through on goal, or for a dangerous lunge. The side left with ten plays on a man short.',
+    entries: [
+      {
+        head: 'Three ways to see red',
+        summary: 'A second yellow is a red. Bringing down a player who is through on goal, outside the box, is a straight red. A reckless full-stretch lunge can be one too.',
+        detail: 'Stopping a clear chance inside the box is a penalty and a yellow, as in the real game. Keepers are cautioned but never sent off. Over 240 simulated matches there were about 0.06 reds a match, close to the real rate scaled to this game.',
+      },
+      {
+        head: 'Down to ten',
+        summary: 'The player leaves the pitch, and his team reshapes: a defender sent off is replaced in the back line by the nearest midfielder, and a forward drops into midfield. The side sits a little deeper.',
+        detail: 'The referee shows the card, a red marker appears on the scoreboard, and the commentators call it. A player who is sent off cannot be substituted.',
+      },
+    ],
+  },
+  {
     version: 'v133',
     date: '2026-09-26',
     tag: 'Gameplay',

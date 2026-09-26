@@ -5317,6 +5317,10 @@ body.pad-active [data-pad][data-pad-glyph]::after {
   padding: 8px 14px 8px 10px; border-radius: 12px; background: rgba(6, 12, 10, .82); color: #fff; pointer-events: none; max-width: min(46vw, 320px);
 }
 .gm-booking[hidden] { display: none; }
+.bug-reds { display: inline-flex; gap: 2px; margin: 0 4px; }
+.bug-reds[hidden] { display: none; }
+.bug-reds b { width: 7px; height: 10px; border-radius: 1.5px; background: #e0242e; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+.gm-booking.red .gb-card { background: linear-gradient(160deg, #ff5a5a, #c1121f); }
 .gm-booking .gb-card { grid-row: span 2; width: 18px; height: 26px; border-radius: 3px; background: #ffd21f; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
 .gm-booking b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gm-booking span { font-size: 12px; color: rgba(255, 255, 255, .75); }

@@ -19,7 +19,7 @@ import { createDesk, banks, lineFrom, packLine } from './voice.js';
 import { PACK_US, VOICE_PACKS } from '../data/voicePackUS.js';
 import { derbyOf, weatherKey, formOf, goalKeys, fullTimeKeys, addedMinutes, broadcastMinute, clockLabel, offsideMargin, BOARD_AT } from './context.js';
 
-const CO_CHANCE = { goal: 0.9, save: 0.55, post: 0.7, bigChance: 0.7, card: 0.55, penaltyAwarded: 0.8, offside: 0.3, foul: 0.2, skill: 0.35, counter: 0.35, sub: 0.4, shotWide: 0.25, header: 0.2, volley: 0.5, bicycle: 0.9, ownGoal: 0.9, comeback: 0.6, lead: 0.5, extend: 0.5, halftime: 0.8, fulltime: 0.9, kickoff: 0.6 };
+const CO_CHANCE = { goal: 0.9, save: 0.55, post: 0.7, bigChance: 0.7, card: 0.55, red: 0.9, penaltyAwarded: 0.8, offside: 0.3, foul: 0.2, skill: 0.35, counter: 0.35, sub: 0.4, shotWide: 0.25, header: 0.2, volley: 0.5, bicycle: 0.9, ownGoal: 0.9, comeback: 0.6, lead: 0.5, extend: 0.5, halftime: 0.8, fulltime: 0.9, kickoff: 0.6 };
 
 export function createDirector({ match, host, pitch, clubs, settings = {}, lang = 'en', rtl = false, graphics = true, clock = true, final = false, form = new Map(), venue = '', atmo = {} }) {
   const gfx = graphics ? createGraphics(host, { reduceMotion: !!settings.reduceMotion, rtl }) : null;
@@ -94,9 +94,9 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
       else if (name === 'bigChance' && t !== null) mom.event(t, 0.3);
       else if (name === 'cornerKick' && t !== null) mom.event(t, 0.1);
       else if (name === 'save' && match.ball?.shotBy) mom.event(match.ball.shotBy.team, 0.12);
-      else if (name === 'card' && arg?.ref) {
+      else if ((name === 'card' || name === 'red') && arg?.ref) {
         halfLog[match.half].cards += 1;
-        gfx?.card('yellow', arg.ref.name, match.teams[arg.team]);
+        gfx?.card(name === 'red' ? 'red' : 'yellow', arg.ref.name, match.teams[arg.team]);
       } else if (name === 'injury') halfLog[match.half].inj += 1;
       else if (name === 'offside' && arg?.ref && gfx) {
         const team = match.teams[arg.team];
