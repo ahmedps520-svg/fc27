@@ -617,13 +617,17 @@ function stadiumHTML(car) {
         <span><b>◎ ${fmtCoins(gateIncome(car))}</b> Gate per home match</span>
         <span><b>◎ ${fmtCoins(g.income || 0)}</b> Gate income so far</span>
       </div>
-      ${g.promoted && g.promoted.season === car.season - 1 ? `<p class="hint ground-grew">Promotion: the board expanded the ground from <b>${g.promoted.from.toLocaleString()}</b> to <b>${g.promoted.to.toLocaleString()}</b> for the new season.</p>` : ''}
-      ${o.done ? '<p class="hint">The ground is as big as they come.</p>' : `
-        <p class="hint">Next: <b>${o.nextCapacity.toLocaleString()}</b> seats for <b>◎ ${fmtCoins(o.cost)}</b>.
-          ${o.thisSeason ? 'The builders are in — one expansion a season.'
-            : o.boardPays ? 'The board will fund it in full: the club is on target.'
-            : o.clubCanPay ? `The board will not pay while the club is below its target (${car.board?.text || 'their brief'}) — the club can.`
-            : 'The board will not pay while the club is below its target, and the club cannot afford it.'}</p>
+      ${g.promoted && g.promoted.season === car.season - 1 ? facts([['up', `Promotion: ${g.promoted.from.toLocaleString()} → ${g.promoted.to.toLocaleString()} seats`, 'good']]) : ''}
+      ${o.done ? facts([['star', 'Biggest ground there is', 'gold']]) : `
+        ${facts([
+          ['players', `Next: ${o.nextCapacity.toLocaleString()} seats`],
+          ['money', `◎ ${fmtCoins(o.cost)}`, 'gold'],
+          o.thisSeason ? ['clock', 'Builders in · 1 a season', 'warn']
+            : o.boardPays ? ['check', 'Board pays', 'good']
+            : o.clubCanPay ? ['bolt', 'Board says no · club can pay', 'warn']
+            : ['lock', 'Board says no · can\'t afford', 'warn'],
+        ])}
+        ${o.boardPays || o.thisSeason ? '' : about(`The board will not pay while the club is below its target (${car.board?.text || 'their brief'}).`, 'Why the board says no')}
         <div class="offer-actions">
           <button class="btn ${o.boardPays ? 'primary' : ''}" id="groundExpand" ${o.thisSeason || (!o.boardPays && !o.clubCanPay) ? 'disabled' : ''}>${o.boardPays ? 'Ask the board to build it' : 'Fund the expansion'}</button>
           <button class="btn ghost" id="groundDesign">${design ? 'Redesign the ground' : 'Design the ground'}</button>

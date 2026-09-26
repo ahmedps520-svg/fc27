@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v122',
+    date: '2026-09-26',
+    tag: 'Polish',
+    title: 'A clear pause menu',
+    lede: 'The touch buttons no longer cover the pause menu, match tips are a button and a few words, and the stadium panel says what it means with icons.',
+    entries: [
+      {
+        head: 'Pause menu fixed',
+        summary: 'On a phone, the Shoot, Sprint and other touch buttons were drawn over the pause menu. They now hide while it is open, and the menu has a dark backdrop so the bench list is easy to read.',
+        detail: 'The same applies at full time: the pad hides whenever a menu covers the pitch.',
+      },
+      {
+        head: 'Shorter tips',
+        summary: 'Tips during your first matches are now a button and a few words, like "hold H + stick → a trick". On touch they name the on-screen buttons.',
+        detail: 'The full explanations are still in Settings → Controls and the tutorial.',
+      },
+      {
+        head: 'Stadium in icons',
+        summary: 'Career → The ground shows the next size, the cost and whether the board will pay as icon chips. Tap ⓘ to see why the board says no.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v121',
     date: '2026-09-26',
     tag: 'Sound',

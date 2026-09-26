@@ -1530,6 +1530,10 @@ body.in-game #screen {
  * bigger than the plain default. `(max-height: …)` is what "short" actually
  * means once the device is sideways, and that is the query below.            */
 .gm-touch { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+/* v122: the pause menu and full time sit over the pitch with the pad hidden —
+   the buttons were drawn across the menu's own options */
+:has(> .gm-overlay:not([hidden])) > .gm-touch,
+.gm-paused .gm-touch, .gm-paused #gmHints { visibility: hidden; }
 .gm-touch[hidden] { display: none; }
 
 .tstick-zone {
@@ -2632,7 +2636,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 }
 .gm-overlay[hidden] { display: none; }
 /* the pause menu dims the live scene rather than hiding it behind a blur */
-.gm-overlay.is-pause { background: none; backdrop-filter: none; padding: 0; }
+.gm-overlay.is-pause { background: linear-gradient(90deg, rgba(3, 5, 12, .94), rgba(3, 5, 12, .84)); backdrop-filter: none; padding: 0; }   /* v122: the bench list was unreadable over the pitch */
 .gm-panel {
   width: min(360px, 94vw); padding: 22px; text-align: center;
   animation: popIn .3s cubic-bezier(.2, 1.1, .3, 1) both;
@@ -4034,6 +4038,11 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   position: absolute; top: 52px; right: 12px; z-index: 4; max-width: 260px; padding: 7px 10px; border-radius: 10px;
   background: rgba(35, 197, 94, .14); border: 1px solid rgba(35, 197, 94, .4); font-size: 11.5px; line-height: 1.35; color: #dff; pointer-events: none;   /* v97: an inherited tight line-height let three-line tips spill over the border */
 }
+.gm-hints kbd {
+  display: inline-block; min-width: 20px; padding: 1px 6px; margin: 0 1px; border-radius: 6px; text-align: center;
+  font: 800 11px/1.5 var(--font-num); color: #06140c; background: var(--accent); box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
+}
+.gm-hints { font-size: 13px; font-weight: 600; white-space: nowrap; }
 @media (max-width: 700px) { .gm-hints { display: none; } .gm-feed { bottom: 108px; width: 70vw; } .gm-feed span { font-size: 11px; } .gm-feed span.now { font-size: 12px; } }
 .tbtn.t-skill { grid-area: skill; } .tbtn.t-lob { grid-area: lob; }
 .tbtn.t-skill, .tbtn.t-lob { width: 50px; height: 50px; opacity: .85; }

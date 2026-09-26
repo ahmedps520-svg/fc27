@@ -15,6 +15,30 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v122 — less text, part 2, and the pause menu bug
+**Found by screenshots of a real match** (landscape phone, 844×390):
+- **Pause menu.** The touch pad (`.gm-touch`) was drawn over the pause menu:
+  SKILL, LOB, THROUGH and SHOOT sat on top of the Team Management and
+  Substitutions options.
+  - `setPaused` toggles `root.gm-paused`.
+  - CSS hides `.gm-touch` and `#gmHints` under it, and under any visible
+    `.gm-overlay` (via `:has`).
+  - `.is-pause` now has a dark gradient backdrop; it was `background: none`,
+    and the bench list was unreadable over the pitch.
+- **In-match tips.** `HINTS` in play.js are now a `<kbd>` chip plus a few
+  words, set with innerHTML. Key names go through `esc`. The touch variants
+  name the on-screen buttons.
+- **Career ground.** The expansion paragraph became `facts` chips, plus an
+  `about` explaining why the board says no.
+
+**Checked:**
+- Full time with the split bars renders.
+- Unit, pad-reach, layout, a11y, SBC and the bot are all green.
+
+**Left:**
+- Data `.hint` lines remain: offers, cup survivors, promotion moves, event
+  and SBC briefs. They are content, not explanation.
+
 ### v121 — recorded commentary (owner's pick: the American pack)
 **How it was made:**
 - huggingface.co opened once the owner allowed it; this container picked it
