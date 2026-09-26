@@ -77,7 +77,7 @@ export function mountHero(canvas) {
     const look = faceOf(player);
     const figure = rig.buildPlayer(kit, kit.clone().multiplyScalar(0.6),
       new THREE.Color(look.skin), new THREE.Color(look.hair), kit.clone().multiplyScalar(0.8),
-      rig.buildFor(player, player.position));
+      rig.buildFor(player, player.position), { hairStyle: look.style, beard: look.beard });
     const number = player.position === 'GK' ? 1 : player.position === 'ST' ? 9 : player.position === 'CAM' ? 10 : 7;
     figure.parts.torso.material = new THREE.MeshStandardMaterial({
       map: rig.kitTexture(kit, number, String(player.name).split(' ').pop().toUpperCase(), 256), roughness: 0.62,

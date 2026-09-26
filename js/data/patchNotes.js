@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v124',
+    date: '2026-09-26',
+    tag: 'Look',
+    title: 'Every player his own hair',
+    lede: 'Players on the pitch now wear the hairstyle and beard from their card portrait, so eleven players no longer share one haircut.',
+    entries: [
+      {
+        head: 'Six styles, and beards',
+        summary: 'Crop, fringe, quiff, long at the back, buzz and afro, each with or without a beard, matching the player\'s card. Faces show properly too: the hairline sits above the eyes, not over them.',
+        detail: 'This is on the Low and Medium graphics settings. Each style is a single shape, so it costs nothing in frame rate. High and Ultra use the scanned models, which still share one hairstyle.',
+      },
+    ],
+  },
+  {
     version: 'v123',
     date: '2026-09-26',
     tag: 'Controllers',

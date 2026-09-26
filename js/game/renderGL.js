@@ -2744,7 +2744,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       base, shorts,
       new THREE.Color(look.skin), new THREE.Color(look.hair),
       strip?.socks ? new THREE.Color(hexOf(strip.socks)) : base.clone().multiplyScalar(0.8),
-      buildFor(p.ref, p.role), { face: !lo && !med });
+      buildFor(p.ref, p.role), { face: !lo && !med, hairStyle: look.style, beard: look.beard });   // v124: the portrait's hair, on the pitch
     /* The number and the name on the back — on every tier but Ultra Low,
        where a texture per shirt is twenty-two textures too many. */
     if (!potato) {

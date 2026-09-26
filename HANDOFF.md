@@ -15,6 +15,32 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v124 — hair variety on the built figure (backlog #17)
+**Owner feedback:** no reply yet on whether the v123 controller fix works on
+their setup. Ask again.
+
+**`rig.js`:**
+- `hairGeometry(style, beard)` returns the portrait's six silhouettes
+  (face.js `style`: 0 crop, 1 fringe, 2 quiff, 3 long at the back, 4 buzz,
+  5 afro) plus an optional beard.
+- The pieces are merged into ONE non-indexed geometry in the hair mesh's
+  unit space: +x facing, +z up, head centre at z ≈ -0.21. The per-frame
+  placement and scale are untouched, and there are no extra draw calls.
+- Cached per style and beard; styles wrap mod 6.
+- The cap moved back (−0.18, 0, 0.08), so the hairline sits above the eyes.
+  The old cap hung over them, which changes style 0 for everyone.
+- `buildPlayer(..., { hairStyle, beard })`. renderGL `simpleRig` and
+  menuHero pass `faceOf(ref)`. The manager, referee and scanned models are
+  unchanged.
+- `tools/hair-shots.mjs` draws the contact sheet (6 styles × beard ×
+  front/side).
+- `tests/unit/hair.test.mjs` (3).
+
+**Next for #17:**
+- Hair variety on the scanned model: hide its hair mesh and attach a
+  `hairGeometry` mesh to the head bone.
+- The 3D trophy room.
+
 ### v123 — controller support in the menus (owner: "fix controller support so they can use it in menu too")
 **Root cause:**
 - Every reader took the first connected gamepad (`live[0]` or

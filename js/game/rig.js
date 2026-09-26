@@ -74,6 +74,62 @@ const HIPS_D = 0.115;
 // the seams at every joint. The torso tapers, so it is a cone section instead.
 const LIMB_GEO = new THREE.CapsuleGeometry(1, 1, 4, 10);
 const JOINT_GEO = new THREE.SphereGeometry(1, 12, 10);
+
+/*
+ * v124: hair with a shape. Everyone used to wear the same cap — a sphere over
+ * the crown — whatever his card portrait showed. These are the portrait's six
+ * silhouettes (components/face.js `style`) and its beard, built in the hair
+ * mesh's own unit space so the per-frame placement is exactly what it was:
+ * +x is the way he faces, +z is up, and the head's centre sits at z ≈ -0.21.
+ *
+ *   0 crop · 1 fringe · 2 quiff · 3 long at the back · 4 buzz · 5 afro
+ *
+ * Each is one mesh (the pieces are merged), so a shape costs no draw calls.
+ */
+const HAIR_PIECES = {
+  0: [],
+  1: [[0.42, 0, 0.42, 0.48, 0.8, 0.3]],
+  2: [[0.2, 0, 0.78, 0.6, 0.68, 0.44]],
+  3: [[-0.46, 0, -0.5, 0.6, 0.96, 0.8]],
+  4: null,     // the cap itself, pulled in tight
+  5: null,     // the cap itself, blown out
+};
+const BEARD = [0.66, 0, -0.94, 0.32, 0.6, 0.27];
+function ellipsoid([cx, cy, cz, sx, sy, sz]) {
+  const g = new THREE.SphereGeometry(1, 10, 8).toNonIndexed();
+  g.scale(sx, sy, sz); g.translate(cx, cy, cz);
+  return g;
+}
+function merge(geos) {
+  const n = geos.reduce((t, g) => t + g.attributes.position.count, 0);
+  const pos = new Float32Array(n * 3); const nor = new Float32Array(n * 3);
+  let o = 0;
+  for (const g of geos) {
+    pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
+    o += g.attributes.position.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.computeBoundingSphere();
+  return out;
+}
+const hairCache = new Map();
+/** The hair mesh's geometry for a portrait `style` (0–5) and beard. */
+export function hairGeometry(style = 0, beard = false) {
+  const st = ((style | 0) % 6 + 6) % 6;
+  const key = `${st}:${beard ? 1 : 0}`;
+  if (!hairCache.has(key)) {
+    /* the cap sits back from the brow so the eyes and forehead show (the old
+       single cap hung over the eyes); the buzz is a thin shell set back on
+       the crown, the afro a big one behind the hairline */
+    const cap = st === 4 ? [-0.16, 0, 0.1, 1.0, 1.02, 0.99] : st === 5 ? [-0.34, 0, 0.3, 1.2, 1.26, 1.1] : [-0.18, 0, 0.08, 1, 1, 1];
+    const geos = [ellipsoid(cap), ...(HAIR_PIECES[st] || []).map(ellipsoid)];
+    if (beard) geos.push(ellipsoid(BEARD));
+    hairCache.set(key, merge(geos));
+  }
+  return hairCache.get(key);
+}
 const BOOT_GEO = new THREE.BoxGeometry(1, 1, 1);
 const TORSO_GEO = new THREE.CylinderGeometry(1, 0.74, 1, 16);
 const HIPS_GEO = new THREE.CylinderGeometry(1, 0.9, 1, 14);
@@ -112,7 +168,7 @@ function ovalSegment(mesh, ax, ay, az, bx, by, bz, halfW, halfD, facing, unitH) 
 const EYE_MAT = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.4 });
 const MOUTH_MAT = new THREE.MeshStandardMaterial({ color: 0x5a1e22, roughness: 0.7 });
 
-export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build, { face = true } = {}) {
+export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build, { face = true, hairStyle = 0, beard = false } = {}) {
   const grp = new THREE.Group();
   const mat = (c, rough = 0.72) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.02, envMapIntensity: 0.55 });
   // kit fabric catches the floodlights a little; skin and turf-worn socks do not
@@ -146,7 +202,7 @@ export function buildPlayer(kitCol, shortCol, skinCol, hairCol, sockCol, build, 
     shoulder: add(JOINT_GEO, kit),
     neck: add(LIMB_GEO, skin),
     head: add(JOINT_GEO, skin),
-    hair: add(JOINT_GEO, hair),
+    hair: add(hairGeometry(hairStyle, beard), hair),
     // a face: two eyes and a mouth, so a close-up is a person and a
     // celebration can shout — the mouth scales open while `celebrating`
     eyeL: add(JOINT_GEO, EYE_MAT),
