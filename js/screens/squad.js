@@ -24,6 +24,8 @@ import { playerCard, radarSVG, fmtMoney, cardStrip } from '../components/playerC
 import { packArt } from '../components/packArt.js';
 import { crestSVG, flagSVG, CREST_PARTS } from '../components/crest.js';
 import { toast, refreshCoins, navigate, veil } from '../app.js';
+import { BUNDLES, TEST_MODE, price as usd } from '../data/shop.js';
+import { openCheckout } from '../components/checkout.js';
 import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
@@ -388,6 +390,26 @@ export function divisionView() {
 }
 
 /* --------------------------------- Store -------------------------------- */
+/* v129: Ultimate bundles, bought with a card. Test mode — see js/data/shop.js. */
+function ultimateShopView(s) {
+  return `<section class="ult-shop">
+    <header class="ult-hero">
+      <span class="ult-gem">✦</span>
+      <div><h2>Ultimate</h2><p>You have <b>${(s.club.ultimate || 0).toLocaleString()}</b></p></div>
+      ${TEST_MODE ? '<span class="ult-testchip">Test mode</span>' : ''}
+    </header>
+    <div class="ult-grid">
+      ${BUNDLES.map((b, i) => `<button class="ult-b tier-${i}" data-buy-ult="${b.id}">
+        ${b.tag ? `<i class="ult-tag">${b.tag}</i>` : ''}
+        <span class="ult-stack">${'<em>✦</em>'.repeat(Math.min(5, i + 1))}</span>
+        <strong>${b.ultimate + b.bonus}</strong>
+        <small>${b.bonus ? `${b.ultimate} + <b>${b.bonus} bonus</b>` : 'Ultimate'}</small>
+        <span class="ult-price">${usd(b.cents)}</span>
+      </button>`).join('')}
+    </div>
+  </section>`;
+}
+
 export function storeView() {
   const s = getState();
   const owned = s.club.packs;
@@ -408,7 +430,7 @@ export function storeView() {
   const subs = `
     <nav class="subtabs" id="sSubs">
       ${[['packs', 'Packs'], ['locker', `Locker${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
-         ['icons', 'Icon Exchange'], ['market', 'Market'], ['binder', 'Binder']]
+         ['icons', 'Icon Exchange'], ['market', 'Market'], ['binder', 'Binder'], ['ultimate', '<b class="ult-sub">✦</b> Ultimate']]
         .map(([id, label]) =>
           `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -417,6 +439,7 @@ export function storeView() {
   if (storeTab === 'icons') return subs + iconExchangeView();
   if (storeTab === 'market') return subs + marketView();
   if (storeTab === 'binder') return subs + binderView();
+  if (storeTab === 'ultimate') return subs + ultimateShopView(s);
   const shelfEvent = eventShelf(s);
 
   /* Shelves, not one grid.
@@ -1156,6 +1179,14 @@ export function mount(root) {
   if (tab === 'club' && clubTab === 'evos') return mountEvos(root);
   if (tab === 'store' && storeTab === 'market') { mountMarket(root); return; }
   if (tab === 'store' && storeTab === 'binder') { mountBinder(root); return; }
+  if (tab === 'store' && storeTab === 'ultimate') {
+    root.querySelector('.ult-grid')?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-buy-ult]');
+      const bundle = b && BUNDLES.find((x) => x.id === b.dataset.buyUlt);
+      if (bundle) openCheckout(bundle);
+    });
+    return;
+  }
   if (tab === 'objectives') mountTasks(root);
   if (tab === 'division') mountModes(root, ultimateSquad);
 

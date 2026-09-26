@@ -74,7 +74,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v128';
+export const APP_VERSION = 'v129';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -248,7 +248,7 @@ export function navigate(name, params = {}) {
    * locker, a card detail — belong to the screen that opened them. Leaving
    * that screen mid-reveal used to leave the overlay sitting over every
    * screen after it, with nothing underneath that could close it. */
-  for (const id of ['packOverlay', 'detailOverlay']) {
+  for (const id of ['packOverlay', 'detailOverlay', 'checkoutOverlay']) {
     const el = document.getElementById(id);
     if (el && el.parentElement === document.body) el.remove();
   }

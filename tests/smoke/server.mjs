@@ -34,7 +34,7 @@ export async function startServer(port, { cwd = process.cwd() } = {}) {
   for (let i = 0; i < 100; i++) {
     // our child must be the one answering: if it died (port taken), do not talk to whoever holds the port
     if (exited) break;
-    try { const r = await fetch(`${url}/api/health`); if (r.ok && !exited) return { url, stop: () => child.kill(), log: () => log }; } catch { /* not yet */ }
+    try { const r = await fetch(`${url}/api/health`); if (r.ok && !exited) return { url, dataDir, stop: () => child.kill(), log: () => log }; } catch { /* not yet */ }
     await new Promise((r) => setTimeout(r, 100));
   }
   child.kill();
