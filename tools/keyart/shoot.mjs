@@ -9,10 +9,10 @@
  *
  *   python3 tools/keyart/grade.py <out>/cine-N.jpg assets/keyart.jpg
  *
- * The camera poses need a hook in `updateCamera` (js/game/render3d.js) that
- * the shipped game must not carry — the broadcast camera is gameplay. Rather
- * than editing the source and remembering to take it out again (v85's way),
- * the hook is patched into the module as the browser fetches it, here only.
+ * The camera poses are set by replacing the match camera's update in the
+ * page (`window.__apexCam`, which the camera regression shots already use),
+ * so the shipped game carries no hook for it — the broadcast camera is
+ * gameplay, and v85's way was to edit the source and remember to undo it.
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -25,27 +25,11 @@ const QUALITY = arg('--quality', 'high');
 mkdirSync(OUT, { recursive: true });
 const W = 2560; const H = 1440;
 
-const HOOK = `
-  if (globalThis.__keyart) {
-    const b = match.ball, k = globalThis.__keyart;
-    cam.x = b.x + k.dx; cam.y = b.y + k.dy; cam.z = k.z;
-    cam.tx = b.x + k.tdx; cam.ty = b.y + k.tdy; cam.tz = k.tz;
-    cam.hfov = k.hfov;
-    return;
-  }`;
-
 const server = await startServer();
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: W, height: H } });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('page error', e.message));
-await page.route('**/js/game/render3d.js*', async (route) => {
-  const res = await route.fetch();
-  let body = await res.text();
-  body = body.replace(/export function updateCamera\(cam, match, dt\) \{/, (m) => m + HOOK);
-  if (!body.includes('__keyart')) throw new Error('could not find updateCamera to hook');
-  await route.fulfill({ response: res, body });
-});
 await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
   meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' },
   settings: { tutorialDone: true, quality: q, models: 'realistic', pregame: 'off', broadcast: false, menuTheme: 'off' },
@@ -58,6 +42,17 @@ await page.evaluate(async () => (await import('/js/app.js')).navigate('quick'));
 await page.waitForSelector('#kickOff'); await page.click('#kickOff');
 for (let i = 0; i < 60; i++) { const ph = await page.evaluate(() => window.__apexMatch?.phase || document.querySelector('#gmLoadText')?.textContent || 'none').catch(() => '?'); if (ph === 'play') break; if (i % 6 === 0) console.log('waiting:', ph); await page.waitForTimeout(10000); }
 console.log('match on');
+await page.evaluate(() => {
+  const rig = window.__apexCam;
+  const own = rig.update.bind(rig);
+  rig.update = (match, dt, cam) => {
+    const k = globalThis.__keyart;
+    if (!k) return own(match, dt, cam);
+    const b = match.ball;
+    cam.x = b.x + k.dx; cam.y = b.y + k.dy; cam.z = k.z;
+    cam.tx = b.x + k.tdx; cam.ty = b.y + k.tdy; cam.tz = k.tz; cam.hfov = k.hfov;
+  };
+});
 // hide the HUD so the frame is only the picture
 await page.addStyleTag({ content: '.gm-hud, #gmFeed, #gmHints, .gm-touch, .bc-layer, .gm-alerts, #gmBooking, #gmAdv, .bc-sub { visibility: hidden !important; }' });
 
