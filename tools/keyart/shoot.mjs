@@ -38,8 +38,11 @@ await page.goto(`${server.url}/`);
 await page.waitForSelector('#startBtn'); await page.click('#startBtn');
 await page.waitForSelector('[data-go="squad"]');
 await page.getByText('Continue', { exact: true }).click({ timeout: 2000 }).catch(() => {});
-await page.evaluate(async () => (await import('/js/app.js')).navigate('quick'));
-await page.waitForSelector('#kickOff'); await page.click('#kickOff');
+// two of the game's own clubs, not real ones: the menu art stands for the whole game, not one club's colours
+await page.evaluate(async () => {
+  const { WORLD } = await import('/js/data/generator.js');
+  (await import('/js/app.js')).navigate('play', { homeId: WORLD.clubs[0].id, awayId: WORLD.clubs[3].id, duration: 600, skill: 1, mode: 'single' });
+});
 for (let i = 0; i < 60; i++) { const ph = await page.evaluate(() => window.__apexMatch?.phase || document.querySelector('#gmLoadText')?.textContent || 'none').catch(() => '?'); if (ph === 'play') break; if (i % 6 === 0) console.log('waiting:', ph); await page.waitForTimeout(10000); }
 console.log('match on');
 await page.evaluate(() => {
