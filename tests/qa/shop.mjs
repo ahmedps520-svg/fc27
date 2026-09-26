@@ -43,7 +43,7 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 800 }], ['phone', 
   await page.waitForSelector('.co-done', { timeout: 8000 }).catch(() => problems.push(`${label}: no receipt`));
   const receipt = await page.$eval('.co-receipt', (e) => e.textContent).catch(() => '');
   if (!/AX-[A-Z2-9]{8}/.test(receipt)) problems.push(`${label}: receipt has no order reference`);
-  if (!/Sent to the store/.test(receipt)) problems.push(`${label}: the server was not told (${receipt})`);
+  if (!/Saved on the server/.test(receipt)) problems.push(`${label}: the server was not told (${receipt})`);
   if (!/•••• 4242/.test(receipt)) problems.push(`${label}: receipt does not show the card's last four`);
   await page.screenshot({ path: join(OUT, `${label}-receipt.png`) });
   if (await page.$('#coNumber')) problems.push(`${label}: the card field is still in the page`);

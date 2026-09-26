@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v130',
+    date: '2026-09-26',
+    tag: 'Fix',
+    title: 'Store receipts say where they went',
+    lede: 'A test purchase\'s receipt now says whether the store was emailed, and if not, why.',
+    entries: [
+      {
+        head: 'Clearer receipts',
+        summary: 'The receipt line reads "Emailed to the store", or the reason it was not.',
+        detail: 'The server now waits up to eight seconds for the email to send and reports the mail provider\'s own error message.',
+      },
+    ],
+  },
+  {
     version: 'v129',
     date: '2026-09-26',
     tag: 'Store',
