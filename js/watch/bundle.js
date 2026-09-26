@@ -10004,7 +10004,9 @@
       // offers to turn it down — better than starting everyone on "safe" and
       // having nobody ever find out what the game actually looks like.
       quality: "ultra",
-      // auto | low | high | ultra   (3D detail in a match)
+      // auto | low | high | ultra   (3D detail in a match); a phone is moved to auto (v132)
+      qualityPicked: !1,
+      // v132: true once the player has chosen a quality in Settings
       models: "realistic",
       // realistic | simple          (scanned mesh vs built-in figures)
       showFps: !1,

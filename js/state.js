@@ -4,6 +4,7 @@ import { dealSlate, LADDER, REFRESH_MS, ULTIMATE_RUNGS } from './data/objectives
 import { pushSave } from './net/api.js';
 import * as storage from './storage.js';
 import * as safety from './saveSafety.js';
+import { deviceClass } from './game/quality.js';
 
 const KEY = 'apexxi.save.v1';
 
@@ -31,7 +32,8 @@ const defaults = () => ({
     // in the frame rate, and the one-time prompt after the first full match
     // offers to turn it down — better than starting everyone on "safe" and
     // having nobody ever find out what the game actually looks like.
-    quality: 'ultra',           // auto | low | high | ultra   (3D detail in a match)
+    quality: 'ultra',           // auto | low | high | ultra   (3D detail in a match); a phone is moved to auto (v132)
+    qualityPicked: false,       // v132: true once the player has chosen a quality in Settings
     models: 'realistic',        // realistic | simple          (scanned mesh vs built-in figures)
     showFps: false,             // live frame counter in the match HUD
     graphicsAsked: false,       // the post-match "keep these graphics?" prompt fires once, ever
@@ -274,6 +276,11 @@ function repairSave(s) {
     }
   };
   scalars(s.club, d.club); scalars(s.settings, d.settings); scalars(s.ultimate, freshUltimate());
+  /* v132: a phone still on the shipped default (Ultra, or High) that the
+   * player never chose moves to Auto — 23 scanned players were about 0.9M
+   * triangles a frame, which a phone was never measured to hold. A quality the
+   * player picked in Settings is theirs and is left alone. */
+  if (!s.settings.qualityPicked && (s.settings.quality === 'ultra' || s.settings.quality === 'high') && deviceClass() === 'phone') s.settings.quality = 'auto';
   // the Light figures option is gone (v73): every save gets the scanned models
   if (s.settings.models === 'simple') s.settings.models = 'realistic';
   if (!Array.isArray(s.ultimate?.objectives) || !s.ultimate.objectives.every((o) => o && o.metric)) {

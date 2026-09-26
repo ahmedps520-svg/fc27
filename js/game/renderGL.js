@@ -6,7 +6,8 @@ import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
-import { loadPlayerModel, makeRig, poseRig, setCelebClock } from './playerModel.js';
+import { loadPlayerModel, makeRig, poseRig, setCelebClock, setRigLod } from './playerModel.js';
+import { pickLods } from './lodPolicy.js';
 import { createReferee, updateReferee } from './referee.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
@@ -3402,6 +3403,18 @@ export function createRenderer(canvas, match, quality, models = false) {
     ready,
     /** Live three.js counters — draw calls, triangles, memory. Handy for profiling. */
     get info() { return renderer.info; },
+    /** v132: triangles in the players on screen this frame (all 22, the referee), and how many of each figure. */
+    playerTris() {
+      const count = (o) => { let n = 0; o.traverse((x) => { if (!x.visible) return; if (x.isMesh && x.geometry) { const g = x.geometry; n += (g.index ? g.index.count : g.attributes.position.count) / 3; } }); return n; };
+      const visible = (o) => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
+      let tris = 0; const figs = { full: 0, light: 0, built: 0 };
+      const add = (o, kind) => { if (o && visible(o)) { tris += count(o); figs[kind] += 1; } };
+      for (const r of modelRigs.values()) add(r.root, r.lod === 1 ? 'light' : 'full');
+      if (refModel) add(refModel.root, refModel.lod === 1 ? 'light' : 'full');
+      for (const r of rigs.values()) add(r.grp, 'built');
+      if (refRig) add(refRig.grp, 'built');
+      return { tris: Math.round(tris), ...figs };
+    },
     /** The scene graph, for the perf harness to switch parts off and time the rest. */
     get scene() { return scene; },
     /** 0–1: how much of what the loading screen waits on has arrived. */
@@ -3605,6 +3618,24 @@ export function createRenderer(canvas, match, quality, models = false) {
         for (const [p, rig] of rigs) if (rig.cloth) rig.cloth.value = Math.min(1, Math.hypot(p.vx || 0, p.vy || 0) / 7);
       }
 
+      /* v132: levels of detail. The nearest players to the lens get the full
+       * scan, the next the light one, and (on High) the rest the built figure —
+       * lodPolicy.js has the counts, which are the tier's triangle cap. */
+      let lodOf = null; let lodClose = false;
+      if (useModels) {
+        const lodTier = cinema ? 'cinema' : 'high';
+        const close = lodClose = !!replayMode || (cam.hfov || 60) < 30 || m.phase === 'goal';
+        const list = []; const who = [];
+        for (let t = 0; t < 2; t++) for (const p of m.teams[t].players) {
+          const dx = p.x - cam.x; const dy = p.y - cam.y;
+          const rig = modelRigs.get(p);
+          list.push({ d: Math.hypot(dx, dy), ahead: dx * (cam.tx - cam.x) + dy * (cam.ty - cam.y) > 0, cur: p._lod ?? (rig ? rig.lod : 0) });
+          who.push(p);
+        }
+        const lv = pickLods(list, lodTier, close);
+        lodOf = new Map();
+        for (let i = 0; i < who.length; i++) { lodOf.set(who[i], lv[i]); who[i]._lod = lv[i]; }
+      }
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
           // a substitute has come on in this slot: dress him as himself
@@ -3622,7 +3653,14 @@ export function createRenderer(canvas, match, quality, models = false) {
               rig.mixer.stopAllAction(); scene.remove(rig.root);
               rig = modelRig(p, t, rig.index); scene.add(rig.root); modelRigs.set(p, rig);
             }
-            if (rig) {
+            const level = lodOf?.get(p) ?? 0;
+            const simpleNow = rigs.get(p);
+            if (rig && level === 2 && simpleNow) {
+              // far off: the built figure stands in (posed below, like on Low)
+              rig.root.visible = false; simpleNow.grp.visible = true;
+            } else if (rig) {
+              rig.root.visible = true; if (simpleNow) simpleNow.grp.visible = false;
+              setRigLod(rig, level);
               // v87: animation LOD — distance from the lens, and whether he is in front of it at all
               const dx = p.x - cam.x; const dy = p.y - cam.y;
               const d2 = dx * dx + dy * dy;
@@ -3632,8 +3670,8 @@ export function createRenderer(canvas, match, quality, models = false) {
               if (replayMode) every = 1;                           // a replay is the one time everything is looked at
               setCelebClock(m.celebT); poseRig(rig, p, dt, every);
               rig.root.position.z += surfaceAt(p.x, p.y);
-            }
-            continue;
+              continue;
+            } else continue;
           }
           const rig = rigs.get(p);
           if (!rig) continue;
@@ -3651,7 +3689,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         const fig = useModels && refModel ? refModel : null;
         if (fig) {
           fig.root.visible = live;
-          if (live) { setCelebClock(0); poseRig(fig, refState, dt, 1); fig.root.position.z += surfaceAt(refState.x, refState.y); }
+          if (live) { setRigLod(fig, lodClose || cinema ? 0 : 1); setCelebClock(0); poseRig(fig, refState, dt, 1); fig.root.position.z += surfaceAt(refState.x, refState.y); }
         } else if (refRig) {
           refRig.grp.visible = live;
           if (live) {

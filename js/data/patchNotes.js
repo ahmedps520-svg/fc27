@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v132',
+    date: '2026-09-26',
+    tag: 'Performance',
+    title: 'Lighter players, smoother phones',
+    lede: 'Players far from the camera are now drawn with lighter models, so High and Ultra draw a third of the triangles they did. Phones start on a setting made for phones.',
+    entries: [
+      {
+        head: 'Detail where you are looking',
+        summary: 'On High and Ultra, the players nearest the camera get the full scanned model, the next ones a lighter copy of it, and on High the farthest the simpler figure. Replays and close-ups get full detail.',
+        detail: 'High went from about 900,000 player triangles a frame to about 175,000, and Ultra to about 310,000. Low and Medium are unchanged.',
+      },
+      {
+        head: 'Phones start sensibly',
+        summary: 'On a phone, Auto is now Medium, or Low on older or budget phones. It never picks High or Ultra; you can still choose them in Settings.',
+        detail: 'A phone still on the default Ultra that you never changed moves to Auto once. A quality you picked yourself is kept.',
+      },
+    ],
+  },
+  {
     version: 'v131',
     date: '2026-09-26',
     tag: 'Store',

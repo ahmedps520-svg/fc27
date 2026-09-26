@@ -21,6 +21,8 @@ import { clone as cloneSkinned } from '../vendor/jsm/utils/SkeletonUtils.js';
 // Resolved against this module rather than the page, so the asset is found
 // whatever URL the game is opened from.
 const MODEL_URL = new URL('../../assets/candidates/player.glb', import.meta.url).href;
+// v132: the same meshes, simplified to about a quarter (tools/models/lod.mjs) — geometry only
+const LOD1_URL = new URL('../../assets/candidates/player-lod1.glb', import.meta.url).href;
 
 /**
  * What the match is doing, and which clip says it. Several names are listed
@@ -219,12 +221,19 @@ let cached = null;
  */
 export function loadPlayerModel() {
   if (cached) return cached;
-  cached = new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => {
+  /* v132: the light meshes ride along. If they fail to load the rigs simply
+   * never drop a level — a missing LOD file costs frames, never the match. */
+  const lod1 = new GLTFLoader().loadAsync(LOD1_URL).then((g) => {
+    const geos = new Map();
+    g.scene.traverse((o) => { if (o.isMesh && o.geometry) geos.set(o.name, o.geometry); });
+    return geos;
+  }).catch(() => null);
+  cached = Promise.all([new GLTFLoader().loadAsync(MODEL_URL), lod1]).then(([gltf, lodGeos]) => {
     const box = new THREE.Box3().setFromObject(gltf.scene);
     const height = box.getSize(new THREE.Vector3()).y || 180;
     const clips = new Map();
     for (const clip of gltf.animations) clips.set(clip.name.toLowerCase(), clip);
-    return { scene: gltf.scene, clips, scale: 1.8 / height, sourceHeight: height };
+    return { scene: gltf.scene, clips, scale: 1.8 / height, sourceHeight: height, lod1: lodGeos };
   }).catch(() => null);
   return cached;
 }
@@ -268,6 +277,8 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     if (!o.isMesh && !o.isSkinnedMesh) return;
     o.castShadow = true;
     o.frustumCulled = false;             // the bounding box is the bind pose, not the stride
+    // v132: both levels of this mesh; a mesh with no light version (the eyelashes) hides at level 1
+    o.userData.lod = [o.geometry, model.lod1 ? (model.lod1.get(o.name) || null) : o.geometry];
     // Garments are separate meshes on the source character, named for what they
     // are. Anything unrecognised is left exactly as the artist textured it.
     const part = o.name || '';
@@ -361,6 +372,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     current: null,
     offset: startAt,
     index,              // v87: staggers the animation LOD so skipped players are not all skipped on the same frame
+    lod: 0,             // v132: 0 the full scan, 1 the light one (setRigLod)
   };
 }
 
@@ -527,4 +539,22 @@ function celebrateRig(rig, p, speed, t) {
     aim(up, toWorld(side, d.upper, _v2));
     aim(fore, toWorld(side, d.fore, _v2));
   }
+}
+
+/**
+ * v132: which level of detail a rig draws. 0 is the full scan (~38.6k
+ * triangles), 1 the simplified one (~9.2k). Same skeleton, same clips, same
+ * materials — only each skinned mesh's geometry is swapped, so the switch
+ * costs nothing but the upload the first time a level is drawn.
+ */
+export function setRigLod(rig, level) {
+  if (rig.lod === level) return;
+  rig.lod = level;
+  rig.figure.traverse((o) => {
+    const both = o.userData?.lod;
+    if (!both) return;
+    const g = both[level] ?? null;
+    if (g) { o.geometry = g; if (o.userData.lodHidden) { o.visible = true; o.userData.lodHidden = false; } }
+    else if (o.visible) { o.visible = false; o.userData.lodHidden = true; }
+  });
 }
