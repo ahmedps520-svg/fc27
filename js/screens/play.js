@@ -591,19 +591,19 @@ export function mount(root, params) {
     if (advEl.hidden === adv) advEl.hidden = !adv;
   };
   const advEl = root.querySelector('#gmAdv');
+  /* v122: a tip is a button and a few words, not a paragraph — the full
+     explanation lives in Settings → Controls and the tutorial */
+  const k = (a) => `<kbd>${esc(promptFor(a))}</kbd>`;
+  const touch = () => lastDevice() === 'touch';
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
-    () => (lastDevice() === 'touch'
-      ? 'Swipe the SKILL button for a trick — a long swipe sprints, a curved one curls: 13 tricks by star rating'
-      : `SKILL (hold ${promptFor('skill')}) — point the stick, add Sprint, Curl or Lob, let go: 13 tricks by star rating`),
-    () => `${lastDevice() === 'keyboard' ? 'Keys 1–5 or the flag button switch' : 'The flag button switches'} quick tactics, from Park the bus to All-out attack`,
-    () => `LOB (${promptFor('lob')}) — chip it over the defence to a runner`,
-    () => (lastDevice() === 'touch'
-      ? 'Flick SHOOT up to chip the keeper, sideways to bend it · flick PASS for a through ball, up for a lofted one'
-      : `Hold ${promptFor('pass')} or ${promptFor('shoot')} for more power · CURL with ${promptFor('curl')} while shooting · hold ${promptFor('lob')} as you let go of a shot to chip it`),
-    'Dead ball? Aim with the stick and pick the kick — corners, free kicks, throws are yours',
-    'Pause at any stoppage for Substitutions and Team Management',
-    () => `Defending: ${promptFor('shoot')} slides in · hold ${promptFor('jockey')} to jockey · hold ${promptFor('press')} to send a team-mate to press`,
+    () => (touch() ? '<kbd>SKILL</kbd> swipe → a trick' : `hold ${k('skill')} + stick → a trick`),
+    () => (lastDevice() === 'keyboard' ? '<kbd>1</kbd>–<kbd>5</kbd> quick tactics' : '<kbd>⚑</kbd> quick tactics'),
+    () => `${touch() ? '<kbd>LOB</kbd>' : k('lob')} chip it over the top`,
+    () => (touch() ? 'Flick <kbd>SHOOT</kbd> ↑ chip · ↔ bend' : `hold ${k('shoot')} = power · ${k('curl')} = bend`),
+    'Dead ball: aim with the stick',
+    '<kbd>❚❚</kbd> subs &amp; tactics',
+    () => (touch() ? '<kbd>SLIDE</kbd> · hold <kbd>JOCKEY</kbd> · hold <kbd>PRESS</kbd>' : `${k('shoot')} slide · hold ${k('jockey')} jockey · hold ${k('press')} press`),
   ];
   let hintIdx = 0;
   let hintTimer = 0;
@@ -2224,7 +2224,7 @@ export function mount(root, params) {
       hintTimer -= dt;
       if (hintTimer <= 0) {
         hintTimer = 7;
-        if (hintIdx < HINTS.length) { hintsEl.hidden = false; const hn = HINTS[hintIdx++]; hintsEl.textContent = typeof hn === 'function' ? hn() : hn; }
+        if (hintIdx < HINTS.length) { hintsEl.hidden = false; const hn = HINTS[hintIdx++]; hintsEl.innerHTML = typeof hn === 'function' ? hn() : hn; }
         else hintsEl.hidden = true;
       }
     }
@@ -2739,6 +2739,7 @@ export function mount(root, params) {
   function setPaused(v) {
     paused = v;
     overlay.classList.toggle('is-pause', v);
+    root.classList.toggle('gm-paused', v);   // v122: hides the pad under the menu
     if (!v) {
       // resuming out of the interval is the second-half whistle
       if (halfTime) { halfTime = false; sfx('whistle'); }
