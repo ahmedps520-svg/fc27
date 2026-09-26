@@ -56,11 +56,13 @@ await page.evaluate(() => {
 // hide the HUD so the frame is only the picture
 await page.addStyleTag({ content: '.gm-hud, #gmFeed, #gmHints, .gm-touch, .bc-layer, .gm-alerts, #gmBooking, #gmAdv, .bc-sub { visibility: hidden !important; }' });
 
+// low and a little back, on a longer lens: the players at six to twelve metres,
+// close enough to read the models and never so close the camera cuts into one
 const POSES = [
-  { dx: 5, dy: -9, z: 2.0, tdx: 0, tdy: 3, tz: 1.1, hfov: 62 },      // low, close behind play
-  { dx: -7, dy: -11, z: 1.5, tdx: 1, tdy: 5, tz: 1.4, hfov: 70 },    // very low, wide
-  { dx: 0, dy: -16, z: 3.2, tdx: 0, tdy: 6, tz: 1.2, hfov: 54 },     // pitchside dolly
-  { dx: 3, dy: -6, z: 1.3, tdx: -1, tdy: 2, tz: 1.2, hfov: 58 },     // among the players
+  { dx: 4, dy: -12, z: 1.6, tdx: 0, tdy: 2, tz: 1.2, hfov: 48 },
+  { dx: -6, dy: -14, z: 1.8, tdx: 1, tdy: 4, tz: 1.3, hfov: 44 },
+  { dx: 0, dy: -18, z: 2.5, tdx: 0, tdy: 5, tz: 1.1, hfov: 40 },
+  { dx: 8, dy: -10, z: 1.4, tdx: 0, tdy: 3, tz: 1.2, hfov: 52 },
 ];
 let n = 0;
 for (const p of POSES) {
