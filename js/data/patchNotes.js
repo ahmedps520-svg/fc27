@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v133',
+    date: '2026-09-26',
+    tag: 'Gameplay',
+    title: 'Runs into the box',
+    lede: 'When the ball goes wide in the final third, attackers now attack the box — near post, far post and the penalty spot — so crosses and cut-backs finally have someone to find.',
+    entries: [
+      {
+        head: 'Three runs on every cross',
+        summary: 'With a team-mate wide near the box, up to three forwards and midfielders head for the near post, the far post and the spot. They stay onside until the ball is played, and keep going while it is in the air.',
+        detail: 'The nearest team-mate always stays short, so the wide man still has a simple pass. Your own team-mates make these runs for your crosses too.',
+      },
+      {
+        head: 'Better crosses, fairer headers',
+        summary: 'The computer crosses to whoever has the most room, leading a runner rather than hitting where he was. The nearest defender now goes to meet the cross, and a header with a defender at your shoulder is harder to place.',
+        detail: 'Measured over 240 simulated matches: crosses reaching a team-mate rose from about 20% to 34%, headers at goal from 1.6 to 2.2 a match, and headed goals from 0.29 to 0.55. Possession, shots and fouls barely moved.',
+      },
+    ],
+  },
+  {
     version: 'v132',
     date: '2026-09-26',
     tag: 'Performance',

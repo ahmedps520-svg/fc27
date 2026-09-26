@@ -163,7 +163,7 @@ const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
 /* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns") */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true };
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -692,6 +692,9 @@ export class Match {
         .sort((a, z) => dist(a, carrier) - dist(z, carrier));
       this.supporters[carrier.team] = [mates[0], mates[1]];
     }
+    // v133: runs into the box while a team-mate has it in the crossing zone
+    this.boxRuns = [null, null];
+    if (TUNE.boxRuns && carrier) this.boxRuns[carrier.team] = this.pickBoxRuns(carrier, dt);
 
     // one input per seat; a single Input is still accepted for solo play
     this.controllers.forEach((c, i) => {
@@ -1602,7 +1605,11 @@ export class Match {
           const timing = clamp(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
           b.lastTouch = best;
           this.cue('header');
-          this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28, { loft: 0.2, placed: true, sloppy: 1 - timing + (best.tr?.aerial ? -0.2 : 0) });   // headers are steered down
+          // v133: a defender at his shoulder makes it a contested header — rarely clean
+          const foeH = this.nearestTo(1 - best.team, best, true);
+          // (bodies keep about two metres apart here, so 'at his shoulder' is inside 2.6 m)
+          const contested = foeH && dist(foeH, best) < 2.6 ? 1.3 : 0;
+          this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28 - (contested ? 0.12 : 0), { loft: 0.2, placed: true, sloppy: 1 - timing + contested + (best.tr?.aerial ? -0.2 : 0) });   // headers are steered down
           return;
         }
         if (attacking && b.z > 0.42 && b.z <= 0.85 && toGoal9 < 17 && Math.random() < 0.7) {
@@ -2140,6 +2147,22 @@ export class Match {
       const d = Math.hypot(t.x - tx, t.y - ty);
       if (d < bestD) { bestD = d; best = t; }
     }
+    /* v133: the CPU picks the man in the box with the most room — a runner
+       arriving counts double for it, because he is moving onto the ball and
+       his marker is not — and puts it where he will be, not where he is. */
+    const runs = !aim ? this.boxRuns?.[p.team] : null;
+    if (!aim) {
+      const foes = this.teams[1 - p.team].players;
+      let bestScore = -Infinity; let pick = null;
+      for (const t of team.players) {
+        if (t === p || t.role === 'GK' || Math.abs(t.x - goalX) > 20) continue;
+        let room = 99;
+        for (const f of foes) { const d = Math.hypot(f.x - t.x, f.y - t.y); if (d < room) room = d; }
+        const score = Math.min(room, 6) * (runs?.has(t) ? 1.5 : 1) - Math.abs(t.x - goalX) * 0.15 + (kind === 'driven' && Math.abs(t.y - p.y) < 12 ? 1 : 0);
+        if (score > bestScore) { bestScore = score; pick = t; }
+      }
+      if (pick) best = pick;
+    }
     // Lead the runner: aim where they will be when the ball lands, not where
     // they are now. The ball only passes through head height in the last couple
     // of metres, so the landing point has to sit on them.
@@ -2193,6 +2216,13 @@ export class Match {
       return;
     }
     this.noteOffside(p);
+    // v133: the men on their runs keep going while it is in the air (see think)
+    let lead = null;
+    if (runs && runs.size) { let ld = Infinity; for (const q of runs.keys()) { const d = Math.hypot(q.x - tx, q.y - ty); if (d < ld) { ld = d; lead = q; } } }
+    // and the defender nearest where it is coming down goes to meet it too
+    let guard = null;
+    { let gd = Infinity; for (const q of this.teams[1 - p.team].players) { if (q.role === 'GK') continue; const d = Math.hypot(q.x - tx, q.y - ty); if (d < gd) { gd = d; guard = q; } } }
+    this.crossRun = runs && runs.size ? { team: p.team, runners: new Map(runs), lead, guard, until: this.t + T + 0.6, lx: tx, ly: ty } : null;
     this.release(p, dx / T, dy / T, 0.5 * GRAV * T * (kind === 'driven' ? 0.62 : 1));
     this.ball.noTouch = 0.26;
     if (kind === 'driven' && p.tr?.deadball) this.ball.curl = (Math.sign(CY - p.y) || 1) * 18;
@@ -3127,6 +3157,30 @@ export class Match {
         return;
       }
     }
+    /* v133: attacking the box. While a team-mate has it wide in the crossing
+       zone, up to three forwards and midfielders go for the near post, the far
+       post and the penalty spot (pickBoxRuns), staying onside until it is
+       played in. The carrier's nearest team-mate is never taken, so he keeps
+       a short option. */
+    // ...and while the cross is in the air nobody has it, so the runners carry on to where it is coming down
+    const cr = this.crossRun;
+    if (cr && cr.team === p.team && !b.owner && this.t < cr.until && cr.runners.has(p)) {
+      // the man it is meant for goes to meet it; the others hold their posts for the second ball
+      const sp = p === cr.lead ? { x: cr.lx, y: cr.ly } : cr.runners.get(p);
+      this.moveTo(p, clamp(sp.x, 2, PITCH.w - 2), clamp(sp.y, 2, PITCH.h - 2), dt, p === cr.lead ? 1.12 : 0.9);
+      return;
+    }
+    if (cr && cr.team !== p.team && cr.guard === p && !b.owner && this.t < cr.until) {
+      this.moveTo(p, clamp(cr.lx, 2, PITCH.w - 2), clamp(cr.ly, 2, PITCH.h - 2), dt, 1.12);
+      return;
+    }
+    const boxSpot = weHave ? this.boxRuns?.[p.team]?.get(p) : null;
+    if (boxSpot) {
+      const tx = this.onsideX(team, boxSpot.x);
+      const far = Math.hypot(tx - p.x, boxSpot.y - p.y);
+      this.moveTo(p, clamp(tx, 2, PITCH.w - 2), clamp(boxSpot.y, 2, PITCH.h - 2), dt, far > 6 ? 1.1 : 0.8);
+      return;
+    }
     // a third-man run set off by a pass between two others (see `pass`)
     if (weHave && p.thirdUntil > 0) {
       p.thirdUntil -= dt;
@@ -3281,6 +3335,61 @@ export class Match {
       }
     }
     return best || { x: home.x, y: home.y };
+  }
+
+  /**
+   * v133: who attacks the box, and where. Only while the carrier is wide in
+   * the crossing zone (the same test his own cross decision uses); the spots
+   * are the near post, the far post and the penalty spot, relative to the side
+   * the ball is on. Assignments hold for half a second so runners do not swap
+   * spots every frame, and are dropped the moment the ball leaves the zone.
+   * @returns {Map<object, {x:number, y:number, tag:string}>|null}
+   */
+  pickBoxRuns(c, dt) {
+    const team = this.teams[c.team];
+    const goalX = team.dir > 0 ? PITCH.w : 0;
+    const k = PITCH.h / 68;
+    const wideM = 20 * k;
+    const wide = c.y < wideM || c.y > PITCH.h - wideM;
+    if (!wide || Math.abs(goalX - c.x) > 32 * SCALE || this.phase !== 'play') { team.boxRun = null; return null; }
+    const side = Math.sign(c.y - CY) || 1;
+    const spots = [
+      { x: goalX - team.dir * 5.5 * k, y: CY + side * 3.2 * k, tag: 'near' },
+      { x: goalX - team.dir * 6.5 * k, y: CY - side * 4.5 * k, tag: 'far' },
+      { x: goalX - team.dir * 11 * k, y: CY - side * 1.5 * k, tag: 'spot' },
+    ];
+    team.boxRunT = (team.boxRunT || 0) - dt;
+    if (team.boxRun && team.boxRunFor === c && team.boxRunT > 0) {
+      // same carrier, still in the zone: the same men, the spots re-aimed for his side
+      const m = new Map();
+      for (const [q, tag] of team.boxRun) m.set(q, spots.find((s2) => s2.tag === tag));
+      return m;
+    }
+    const keep = this.supporters[c.team]?.[0];
+    const pool = team.players.filter((q) => q !== c && q !== keep && (q.role === 'FWD' || q.role === 'MID')
+      && !q.parked && !this.isControlled(q) && Math.abs(goalX - q.x) < 40 * SCALE);
+    const out = new Map(); const tags = new Map();
+    // each spot slides up to 2.5 m off the defender nearest it — a run is into a gap, not onto a man
+    const foes = this.teams[1 - c.team].players.filter((f) => f.role !== 'GK');
+    for (const sp of spots) {
+      let near = null; let nd = Infinity;
+      for (const f of foes) { const d = Math.hypot(f.x - sp.x, f.y - sp.y); if (d < nd) { nd = d; near = f; } }
+      if (near && nd < 3) { const dy = sp.y - near.y || side; sp.y += Math.sign(dy) * (3 - nd) * 0.85; }
+    }
+    for (const sp of spots) {
+      let best = null; let bd = 30 * k;
+      for (const q of pool) {
+        if (out.has(q)) continue;
+        // forwards first for the posts; the late run to the spot is the attacking midfielder's
+        const cam = q.ref?.position === 'CAM';
+        const w = q.role === 'FWD' ? (sp.tag === 'spot' ? 0.9 : 0.8) : cam ? (sp.tag === 'spot' ? 0.65 : 0.9) : 1;
+        const d = Math.hypot(q.x - sp.x, q.y - sp.y) * w;
+        if (d < bd) { bd = d; best = q; }
+      }
+      if (best) { out.set(best, sp); tags.set(best, sp.tag); }
+    }
+    team.boxRun = tags; team.boxRunFor = c; team.boxRunT = 0.5;
+    return out.size ? out : null;
   }
 
   onsideX(team, x, slack = 0) {

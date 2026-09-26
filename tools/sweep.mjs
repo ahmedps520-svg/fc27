@@ -48,14 +48,40 @@ function mulberry32(a) {
 const realCross = Match.prototype.cross;
 let crosses = 0;
 let crossesWithTarget = 0;
-Match.prototype.cross = function wrappedCross(p, aim) {
+Match.prototype.cross = function wrappedCross(p, aim, kind = 'floated', ...rest) {
   crosses += 1;
   const team = this.teams[p.team];
   const goalX = team.dir > 0 ? PITCH.w : 0;
   if (team.players.some((t) => t !== p && t.role !== 'GK' && Math.abs(t.x - goalX) < 18)) {
     crossesWithTarget += 1;
   }
-  return realCross.call(this, p, aim);
+  const r = realCross.call(this, p, aim, ...rest);
+  // v133: a cross (not a cut-back, which is a pass along the ground) is "completed"
+  // when the next player to touch it is a team-mate of the crosser
+  if (kind !== 'cutback' && this.ball.owner !== p) pending = { team: p.team, crosser: p, t: this.t };
+  return r;
+};
+/* v133: headers at goal and headed goals. An attacking header cues 'header'
+   with the header as the ball's last touch and then shoots; a defensive
+   clearance cues it too, but shoots nothing — so a header counts at goal only
+   when the ball comes off him as a shot. */
+let pending = null; let crossDone = 0; let crossMissed = 0;
+let headersAtGoal = 0; let headedGoals = 0; let lastHeader = null;
+const realCue = Match.prototype.cue;
+Match.prototype.cue = function wrappedCue(kind, ...a) {
+  if (kind === 'header') lastHeader = { p: this.ball.lastTouch, t: this.t, shot: false };
+  return realCue.call(this, kind, ...a);
+};
+const realShoot = Match.prototype.shoot;
+Match.prototype.shoot = function wrappedShoot(p, ...a) {
+  if (lastHeader && lastHeader.p === p && lastHeader.t === this.t) { lastHeader.shot = true; headersAtGoal += 1; }
+  return realShoot.call(this, p, ...a);
+};
+const realGoal = Match.prototype.scoreGoal;
+Match.prototype.scoreGoal = function wrappedGoal(side, ...a) {
+  const scorer = this.ball.lastTouch;
+  if (lastHeader?.shot && lastHeader.p === scorer && scorer?.team === side && this.t - lastHeader.t < 3) headedGoals += 1;
+  return realGoal.call(this, side, ...a);
 };
 
 const total = { goals: 0, shots: 0, onTarget: 0, poss: 0, fouls: 0, yellows: 0, corner: 0, throwin: 0, goalkick: 0, freekick: 0, penalty: 0, offside: 0 };
@@ -81,7 +107,15 @@ for (let i = 0; i < N; i++) {
 
   const m = new Match(home.id, awayId, { human: null, duration: DURATION, preset: PRESET });
   const steps = Math.ceil(DURATION * 60);
-  for (let s = 0; s < steps && m.phase !== 'end'; s++) m.update(1 / 60);
+  pending = null; lastHeader = null;
+  for (let s = 0; s < steps && m.phase !== 'end'; s++) {
+    m.update(1 / 60);
+    if (pending) {
+      const lt = m.ball.lastTouch;
+      if (lt && lt !== pending.crosser) { if (lt.team === pending.team) crossDone += 1; else crossMissed += 1; pending = null; }
+      else if (m.t - pending.t > 4 || m.phase !== 'play') { crossMissed += 1; pending = null; }
+    }
+  }
 
   total.goals += m.teams[0].score + m.teams[1].score;
   total.shots += m.teams[0].shots + m.teams[1].shots;
@@ -100,6 +134,8 @@ console.log(`  on target    ${per(total.onTarget)}`);
 console.log(`  conversion   ${((total.goals / total.shots) * 100).toFixed(1)}%`);
 console.log(`  home poss    ${per(total.poss)}%`);
 console.log(`  crosses      ${per(crosses)}        (${per(crossesWithTarget)} with a man in the box)`);
+console.log(`  cross comp   ${((crossDone / Math.max(1, crossDone + crossMissed)) * 100).toFixed(1)}%       (a team-mate's the next touch; cut-backs not counted)`);
+console.log(`  headers      ${per(headersAtGoal)} at goal, ${per(headedGoals)} headed goals`);
 /* Restarts and discipline, beside what a real match of the same number of
  * shots would have: real top-flight football averages about 25 shots, 22
  * fouls, 10 corners, 44 throw-ins, 17 goal kicks, 4 offsides and 3.8 yellows

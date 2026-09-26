@@ -15,6 +15,56 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v133 — attacking runs into the box (owner's #2); the sweep re-baselined deliberately
+- `sim.js`:
+  - `TUNE.boxRuns`.
+  - `pickBoxRuns(carrier)` runs each frame after the supporters, only while
+    the carrier is wide (the cross test's `wideM`) within 32·SCALE of the
+    goal line. It sends up to 3 FWD/MID (forwards preferred) to the near
+    post (5.5 m, ball side), the far post (6.5 m, far side) and the spot
+    (11 m). Each spot slides up to 2.5 m away from the nearest defender.
+    Assignments hold for 0.5 s. The carrier's nearest mate
+    (`supporters[0]`) and anyone human-controlled are never taken.
+  - In `think`, a runner moves to `onsideX(spot)`. While a cross is in the
+    air (`this.crossRun`, set in `cross()`), the runner nearest the landing
+    point goes to meet it and the others hold their spots. The defender
+    nearest the landing point goes to meet it too.
+  - The CPU's cross target (no aim) is the man within 20 m of goal with the
+    most room (capped at 6 m; runners count ×1.5).
+  - An attacking header with an outfield defender inside 2.6 m is
+    "contested": `sloppy` +1.3 and power −0.12. Bodies sit about 2 m apart
+    here, so 1.8 m never triggered — measured.
+- An aerial reach bonus for runners was tried and measured as having no
+  effect (0.8/0.88/0.92 all within noise), so it was removed.
+- Sweep (`tools/sweep.mjs` now prints cross completion and headers), 120
+  matches, before → after:
+
+  | Metric | Seed 12345 | Seed 777 |
+  |---|---|---|
+  | Goals | 2.06 → 2.06 | 2.02 → 2.36 |
+  | Shots | 14.31 → 14.72 | 14.93 → 14.97 |
+  | Home possession | 51.3 → 50.7% | 49.6 → 50.1% |
+  | Cross completion | 18.5 → 34.3% | 21.6 → 34.2% |
+  | Headers at goal | 1.39 → 2.03 | 1.75 → 2.33 |
+  | Headed goals | 0.24 → 0.51 | 0.33 → 0.58 |
+
+  Fouls, yellows and restarts are within noise. The goldens were
+  re-recorded on purpose.
+- `tools/cross-audit.mjs`: the next touch after a cross.
+  - Before: mate 23.5%, defender 55.3%, keeper 7.9%, nobody 13.2%.
+  - After: mate 35.2% (headers 15.2%), defender 43.9%, keeper 4.8%,
+    nobody 16.1%.
+- `tests/unit/box-runs.test.mjs`.
+- The evolution audit first failed: a CAM on the Pace track needed 61.3
+  matches (the limit is 60; 51.6 before), because the runs went to
+  forwards. The spot run now prefers a CAM (weight 0.65, against 0.9 for a
+  FWD), which gives 54.2 matches.
+- What went wrong on the way: the first version (runs only) moved almost
+  nothing, because runners stopped the moment the cross left the foot
+  (nobody owns the ball in flight). Continuing through the flight took
+  completion to about 40% and headed goals to about 0.6, too high; the
+  defender meeting the ball and contested headers brought it back.
+
 ### v132 — player LODs, per-tier triangle caps, conservative Auto on phones (owner's #1)
 - `assets/candidates/player-lod1.glb` (453 KB), from `tools/models/lod.mjs`:
   gltf-transform weld + meshoptimizer simplify at a ratio of 0.22. It keeps
