@@ -2,6 +2,7 @@ import { WORLD } from '../data/generator.js';
 import { navigate } from '../app.js';
 import { getState } from '../state.js';
 import { checkForUpdate, installUpdate } from '../update.js';
+import { readPad } from '../game/padRead.js';
 
 export const TITLE = 'APEX XI';
 
@@ -228,8 +229,7 @@ export function mount(root) {
   // any gamepad button starts too
   let padWasDown = false;
   const padPoll = setInterval(() => {
-    const pads = navigator.getGamepads ? [...navigator.getGamepads()] : [];
-    const pad = pads.find((p) => p && p.connected);
+    const pad = readPad();   // v123: the pad being used, whatever slot it is in
     if (!pad) return;
     const down = pad.buttons.some((b) => b.pressed);
     if (down && !padWasDown) go();

@@ -12,6 +12,7 @@
  * 'primary' | 'secondary' | 'none' }] in home-then-away order — or null.
  */
 import { padKindOf, padGlyph } from '../game/input.js';
+import { normPad } from '../game/padRead.js';
 
 const MAX_PLAYING = 4;
 
@@ -110,7 +111,8 @@ export function openSideSelect({ home, away, preset = 'versus' } = {}) {
     let raf = 0;
     const poll = () => {
       raf = requestAnimationFrame(poll);
-      const pads = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected);
+      // v123: each in the standard layout, and only things with a controller's buttons (not a headset)
+      const pads = (navigator.getGamepads ? [...navigator.getGamepads()] : []).filter((g) => g && g.connected && g.buttons.length >= 4).map(normPad);
       let changed = false;
       for (const g of pads) {
         const id = `pad${g.index}`;

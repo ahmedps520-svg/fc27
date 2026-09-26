@@ -170,6 +170,7 @@ function step(list, dx, dy) {
 import { sfx, resumeAudio } from './audio.js';
 import { openOsk, oskButton, oskRoot } from './components/osk.js';
 import { padGlyph } from './game/input.js';
+import { readPad } from './game/padRead.js';
 
 function activate(el) {
   if (!el) return;
@@ -194,12 +195,12 @@ function tick(dt) {
   // Settings is listening for a button to bind: nothing here may act on it (v90)
   if (document.body.classList.contains('pad-capture')) {
     // keep tracking what is held, so the button just bound is not also a press here
-    const pd = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find((g) => g && g.connected);
+    const pd = readPad();
     prevButtons = pd ? pd.buttons.map((b) => b.pressed) : prevButtons;
     return;
   }
-  const pads = navigator.getGamepads ? [...navigator.getGamepads()] : [];
-  const pad = pads.find((g) => g && g.connected);
+  // v123: the pad in the player's hands, in the standard layout (padRead.js)
+  const pad = readPad();
   if (!pad) { if (document.body.classList.contains('pad-active')) paintGlyphs(false); return; }
 
   /* v88: back and home first. A screen with nothing focusable (the trophy

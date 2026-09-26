@@ -50,6 +50,8 @@ jobs:
         run: node tests/qa/touch-editor.mjs
       - name: Controller only (every screen by pad, keyboard, tabs, sliders, line-up)
         run: node tests/qa/pad-reach.mjs
+      - name: A real controller (not in slot 0, raw Xbox and PlayStation layouts) drives the menus
+        run: node tests/qa/pad-real.mjs
       - name: Custom Cup end to end (make, draw, play a tie, bracket) and Kick Off on a revisit
         run: node tests/qa/cup.mjs
       - name: SBCs (every group unfolds, Start opens a challenge in each)
