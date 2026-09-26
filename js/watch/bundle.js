@@ -12717,6 +12717,10 @@
       return btn(!!(x != null && x.pressed), (_a2 = x == null ? void 0 : x.value) != null ? _a2 : 0);
     });
     for (; out.length < 17; ) out.push(btn(!1));
+    if (/054c|playstation|dualsense|dualshock|wireless controller/i.test(g.id || "") && b.length >= 13) {
+      let [sq, x, o, tri] = [out[0], out[1], out[2], out[3]];
+      out[0] = x, out[1] = o, out[2] = sq, out[3] = tri;
+    }
     let up = !1, down = !1, left = !1, right = !1, hatIdx = ax.findIndex((v, i) => i >= 4 && Math.abs(v) > 1.05);
     if (hatIdx >= 0 || ax.length === 10)
       ({ up, down, left, right } = hat(ax[hatIdx >= 0 ? hatIdx : 9]));
