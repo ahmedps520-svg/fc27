@@ -15,6 +15,38 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### The commercial (owner's ask: "a montage of the whole game and a run through")
+- 60 s, 16:9, 1080p30, with the game's music and commentary. Output:
+  - `tests/tmp/trailer/apex-xi-trailer.mp4` (full quality, 172 MB);
+  - `-share.mp4` (76 MB).
+  Neither is committed.
+- `tools/trailer/`:
+  - `scenes.mjs`: plays 30 AI matches in Node (about 40 s) and writes
+    every headed goal, distance goal, save and foul as a full-precision
+    30 fps recording.
+  - `film.mjs`: plays a recording back onto the real game in Chromium.
+    The page's rAF and performance.now are hijacked so each frame is exactly
+    1/30 s; `match.update` is a no-op, the state is written per frame, and
+    `window.__apexCam.update` is overridden with the cameras crane, follow,
+    low, tight, goal and orbit. Frames are grabbed with canvas `toDataURL`
+    (the HUD isn't in the canvas). A shot list groups shots by clubs and
+    weather, one match load each; 1080p on High runs at about 3–8 s a
+    frame (two parallel batches took about 2 h).
+  - `cards.html` / `cards.mjs`: title and end cards and captions in the
+    game's style, stepped through `document.getAnimations()`. Local
+    Oswald/Inter (OFL) are in `fonts/`.
+  - `ui.mjs`: 1920×1080 stills of the screens. Every footballer is renamed
+    from `pools.js` first (a public image carries no real names); the
+    Custom Cup uses national sides.
+  - `assemble.py`: ffmpeg cut on the music's bar (57 frames); grade; stills
+    with a zoompan push; captions overlaid. Audio is the recorded
+    highlights bed (the game's WebAudio, tapped with a MediaRecorder), a
+    brown-noise crowd with pink-noise roars at goals, 8 US-pack commentary
+    clips, sidechain ducking and loudnorm −15 LUFS.
+- To remake it: `scenes.mjs`, then `film.mjs --shots <list> --out <dir> --w
+  1920 --h 1080`, then `cards.mjs`, `ui.mjs` and `assemble.py`. The shot
+  list and card lists used are in `tools/trailer/lists/`.
+
 ### v135 — polish: the net shakes, the purchase endpoint locked down (owner's #5 and #7)
 - **The net (#5).** `js/game/net.js` has been wired into renderGL since v76.
   The audit note below, "nothing imports it", was stale and is corrected.
