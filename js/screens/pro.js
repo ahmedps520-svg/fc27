@@ -29,7 +29,7 @@ let seenSigning = null;
 const crestOf = (club) => ({ shape: club.shape, pattern: 'solid', device: 'star', colors: club.colors });
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const NATIONS = () => [...new Set(['Saudi Arabia', ...Object.keys(NATION_COLORS)])].sort((a, b) => (a === 'Saudi Arabia' ? -1 : b === 'Saudi Arabia' ? 1 : a.localeCompare(b)));
-const STYLES = [0, 1, 2, 3, 4, 5];
+const STYLES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];   // v125: dreads, braids, bun and mohawk too
 
 export function render() {
   const p = getState().pro;

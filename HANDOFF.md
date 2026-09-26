@@ -15,6 +15,38 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v125 — dreads, braids, bun, mohawk; portrait hair on the scanned model (owner's ask)
+**Styles:**
+- `face.js`: `style` 6 dreads, 7 braids, 8 bun, 9 mohawk. About 30% of
+  players get one, picked by `(h>>>26)%10 < 3 → 6 + ((h>>>3 ^ h>>>19) % 4)`,
+  which gives an even split. The other ~70% keep the original 0–5 pick.
+- **This changes the portraits for those ~30% of players.**
+- `LOOK_STYLES` names all ten. The SVG draws the four new silhouettes.
+- The Pro and Street creators offer all ten.
+
+**Built figure (`rig.js`):**
+- `HAIR_STYLES = 10`.
+- New pieces:
+  - dreads: 11 locks around the back;
+  - braids: 5 rows plus 2 plaits;
+  - bun: a knot at the back;
+  - mohawk: a strip.
+- Braids, bun and mohawk sit on the tight buzz cap.
+
+**Scanned model (`playerModel.js`):**
+- The sculpted `Ch38_Hair` is hidden whenever there is a ref.
+- A `hairGeometry(style, false)` mesh is parented to the Head bone:
+  - `apexHair`, position (0, 11.21, 4.02) cm in bone space;
+  - basis x→z, y→x, z→y;
+  - scale (10.3, 9.5, 11.2).
+- The colour is the portrait's.
+- There is no beard on the scanned model: the jaw is further forward, and
+  the shape read as a mask.
+- Head measured: centre (0, 165, 1.5), radii 9.2 fwd, 8.4 lat, 11.4 up.
+- Fitted by eye on `tools/hair-shots.mjs`, which now writes
+  `hair-rig.png` and `hair-model.png`.
+- `trait.bald` now only applies without a ref.
+
 ### v124 — hair variety on the built figure (backlog #17)
 **Owner feedback:** no reply yet on whether the v123 controller fix works on
 their setup. Ask again.

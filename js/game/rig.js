@@ -83,6 +83,7 @@ const JOINT_GEO = new THREE.SphereGeometry(1, 12, 10);
  * +x is the way he faces, +z is up, and the head's centre sits at z ≈ -0.21.
  *
  *   0 crop · 1 fringe · 2 quiff · 3 long at the back · 4 buzz · 5 afro
+ *   6 dreadlocks · 7 braids · 8 bun · 9 mohawk (v125)
  *
  * Each is one mesh (the pieces are merged), so a shape costs no draw calls.
  */
@@ -93,7 +94,21 @@ const HAIR_PIECES = {
   3: [[-0.46, 0, -0.5, 0.6, 0.96, 0.8]],
   4: null,     // the cap itself, pulled in tight
   5: null,     // the cap itself, blown out
+  // v125 — dreadlocks: locks hanging all round the back and sides
+  6: Array.from({ length: 11 }, (_, i) => {
+    const a = Math.PI * (0.42 + (i / 10) * 1.16);           // from one temple, round the back, to the other
+    return [Math.cos(a) * 0.86 - 0.12, Math.sin(a) * 0.94, -0.62 - (i % 2) * 0.1, 0.15, 0.15, 0.62];
+  }),
+  // braids: rows running front to back over a tight cap, two plaits behind
+  7: [...[-0.56, -0.28, 0, 0.28, 0.56].map((y) => [-0.14, y, 0.98 - y * y * 0.62, 0.92, 0.1, 0.15]),
+    [-0.78, 0.32, -0.66, 0.13, 0.13, 0.52], [-0.78, -0.32, -0.66, 0.13, 0.13, 0.52]],
+  // a bun: short all round, the knot high at the back
+  8: [[-0.56, 0, 0.86, 0.38, 0.38, 0.34]],
+  // a mohawk: a tall strip from the brow to the nape
+  9: [[-0.1, 0, 0.96, 1.02, 0.17, 0.44]],
 };
+/** How many hair styles there are (components/face.js LOOK_STYLES). */
+export const HAIR_STYLES = 10;
 const BEARD = [0.66, 0, -0.94, 0.32, 0.6, 0.27];
 function ellipsoid([cx, cy, cz, sx, sy, sz]) {
   const g = new THREE.SphereGeometry(1, 10, 8).toNonIndexed();
@@ -117,13 +132,14 @@ function merge(geos) {
 const hairCache = new Map();
 /** The hair mesh's geometry for a portrait `style` (0–5) and beard. */
 export function hairGeometry(style = 0, beard = false) {
-  const st = ((style | 0) % 6 + 6) % 6;
+  const st = ((style | 0) % HAIR_STYLES + HAIR_STYLES) % HAIR_STYLES;
   const key = `${st}:${beard ? 1 : 0}`;
   if (!hairCache.has(key)) {
     /* the cap sits back from the brow so the eyes and forehead show (the old
        single cap hung over the eyes); the buzz is a thin shell set back on
        the crown, the afro a big one behind the hairline */
-    const cap = st === 4 ? [-0.16, 0, 0.1, 1.0, 1.02, 0.99] : st === 5 ? [-0.34, 0, 0.3, 1.2, 1.26, 1.1] : [-0.18, 0, 0.08, 1, 1, 1];
+    const TIGHT = [-0.16, 0, 0.1, 1.0, 1.02, 0.99];    // the buzz: braids, the bun and the mohawk sit on it too
+    const cap = st === 4 || st >= 7 ? TIGHT : st === 5 ? [-0.34, 0, 0.3, 1.2, 1.26, 1.1] : [-0.18, 0, 0.08, 1, 1, 1];
     const geos = [ellipsoid(cap), ...(HAIR_PIECES[st] || []).map(ellipsoid)];
     if (beard) geos.push(ellipsoid(BEARD));
     hairCache.set(key, merge(geos));

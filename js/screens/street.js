@@ -50,7 +50,7 @@ function createHTML() {
         <label>Nation <select id="stNation">${NATIONS.map((n) => `<option ${n === d.nation ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <div class="cs-row"><span>Skin tone</span>${sw('skin', LOOK_SKINS)}</div>
         <div class="cs-row"><span>Hair colour</span>${sw('hair', LOOK_HAIRS)}</div>
-        <div class="cs-row"><span>Hair style</span><div class="cs-swatches" data-key="style">${[0, 1, 2, 3, 4, 5].map((i) => `<button class="cs-sw ${d.style === i ? 'on' : ''}" data-i="${i}" style="background:#222">${i + 1}</button>`).join('')}</div></div>
+        <div class="cs-row"><span>Hair style</span><div class="cs-swatches" data-key="style">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => `<button class="cs-sw ${d.style === i ? 'on' : ''}" data-i="${i}" style="background:#222">${i + 1}</button>`).join('')}</div></div>
         <label class="cs-check"><input id="stBeard" type="checkbox" ${d.beard ? 'checked' : ''}> Facial hair</label>
         <button class="btn primary big" id="stCreate" ${d.name.trim().length >= 2 ? '' : 'disabled'}>Hit the street →</button>
       </div>

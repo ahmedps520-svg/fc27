@@ -13,7 +13,8 @@
  */
 import { celebPose, armDirs } from './celebrations.js';
 import * as THREE from '../vendor/three.module.js';
-import { gaitOf } from './rig.js';
+import { gaitOf, hairGeometry } from './rig.js';
+import { faceOf } from '../components/face.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from '../vendor/jsm/utils/SkeletonUtils.js';
 
@@ -242,6 +243,9 @@ const pick = (clips, names) => {
 export function makeRig(model, { kit, ref, index, isGK }) {
   const trait = traits(ref, index);
   const figure = cloneSkinned(model.scene);
+  // v125: the card portrait's hair — its colour and its shape — rather than the
+  // one haircut the character was sculpted with, recoloured
+  const look = ref ? faceOf(ref) : null;
 
   /* The asset is y-up centimetres; the match is z-up metres. That correction
    * lives on an inner object rather than on the one the match drives, because
@@ -269,7 +273,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     const part = o.name || '';
     if (/eyelash/i.test(part)) return;
     if (/hair/i.test(part)) {
-      if (trait.bald) { o.visible = false; return; }
+      if (look || trait.bald) { o.visible = false; return; }
       o.material = recolour(o.material, trait.hair);
     } else if (/shirt|jersey/i.test(part)) {
       if (kit.pattern && o.geometry && !o.geometry.boundingBox) o.geometry.computeBoundingBox();
@@ -306,6 +310,26 @@ export function makeRig(model, { kit, ref, index, isGK }) {
     );
   }
   if (neck) neck.scale.set(1, trait.neck, 1);
+  /* v125: the portrait's hair on the head bone, so it turns and nods with
+     every clip. The shapes are the built figure's (rig.js hairGeometry), whose
+     unit space has +x forward and +z up; the bone's is Mixamo's, +z forward
+     and +y up, in centimetres. Measured on the character: the head's centre is
+     (0, 165, 1.5) with radii 9.2 forward, 8.4 across, 11.4 up — the hair's
+     origin sits a little above that and a touch forward, set by eye on the
+     contact sheet (tools/hair-shots.mjs), with the shapes a size up. The
+     head's own face-shape scaling (above) carries the hair with it. */
+  if (head && look) {
+    // no beard here: the scanned jaw sits past where the built figure's chin is,
+    // and a shape pushed out onto a detailed face reads as a mask
+    const hm = new THREE.Mesh(hairGeometry(look.style, false),
+      new THREE.MeshStandardMaterial({ color: look.hair, roughness: 0.85, metalness: 0.02, envMapIntensity: 0.55 }));
+    hm.position.set(0, 165.6 - 154.39, 2.6 + 1.42);
+    hm.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
+    hm.scale.set(10.3, 9.5, 11.2);
+    hm.castShadow = true; hm.frustumCulled = false; hm.name = 'apexHair';
+    head.add(hm);
+  }
   if (spine) spine.scale.set(trait.build * trait.shoulders, 1, trait.build);
   // Limbs vary in thickness but never in length: a longer thigh would lift the
   // boot off the grass, since the clip decides where the foot lands and the
