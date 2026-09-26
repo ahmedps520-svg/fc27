@@ -56,7 +56,7 @@ await page.waitForSelector('[data-go="squad"]');
 await page.getByText('Continue', { exact: true }).click({ timeout: 2000 }).catch(() => {});
 await page.evaluate(async () => (await import('/js/app.js')).navigate('quick'));
 await page.waitForSelector('#kickOff'); await page.click('#kickOff');
-await page.waitForFunction(() => window.__apexMatch?.phase === 'play', null, { timeout: 180000 });
+for (let i = 0; i < 60; i++) { const ph = await page.evaluate(() => window.__apexMatch?.phase || document.querySelector('#gmLoadText')?.textContent || 'none').catch(() => '?'); if (ph === 'play') break; if (i % 6 === 0) console.log('waiting:', ph); await page.waitForTimeout(10000); }
 console.log('match on');
 // hide the HUD so the frame is only the picture
 await page.addStyleTag({ content: '.gm-hud, #gmFeed, #gmHints, .gm-touch, .bc-layer, .gm-alerts, #gmBooking, #gmAdv, .bc-sub { visibility: hidden !important; }' });
