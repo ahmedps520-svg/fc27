@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v131 — the store email in the game's look (owner's ask: "sharp glowing lines just like the game")
+- `tools/email/art.mjs` renders:
+  - `assets/email/header.jpg`: the screen-head banner (the swoosh with a
+    glow filter, the ladder motif, the ring and the wordmark);
+  - `divider.png`: a lit rule;
+  - `footer.png`: the swoosh.
+  The header is converted to a JPEG, about 37 KB.
+- `purchaseEmail` uses them via `PUBLIC_ORIGIN` (default
+  https://fc27.onrender.com) with `?v=131`. The type and panels glow via
+  text-shadow/box-shadow (Apple Mail).
+- Owner notes: the $1.99 test arrived in Junk; the earlier $49.99 predated
+  the key. DNS: DMARC `p=quarantine`, relaxed alignment; Resend DKIM on
+  the root is aligned.
+
 ### v130 — the store email's outcome is visible
 - The owner set `RESEND_API_KEY` on Render but no email arrived.
 - DNS is fine: apexxi.online's MX is iCloud; Resend's DKIM
