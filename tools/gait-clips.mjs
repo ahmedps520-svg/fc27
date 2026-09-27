@@ -21,7 +21,7 @@ const BEFORE = arg('--before', 'HEAD');
 const OUT = arg('--out', 'tests/tmp/gait');
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'rig-before.js'), execSync(`git show ${BEFORE}:js/game/rig.js`).toString()
-  .replace("'../vendor/three.module.js'", "'/js/vendor/three.module.js'"));
+  .replace(/from '\.\.\/([^']+)'/g, "from '/js/$1'").replace(/from '\.\/([^']+)'/g, "from '/js/game/$1'"));   // its imports, from where it really lives
 
 const PAGE = (rigPath, legacy) => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#1d2a22}canvas{display:block}
 #t{position:fixed;left:12px;top:10px;font:600 15px system-ui;color:#fff;text-shadow:0 1px 2px #000}</style><div id="t"></div>
@@ -39,7 +39,9 @@ const fig = rig.buildPlayer(new THREE.Color('#d33a3a'), new THREE.Color('#f4f4f4
 scene.add(fig.grp);
 const p = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0 };
 // the script: [until t, label, speed, heading of travel (deg), facing (deg) or null = travel]
-const SEG = [[2, 'jog', 3, 0, null], [4, 'sprint', 8.5, 0, null], [5.4, 'hard turn', 6.5, 'turn', null], [7.4, 'backpedal', 3, 180, 0], [9.6, 'jockey (sideways)', 2.4, 90, 180], [10.2, 'stop', 0, 90, 180]];
+const SEG = [[2, 'jog', 3, 0, null], [4, 'sprint', 8.5, 0, null], [5.4, 'hard turn', 6.5, 'turn', null], [7.4, 'backpedal', 3, 180, 0], [9.6, 'jockey (sideways)', 2.4, 90, 180], [10.2, 'stop', 0, 90, 180],
+  // v137: turning on the spot (facing round 180° while standing), then a plant-and-cut at a sprint
+  [11.0, 'turn on the spot', 0, 90, 'spin'], [13.0, 'sprint', 8, 0, null], [14.2, 'cut', 8, 115, null]];
 const T = document.getElementById('t');
 let t = 0; let last = null;
 window.__at = (sec) => { while (t < sec) step(1 / 60); draw(); };
@@ -52,7 +54,7 @@ function step(dt) {
   // speed eases to the target, like the sim's accel
   const cur = Math.hypot(p.vx, p.vy); const sp = cur + (s[2] - cur) * Math.min(1, dt * 6);
   p.vx = Math.cos(h) * sp; p.vy = Math.sin(h) * sp;
-  const f = s[4] == null ? h : s[4] * Math.PI / 180;
+  const f = s[4] == null ? h : s[4] === 'spin' ? Math.PI * (1 - Math.min(1, (t - t0) / 0.5)) : s[4] * Math.PI / 180;
   p.dirX = Math.cos(f); p.dirY = Math.sin(f);
   p.x += p.vx * dt; p.y += p.vy * dt;
   ${legacy
@@ -65,7 +67,7 @@ function draw() {
   cam.position.set(p.x - 1.2, p.y - 4.6, 1.9); cam.lookAt(p.x, p.y, 0.9);
   ren.render(scene, cam);
 }
-function loop(now) { if (last != null) { let d = Math.min(0.05, (now - last) / 1000); while (d > 0) { const h = Math.min(d, 1 / 60); step(h); d -= h; } draw(); } last = now; if (t < 10.4) requestAnimationFrame(loop); else window.__done = true; }
+function loop(now) { if (last != null) { let d = Math.min(0.05, (now - last) / 1000); while (d > 0) { const h = Math.min(d, 1 / 60); step(h); d -= h; } draw(); } last = now; if (t < 14.2) requestAnimationFrame(loop); else window.__done = true; }
 window.__live = () => requestAnimationFrame(loop);
 window.__ready = true;
 </script>`;
@@ -84,18 +86,19 @@ await new Promise((r) => server.once('listening', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
-const STILLS = [1, 3, 4.6, 5.1, 6.5, 8.5];
+const STILLS = [1, 3, 4.6, 5.1, 6.5, 8.5, 10.35, 10.5, 13.03, 13.1, 13.17, 13.26];
 for (const which of ['before', 'after']) {
   // stills at fixed moments (deterministic, stepped)
   const p1 = await browser.newPage({ viewport: { width: 640, height: 360 } });
+  p1.on('pageerror', (e) => console.log(which, 'page error', e.message));
   await p1.goto(`${base}/${which}.html`); await p1.waitForFunction(() => window.__ready);
   const shots = [];
   for (const s of STILLS) { await p1.evaluate((x) => window.__at(x), s); shots.push(await p1.screenshot({ type: 'png' })); }
   await p1.close();
   // a strip of the stills side by side
-  const strip = await browser.newPage({ viewport: { width: 1440, height: 540 } });
-  await strip.setContent(`<body style="margin:0;display:grid;grid-template-columns:repeat(3,480px)">${shots.map((b) => `<img style="width:480px;height:270px" src="data:image/png;base64,${b.toString('base64')}">`).join('')}</body>`);
-  await strip.screenshot({ path: join(OUT, `${which}-strip.png`), clip: { x: 0, y: 0, width: 1440, height: 540 } });
+  const strip = await browser.newPage({ viewport: { width: 1920, height: 810 } });
+  await strip.setContent(`<body style="margin:0;display:grid;grid-template-columns:repeat(4,480px)">${shots.map((b) => `<img style="width:480px;height:270px" src="data:image/png;base64,${b.toString('base64')}">`).join('')}</body>`);
+  await strip.screenshot({ path: join(OUT, `${which}-strip.png`), clip: { x: 0, y: 0, width: 1920, height: 810 } });
   await strip.close();
   // the clip, played in real time
   const ctx = await browser.newContext({ viewport: { width: 640, height: 360 }, recordVideo: { dir: OUT, size: { width: 640, height: 360 } } });

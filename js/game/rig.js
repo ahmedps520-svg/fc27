@@ -284,8 +284,52 @@ export function updateBank(p, dt) {
   const w = dt > 0 ? dh / dt : 0;                                 // turn rate, rad/s
   const want = Math.max(-0.11, Math.min(0.11, w * sp * 0.011));   // lateral g, as a sideways lean in metres
   p._bank = (p._bank || 0) + (want - (p._bank || 0)) * Math.min(1, dt * 9);
+  updateCut(p, dt);                                              // v137: plant-and-cut, and the turn's twist
   return p._bank;
 }
+
+/**
+ * Feel part 2: the plant-and-cut. The sim turns a player in about 0.15 s; a
+ * real player does that by planting the outside foot and driving off it. This
+ * watches the path (render side only: the match is untouched) and, when the
+ * heading swings more than ~70° away from where he was going a moment ago
+ * while he was running, starts a cut: `p._cut` = { t, dur, side } with side
+ * +1 for a cut to his left. Returns the cut's envelope, 0..1..0.
+ */
+export function updateCut(p, dt) {
+  const sp = Math.hypot(p.vx, p.vy);
+  const h = Math.atan2(p.vy, p.vx);
+  // how fast he has been going lately: a reversal passes through a standstill
+  p._spS = (p._spS ?? sp) + (sp - (p._spS ?? sp)) * Math.min(1, dt * 4);
+  if (p._cut) {
+    p._cut.t += dt;
+    if (p._cut.t >= p._cut.dur) p._cut = null;
+  }
+  if (sp > 1.2) {
+    if (p._hRef == null) p._hRef = h;
+    let dh = h - p._hRef;
+    if (dh > Math.PI) dh -= 2 * Math.PI; else if (dh < -Math.PI) dh += 2 * Math.PI;
+    p._cutCd = Math.max(0, (p._cutCd || 0) - dt);
+    /* tuned on AI matches (tools/cut-rate.mjs): the AI re-steers constantly, and
+       at 45°/3 m/s every player cut 36 times a minute; a real cut is a hard
+       one at pace — this is about 8 a minute, the sharpest turns there are */
+    if (!p._cut && !p._cutCd && p._spS > 4.5 && sp > 3.6 && Math.abs(dh) > 1.2) {
+      p._cutCd = 1;
+      p._cut = { t: 0, dur: 0.3, side: Math.sign(dh), id: (p._cutN = (p._cutN || 0) + 1) };
+      p._hRef = h;
+    } else p._hRef += dh * Math.min(1, dt * 6);           // where he was going ~0.17 s ago
+  }
+  // v137: how fast the facing turns (the shoulders lead a turn, the hips follow)
+  const fh = Math.atan2(p.dirY, p.dirX);
+  let df = p._fh != null ? fh - p._fh : 0;
+  if (df > Math.PI) df -= 2 * Math.PI; else if (df < -Math.PI) df += 2 * Math.PI;
+  p._fh = fh;
+  const rate = dt > 0 ? df / dt : 0;
+  p._twist = (p._twist || 0) + (Math.max(-0.35, Math.min(0.35, rate * 0.06)) - (p._twist || 0)) * Math.min(1, dt * 10);
+  p._turnRate = rate;
+  return cutEnv(p);
+}
+export const cutEnv = (p) => (p._cut ? Math.sin(Math.PI * Math.min(1, p._cut.t / p._cut.dur)) : 0);
 
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
@@ -327,7 +371,10 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const TORSO = (SHOULDER_Z - WAIST_Z) * b.height;
   const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf) + (C ? (TORSO * Math.sin(C.lean)) / 1.7 : 0);
   // a turn tips the body into it (p._bank, from the renderer: how fast the path is curving)
-  const bank = (p._bank || 0) + (C ? C.roll * TORSO : 0);
+  // v137: the cut — hips drop over the planted foot and the body throws itself into the new line
+  const cut = C ? 0 : cutEnv(p);
+  const bank = (p._bank || 0) + (C ? C.roll * TORSO : 0) + (cut ? p._cut.side * 0.13 * cut : 0);
+  const twist = C ? 0 : (p._twist || 0);
   const cheer = p.celebrating && !C ? 1 : 0;
   // little hop while celebrating, so the whole body lifts off the turf
   // a celebration's jump lifts the whole figure (the group, below), boots and all; kneeling sinks the hips
@@ -340,7 +387,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const lift = hop + bob;
 
   // v102: soft knees when moving, so a planted foot a stride ahead is within reach
-  const hipZ = HIP_Z * H + lift - 0.07 * gait;
+  const hipZ = HIP_Z * H + lift - 0.07 * gait - 0.16 * cut;
   const shZ = SHOULDER_Z * H + lift - (C ? TORSO * (1 - Math.cos(C.lean)) : 0);
 
   /* v102 (feel): the legs step. Each foot is either planted — pinned to the
@@ -364,17 +411,59 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     const hx = wx(lean, lat); const hy = wy(lean, lat); const hz = hipZ + 0.02;
     // where this foot stands under him, and where a step lands: ahead along his velocity
     const homeX = p.x - sin * lat; const homeY = p.y + cos * lat;
-    const u = (((ph / (2 * Math.PI)) % 1) + 1) % 1;             // 0..1 through this leg's cycle
-    const stance = u < duty;
     let f = feet[key];
     // first sight, or he has jumped (a kick-off reset, a replay seeking): stand where he is
-    if (!f || Math.hypot(f.x - homeX, f.y - homeY) > 2.5 * H) f = feet[key] = { x: homeX, y: homeY, fromX: homeX, fromY: homeY, stance: true, u };
+    if (!f || Math.hypot(f.x - homeX, f.y - homeY) > 2.5 * H) f = feet[key] = { x: homeX, y: homeY, fromX: homeX, fromY: homeY, stance: true, off: 0 };
+    /* 0..1 through this leg's cycle. v137: `off` is this leg's own shift of
+       its cycle — a cut's planted foot pushes off when the body has gone past
+       it, not when the stride says, and the stutter that leaves fades out
+       over the next strides */
+    f.off = (f.off || 0) * 0.97;
+    const cyc = (q) => ((((ph / (2 * Math.PI)) + q) % 1) + 1) % 1;
+    let u = cyc(f.off);
+    let stance = u < duty;
     const moving = sp > 0.35 && cadence > 0.05;
+    // v137: the outside foot of a cut comes down just ahead of the hip, on its own side, and is held there
+    let plant = cut > 0 && p._cut.side === (side < 0 ? -1 : 1) * -1;
+    if (plant && f.cutId !== p._cut.id) {
+      f.cutId = p._cut.id; f.landing = true; f.held = false;
+      f.plX = homeX + p.vx * 0.05; f.plY = homeY + p.vy * 0.05; f.pl0 = Math.hypot(f.plX - f.x, f.plY - f.y) || 1;
+    }
+    // held until the body is well past it (the heel comes up first: the IK keeps a planted foot's spot)
+    if (plant && f.held && Math.hypot(f.x - hx, f.y - hy) > 0.8 * (THIGH + SHIN) * H) plant = false;
+    if (plant && !f.landing && !f.held) plant = false;
+    if (!plant && (f.held || f.landing)) {
+      // it pushes off: this leg's swing starts now, from where it stood
+      let d = duty - u; d -= Math.round(d);
+      f.off += d; u = cyc(f.off); stance = false;
+      f.stance = true;
+    }
+    if (!plant) { f.held = false; f.landing = false; }
     let ax; let ay; let az = ANKLE_Z * H;
-    if (!moving) {
-      // standing: settle each foot under him, a small step at a time
+    if (plant && f.landing) {
+      const gx = f.plX - f.x; const gy = f.plY - f.y; const g = Math.hypot(gx, gy);
+      const k = Math.min(1, 0.2 / (g || 1)); f.x += gx * k; f.y += gy * k;
+      az += Math.sin(Math.PI * Math.min(1, 1 - (g * (1 - k)) / f.pl0)) * 0.06;
+      if (k >= 1) { f.landing = false; f.held = true; f.stance = true; }
+      ax = f.x; ay = f.y;
+    } else if (plant) {
+      ax = f.x; ay = f.y;
+    } else if (!moving) {
+      /* standing: settle each foot under him. v137: one foot at a time, lifted
+         clear on an arc, so turning on the spot is a few small steps round
+         rather than both boots sliding over the grass */
       const gx = homeX - f.x; const gy = homeY - f.y; const g = Math.hypot(gx, gy);
-      if (g > 0.015) { const k = Math.min(1, 0.05 / g); f.x += gx * k; f.y += gy * k; az += Math.min(0.05, g * 0.5); }
+      const busy = rig.turnStep && rig.turnStep !== key;
+      if (g > 0.015 && !busy) {
+        rig.turnStep = key;
+        f.g0 = Math.max(f.g0 || 0, g);
+        const k = Math.min(1, 0.055 / g); f.x += gx * k; f.y += gy * k;
+        const done = 1 - (g * (1 - k)) / f.g0;                     // how far through this step, 0..1
+        az += f.g0 > 0.06 ? Math.sin(Math.PI * done) * 0.07 : Math.min(0.03, g * 0.5);
+      } else if (g <= 0.015) {
+        f.g0 = 0;
+        if (rig.turnStep === key) rig.turnStep = null;
+      }
       f.stance = true; ax = f.x; ay = f.y;
     } else if (stance) {
       if (!f.stance) {
@@ -384,11 +473,13 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
       }
       ax = f.x; ay = f.y;
     } else {
-      if (f.stance) { f.fromX = f.x; f.fromY = f.y; f.fromZ = f.z ?? ANKLE_Z * H; f.stance = false; }
+      // v137: the swing runs from where in the cycle it actually began (a plant held past its time starts late)
+      if (f.stance) { f.fromX = f.x; f.fromY = f.y; f.fromZ = f.z ?? ANKLE_Z * H; f.stance = false; f.u0 = Math.min(Math.max(u, duty), 0.85); }
       // where the next plant will be, predicted from his velocity now
       const toGo = ((1 - u) + duty * 0.4) / cadence;
       const nx = homeX + p.vx * toGo; const ny = homeY + p.vy * toGo;
-      const s = (u - duty) / (1 - duty);
+      const u0 = f.u0 ?? duty;
+      const s = Math.max(0, Math.min(1, (u - u0) / (1 - u0)));
       const e = s * s * (3 - 2 * s);
       ax = f.fromX + (nx - f.fromX) * e; ay = f.fromY + (ny - f.fromY) * e;
       // lift off from wherever the heel was (a toe-off leaves it up), onto the arc
@@ -487,27 +578,27 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     wx(lean, 0), wy(lean, 0), hipZ - 0.12, HIPS_W * G, HIPS_D * G, face, 1);
   ovalSegment(parts.torso, wx(lean, 0), wy(lean, 0), waistZ - 0.02,
     wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ + 0.03,
-    CHEST_W * b.shoulders * G, CHEST_D * G, face, 1);
+    CHEST_W * b.shoulders * G, CHEST_D * G, face + twist * 0.6, 1);
   // deltoids: a flattened cap that rounds off the top of the shirt
   parts.shoulder.position.set(wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ);
-  parts.shoulder.rotation.set(0, 0, face);
+  parts.shoulder.rotation.set(0, 0, face + twist);
   parts.shoulder.scale.set(CHEST_D * G, CHEST_W * b.shoulders * G * 1.02, 0.085 * G);
   segment(parts.neck, wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ,
     wx(lean * 1.7 - 0.01, bank * 1.1), wy(lean * 1.7 - 0.01, bank * 1.1), shZ + 0.1 * H, 0.046);
 
   const hz = shZ + 0.21 * H;
   parts.head.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz);
-  parts.head.rotation.set(0, 0, face);
+  parts.head.rotation.set(0, 0, face + twist * 1.3);
   // a head is taller than it is wide, and deeper than it is broad
   parts.head.scale.set(0.098, 0.092, 0.112);
   parts.hair.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz + 0.022);
-  parts.hair.rotation.set(0, 0, face);
+  parts.hair.rotation.set(0, 0, face + twist * 1.3);
   parts.hair.scale.set(0.101, 0.095, 0.104);
   parts.hair.visible = fine;
   /* The face sits on the front of the head: the eyes a little above centre,
      the mouth below, all along the facing direction. Shouting on a
      celebration: the mouth opens (scales tall) on the hop's rhythm. */
-  const fx = Math.cos(face); const fy = Math.sin(face);
+  const fx = Math.cos(face + twist * 1.3); const fy = Math.sin(face + twist * 1.3);   // v137: the head leads a turn
   const lx = -fy; const ly = fx;                         // across the face
   const hx = wx(lean * 1.7 - 0.012, bank * 1.15); const hy = wy(lean * 1.7 - 0.012, bank * 1.15);
   parts.eyeL.position.set(hx + fx * 0.085 + lx * 0.034, hy + fy * 0.085 + ly * 0.034, hz + 0.02);
@@ -515,7 +606,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   parts.eyeL.scale.set(0.012, 0.012, 0.012); parts.eyeR.scale.set(0.012, 0.012, 0.012);
   const shout = C ? C.mouth : cheer ? 0.5 + Math.abs(Math.sin(celebT * 6.5)) * 0.5 : 0;
   parts.mouth.position.set(hx + fx * 0.09, hy + fy * 0.09, hz - 0.035);
-  parts.mouth.rotation.set(0, 0, face);
+  parts.mouth.rotation.set(0, 0, face + twist * 1.3);
   parts.mouth.scale.set(0.012, 0.022, 0.006 + shout * 0.02);
   parts.eyeL.visible = fine; parts.eyeR.visible = fine; parts.mouth.visible = fine;
 }

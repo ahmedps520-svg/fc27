@@ -13,7 +13,7 @@
  */
 import { celebPose, armDirs } from './celebrations.js';
 import * as THREE from '../vendor/three.module.js';
-import { gaitOf, hairGeometry } from './rig.js';
+import { gaitOf, hairGeometry, updateBank, cutEnv } from './rig.js';
 import { faceOf } from '../components/face.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from '../vendor/jsm/utils/SkeletonUtils.js';
@@ -408,9 +408,14 @@ export function poseRig(rig, p, dt, every = 1) {
      sideways move turns the hips part of the way towards where he is going
      (the heading below), so the feet stop skating across the grass. */
   const g = gaitOf(p);
+  /* v137 (feel part 2): the path's bank and the plant-and-cut (rig.js). On a
+     cut the run clip nearly stops for the plant — the planted leg holds while
+     the body drops and rolls into the new line — then carries on. */
+  updateBank(p, dt);
+  const cut = p.celebrating ? 0 : cutEnv(p);
   if (want === 'run' && rig.actions.run) {
     rig.actions.run.timeScale = g.dir *
-      Math.min(RUN_RATE[1], Math.max(RUN_RATE[0], speed / RUN_CLIP_SPEED));
+      Math.min(RUN_RATE[1], Math.max(RUN_RATE[0], speed / RUN_CLIP_SPEED)) * (1 - 0.7 * cut);
   }
 
   if (p._actT > 0) p._actT -= dt;
@@ -465,7 +470,10 @@ export function poseRig(rig, p, dt, every = 1) {
   // player is, so the root motion is cancelled by pinning the hips to the spot
   // the simulation put him on.
   const strafe = speed > 1.1 && !p.celebrating ? Math.atan2(g.ml, Math.abs(g.mf)) * 0.6 : 0;
-  orientRoot(rig, p, strafe * g.dir + roulette, pitch);
+  // leaning into a curve (the path's lateral g), and hard over a cut's planted foot, the hips dropping with it
+  const roll = p.celebrating ? 0 : (p._bank || 0) * 1.3 + (cut ? p._cut.side * 0.2 * cut : 0);
+  orientRoot(rig, p, strafe * g.dir + roulette, pitch + 0.08 * cut, roll);
+  rig.root.position.z -= 0.07 * cut;
   if (rig.hips) {
     rig.hips.position.x = 0;
     rig.hips.position.z = 0;
@@ -481,10 +489,12 @@ export function poseRig(rig, p, dt, every = 1) {
  */
 const _oq = new THREE.Quaternion(); const _op = new THREE.Quaternion(); const _ov = new THREE.Vector3();
 const Z_UP = new THREE.Vector3(0, 0, 1);
-function orientRoot(rig, p, turn, pitch) {
+function orientRoot(rig, p, turn, pitch, roll = 0) {
   const face = Math.atan2(p.dirY, p.dirX) + turn;
   _oq.setFromAxisAngle(Z_UP, face + Math.PI / 2);
   if (pitch) { _op.setFromAxisAngle(_ov.set(-Math.sin(face), Math.cos(face), 0), pitch); _oq.premultiply(_op); }
+  // v137: roll about his own forward axis, positive towards his left (the inside of a left turn)
+  if (roll) { _op.setFromAxisAngle(_ov.set(Math.cos(face), Math.sin(face), 0), -roll); _oq.premultiply(_op); }
   rig.root.quaternion.copy(_oq);
   rig.root.position.set(p.x, p.y, 0);
 }

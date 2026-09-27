@@ -15,6 +15,58 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v137 — feel part 2: plant-and-cut, turning on the spot (backlog #19)
+Render only: the sweep is identical.
+- `rig.js updateCut(p, dt)`, called from `updateBank`:
+  - `p._hRef` is where he was heading ~0.17 s ago (eased at 6/s), and
+    `p._spS` is his smoothed speed.
+  - A cut starts when the heading has swung more than 1.2 rad from that,
+    at `_spS` > 4.5 and speed > 3.6, with a 1 s cooldown:
+    `p._cut = { t, dur: 0.3, side, id }`, where side is +1 for a cut to his
+    left. `cutEnv(p)` is its envelope, 0..1..0.
+  - Tuned with the new `tools/cut-rate.mjs`, which counts cuts over an AI
+    match. At 45°/3 m/s everyone cut 36 times a minute, because the AI
+    re-steers constantly. It is now about 8.5 per player-minute, at a median
+    6.8 m/s.
+  - It also keeps `p._twist`, the smoothed rate the facing turns at.
+- `posePlayer`:
+  - on a cut the hips drop 16 cm × env and the bank gains side × 0.13 × env;
+  - the outside foot (leg `side` −1 is the *right* foot, at lateral −0.1)
+    comes down at 0.2 m a frame onto `home + v × 0.05` (`f.landing`), and
+    is then held (`f.held`) until it is 0.8 of the leg's reach behind the
+    hip. The IK lifts the heel meanwhile.
+  - Then it pushes off: `f.off`, a per-leg shift of the stride cycle, is set
+    so that leg's swing starts at once. The shift decays ×0.97 a frame, so
+    the stutter fades.
+  - A swing's progress now runs from where it began (`f.u0`), not from
+    `duty`. Without that, a late release jumped the foot most of a stride
+    in one frame.
+  - Standing, the feet settle one at a time (`rig.turnStep`), each on an
+    arc up to 7 cm high.
+  - Torso ×0.6, shoulders ×1 and head ×1.3 of `twist` lead the facing.
+- `playerModel.js poseRig`:
+  - calls `updateBank`;
+  - the run clip's timeScale × (1 − 0.7 env);
+  - `orientRoot` gains a roll about his forward axis: bank × 1.3, plus
+    side × 0.2 × env;
+  - pitch + 0.08 env, and the root drops 7 cm × env.
+- Tests: `gait.test.mjs` +3.
+  - Cuts of 100°, −110° and 140° at 7 m/s: one cut each, the plant held at
+    least 4 frames with under 2 cm drift, and no foot jumps more than 0.2 m
+    after the cut starts.
+  - The frame the velocity whips round jolts the swing prediction by
+    0.27 m. That was already there before this release.
+  - A gentle curve, a 40° step and a jog do not cut.
+  - Standing turn: one foot at a time, lifted.
+- Tools:
+  - `gait-audit.mjs` and `gait-clips.mjs` could not load a past `rig.js`
+    since it gained imports; both now rewrite its relative imports.
+  - `gait-clips` adds a turn on the spot and a cut.
+  - Note: the audit's "before" column is the pre-v102 legacy stride timing,
+    not HEAD's (sprint after: 0.20, as in the v102 table).
+- Also: `tools/tiktok/README.md` has the batch-1 lessons for a faster
+  batch 2.
+
 ### v136 — less text, part 3 (owner: "keep going with the less text stuff")
 - Words per screen, from a visible-text audit (`tests/tmp/words.mjs`, not
   committed; it walks every screen and tab):
