@@ -157,12 +157,16 @@ open(OUT,'w').write(f'''/**
  * Star trading cards, whose career ratings are stated in CAREER_RATINGS
  * because a career wants a footballer, not a 99.
  *
- * Badges are drawn by the game's own crest generator in each club's colours:
- * real names, real colours, original artwork.
+ * v138: real names, original colours and badges: clubLook.js deals each club
+ * a palette pair away from its real colours (the pairs below are only what it
+ * steers away from) and its own crest.
  */
+import {{ applyLooks }} from './clubLook.js';
+
 export const CAREER_CLUBS = [
 {js_clubs},
 ];
+applyLooks(CAREER_CLUBS);
 
 /** Each row: [name, position, country]. Resolved to live stats at runtime. */
 export const CAREER_SQUADS = {{

@@ -3,6 +3,7 @@
  * The rules are in proCareer.js; the match is screens/play.js with
  * `params.pro` (stick and camera locked to him).
  */
+import { lookCrest } from '../data/clubLook.js';
 import { getState } from '../state.js';
 import { navigate, toast, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
@@ -26,7 +27,7 @@ let drillRun = null;          // the running mini-game, for cleanup
 let seenTrophies = null;      // trophy count already celebrated this session
 let seenSigning = null;
 
-const crestOf = (club) => ({ shape: club.shape, pattern: 'solid', device: 'star', colors: club.colors });
+const crestOf = lookCrest;   // v138: each club's own badge (data/clubLook.js)
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const NATIONS = () => [...new Set(['Saudi Arabia', ...Object.keys(NATION_COLORS)])].sort((a, b) => (a === 'Saudi Arabia' ? -1 : b === 'Saudi Arabia' ? 1 : a.localeCompare(b)));
 const STYLES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];   // v125: dreads, braids, bun and mohawk too

@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v138',
+    date: '2026-09-27',
+    tag: 'Clubs',
+    title: 'Every club, its own badge',
+    lede: 'The real clubs in Career, Kick Off and the Custom Cup wear original colours and badges of their own.',
+    entries: [
+      {
+        head: 'Original colours',
+        summary: 'Real clubs keep their names but play in colour pairs of the game\'s own, well away from their real ones.',
+        detail: 'Each club is dealt a pair from a palette chosen to be unlike any famous club\'s, with its main colour at least a third of the way round the colour wheel from the club\'s real ones. Clubs in the same league get different pairs. The same club looks the same in a career and in a Kick Off.',
+      },
+      {
+        head: 'New badges',
+        summary: 'Every real club had the same plain star; each now has its own shape, pattern and emblem, and some are ring badges with the club\'s code round the edge.',
+        detail: 'Two new outlines (a flat-topped shield and a ring badge), a chevron pattern and five new emblems — an anchor, a bolt, a tree, a cog and a tower. Every full-size badge also gains a thin inner rim.',
+      },
+    ],
+  },
+  {
     version: 'v137',
     date: '2026-09-27',
     tag: 'Feel',

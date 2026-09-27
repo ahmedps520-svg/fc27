@@ -24,6 +24,9 @@ const SHAPES = {
   diamond: 'M50 2 L95 50 L50 98 L5 50 Z',
   chevron: 'M50 3 L93 22 V56 L50 97 L7 56 V22 Z',
   triangle: 'M50 5 L96 90 L4 90 Z',
+  // v138: a flat-topped heater, and the roundel (a ring round a disc; drawn by roundel(), below)
+  heater: 'M8 6 H92 V44 C92 72 74 90 50 98 C26 90 8 72 8 44 Z',
+  roundel: 'M50 3 A47 47 0 1 1 49.9 3 Z',
 };
 
 /* -------------------------------- fields --------------------------------- *
@@ -39,6 +42,9 @@ const PATTERNS = {
   sash: (a) => `<path d="M-10 74 L74 -10 L100 12 L16 96 Z" fill="${a}" opacity=".9"/>`,
   quarters: (a) => `<rect x="0" y="0" width="50" height="50" fill="${a}" opacity=".9"/>`
     + `<rect x="50" y="50" width="50" height="50" fill="${a}" opacity=".9"/>`,
+  /** v138: two chevrons pointing down the badge */
+  chevrons: (a) => `<path d="M0 30 L50 58 L100 30 V46 L50 74 L0 46 Z" fill="${a}" opacity=".85"/>`
+    + `<path d="M0 60 L50 88 L100 60 V72 L50 100 L0 72 Z" fill="${a}" opacity=".6"/>`,
 };
 
 /* -------------------------------- devices -------------------------------- *
@@ -85,6 +91,16 @@ const DEVICES = {
   /** Calderon Zenith: the peak the club is named for. */
   peak: (ink) => `<path d="M22 58 L42 26 L54 44 L62 34 L78 58 Z" fill="${ink}"/>`
     + `<path d="M42 26 L34 40 L50 40 Z" fill="#fff" opacity=".5"/>`,
+  /* v138: more devices, for the real clubs' own badges (data/clubLook.js) */
+  anchor: (ink) => `<circle cx="50" cy="24" r="4.5" fill="none" stroke="${ink}" stroke-width="3.5"/>`
+    + `<path d="M50 29 V58 M40 36 H60 M30 46 q2 12 20 12 q18 0 20 -12" stroke="${ink}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`
+    + `<path d="M26 44 l4 -5 l5 5 Z M74 44 l-4 -5 l-5 5 Z" fill="${ink}"/>`,
+  bolt: (ink) => `<path d="M56 18 L34 44 H48 L42 62 L66 34 H52 Z" fill="${ink}"/>`,
+  tree: (ink) => `<path d="M50 18 L68 42 H59 L72 56 H28 L41 42 H32 Z" fill="${ink}"/><rect x="46" y="56" width="8" height="7" fill="${ink}"/>`,
+  cog: (ink) => Array.from({ length: 8 }, (_, i) => `<rect x="46" y="20" width="8" height="10" rx="1.5" fill="${ink}" transform="rotate(${i * 45} 50 40)"/>`).join('')
+    + `<circle cx="50" cy="40" r="13" fill="${ink}"/><circle cx="50" cy="40" r="5.5" fill="#000" opacity=".35"/>`,
+  tower: (ink) => `<path d="M40 60 L42 30 H38 V22 h5 v4 h5 v-4 h4 v4 h5 v-4 h5 v8 h-4 L60 60 Z" fill="${ink}"/>`
+    + `<rect x="47" y="36" width="6" height="8" rx="3" fill="#000" opacity=".35"/>`,
   /** Anything without a device of its own falls back to a ball. */
   ball: (ink) => `<circle cx="50" cy="40" r="14" fill="${ink}"/>`
     + `<path d="M50 30 L58 36 L55 46 H45 L42 36 Z" fill="#000" opacity=".4"/>`,
@@ -145,6 +161,10 @@ export function crestSVG(crest, short, size = 40) {
        <text x="50" y="78" text-anchor="middle" font-size="16" font-weight="800"
              fill="${shade(b, 0.85)}" style="letter-spacing:.6px">${short}</text>`;
 
+  if (crest.shape === 'roundel' && !small) return roundel(crest, short, size, uid, field, ink);
+  // v138: a thin rim just inside the outline, the way a stitched badge has one
+  const rim = small ? '' : `<path d="${path}" fill="none" stroke="${ink}" stroke-opacity=".38" stroke-width="2.2"
+      transform="translate(50 50) scale(.86) translate(-50 -50)"/>`;
   return `
     <svg class="crest" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">
       <defs>
@@ -156,9 +176,39 @@ export function crestSVG(crest, short, size = 40) {
       </defs>
       <path d="${path}" fill="url(#${uid})"/>
       <g clip-path="url(#${uid}c)">${field}</g>
+      ${rim}
       ${device}
       ${label}
       <path d="${path}" fill="none" stroke="${a}" stroke-width="${small ? 6 : 5}"/>
+    </svg>`;
+}
+
+/**
+ * v138: the roundel — the club's code round a ring in its first colour, the
+ * field and device on a disc inside it, two small stars on the ring's sides.
+ */
+function roundel(crest, short, size, uid, field, ink) {
+  const [a, b] = crest.colors;
+  const ringInk = inkFor(a);
+  const dev = (DEVICES[crest.device] || DEVICES.ball)(ink);
+  const star = (x) => `<path transform="translate(${x} 50) scale(.32) translate(-50 -40)" d="M50 18 L56 36 L74 40 L56 44 L50 62 L44 44 L26 40 L44 36 Z" fill="${ringInk}"/>`;
+  return `
+    <svg class="crest" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">
+      <defs>
+        <linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${b}"/><stop offset="100%" stop-color="${shade(b, 0.72)}"/>
+        </linearGradient>
+        <clipPath id="${uid}c"><circle cx="50" cy="50" r="31"/></clipPath>
+        <path id="${uid}t" d="M 11 50 A 39 39 0 0 0 89 50"/>
+      </defs>
+      <circle cx="50" cy="50" r="47" fill="${a}"/>
+      <circle cx="50" cy="50" r="47" fill="none" stroke="${shade(a, 0.6)}" stroke-width="2.5"/>
+      <circle cx="50" cy="50" r="31" fill="url(#${uid})"/>
+      <g clip-path="url(#${uid}c)">${field}</g>
+      <circle cx="50" cy="50" r="31" fill="none" stroke="${ringInk}" stroke-opacity=".55" stroke-width="2"/>
+      <g transform="translate(50 50) scale(.62) translate(-50 -40)">${dev}</g>
+      <text font-size="13" font-weight="800" fill="${ringInk}" style="letter-spacing:2px"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${short}</textPath></text>
+      ${star(7.5)}${star(92.5)}
     </svg>`;
 }
 

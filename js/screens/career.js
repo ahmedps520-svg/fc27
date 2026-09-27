@@ -7,6 +7,7 @@
  * one screen with six tabs because a career is lived weekly: Overview is where
  * you land, everything else is a look sideways.
  */
+import { lookCrest } from '../data/clubLook.js';
 import { getState, update } from '../state.js';
 import {
   CAREER_CLUBS, REAL_MANAGERS, careerClub, leagueClubs, squadOf, clubOverall,
@@ -37,7 +38,7 @@ let celebrated = null;     // the last signing / trophy shown as a scene
 let custom = null;         // the custom-manager draft
 let market = { q: '', pos: 'all', league: 'all', maxAge: 40, minOvr: 0, sort: 'value' };
 
-const crestOf = (club) => ({ shape: club.shape, pattern: 'solid', device: 'star', colors: club.colors });
+const crestOf = lookCrest;   // v138: each club's own badge (data/clubLook.js)
 const managerFace = (name, i = 0) => faceSVG({ id: `mgr-${name}-${i}`, name }, 72, '#1a2130');
 
 /* ------------------------------------------------------------------ *

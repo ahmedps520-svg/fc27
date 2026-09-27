@@ -25,6 +25,7 @@
  */
 import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS } from './data/careerDb.js';
+import { applyLooks } from './data/clubLook.js';
 import { pend } from './progress.js';
 import { rateOf, ageOf, valueIn, cardByName } from './careerPeople.js';
 
@@ -58,6 +59,7 @@ export function allClubs() {
       shape: ['shield', 'circle', 'hex'][i % 3],
     }));
   }
+  applyLooks(t2);                      // v138: original colours and badges (clubLook.js)
   ALL_CLUBS = [...t1, ...t2];
   return ALL_CLUBS;
 }
