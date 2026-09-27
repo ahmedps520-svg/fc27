@@ -25,7 +25,11 @@ function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; 
 
 const r3 = (v) => Math.round((v || 0) * 1000) / 1000;
 const PF = ['x', 'y', 'vx', 'vy', 'dirX', 'dirY', 'diveT', 'downT', 'downMax', 'slide', 'spinT', 'skillT', 'stamina', 'stumble', 'holdT'];
+// the sim's sound cues since the last kept frame (play.js turns these into sfx)
+let heard = [];
+const cueArg = (a) => (typeof a === 'number' || typeof a === 'string' ? a : a && typeof a === 'object' && Number.isFinite(a.power) ? a.power : undefined);
 function frame(m) {
+  const cu = heard; heard = [];
   const all = [...m.teams[0].players, ...m.teams[1].players];
   const b = m.ball;
   return {
@@ -37,6 +41,7 @@ function frame(m) {
     gt: m.goalTeam ?? -1, ct: r3(m.celebT), cb: m.celebrant ? all.indexOf(m.celebrant) : -1,
     nh: m.netHit ? { ...m.netHit } : null,
     bk: m.bookings.length ? m.bookings[m.bookings.length - 1] : null, bkn: m.bookings.length,
+    cu,
   };
 }
 
@@ -46,7 +51,7 @@ for (let i = 0; i < N; i++) {
   Math.random = mulberry32(90210 + i * 7919);
   const home = CLUBS[i % 10].id; let away = CLUBS[(i * 3 + 1) % 10].id; if (away === home) away = CLUBS[(i + 5) % 10].id;
   const m = new Match(home, away, { human: null, duration: 240 });
-  const ring = []; const PRE = 6.5 * 30; const POST = 3.4 * 30;
+  const ring = []; heard = []; const PRE = 6.5 * 30; const POST = 3.4 * 30;
   let pending = null;             // an event waiting for its after-frames
   const cueLog = [];
   const realCue = m.cue.bind(m);
@@ -56,6 +61,7 @@ for (let i = 0; i < N; i++) {
     const g0 = m.teams[0].score + m.teams[1].score;
     const bk0 = m.bookings.length; const fouls0 = m.fouls[0] + m.fouls[1];
     m.update(1 / 60); step++;
+    for (const c of m.cues.splice(0)) heard.push(c.arg === undefined || cueArg(c.arg) === undefined ? [c.name] : [c.name, cueArg(c.arg)]);
     for (const c of cueLog.splice(0)) {
       if (c.k === 'header') lastHeader = { t: c.t, p: m.ball.lastTouch };
       if (c.k === 'shot') lastShot = { t: c.t, p: m.ball.shotBy, x: m.ball.shotBy?.x, y: m.ball.shotBy?.y };

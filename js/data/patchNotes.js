@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v137',
+    date: '2026-09-27',
+    tag: 'Feel',
+    title: 'Plant and cut',
+    lede: 'Players plant a foot to change direction, and step round when they turn on the spot.',
+    entries: [
+      {
+        head: 'The cut',
+        summary: 'On a hard change of direction at pace, the outside foot plants, the hips drop and the body throws itself into the new line.',
+        detail: 'The match turns a player in a few frames, and until now his legs just kept running. Now the sharpest turns at pace (about eight a minute for a busy player) get a proper cut: the outside boot comes down beside him and holds while he sinks over it, then pushes off. It is how the game draws him; the football underneath is unchanged.',
+      },
+      {
+        head: 'Turning on the spot',
+        summary: 'A player who turns without running takes small steps round, one foot at a time, instead of sliding both boots over the grass.',
+        detail: 'His head and shoulders lead the turn and his hips follow a moment later, which is what makes a turn read as a turn from the stands.',
+      },
+      {
+        head: 'The scanned players too',
+        summary: 'On High and Ultra the scanned players lean into curves, and drop and roll over the planted foot on a cut.',
+        detail: 'Their run animation pauses for the plant, so the leg holds rather than cycling through the turn.',
+      },
+    ],
+  },
+  {
     version: 'v136',
     date: '2026-09-27',
     tag: 'Polish',

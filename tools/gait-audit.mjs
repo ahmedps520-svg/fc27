@@ -17,7 +17,8 @@ import { pathToFileURL } from 'node:url';
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const BEFORE = arg('--before', 'HEAD');
 mkdirSync('tests/tmp', { recursive: true });
-const oldSrc = execSync(`git show ${BEFORE}:js/game/rig.js`).toString().replace("'../vendor/three.module.js'", `'${pathToFileURL(process.cwd() + '/js/vendor/three.module.js').href}'`);
+const oldSrc = execSync(`git show ${BEFORE}:js/game/rig.js`).toString().replace(/from '\.\.\/([^']+)'/g, (_, f) => `from '${pathToFileURL(process.cwd() + '/js/' + f).href}'`)
+  .replace(/from '\.\/([^']+)'/g, (_, f) => `from '${pathToFileURL(process.cwd() + '/js/game/' + f).href}'`);   // its imports, from where it really lives
 writeFileSync('tests/tmp/rig-before.mjs', oldSrc);
 const OLD = await import(pathToFileURL(process.cwd() + '/tests/tmp/rig-before.mjs').href);
 const NEW = await import('../js/game/rig.js');
