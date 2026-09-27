@@ -1,0 +1,50 @@
+<!doctype html>
+<!--
+  TikTok type (tools/tiktok): the hook over the top of a clip and the end card,
+  1080x1920. text.mjs opens this with ?kind=hook|end&text=... and saves a PNG
+  (the hook on a transparent page, laid over the footage by cut.py).
+-->
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: Inter; src: url('../trailer/fonts/Inter.woff2') format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: Oswald; src: url('../trailer/fonts/Oswald.woff2') format('woff2'); font-weight: 200 700; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+  .t { position: absolute; left: 70px; right: 70px; text-align: center; color: #fff; font: 900 84px/1.08 Inter, sans-serif; letter-spacing: -.01em;
+       -webkit-text-stroke: 14px #000; paint-order: stroke fill; text-wrap: balance; }
+  .t.s { font-size: 60px; -webkit-text-stroke: 11px #000; }
+  .end { position: absolute; inset: 0; background: #05070e url('../../assets/keyart.webp') center / cover; }
+  .end::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,7,14,.35), rgba(5,7,14,.82) 55%, rgba(5,7,14,.95)); }
+  .logo { position: absolute; left: 0; right: 0; top: 640px; z-index: 1; text-align: center; font: 700 italic 190px/1 Oswald; color: #fff; letter-spacing: .02em; }
+  .logo span { color: #23c55e; text-shadow: 0 0 40px rgba(35,197,94,.7); }
+  .url { color: #23c55e; }
+</style></head><body>
+<div id="s"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const text = (q.get('text') || '').replace(/\n/g, '<br>');
+const S = document.getElementById('s');
+if (q.get('kind') === 'end') {
+  S.innerHTML = `<div class="end"></div><div class="logo">APEX <span>XI</span></div>
+    <div class="t" style="top:900px;z-index:1">free in your browser:</div>
+    <div class="t" style="top:1010px;z-index:1;font-size:104px"><span class="url">apexxi.online</span></div>`;
+} else if (q.get('kind') === 'bg') {
+  // clip 6's backdrop: the key art, dark and soft
+  S.innerHTML = `<div class="end" style="filter:blur(18px) brightness(.55);transform:scale(1.1)"></div>`;
+} else if (q.get('kind') === 'devices') {
+  // clip 6's hardware, drawn: a phone and a watch with see-through screens (cut.py lays the captures under them).
+  // Phone screen 560x1212 at (90,470); watch screen 330x403 at (660,1060).
+  const ring = (x, y, w, h, r, bw, col) => `<div style="position:absolute;left:${x - bw}px;top:${y - bw}px;width:${w}px;height:${h}px;border:${bw}px solid ${col};border-radius:${r + bw}px;box-shadow:0 0 0 3px #3a3f4a, 0 30px 80px rgba(0,0,0,.6)"></div>
+    <div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;box-shadow:0 0 0 ${r}px #0b0c10;clip-path:inset(-${r}px round ${r + 2}px)"></div>`;
+  S.innerHTML = `
+    ${ring(90, 470, 560, 1212, 54, 18, '#0b0c10')}
+    <div style="position:absolute;left:300px;top:486px;width:140px;height:34px;border-radius:17px;background:#000"></div>
+    <div style="position:absolute;left:720px;top:960px;width:210px;height:80px;border-radius:22px 22px 0 0;background:linear-gradient(#1c2230,#2a3140)"></div>
+    <div style="position:absolute;left:720px;top:1483px;width:210px;height:80px;border-radius:0 0 22px 22px;background:linear-gradient(#2a3140,#1c2230)"></div>
+    ${ring(660, 1060, 330, 404, 70, 22, '#0b0c10')}
+    <div style="position:absolute;left:1010px;top:1170px;width:14px;height:70px;border-radius:7px;background:#3a3f4a"></div>`;
+} else {
+  S.innerHTML = `<div class="t ${q.get('small') ? 's' : ''}" style="top:${q.get('top') || 250}px">${text}</div>`;
+}
+window.__ready = Promise.all([document.fonts.load('900 84px Inter'), document.fonts.load('700 italic 100px Oswald')]).then(() => document.fonts.ready)
+  .then(() => new Promise((r) => { if (!['end', 'bg'].includes(q.get('kind'))) return r(); const im = new Image(); im.onload = im.onerror = r; im.src = '../../assets/keyart.webp'; }));
+</script></body></html>
