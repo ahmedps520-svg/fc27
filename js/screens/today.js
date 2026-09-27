@@ -111,7 +111,7 @@ function weekendPanel(s) {
   const rank = rankFor(tally.wins);
   return `
     <section class="panel glass wl-card">
-      <header class="panel-head"><h2>Weekend League <small>${w.open ? `closes in ${untilText(w.closesAt)}` : `opens in ${untilText(w.opensAt)}`}</small></h2></header>
+      <header class="panel-head"><h2>Weekend Showdown <small>${w.open ? `closes in ${untilText(w.closesAt)}` : `opens in ${untilText(w.opensAt)}`}</small></h2></header>
       ${pending ? `<div class="wl-claim"><span>Last weekend: ${pending.wins} wins · <b>${rankFor(pending.wins).name}</b></span><button class="btn primary" id="claimWeekend">Claim ${rewardText({ apex: rankFor(pending.wins).apex, ultimate: rankFor(pending.wins).ultimate })}</button></div>` : ''}
       ${w.open ? `
         <div class="wl-row">

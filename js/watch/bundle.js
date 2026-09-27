@@ -13890,7 +13890,7 @@
     { id: "summit-bowl", name: "Summit Bowl", capacity: 78e3, size: 0.95, tiers: 2, roof: "ring", bowl: !0, seats: ["#e2e8f0", "#1e293b"], facade: "#1a2233", pattern: "rings", pylons: "rim", fill: 0.95, showpiece: !0, wonder: !0 },
     { id: "lantern-dome", name: "The Great Lantern", capacity: 86e3, size: 0.98, tiers: 2, roof: "dome", bowl: !0, seats: ["#f472b6", "#1e0a2b"], facade: "#2a0a3a", pattern: "diagonal", pylons: "rim", fill: 0.97, showpiece: !0, wonder: !0, retractable: !0 },
     { id: "meridian-prime", name: "Meridian Prime", capacity: 95e3, size: 1, tiers: 2, roof: "arch", bowl: !0, seats: ["#a78bfa", "#0b0a1e"], facade: "#100a2a", pattern: "stripes", pylons: "rim", fill: 0.98, showpiece: !0, wonder: !0 },
-    // ---- showpiece arenas: finals, the Weekend League, cup ties ----
+    // ---- showpiece arenas: finals, the Weekend Showdown, cup ties ----
     { id: "apex-arena", name: "Apex Arena", capacity: 9e4, size: 1, tiers: 2, roof: "arch", bowl: !0, seats: ["#f0f4ff", "#0a0d16"], facade: "#0e1220", pattern: "checks", pylons: "rim", fill: 0.97, showpiece: !0 },
     { id: "meridian", name: "Meridian Dome", capacity: 72e3, size: 0.96, tiers: 2, roof: "dome", bowl: !0, seats: ["#7af7ff", "#08111c"], facade: "#0b1a2c", pattern: "rings", pylons: "rim", fill: 0.95, showpiece: !0 },
     { id: "continental", name: "Continental Bowl", capacity: 8e4, size: 0.98, tiers: 2, roof: "ring", bowl: !0, seats: ["#ffd166", "#2b2d42"], facade: "#1a1c30", pattern: "diagonal", pylons: "rim", fill: 0.96, showpiece: !0 },

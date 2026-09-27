@@ -5,7 +5,7 @@
  * builds the whole thing — terracing, tiers, roof, pylons, seats, boards,
  * pitch pattern — from these few fields. Nothing is modelled by hand; a new
  * stadium is one line. Forty club grounds, one per club, and four showpiece
- * arenas used for finals, the Weekend League and cup ties.
+ * arenas used for finals, the Weekend Showdown and cup ties.
  *
  * Fields:
  *   size     0..1 — how big the bowl is (depth of terracing, height, capacity)
@@ -154,7 +154,7 @@ export const STADIUMS = [
   { id: 'summit-bowl', name: 'Summit Bowl',           capacity: 78000,  size: 0.95, tiers: 2, roof: 'ring',  bowl: true, seats: ['#e2e8f0', '#1e293b'], facade: '#1a2233', pattern: 'rings',    pylons: 'rim', fill: 0.95, showpiece: true, wonder: true },
   { id: 'lantern-dome', name: 'The Great Lantern',    capacity: 86000,  size: 0.98, tiers: 2, roof: 'dome',  bowl: true, seats: ['#f472b6', '#1e0a2b'], facade: '#2a0a3a', pattern: 'diagonal', pylons: 'rim', fill: 0.97, showpiece: true, wonder: true, retractable: true },
   { id: 'meridian-prime', name: 'Meridian Prime',     capacity: 95000,  size: 1.0,  tiers: 2, roof: 'arch',  bowl: true, seats: ['#a78bfa', '#0b0a1e'], facade: '#100a2a', pattern: 'stripes',  pylons: 'rim', fill: 0.98, showpiece: true, wonder: true },
-  // ---- showpiece arenas: finals, the Weekend League, cup ties ----
+  // ---- showpiece arenas: finals, the Weekend Showdown, cup ties ----
   { id: 'apex-arena',  name: 'Apex Arena',           capacity: 90000, size: 1.00, tiers: 2, roof: 'arch',  bowl: true, seats: ['#f0f4ff', '#0a0d16'], facade: '#0e1220', pattern: 'checks',   pylons: 'rim', fill: 0.97, showpiece: true },
   { id: 'meridian',    name: 'Meridian Dome',        capacity: 72000, size: 0.96, tiers: 2, roof: 'dome',  bowl: true, seats: ['#7af7ff', '#08111c'], facade: '#0b1a2c', pattern: 'rings',    pylons: 'rim', fill: 0.95, showpiece: true },
   { id: 'continental', name: 'Continental Bowl',     capacity: 80000, size: 0.98, tiers: 2, roof: 'ring',  bowl: true, seats: ['#ffd166', '#2b2d42'], facade: '#1a1c30', pattern: 'diagonal', pylons: 'rim', fill: 0.96, showpiece: true },
@@ -182,7 +182,7 @@ export function hashStr(s) {
  */
 export function stadiumFor(club, { showpiece = false } = {}) {
   if (showpiece) {
-    // finals go to the wonders; the four older arenas keep the Weekend League
+    // finals go to the wonders; the four older arenas keep the Weekend Showdown
     const pick = STADIUMS.filter((s) => (showpiece === 'wonder' ? s.wonder : s.showpiece));
     return pick[hashStr(club?.id || club?.name || 'final') % pick.length];
   }

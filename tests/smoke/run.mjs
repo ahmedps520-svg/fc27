@@ -128,7 +128,7 @@ try {
   const apexAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')).club.apex);
   assert.ok(apexAfter > apexBefore, `daily reward paid (${apexBefore} -> ${apexAfter})`);
   assert.match(await text(page, '.today'), /Season|Tier/i);
-  assert.match(await text(page, '.today'), /this week|Weekend League/i);
+  assert.match(await text(page, '.today'), /this week|Weekend Showdown/i);
   step('today: daily reward claimed, season + event + weekend shown');
   await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('trophies'); });
   await page.waitForSelector('.trophy', { timeout: 10000 });

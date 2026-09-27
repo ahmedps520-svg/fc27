@@ -439,6 +439,13 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
       f.stance = true;
     }
     if (!plant) { f.held = false; f.landing = false; }
+    /* v139: a planted foot he has run away from (a sudden turn leaves it
+       behind) goes now, rather than when the stride says: held, the IK could
+       only reach it by lifting the heel half a metre, then it snapped */
+    if (moving && stance && !plant && f.stance && Math.hypot(f.x - hx, f.y - hy) > 0.85 * (THIGH + SHIN) * H) {
+      let d = duty - u; d -= Math.round(d);
+      f.off += d; u = cyc(f.off); stance = false;
+    }
     let ax; let ay; let az = ANKLE_Z * H;
     if (plant && f.landing) {
       const gx = f.plX - f.x; const gy = f.plY - f.y; const g = Math.hypot(gx, gy);
@@ -468,16 +475,24 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     } else if (stance) {
       if (!f.stance) {
         // touch-down: the foot lands a little ahead of the hip along his path, mid-stance is under him
-        const ahead = (duty * 0.4) / cadence;                    // his weight passes over it at 40% of the stance, as in a real stride
-        f.x = homeX + p.vx * ahead; f.y = homeY + p.vy * ahead; f.stance = true;
+        // (the swing has been aiming there all along; v139: it lands where the swing put it, which after a
+        // sudden turn can be short of the new aim — re-placing it there made the foot jump on that frame)
+        // out of the leg's reach (he has turned away from it): it lands where the leg actually put it, at full stretch
+        if (f.ex != null && Math.hypot(f.x - hx, f.y - hy) > 0.95 * (THIGH + SHIN) * H) { f.x = f.ex; f.y = f.ey; }
+        f.stance = true;
       }
       ax = f.x; ay = f.y;
     } else {
       // v137: the swing runs from where in the cycle it actually began (a plant held past its time starts late)
-      if (f.stance) { f.fromX = f.x; f.fromY = f.y; f.fromZ = f.z ?? ANKLE_Z * H; f.stance = false; f.u0 = Math.min(Math.max(u, duty), 0.85); }
+      if (f.stance) { f.fromX = f.x; f.fromY = f.y; f.fromZ = f.z ?? ANKLE_Z * H; f.stance = false; f.u0 = Math.min(Math.max(u, duty), 0.85); f.pvx = p.vx; f.pvy = p.vy; }
+      /* v139: the swing aims with its own copy of his velocity, eased towards
+         the real one: when the sim whips him round in a frame or two the aim
+         swings round over a few, instead of the foot jumping 0.27 m at once */
+      f.pvx = (f.pvx ?? p.vx) + (p.vx - (f.pvx ?? p.vx)) * 0.3;
+      f.pvy = (f.pvy ?? p.vy) + (p.vy - (f.pvy ?? p.vy)) * 0.3;
       // where the next plant will be, predicted from his velocity now
       const toGo = ((1 - u) + duty * 0.4) / cadence;
-      const nx = homeX + p.vx * toGo; const ny = homeY + p.vy * toGo;
+      const nx = homeX + f.pvx * toGo; const ny = homeY + f.pvy * toGo;
       const u0 = f.u0 ?? duty;
       const s = Math.max(0, Math.min(1, (u - u0) / (1 - u0)));
       const e = s * s * (3 - 2 * s);
@@ -498,7 +513,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
       else { const k = R / d; dx *= k; dy *= k; dz *= k; d = R; }
     }
     const ex = hx + dx; const ey = hy + dy; const ez = hz + dz;   // the ankle, where the leg can reach
-    f.z = ez;
+    f.z = ez; f.ex = ex; f.ey = ey;
     const ux = dx / d; const uy = dy / d; const uz = dz / d;
     const a = (T * T - S * S + d * d) / (2 * d);
     const hgt = Math.sqrt(Math.max(0, T * T - a * a));

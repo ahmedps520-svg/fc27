@@ -2894,7 +2894,7 @@ export function mount(root, params) {
       // v81: what the match knew — who started, who came on, ratings, scorers, the ball
       advanceWeek([h.score, a.score], careerExtra(match, params.career?.isHome === false ? 1 : 0, params.career?.isHome === false ? pa : ph));
     } else if (params.weekend) {
-      // Weekend League pays at the end of the window, by rank; the match itself is tallied below
+      // Weekend Showdown pays at the end of the window, by rank; the match itself is tallied below
     } else {
       // a friendly is pocket money next to a division match
       update((s) => { s.club.apex += 200 + (online ? mine : h.score) * 60; });

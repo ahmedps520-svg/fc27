@@ -580,7 +580,7 @@ net.on('match', (m) => {
       myName: api.getName(),
     },
     ultimate: m.kind === 'division',
-    // a Weekend League pairing counts for the weekend on both machines
+    // a Weekend Showdown pairing counts for the weekend on both machines
     weekend: m.kind === 'weekend' ? (m.wl || null) : null,
     homeSquad: m.host ? mine : theirs,
     awaySquad: m.host ? theirs : mine,
@@ -631,7 +631,7 @@ net.on('spectating', (m) => {
 });
 
 /**
- * Queue for a Weekend League opponent from anywhere (the weekend screen uses
+ * Queue for a Weekend Showdown opponent from anywhere (the weekend screen uses
  * this). Same club payload as the division queue plus the weekend tag the
  * server pairs on. Returns false when the socket is not up.
  */

@@ -2,7 +2,7 @@
  * Ultimate XI's v80 panels, kept out of squad.js (already the biggest screen):
  *
  *  - Division tab: the modes — Quickfire Fives, Squad Clash, the Division's
- *    weekly rewards and Weekend League qualification.
+ *    weekly rewards and Weekend Showdown qualification.
  *  - Objectives tab: daily and weekly tasks, and the club level track.
  *  - Club tab: Evolutions.
  *  - Store tab: the Transfer Market and the Binder.
@@ -85,11 +85,11 @@ export function modesView(squad) {
     </section>
 
     <section class="panel glass mode-card">
-      <header class="panel-head"><h2>Weekend League qualification</h2>
+      <header class="panel-head"><h2>Weekend Showdown qualification</h2>
         <span class="tag ${q.qualified ? 'good' : ''}">${q.qualified ? 'Qualified' : `${q.points}/${q.need} points`}</span>${about('Earn qualification points before the weekend opens: a Division win or a Fives win is 1, a Squad Clash win 2.')}</header>
       ${facts([q.qualified ? ['check', 'You are in', 'good'] : ['trophy', 'Win = 1 · Clash win = 2'], ['clock', w.open ? `Closes in ${untilText(w.closesAt)}` : `Opens in ${untilText(w.opensAt)}`, w.open ? 'good' : '']])}
       <i class="obj-bar"><b style="width:${Math.min(100, (q.points / q.need) * 100)}%"></b></i>
-      <button class="btn ${q.qualified ? 'primary' : 'ghost'}" id="goWeekend">Weekend League</button>
+      <button class="btn ${q.qualified ? 'primary' : 'ghost'}" id="goWeekend">Weekend Showdown</button>
     </section>`;
 }
 
@@ -219,7 +219,7 @@ export function evosView() {
 
   return `
     <section class="panel glass">
-      <header class="panel-head"><h2>Evolutions</h2><span class="tag">${active}/${MAX_ACTIVE} running</span>${about('Pick a card that fits a track and play Ultimate XI matches with him in the XI — Division, Fives, Squad Clash or the Weekend League. Each stage done adds stats and a stage of glow to the card, for good.')}</header>
+      <header class="panel-head"><h2>Evolutions</h2><span class="tag">${active}/${MAX_ACTIVE} running</span>${about('Pick a card that fits a track and play Ultimate XI matches with him in the XI — Division, Fives, Squad Clash or the Weekend Showdown. Each stage done adds stats and a stage of glow to the card, for good.')}</header>
       ${facts([['card', 'Pick a card'], ['ball', 'Play with him'], ['up', 'Stats up', 'good'], ['glow', 'Glow, for good', 'gold']])}
       ${running}
     </section>

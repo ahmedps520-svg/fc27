@@ -45,7 +45,7 @@ const MOTIFS = {
     <circle cx="40" cy="48" r="9" /><circle cx="110" cy="80" r="9" />
     <circle cx="180" cy="36" r="9" /><circle cx="250" cy="62" r="9" />`,
 
-  /** Career Mode — a season's fixture grid. */
+  /** Career — a season's fixture grid. */
   season: `
     <path d="M14 22h272M14 60h272M14 98h272" />
     <path d="M82 8v104M150 8v104M218 8v104" />

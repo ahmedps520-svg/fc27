@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v139',
+    date: '2026-09-27',
+    tag: 'Polish',
+    title: 'Cleaner feet, our own names',
+    lede: 'Feet no longer jump when a player whips round, and two modes have names of their own.',
+    entries: [
+      {
+        head: 'Sudden turns',
+        summary: 'When a player spins round at speed, his feet follow smoothly instead of jumping across the grass for a frame.',
+        detail: 'A foot planted before the turn now pushes off as soon as he has run away from it, and a stride that was aimed one way lands where it actually got to. The planted foot also slides less on every kind of run.',
+      },
+      {
+        head: 'Weekend Showdown',
+        summary: 'The weekend competition is now called the Weekend Showdown, and Career is just Career.',
+        detail: 'Same rules, same rewards, same records; only the names changed.',
+      },
+    ],
+  },
+  {
     version: 'v138',
     date: '2026-09-27',
     tag: 'Clubs',
@@ -75,7 +94,7 @@ export const RELEASES = [
       {
         head: 'Trophies and packs speak in pictures',
         summary: 'Trophies show the cup and your progress; tap one to see how to earn it. Pack tiles show the cards they can pull, with the odds behind the ⓘ.',
-        detail: 'Career, Weekend League, Today, Skills and the sign-in panel lost their paragraphs too.',
+        detail: 'Career, Weekend Showdown, Today, Skills and the sign-in panel lost their paragraphs too.',
       },
     ],
   },
@@ -193,7 +212,7 @@ export const RELEASES = [
       {
         head: 'Ultimate bundles',
         summary: 'Store → ✦ Ultimate: five bundles from 20 to 650 Ultimate, with bonus Ultimate on the bigger ones.',
-        detail: 'Ultimate is still earned the usual way, from the Division ladder and the Weekend League. The shelf shows what buying it will look like.',
+        detail: 'Ultimate is still earned the usual way, from the Division ladder and the Weekend Showdown. The shelf shows what buying it will look like.',
       },
       {
         head: 'A real checkout, no real charge',
@@ -797,7 +816,7 @@ export const RELEASES = [
     date: '2026-09-24',
     tag: 'Balance',
     title: 'Evolutions you can finish, fair career prices',
-    lede: 'Some evolution tracks could be started by players who could never finish them. Career Mode was pricing many real players at a fraction of what everyone else cost.',
+    lede: 'Some evolution tracks could be started by players who could never finish them. Career was pricing many real players at a fraction of what everyone else cost.',
     entries: [
       {
         head: 'Evolutions',
@@ -805,7 +824,7 @@ export const RELEASES = [
         detail: 'We played each track with every kind of player it accepted. Thirteen pairings, such as a centre-back on Pace Merchant or a young right-back on Rising Talent, would have needed well over sixty matches, and some would never finish. Every track now finishes in roughly 15 to 60 matches for every player it accepts. A card already part-way through a track keeps its progress.',
       },
       {
-        head: 'Career Mode prices',
+        head: 'Career prices',
         summary: 'Players from the card world were valued in Ultimate XI coins instead of career money, so clubs made of them had tiny wage bills and bargain fees. Every player is now priced on the same career scale.',
         detail: 'An 83-rated card was worth about two million in a career, while a generated player of the same rating was worth about fifteen million. Wages and asking prices now follow one scale. Wage bills at those clubs rise to match, and existing careers keep their money.',
       },
@@ -924,7 +943,7 @@ export const RELEASES = [
         detail: '',
       },
       {
-        head: 'Weekend League',
+        head: 'Weekend Showdown',
         summary: 'Between weekends the screen now explains the next one, instead of showing "Last weekend · Bronze · 0 wins" to everybody.',
         detail: 'Results from a weekend you played are still waiting on the Today screen once it closes.',
       },
@@ -1271,11 +1290,11 @@ export const RELEASES = [
       {
         head: 'Evolutions',
         summary: 'Six tracks — Pace Merchant, Engine Room Graduate, Wall Builder, Clinical Upgrade, Last Line and Rising Talent. Pick a card that fits, play with him, and each stage adds stats, sometimes a signature trait, and a stage of glow to the card. Three can run at once.',
-        detail: 'Stages count goals, assists, wins, clean sheets and appearances in any Ultimate XI match: Division, Fives, Squad Clash or the Weekend League.',
+        detail: 'Stages count goals, assists, wins, clean sheets and appearances in any Ultimate XI match: Division, Fives, Squad Clash or the Weekend Showdown.',
       },
       {
         head: 'New ways to play',
-        summary: 'Quickfire Fives: your keeper and four outfielders, two and a half minutes on a small pitch, paid on the spot. Squad Clash: twelve curated squads a week at the difficulty you choose, ranked and paid weekly. Division wins now pay weekly too, and the Weekend League asks for ten qualification points first.',
+        summary: 'Quickfire Fives: your keeper and four outfielders, two and a half minutes on a small pitch, paid on the spot. Squad Clash: twelve curated squads a week at the difficulty you choose, ranked and paid weekly. Division wins now pay weekly too, and the Weekend Showdown asks for ten qualification points first.',
         detail: 'Qualification points: a Division or Fives win is one, a Squad Clash win two. Once you have played a weekend match you stay in for that weekend.',
       },
       {
@@ -1632,7 +1651,7 @@ export const RELEASES = [
               + 'colours. Time and weather come from the fixture and the day: a wet pitch mirrors '
               + 'the floodlights, rain falls through the beams, and by day the lights are simply '
               + 'off. Kick Off lets you choose the conditions. Career clubs and your Ultimate XI '
-              + 'are dealt a ground of their own; finals and the Weekend League go to the arenas.',
+              + 'are dealt a ground of their own; finals and the Weekend Showdown go to the arenas.',
       },
       {
         head: 'Graphics',
@@ -1715,8 +1734,8 @@ export const RELEASES = [
       },
       {
         head: 'Online',
-        summary: 'A Weekend League queue that pairs you by record, and reconnects that keep the match alive.',
-        detail: 'Find an opponent from the Weekend League screen and you are matched with someone '
+        summary: 'A Weekend Showdown queue that pairs you by record, and reconnects that keep the match alive.',
+        detail: 'Find an opponent from the Weekend Showdown screen and you are matched with someone '
               + 'on a similar number of wins this weekend. Drop your connection mid-match and the '
               + 'server holds your seat for 45 seconds while your opponent\'s game pauses; come '
               + 'back and it resumes where it was.',
@@ -1737,7 +1756,7 @@ export const RELEASES = [
     tag: 'Live',
     title: 'Something to come back for',
     lede: 'A Today hub with daily rewards, weekly events and a 30-tier Season Pass; '
-        + 'Weekend League; a trophy room; card evolution; twelve legend SBCs; and ten new clubs.',
+        + 'Weekend Showdown; a trophy room; card evolution; twelve legend SBCs; and ten new clubs.',
     entries: [
       {
         head: 'Today',
@@ -1757,7 +1776,7 @@ export const RELEASES = [
               + 'never needs an update.',
       },
       {
-        head: 'Weekend League',
+        head: 'Weekend Showdown',
         summary: 'Ten matches from Friday evening to Monday morning; wins set your rank, the rank pays.',
         detail: 'Against squads built to your division offline, and any online division match '
               + 'inside the window counts too — the server keeps its own validated tally and a '
@@ -2099,7 +2118,7 @@ export const RELEASES = [
     tag: 'Career',
     title: 'Manager Career',
     lede: 'Take a real club, stand on the touchline, and answer for the '
-        + 'results. Career Mode V1 is live.',
+        + 'results. Career V1 is live.',
     entries: [
       {
         head: 'A real football world',

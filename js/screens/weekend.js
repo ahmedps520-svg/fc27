@@ -1,5 +1,5 @@
 /**
- * Weekend League — the competitive weekend.
+ * Weekend Showdown — the competitive weekend.
  *
  * Ten matches inside the window against opponents built to your division;
  * online division matches inside the window count too. Wins set the rank,
@@ -22,7 +22,7 @@ import { isSignedIn } from '../net/api.js';
 import { queueWeekend, cancelQueue } from './online.js';
 import { qualification } from '../modes.js';
 
-export const TITLE = 'Weekend League';
+export const TITLE = 'Weekend Showdown';
 
 export function render() {
   const s = getState();
@@ -33,7 +33,7 @@ export function render() {
   const squadReady = !!ultimateSquad();
   // v80: ten qualification points (Division, Fives and Squad Clash wins) buy the entry
   const q = qualification();
-  const head = screenHead({ kicker: 'Competitive', title: 'Weekend League', sub: w.open ? `Open · closes in ${untilText(w.closesAt)}` : `Opens in ${untilText(w.opensAt)}`, motif: 'ladder', tone: 'c' });
+  const head = screenHead({ kicker: 'Competitive', title: 'Weekend Showdown', sub: w.open ? `Open · closes in ${untilText(w.closesAt)}` : `Opens in ${untilText(w.opensAt)}`, motif: 'ladder', tone: 'c' });
   return head + `
     <div class="wl">
       <section class="panel glass">

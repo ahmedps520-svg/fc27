@@ -15,6 +15,34 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v139 — polish: sudden-turn feet, our own mode names
+- `rig.js`: three fixes to the foot stepper.
+  - The frame the sim whips a runner round used to jump a foot 0.27–0.33 m.
+    Found in v137's cut tests; the jump predates v137.
+  - A swing aims with its own eased copy of the velocity (`f.pvx/pvy`,
+    0.3 a frame).
+  - Touch-down lands where the swing got to, no longer re-placed at the new
+    aim. If that spot is beyond the leg's reach, it lands where the leg last
+    drew it (`f.ex/ey`).
+  - A planted foot more than 0.85 × leg length from the hip pushes off at
+    once, via the v137 per-leg cycle shift (`f.off`). Before, the IK kept it
+    by lifting the heel up to 0.59 m, then snapped it.
+  - Result: the worst jump through a 100–170° whip is 0.14–0.16 m (a
+    straight run is 0.11). Slip is down everywhere: jog 0.08 → 0.07, sprint
+    0.20 → 0.13, backpedal 0.07 → 0.06, jockey 0.05 → 0.03.
+  - `gait.test.mjs`: cuts of 100/−110/140/170°, and jumps under 0.18 m from
+    the whip on.
+- Mode names:
+  - "Weekend League" (an EA Ultimate Team term) is now "Weekend Showdown"
+    in the UI, the achievements, the notes archive and the smoke test.
+    Internal ids (`weekend`, `wl*`) are unchanged, so saves are untouched.
+  - "Career Mode" is now "Career": the menu disclaimer (EN and AR), the
+    achievement, the menu toast and old notes.
+  - The tutorial said Career "is still being built"; it now describes it.
+- Also merged separately after v138: `tests/qa/touch-editor.mjs` opens
+  Settings → Controls first. CI on main had failed at that step since v136,
+  and the steps after it had not been running.
+
 ### v138 — original colours and badges for the real clubs (backlog #35)
 - New `js/data/clubLook.js`:
   - `clubLook(club)` gives `{ colors, shape, pattern, device }`,
