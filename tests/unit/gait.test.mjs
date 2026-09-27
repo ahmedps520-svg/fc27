@@ -80,21 +80,21 @@ function cutRun(turnDeg, speed = 7, over = 0) {
       held += 1;
       if (!pinned) pinned = { x: out.x, y: out.y }; else drift = Math.max(drift, Math.hypot(out.x - pinned.x, out.y - pinned.y));
     } else pinned = null;
-    // from the cut on: the frame the velocity whips round jolts the swing prediction, and did before cuts existed (0.27 m)
-    if (prev && i > from) for (const j of [0, 1]) pop = Math.max(pop, feet[j].distanceTo(prev[j]) - speed * dt);
+    // v139: from the whip on — the swing's aim eases round now (it used to jump 0.27 m on that frame)
+    if (prev && i >= 120) for (const j of [0, 1]) pop = Math.max(pop, feet[j].distanceTo(prev[j]) - speed * dt);
     prev = feet;
   }
   return { cuts, pop, drift, held };
 }
 
 test('a hard change of direction is a plant-and-cut: the outside foot holds, nothing pops', () => {
-  for (const deg of [100, -110, 140]) {
+  for (const deg of [100, -110, 140, 170]) {
     const r = cutRun(deg);
     assert.equal(r.cuts, 1, `${deg}°: one cut (${r.cuts})`);
     assert.ok(r.held >= 4, `${deg}°: the outside foot is planted (${r.held} frames)`);
     assert.ok(r.drift < 0.02, `${deg}°: the planted foot stays put (${r.drift.toFixed(3)} m)`);
-    // a leg whipped round to catch up after the plant moves fast, but never jumps (0.15 m on straight running)
-    assert.ok(r.pop < 0.2, `${deg}°: no foot jumps (${r.pop.toFixed(2)} m)`);
+    // v139: 0.14–0.16 m through the whip itself (it was 0.27–0.33 m); a straight run's worst is 0.11
+    assert.ok(r.pop < 0.18, `${deg}°: no foot jumps (${r.pop.toFixed(2)} m)`);
   }
 });
 

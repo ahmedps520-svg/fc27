@@ -1,5 +1,5 @@
 /**
- * Weekend League.
+ * Weekend Showdown.
  *
  * A window opens every Friday at 18:00 UTC and closes Monday at 06:00 UTC.
  * Inside it you get ten matches; your wins set a rank, and the rank sets the

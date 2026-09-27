@@ -18,7 +18,7 @@ const clubsRepresented = (s) => new Set((s.club.collection || []).map((id) => s.
 
 export const GROUPS = [
   ['collect', 'Collecting'], ['match', 'Matches'], ['division', 'Apex Division'], ['sbc', 'Challenges'],
-  ['career', 'Career'], ['online', 'Online'], ['weekend', 'Weekend League'], ['season', 'Seasons & Events'],
+  ['career', 'Career'], ['online', 'Online'], ['weekend', 'Weekend Showdown'], ['season', 'Seasons & Events'],
   ['watch', 'Watch'], ['club', 'Club'],
 ];
 
@@ -61,14 +61,14 @@ export const ACHIEVEMENTS = [
   // career
   A('career-start', 'career', 'The Dugout', 'Start a career.', 1, c('careers'), 500, 80),
   A('career-wins-5', 'career', 'Settling In', 'Win 5 career matches.', 5, c('careerWins'), 1500, 120),
-  A('career-sign', 'career', 'Deal Done', 'Sign a player in Career Mode.', 1, c('careerSigns'), 1000, 100),
+  A('career-sign', 'career', 'Deal Done', 'Sign a player in Career.', 1, c('careerSigns'), 1000, 100),
   A('career-season', 'career', 'Full Season', 'Finish a career season.', 1, c('careerSeasons'), 5000, 300, 'gold'),
   // online
   A('online-1', 'online', 'Connected', 'Play an online match.', 1, c('onlineMatches'), 500, 80),
   A('online-win', 'online', 'Beat a Human', 'Win an online match.', 1, c('onlineWins'), 1000, 100),
   A('online-10', 'online', 'Rival', 'Win 10 online matches.', 10, c('onlineWins'), 4000, 200, 'silver'),
   // weekend league
-  A('wl-play', 'weekend', 'Weekender', 'Play a Weekend League match.', 1, c('wlPlayed'), 500, 80),
+  A('wl-play', 'weekend', 'Weekender', 'Play a Weekend Showdown match.', 1, c('wlPlayed'), 500, 80),
   A('wl-gold', 'weekend', 'Gold Weekend', 'Finish a weekend with 5 wins.', 5, c('wlBest'), 3000, 200, 'silver'),
   A('wl-apex', 'weekend', 'Apex Weekend', 'Finish a weekend with 9 wins.', 9, c('wlBest'), 10000, 400, 'gold'),
   // seasons & events

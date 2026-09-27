@@ -72,7 +72,7 @@ const STEPS = [
     title: 'Four doors',
     body: `Everything lives behind one of these. <b>Kick Off</b> is a one-off
            match. <b>Ultimate XI</b> is the long game — squad, packs, ladder.
-           Career Mode is still being built.`,
+           <b>Career</b> runs a club season after season.`,
   },
 
   /* ---- 2. kick off ---- */

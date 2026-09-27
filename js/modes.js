@@ -9,7 +9,7 @@
  *    difficulty you choose. Points for the result, the goals and a clean sheet
  *    add up to a weekly rank, paid the following week.
  *  - **Apex Division weekly rewards**: the ladder also pays by wins in the week.
- *  - **Weekend League qualification**: ten qualification points before the
+ *  - **Weekend Showdown qualification**: ten qualification points before the
  *    weekend opens — from Division, Squad Clash and Fives wins — or no entry.
  */
 import { getState, update } from './state.js';
@@ -180,7 +180,7 @@ export function claimRivals() {
   return got;
 }
 
-/* ------------------------ Weekend League qualification ------------------------ */
+/* ------------------------ Weekend Showdown qualification ------------------------ */
 export const QUALIFY_POINTS = 10;
 export function addQualifying(n, now = new Date()) {
   if (!n) return;

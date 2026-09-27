@@ -4,7 +4,7 @@
  *
  * A match ends, a pack opens, a challenge is submitted — the screen that did
  * it calls one function here, and this feeds the counters achievements read,
- * the season XP, the week's event objectives, the Weekend League tally and
+ * the season XP, the week's event objectives, the Weekend Showdown tally and
  * the daily login. Screens never touch those directly, so a new reward
  * system is a new paragraph here and nowhere else.
  *
@@ -126,7 +126,7 @@ export function onMatch({ mode, scored, conceded, online = false, possession = 5
     tiers += addXP(s, XP.match + (won ? XP.win : 0) + Math.min(XP.goalCap, scored * XP.goal), 'match');
     eventGain(s, { played: 1, win: won ? 1 : 0, goal: scored, clean: conceded === 0 ? 1 : 0, bigwin: won && scored - conceded >= 3 ? 1 : 0 });
 
-    // Weekend League: the tally, when a match counts for it
+    // Weekend Showdown: the tally, when a match counts for it
     const { window: w, tally } = currentWeekend(s.club);
     if ((weekend || (online && mode === 'ultimate')) && w.open && tally.played < WL_MATCHES) {
       tally.played += 1;

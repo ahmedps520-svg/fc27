@@ -30,7 +30,7 @@ const ICONS = {
           <path d="M9.5 7.5h3M9.5 10h2"/>
           <path d="M12 12.4c1.9 0 3.4 1.5 3.4 3.4h-6.8c0-1.9 1.5-3.4 3.4-3.4z"/>
           <circle cx="12" cy="10.4" r="1.5"/>`,
-  /** Career Mode: a trophy, which is the point of a season. */
+  /** Career: a trophy, which is the point of a season. */
   career: `<path d="M8 4h8v5a4 4 0 0 1-8 0z"/>
            <path d="M8 5.5H5.6v1.2A3.4 3.4 0 0 0 9 10.1M16 5.5h2.4v1.2A3.4 3.4 0 0 1 15 10.1"/>
            <path d="M12 13v3.2M9 20h6M9.6 16.2h4.8L15 20H9z"/>`,
@@ -171,7 +171,7 @@ export function mount(root) {
     el.addEventListener('click', () => navigate(el.dataset.go));
   });
   root.querySelectorAll('[data-locked]').forEach((el) => {
-    el.addEventListener('click', () => toast(`Career Mode is ${el.dataset.locked.toLowerCase()}`, 'info'));
+    el.addEventListener('click', () => toast(`Career is ${el.dataset.locked.toLowerCase()}`, 'info'));
   });
 
   /* What's new, once per build.
