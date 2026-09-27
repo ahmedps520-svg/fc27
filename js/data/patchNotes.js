@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v136',
+    date: '2026-09-27',
+    tag: 'Polish',
+    title: 'Fewer words, part three',
+    lede: 'Settings, the Trophy Room and the Store are shorter and easier to scan.',
+    entries: [
+      {
+        head: 'Settings in sections',
+        summary: 'Match, Controls, Graphics, Controller, Save and App, picked from a row of icons, with one section on screen at a time.',
+        detail: 'The screen was about 1,000 words and three screens tall on a phone. Every option is still there, and the explanations are shorter.',
+      },
+      {
+        head: 'Trophies and packs speak in pictures',
+        summary: 'Trophies show the cup and your progress; tap one to see how to earn it. Pack tiles show the cards they can pull, with the odds behind the ⓘ.',
+        detail: 'Career, Weekend League, Today, Skills and the sign-in panel lost their paragraphs too.',
+      },
+    ],
+  },
+  {
     version: 'v135',
     date: '2026-09-26',
     tag: 'Polish',

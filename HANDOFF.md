@@ -15,6 +15,32 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v136 — less text, part 3 (owner: "keep going with the less text stuff")
+- Words per screen, from a visible-text audit (`tests/tmp/words.mjs`, not
+  committed; it walks every screen and tab):
+  - Settings: 1,054 → one section at a time.
+  - Trophies: 918 → 462.
+  - Ultimate XI store: 470 → 315.
+  - Stadiums (528) is mostly the list of grounds and was left alone.
+- `settings.js`:
+  - `SECTIONS` / `sec` (a module variable, so it survives the redraws) and
+    a `#setTabs` row of icon subtabs;
+  - each panel carries `data-sec` and is hidden unless open; a switch uses
+    `veil()`;
+  - about 20 help lines shortened or dropped.
+  - Credits corrected: they said "no recorded audio ships", which stopped
+    being true at v121/v126.
+- Trophies: each Icon's line moves to `title`, leaving the flag and
+  position, and the tag becomes a ✓/🔒 icon. A trophy's blurb (`.tr-how`)
+  shows on tap (`.open`).
+- Store: a pack's note and odds line move into `about()` ("Odds"), "Could
+  pull" is dropped (the card strip says it), the shelf blurbs become icon
+  chips, and the event shelf's blurb goes behind an ⓘ. `squad.js` gains a
+  local `esc`.
+- Career's mode cards use `facts()` chips. The sign-in panel, Weekend
+  qualification line and online-board hint, Today's XP line and the Skills
+  controls line are shortened or moved behind an ⓘ.
+
 ### The commercial (owner's ask: "a montage of the whole game and a run through")
 - 60 s, 16:9, 1080p30, with the game's music and commentary. Output:
   - `tests/tmp/trailer/apex-xi-trailer.mp4` (full quality, 172 MB);

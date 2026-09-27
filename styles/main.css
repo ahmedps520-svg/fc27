@@ -5470,3 +5470,14 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .co-receipt dd { margin: 0; text-align: right; font-family: var(--font-num); overflow-wrap: anywhere; }
 .co-done .co-test { margin: 0; }
 @media (max-width: 420px) { .co-sheet { padding: 18px 14px; } }
+
+/* v136: less text — Settings in sections, trophies explain themselves on a tap */
+.set-tabs { position: sticky; top: 0; z-index: 3; margin-bottom: 14px; background: linear-gradient(180deg, var(--bg) 70%, transparent); }
+.set-tabs .subtab { display: inline-flex; align-items: center; gap: 7px; }
+.set-tabs .subtab svg { opacity: .8; }
+.trophy { cursor: pointer; }
+.trophy .tr-how { display: none; }
+.trophy.open .tr-how { display: block; }
+.trophy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hall-tag svg { vertical-align: -2px; }
+.cm-mode .cm-facts { margin: 8px 0 4px; }

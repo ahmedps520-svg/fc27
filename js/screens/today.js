@@ -7,6 +7,7 @@
  */
 import { getState, update } from '../state.js';
 import { navigate, refreshCoins, toast } from '../app.js';
+import { about } from '../components/facts.js';
 import { sfx } from '../audio.js';
 import { screenHead } from '../components/screenHead.js';
 import { PACK_BY_ID, samplePulls } from '../data/packs.js';
@@ -99,7 +100,7 @@ function seasonPanel(s) {
       </div>
       <button class="btn ghost sm" id="allTiers">${showAllTiers ? 'Show fewer tiers' : `Show all ${TIERS} tiers`}</button>
       ${claimable.length > 1 ? `<button class="btn primary" id="claimTiers">Claim ${claimable.length} tiers</button>` : ''}
-      <p class="hint">XP: 40 a match, +60 a win, +5 a goal · objectives 80 · daily login 50 · challenges 90 · event objectives 120.</p>
+      ${about('XP: 40 a match, +60 a win, +5 a goal · objectives 80 · daily login 50 · challenges 90 · event objectives 120.', 'How XP is earned')}
     </section>`;
 }
 

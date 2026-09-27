@@ -30,8 +30,7 @@ export function signInPanel(kicker = 'Play online') {
     <section class="acct glass">
       <span class="acct-kicker">${kicker}</span>
       <h2 class="acct-title">Sign in to APEX XI</h2>
-      <p class="acct-sub">Your club, collection and division rank are saved to your
-        account, so they follow you to any device.</p>
+      <p class="acct-sub">Your club, on any device.</p>
 
       <div class="acct-tabs" id="acctTabs">
         <button class="on" data-mode="login">Sign in</button>
@@ -52,8 +51,7 @@ export function signInPanel(kicker = 'Play online') {
         <p class="acct-error" id="acctError" hidden></p>
         <button class="btn primary wide" id="acctGo" type="submit">Sign in</button>
       </form>
-      <p class="acct-note">Passwords are hashed on the server. Play offline any time —
-        signing in only adds cloud saves and online matches.</p>
+      <p class="acct-note">Offline play needs no account.</p>
     </section>`;
 }
 
