@@ -37,6 +37,17 @@ Everything below is on the local machine only.
   pull" is dropped (the card strip says it), the shelf blurbs become icon
   chips, and the event shelf's blurb goes behind an ⓘ. `squad.js` gains a
   local `esc`.
+- Fixes found by QA:
+  - `pad-reach` goes Settings → Controller (`SETTINGS_PAD`), and its
+    pathfinder no longer steps sideways off a focused slider (a slider
+    takes left/right for its value);
+  - the honours table sits in `.wtable-scroll`;
+  - under 480 px any `.wtable` scrolls inside itself (the world table
+    overflowed a 320 px phone);
+  - Career's chips wrap at 13 px;
+  - the section row is not sticky.
+  The online bot's two-client step timed out once under load and passed
+  on a re-run.
 - Career's mode cards use `facts()` chips. The sign-in panel, Weekend
   qualification line and online-board hint, Today's XP line and the Skills
   controls line are shortened or moved behind an ⓘ.

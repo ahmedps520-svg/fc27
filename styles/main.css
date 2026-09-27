@@ -5472,7 +5472,7 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @media (max-width: 420px) { .co-sheet { padding: 18px 14px; } }
 
 /* v136: less text — Settings in sections, trophies explain themselves on a tap */
-.set-tabs { position: sticky; top: 0; z-index: 3; margin-bottom: 14px; background: linear-gradient(180deg, var(--bg) 70%, transparent); }
+.set-tabs { margin-bottom: 14px; }
 .set-tabs .subtab { display: inline-flex; align-items: center; gap: 7px; }
 .set-tabs .subtab svg { opacity: .8; }
 .trophy { cursor: pointer; }
@@ -5480,4 +5480,11 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .trophy.open .tr-how { display: block; }
 .trophy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hall-tag svg { vertical-align: -2px; }
-.cm-mode .cm-facts { margin: 8px 0 4px; }
+.cm-mode .cm-facts { margin: 8px 0 4px; flex-wrap: wrap; }
+.cm-mode .cm-facts .fact { min-width: 0; }
+.cm-mode .cm-facts .fact b { white-space: normal; font-size: 13px; letter-spacing: .01em; text-transform: none; font-style: normal; }
+/* the honours table scrolls inside its panel on a phone rather than widening the page */
+.wtable-scroll { max-width: 100%; overflow-x: auto; }
+.trophies > *, .trophies .panel { min-width: 0; }
+/* v136: a league table wider than a small phone scrolls inside itself rather than pushing the page */
+@media (max-width: 480px) { .wtable { display: block; max-width: 100%; overflow-x: auto; } }

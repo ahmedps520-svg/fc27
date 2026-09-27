@@ -63,12 +63,12 @@ function hallHTML(s) {
       </div>
       ${board.length ? `
       <h3 class="wround">${t('trophies.honours')}</h3>
-      <table class="wtable honours">
+      <div class="wtable-scroll"><table class="wtable honours">
         <thead><tr><th>Season</th>${LEAGUES.map((l, i) => `<th title="${l}">Div ${i + 1}</th>`).join('')}<th>Continental Cup</th><th>Nations Cup</th></tr></thead>
         <tbody>
           ${board.map((h) => `<tr><td>${h.season}</td>${h.champions.map((id) => `<td>${WORLD.clubsById[id].short}</td>`).join('')}<td>${h.cup ? WORLD.clubsById[h.cup].short : '—'}</td><td>${h.nationsCup || '—'}</td></tr>`).join('')}
         </tbody>
-      </table>` : '<p class="wzone">The honours board fills in when the first world season ends.</p>'}
+      </table></div>` : '<p class="wzone">The honours board fills in when the first world season ends.</p>'}
     </section>`;
 }
 
