@@ -46,6 +46,8 @@ try {
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.tap('#startBtn'); await page.waitForSelector('[data-go="squad"]');
   await page.evaluate(async () => (await import('/js/app.js')).navigate('settings'));
+  // v136: Settings is in sections; the touch layout lives under Controls
+  await page.tap('[data-sec-tab="access"]');
   await page.waitForSelector('#touchLayoutBtn');
   await page.tap('#touchLayoutBtn');
   await page.waitForSelector('.tedit .tbtn[data-slot="shoot"]');
@@ -127,6 +129,8 @@ try {
 
   // Reset → the arc again
   await page.evaluate(async () => (await import('/js/app.js')).navigate('settings'));
+  // v136: Settings is in sections; the touch layout lives under Controls
+  await page.tap('[data-sec-tab="access"]');
   await page.waitForSelector('#touchLayoutBtn'); await page.tap('#touchLayoutBtn');
   await page.waitForSelector('#teReset'); await page.tap('#teReset'); await done();
   check(await page.evaluate(async () => !(await import('/js/state.js')).getState().settings.touchLayout), 'Reset and Done bring back the arc');
