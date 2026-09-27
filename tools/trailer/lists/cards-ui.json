@@ -1,0 +1,10 @@
+[
+ {"name":"cap-menu","card":"cap","kicker":"ONE MENU","text":"EVERY WAY TO PLAY","frames":57,"fadeOut":8},
+ {"name":"cap-squad","card":"cap","kicker":"ULTIMATE XI","text":"BUILD YOUR SQUAD","frames":57,"fadeOut":8},
+ {"name":"cap-pack","card":"cap","kicker":"PACKS","text":"OPEN. REVEAL. REPEAT.","frames":57,"fadeOut":8},
+ {"name":"cap-division","card":"cap","kicker":"DIVISIONS","text":"CLIMB THE LADDER","frames":57,"fadeOut":8},
+ {"name":"cap-kit","card":"cap","kicker":"YOUR CLUB","text":"DESIGN YOUR KIT","frames":57,"fadeOut":8},
+ {"name":"cap-career","card":"cap","kicker":"CAREER","text":"TAKE A CLUB TO GLORY","frames":57,"fadeOut":8},
+ {"name":"cap-cup","card":"cap","kicker":"CUSTOM CUP","text":"MAKE YOUR OWN CUP","frames":57,"fadeOut":8},
+ {"name":"cap-street","card":"cap","kicker":"STREET","text":"ROOFTOPS AND BEACHES","frames":57,"fadeOut":8}
+]

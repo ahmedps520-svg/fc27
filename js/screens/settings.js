@@ -3,8 +3,9 @@ import { listBackups, exportSave, parseSaveFile } from '../saveSafety.js';
 import { ACTIONS, bindingOf, keyLabel, padGlyph, padKind, setBindings, getBindings, setToggles, setPadTuning } from '../game/input.js';
 import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
-import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics } from '../app.js';
+import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics, veil } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
+import { icon } from '../components/facts.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, loadVoice, playVoice } from '../audio.js';
 import { VOICE_PACKS } from '../data/voicePackUS.js';
@@ -53,6 +54,12 @@ function qualityShown(q) {
   return v;
 }
 
+/* v136: Settings in sections. The open one survives the redraws that most
+   changes trigger (navigate('settings')). */
+const SECTIONS = [['match', 'Match', 'whistle'], ['access', 'Controls', 'hand'], ['graphics', 'Graphics', 'glow'], ['pad', 'Controller', 'target'], ['save', 'Save', 'shield'], ['app', 'App', 'book']];
+let sec = 'match';
+const secHidden = (id) => (sec === id ? '' : 'hidden');
+
 export function render() {
   const s = getState().settings;
   const st = getState();
@@ -63,25 +70,30 @@ export function render() {
       sub: 'How the game looks, sounds and runs on this device.',
       motif: 'faders', tone: 'd',
     })}
+    <!-- v136: one section at a time, picked from a row of icons. The whole
+         screen was ~1,000 words and three screens tall on a phone. -->
+    <nav class="subtabs set-tabs" id="setTabs" role="tablist">
+      ${SECTIONS.map(([id, label, ic]) => `<button class="subtab ${sec === id ? 'on' : ''}" data-sec-tab="${id}" role="tab" aria-selected="${sec === id}">${icon(ic, 15)}<span>${label}</span></button>`).join('')}
+    </nav>
     <!-- App sits first on purpose. Everything in it is what someone opens
          Settings to find when something is wrong — the build to quote in a bug
          report, the update button, the changelog, and how to reach us. Last in
          the list it was effectively unreachable: this screen is ~2000px tall and
          a phone in landscape shows 430px of it, so the panel sat three screens
          down behind the things people rarely change twice. -->
-    <section class="panel glass">
+    <section data-sec="app" ${secHidden('app')} class="panel glass">
       <header class="panel-head"><h2>App</h2></header>
       <!-- First in the panel that is first on the screen: someone who does not
            know how the game works should not have to know where to look. -->
       <div class="setting-row">
         <div><b>${tutorialSeen() ? 'Replay tutorial' : 'Start tutorial'}</b>
-          <span>A guided tour of every mode, from Kick Off to Ultimate XI.</span></div>
+          <span>A tour of every mode.</span></div>
         <button class="btn ghost" id="startTut">
           ${tutorialSeen() ? 'Replay' : 'Start'}
         </button>
       </div>
       <div class="setting-row">
-        <div><b>Support</b><span>Questions, bugs, feedback — we read all of it.</span></div>
+        <div><b>Support</b><span>Bugs and ideas.</span></div>
         <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
       </div>
       <div class="setting-row">
@@ -89,15 +101,15 @@ export function render() {
         <a href="notes.html" target="_blank" rel="noopener" class="btn ghost">Changelog</a>
       </div>
       <div class="setting-row">
-        <div><b>Version</b><span>New builds are offered on the title screen.</span></div>
+        <div><b>Version</b></div>
         <span class="tag">${APP_VERSION}</span>
       </div>
       <div class="setting-row">
-        <div><b>Build</b><span>Changes with every commit. Quote this in a bug report.</span></div>
+        <div><b>Build</b><span>Quote it in a bug report.</span></div>
         <span class="tag mono" id="buildTag">checking…</span>
       </div>
       <div class="setting-row">
-        <div><b>Force update</b><span>Clears the offline copy and reloads from the server.</span></div>
+        <div><b>Force update</b><span>Reload the latest build.</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
       </div>
       <!-- Diagnostic, not a feature. The mouse wheel has now had three separate
@@ -105,12 +117,12 @@ export function render() {
            what the wheel actually did on the machine that has the problem:
            scroll over the box it draws and screenshot the readout. -->
       <div class="setting-row">
-        <div><b>Scroll check</b><span>If the mouse wheel misbehaves, open this and send the readout.</span></div>
+        <div><b>Scroll check</b><span>If the mouse wheel misbehaves.</span></div>
         <button class="btn ghost" id="scrollCheck">Open</button>
       </div>
     </section>
 
-    <section class="panel glass">
+    <section data-sec="match" ${secHidden('match')} class="panel glass">
       <header class="panel-head"><h2>Career sim</h2></header>
       <div class="setting-row">
         <div><b>Sim speed</b></div>
@@ -126,31 +138,31 @@ export function render() {
       </div>
     </section>
 
-    <section class="panel glass" id="broadcastSet">
+    <section data-sec="match" ${secHidden('match')} class="panel glass" id="broadcastSet">
       <header class="panel-head"><h2>Broadcast</h2></header>
       <div class="setting-row">
-        <div><b>Spoken commentary</b><span>Two voices: play-by-play and analysis.</span></div>
+        <div><b>Spoken commentary</b></div>
         <button class="switch ${s.commVoice !== false ? 'on' : ''}" id="commVoiceTgl" role="switch" aria-checked="${s.commVoice !== false}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Subtitles</b><span>Every commentary line on screen, with who said it.</span></div>
+        <div><b>Subtitles</b></div>
         <button class="switch ${s.subtitles !== false ? 'on' : ''}" id="subsTgl" role="switch" aria-checked="${s.subtitles !== false}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Commentators</b><span>English only. Arabic uses your device's voice.</span></div>
+        <div><b>Commentators</b></div>
         <div class="seg seg-wrap">${[['us', 'American'], ['device', 'Device voice']].map(([v, l]) => `<button class="${(s.commPack || 'us') === v ? 'on' : ''}" data-setseg="commPack:${v}">${l}</button>`).join('')}
           <button class="btn ghost sm" id="commHear" aria-label="Hear the commentators">▶ Hear</button></div>
       </div>
       ${segRow('Commentary language', 'commLang', [['auto', 'Game language'], ['en', 'English'], ['ar', 'العربية']], s.commLang || 'auto')}
       ${segRow('Pre-match show', 'pregame', [['full', 'Full'], ['short', 'Walk-out only'], ['off', 'Off']], s.pregame || 'full')}
       <div class="setting-row">
-        <div><b>On-screen graphics</b><span>Name straps, boards, stat pop-ups and the momentum bar.</span></div>
+        <div><b>On-screen graphics</b></div>
         <button class="switch ${s.broadcastGfx !== false ? 'on' : ''}" id="bcGfxTgl" role="switch" aria-checked="${s.broadcastGfx !== false}"><i></i></button>
       </div>
       ${segRow('Menu theme', 'menuTheme', [['auto', 'By date'], ['off', 'Off'], ['nationalDay', 'National Day'], ['ramadan', 'Ramadan'], ['winter', 'Winter']], s.menuTheme || 'auto')}
     </section>
 
-    <section class="panel glass">
+    <section data-sec="match" ${secHidden('match')} class="panel glass">
       <header class="panel-head"><h2>Sound</h2></header>
       <div class="setting-row">
         <div><b>Audio</b></div>
@@ -173,7 +185,7 @@ export function render() {
       </div>
     </section>
 
-    <section class="panel glass">
+    <section data-sec="access" ${secHidden('access')} class="panel glass">
       <header class="panel-head"><h2>${t('settings.access')}</h2></header>
       <div class="setting-row">
         <div><b>${t('settings.language')}</b><span>${t('settings.language.sub')}</span></div>
@@ -193,7 +205,7 @@ export function render() {
       </div>
       ${segRow('Colour vision filter (in a match)', 'colorFilter', [['none', 'Off'], ['protan', 'Protan'], ['deutan', 'Deutan'], ['tritan', 'Tritan']], s.colorFilter || 'none')}
       <div class="setting-row">
-        <div><b>One-handed touch</b><span>Every match control on one side of the screen.</span></div>
+        <div><b>One-handed touch</b></div>
         <button class="switch ${s.oneHanded ? 'on' : ''}" id="oneHandTgl" role="switch" aria-checked="${!!s.oneHanded}"><i></i></button>
       </div>
       ${segRow('One-handed side', 'oneHandedSide', [['left', 'Left'], ['right', 'Right']], s.oneHandedSide || 'right')}
@@ -202,7 +214,7 @@ export function render() {
         <button class="btn ghost sm" id="touchLayoutBtn">Customise</button>
       </div>
       <div class="setting-row">
-        <div><b>Sprint</b><span>Hold the button, or tap once to run and again to stop.</span></div>
+        <div><b>Sprint</b></div>
         <div class="seg"><button class="${s.sprintToggle ? '' : 'on'}" data-setseg="sprintToggle:">Hold</button><button class="${s.sprintToggle ? 'on' : ''}" data-setseg="sprintToggle:1">Toggle</button></div>
       </div>
       <div class="setting-row">
@@ -216,19 +228,19 @@ export function render() {
       ${segRow('Pass assist', 'passAssist', [['0', 'Manual'], ['1', 'Assisted'], ['2', 'Full']], String(s.passAssist ?? 1))}
     </section>
 
-    <section class="panel glass" id="perfSet">
+    <section data-sec="graphics" ${secHidden('graphics')} class="panel glass" id="perfSet">
       <header class="panel-head"><h2>Performance</h2></header>
       <div class="setting-row">
-        <div><b>Battery saver</b><span>30 fps, a lighter picture, fewer effects — for long sessions on a phone.</span></div>
+        <div><b>Battery saver</b><span>30 fps, lighter picture.</span></div>
         <button class="switch ${s.battery ? 'on' : ''}" id="batteryTgl" role="switch" aria-checked="${!!s.battery}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Keep the frame rate</b><span>Drops effects, then resolution, when a match starts to stutter — and brings them back when it can.</span></div>
+        <div><b>Keep the frame rate</b><span>Trims effects when a match stutters.</span></div>
         <button class="switch ${s.governor !== false ? 'on' : ''}" id="govTgl" role="switch" aria-checked="${s.governor !== false}"><i></i></button>
       </div>
     </section>
 
-    <section class="panel glass">
+    <section data-sec="graphics" ${secHidden('graphics')} class="panel glass">
       <header class="panel-head"><h2>${t('settings.look')}</h2></header>
       <div class="setting-row" hidden>
         <div><b>Reduce motion</b></div>
@@ -267,34 +279,34 @@ export function render() {
         </div>
       </div>
       <div class="setting-row">
-        <div><b>Show FPS</b><span>Live frame counter in the corner during a match.</span></div>
+        <div><b>Show FPS</b></div>
         <button class="switch ${s.showFps ? 'on' : ''}" id="fpsTgl" role="switch"
                 aria-checked="${!!s.showFps}"><i></i></button>
       </div>
     </section>
 
-    <section class="panel glass">
+    <section data-sec="save" ${secHidden('save')} class="panel glass">
       <header class="panel-head"><h2>Save</h2></header>
       <div class="setting-row">
-        <div><b>Apex</b><span>Earned from matches and objectives.</span></div>
+        <div><b>Apex</b></div>
         <span class="coin-chip">◈ ${(st.club.apex || 0).toLocaleString()}</span>
       </div>
       <div class="setting-row">
-        <div><b>Ultimate</b><span>Not obtainable yet.</span></div>
+        <div><b>Ultimate</b></div>
         <span class="coin-chip ult">✦ ${(st.club.ultimate || 0).toLocaleString()}</span>
       </div>
       <div class="setting-row">
         <div><b>${st.club.collection.length} cards · ${st.club.packsOpened} packs</b></div>
       </div>
       <div class="setting-row">
-        <div><b>Back up</b><span>Download your whole save as a file.</span></div>
+        <div><b>Back up</b></div>
         <button class="btn ghost" id="exportBtn">Download</button>
       </div>
       <div class="setting-row">
-        <div><b>Restore from a file</b><span>What it replaces is backed up first.</span></div>
+        <div><b>Restore from a file</b><span>Backed up first.</span></div>
         <label class="btn ghost" for="importFile">Choose file<input type="file" id="importFile" accept=".json,application/json" hidden></label>
       </div>
-      ${listBackups().length ? `<div class="setting-row sv-backups"><div><b>Automatic backups</b><span>One a day, the last three kept on this device.</span></div>
+      ${listBackups().length ? `<div class="setting-row sv-backups"><div><b>Automatic backups</b><span>Daily, last three.</span></div>
         <div class="sv-list">${listBackups().map((b, i) => `<button class="btn ghost sm" data-restore="${i}">${new Date(b.at).toLocaleDateString()}${b.manual ? ' · before a restore' : ''}</button>`).join('')}</div></div>` : ''}
       <div class="setting-row">
         <div><b>Reset save</b></div>
@@ -302,19 +314,19 @@ export function render() {
       </div>
     </section>
 
-    <section class="panel glass" id="rebind">
+    <section data-sec="pad" ${secHidden('pad')} class="panel glass" id="rebind">
       <header class="panel-head"><h2>Button map</h2><button class="btn ghost sm" id="bindReset">Defaults</button></header>
       <div class="setting-row">
-        <div><b>Stick deadzone</b><span>How far the stick moves before it counts. Raise it if your player drifts on his own.</span></div>
+        <div><b>Stick deadzone</b><span>Raise it if your player drifts.</span></div>
         <input type="range" id="padDead" min="5" max="45" step="1" value="${Math.round((s.padDeadzone ?? 0.22) * 100)}" aria-label="Stick deadzone">
       </div>
       <div class="setting-row">
-        <div><b>Stick response</b><span>Left: quick off the centre. Right: finer control near it.</span></div>
+        <div><b>Stick response</b><span>Left quick · right fine.</span></div>
         <input type="range" id="padCurve" min="50" max="200" step="10" value="${Math.round((s.padCurve ?? 1) * 100)}" aria-label="Stick response">
       </div>
-      <div class="setting-row"><div><b>Vibration</b><span>Goals, shots and tackles, on controllers that can rumble and on Android phones (iPhones do not let web pages vibrate). Also the tick when you press a touch button.</span></div>
+      <div class="setting-row"><div><b>Vibration</b><span>Pads and Android phones.</span></div>
         <button class="switch ${s.rumble !== false ? 'on' : ''}" id="rumbleTgl" role="switch" aria-checked="${s.rumble !== false}"><i></i></button></div>
-      <p class="hint">Choose a control, then press the key or controller button you want for it. Prompts in a match follow whatever you last used — keyboard, controller or touch.</p>
+      <p class="hint">Pick a control, then press its new key or button.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
         <div class="bind-row"><span>${BIND_NAMES[a] || a}</span>
           <button class="btn ghost sm" data-bind="key:${a}">${b.key ? keyLabel(b.key) : '—'}</button>
@@ -322,10 +334,10 @@ export function render() {
       <p class="hint" id="bindListen" aria-live="polite"></p>
     </section>
 
-    <section class="panel glass about">
+    <section data-sec="pad" ${secHidden('pad')} class="panel glass about">
       <header class="panel-head"><h2>Controller layout</h2></header>
       <div class="ctrl-grid">${controllerLayout()}</div>
-      <h3 class="skills-head">Skill moves <small>stars on each card show which a player can do · on touch, swipe the SKILL button (long swipe = sprint, curved = curl, with SPRINT held = lob)</small></h3>
+      <h3 class="skills-head">Skill moves <small>★ on a card = the moves he can do</small></h3>
       <div class="ctrl-grid skills-grid">
         ${skillList().map((m) => `<div><b>${'★'.repeat(m.stars)} ${m.name}</b><span>${m.combo}</span></div>`).join('')}
       </div>
@@ -336,12 +348,12 @@ export function render() {
         stats and values are invented and are not a claim about anyone's ability; badges
         and portraits are drawn rather than photographed — they are not likenesses.</p>
     </section>
-    <section class="panel glass about credits" id="credits">
+    <section data-sec="app" ${secHidden('app')} class="panel glass about credits" id="credits">
       <header class="panel-head"><h2>Credits</h2><span class="tag">${APP_VERSION}</span></header>
       <p><b>APEX XI</b> — an original football game, made by the APEX XI team and developed with Claude Code.</p>
       <dl class="credit-list">
         <dt>Game, simulation, pitches and grounds</dt><dd>Written for APEX XI. Every stadium, crowd, kit, badge and portrait is drawn in code.</dd>
-        <dt>Sound</dt><dd>Every effect, crowd song and anthem is synthesised in your browser as you play; commentary uses your device's own voice. No recorded audio ships with the game.</dd>
+        <dt>Sound</dt><dd>Effects, crowd songs and most music are synthesised in your browser. The recorded commentary is Kokoro-82M (Apache 2.0); the Saudi anthem is the US Navy Band recording (public domain); Green Nights is our own.</dd>
         <dt>3D engine</dt><dd>three.js and its example add-ons (glTF loader, post-processing), © three.js authors, MIT licence.</dd>
         <dt>Player figures</dt><dd>A rigged character and animations from Mixamo.</dd>
         <dt>Manager figure</dt><dd>Created with Meshy.</dd>
@@ -444,6 +456,16 @@ function mountRebind(root) {
 }
 
 export function mount(root) {
+  root.querySelector('#setTabs')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sec-tab]');
+    if (!b || b.dataset.secTab === sec) return;
+    sec = b.dataset.secTab;
+    veil(() => {
+      root.querySelectorAll('[data-sec]').forEach((el) => { el.hidden = el.dataset.sec !== sec; });
+      root.querySelectorAll('[data-sec-tab]').forEach((x) => { const on = x.dataset.secTab === sec; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); });
+      window.scrollTo({ top: 0 });
+    });
+  });
   const stopRebind = mountRebind(root);
   /* The build the server is actually serving, which is the only way to tell
    * from the device whether a push has landed. `APP_VERSION` above is written

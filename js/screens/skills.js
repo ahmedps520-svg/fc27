@@ -5,6 +5,7 @@
  */
 import { getState, update } from '../state.js';
 import { navigate, toast, refreshCoins, veil } from '../app.js';
+import { about } from '../components/facts.js';
 import { screenHead } from '../components/screenHead.js';
 import { Input } from '../game/input.js';
 import { DRILLS, createDrill, step, draw } from '../game/drills.js';
@@ -38,7 +39,7 @@ function drillsHTML() {
       <ol class="sk-board" data-board="${d.id}"><li class="empty">${api.isSignedIn() ? 'Loading the board…' : 'Sign in (Ultimate XI → Online) to post to the board.'}</li></ol>
       <button class="btn primary" data-drill="${d.id}">Play</button>
     </section>`).join('')}</div>
-    <p class="hint">Keyboard: WASD or arrows to move and aim, K (or Space) to strike — hold longer for power. Pad: left stick and ○/✕. Touch: the pad and the button on screen.</p>`;
+    ${about('Keyboard: WASD or arrows to move and aim, K (or Space) to strike — hold longer for power. Pad: left stick and ○/✕. Touch: the pad and the button on screen.', 'Controls')}`;
 }
 
 function pensHTML() {

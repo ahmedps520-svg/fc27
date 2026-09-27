@@ -32,6 +32,7 @@ import * as api from '../net/api.js';
 import { t } from '../i18n.js';
 import { trade, kindOf } from '../economy.js';
 import { facts, about, icon } from '../components/facts.js';
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { activeTheme } from '../seasonal.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
@@ -455,7 +456,7 @@ export function storeView() {
     const locked = !free && p.cost > (s.club.apex || 0);
     const freeReady = free && Date.now() >= (s.club.freeAt || 0);
     return `
-      <article class="store-pack rar-${packTone(p)}">
+      <article class="store-pack rar-${packTone(p)}" title="${esc(p.note || '')}">
         ${meta.badge ? `<span class="sp-badge b-${meta.badge}">${{ new: 'New', updated: 'Updated', back: 'Back', season: 'Event' }[meta.badge]}</span>` : p.limited ? '<span class="sp-tag">Limited</span>' : ''}
         ${meta.leavesIn ? `<span class="sp-leaves">${icon('clock', 12)} ${fmtLeft(meta.leavesIn)}</span>` : ''}
         <div class="sp-art">
@@ -467,11 +468,11 @@ export function storeView() {
           <i class="sp-foil" aria-hidden="true"></i>
         </div>
         <b class="sp-name">${p.weekly ? `${p.name}: ${nationOfWeek()}` : p.variant === 'campaign' ? campaignNow().name : p.name}</b>
-        <span class="sp-note">${p.note}</span>
         ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
-        ${p.id === 'limited' ? '<span class="sp-alt">or win 12 division matches</span>' : ''}
-        <span class="sp-odds">${oddsLine(p)}</span>
-        <span class="sp-could">Could pull</span>${cardStrip(samplePulls(p, 3), { size: 'mini', cls: 'sp-strip' })}
+        ${p.id === 'limited' ? `<span class="sp-alt">${icon('trophy', 12)} or 12 division wins</span>` : ''}
+        ${cardStrip(samplePulls(p, 3), { size: 'mini', cls: 'sp-strip' })}
+        <!-- v136: the pitch and the odds, a tap away rather than printed on every pack -->
+        ${about(`${p.note ? `${esc(p.note)}<br>` : ''}${oddsLine(p)}`, 'Odds')}
         <!-- last child on purpose: the auto top margin on the button is what
              lines every price in a shelf up on one baseline -->
         <button class="btn ${locked || (free && !freeReady) ? 'ghost' : 'primary'}"
@@ -491,11 +492,11 @@ export function storeView() {
     .sort((a, b) => (promoFirst[a.badge] ?? 9) - (promoFirst[b.badge] ?? 9));
   const onShelf = catalog.filter((x) => !(x.pack.cat === 'promo' || x.badge));
   const SHELVES = [
-    ['promo', 'Promo', `New, updated and back this week · ${campaignNow().name} ends in ${fmtLeft(campaignEndsIn() * 1000)}`, promo],
-    ['free', 'On the house', 'A free bronze pack, every six hours.', null],
-    ['standard', 'Standard', 'The everyday packs.', null],
-    ['premium', 'Premium', 'Higher floors and better odds.', null],
-    ['limited', 'Limited & Icons', 'Guaranteed headline cards.', null],
+    ['promo', 'Promo', `${icon('clock', 12)} ${campaignNow().name} · ${fmtLeft(campaignEndsIn() * 1000)}`, promo],
+    ['free', 'On the house', `${icon('clock', 12)} every 6 h`, null],
+    ['standard', 'Standard', '', null],
+    ['premium', 'Premium', `${icon('up', 12)} better odds`, null],
+    ['limited', 'Limited & Icons', `${icon('star', 12)} guaranteed`, null],
   ];
 
   return subs + shelfEvent + `
@@ -529,14 +530,12 @@ function eventShelf(s) {
   const afford = (s.club.apex || 0) >= pack.cost;
   return `
     <section class="panel glass ev-shelf" style="--ev:${ev.theme || 'var(--accent)'}">
-      <header class="panel-head"><h2>${ev.name} <small>this week</small></h2></header>
-      <p class="hint">${ev.blurb}</p>
+      <header class="panel-head"><h2>${ev.name} <small>this week</small></h2>${about(`${ev.blurb}${pack.note ? `<br>${pack.note}` : ''}`, 'About this event')}</header>
       <div class="ev-pack">
         <div class="ev-pack-body">
           <b>${pack.name}</b>
-          <span class="sp-note">${pack.note || ''}</span>
           ${pack.promise ? `<span class="sp-promise">${pack.promise}</span>` : ''}
-          ${ev.featured ? `<span class="sp-promise">Featured: ${ev.featured.player} +${ev.featured.boost} · ${Math.round(ev.featured.chance * 100)}% per pack</span>` : ''}
+          ${ev.featured ? `<span class="sp-promise">${icon('star', 12)} ${ev.featured.player} +${ev.featured.boost} · ${Math.round(ev.featured.chance * 100)}%</span>` : ''}
         </div>
         <button class="btn ${afford ? 'primary' : 'ghost'}" data-buy-pack="${pack.id}" ${afford ? '' : 'disabled'}>◈ ${pack.cost.toLocaleString()}</button>
       </div>
@@ -938,7 +937,7 @@ export function render() {
           ${linksSVG(lineup, formation)}
           ${FORMATIONS[formation].map((slot, i) => slotHTML(slot, i, lineup[i], chem.per[i])).join('')}
         </div>
-        <p class="pitch-hint">Tap an empty slot to see who can play there, or drag a card onto the pitch.</p>
+        <p class="pitch-hint">Tap a slot · or drag a card on</p>
 
         <!-- Five seats. Three of them can come on in a match; a keeper can only
              be replaced by a keeper, so it is worth carrying one. -->

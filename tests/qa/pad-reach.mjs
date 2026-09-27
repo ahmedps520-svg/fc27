@@ -86,7 +86,8 @@ async function focusByPad(k) {
       const prev = new Map([[start, null]]); const q = [start];
       while (q.length) {
         const i = q.shift(); if (i === k) break;
-        for (const d of ['up', 'down', 'left', 'right']) { const j = pm.peek(i, d); if (j >= 0 && j < len && !prev.has(j)) { prev.set(j, [i, d]); q.push(j); } }
+        // a focused slider takes left and right for its value, so the path cannot leave it sideways (v136)
+        for (const d of ['up', 'down', 'left', 'right']) { if ((d === 'left' || d === 'right') && pm.list()[i]?.type === 'range') continue; const j = pm.peek(i, d); if (j >= 0 && j < len && !prev.has(j)) { prev.set(j, [i, d]); q.push(j); } }
       }
       if (!prev.has(k)) return null;
       let c = k; let first = null; while (prev.get(c)) { const [p, d] = prev.get(c); first = d; c = p; }
@@ -170,6 +171,8 @@ if (!process.argv.includes('--explore')) {
 async function feature(name, fn) {
   try { const why = await fn(); if (why) problems.push(`${name}: ${why}`); else console.log(`  · ${name}`); } catch (e) { problems.push(`${name}: ${e.message.split('\n')[0]}`); }
 }
+// v136: Settings is in sections; the controller's settings are behind its tab
+const SETTINGS_PAD = ['go:settings', '[data-sec-tab=pad]'];
 const via = async (route) => { if (!(await home())) return false; for (const k of route) if (!(await pressKey(k))) return false; return true; };
 const focusOnly = async (key) => { const k = (await keysHere()).indexOf(key); return k >= 0 && focusByPad(k); };
 if (!process.argv.includes('--explore')) {
@@ -201,7 +204,7 @@ if (!process.argv.includes('--explore')) {
     return lineup.map(String).includes(pid) ? '' : `player ${pid} is not in the line-up after pick → ${target}`;
   });
   await feature('a slider moves with the D-pad', async () => {
-    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await via(SETTINGS_PAD))) return 'could not reach Settings → Controller';
     if (!(await focusOnly('#padDead'))) return 'could not focus the Stick deadzone slider';
     const v0 = await page.$eval('#padDead', (e) => Number(e.value));
     await press(DPAD.right); await page.waitForTimeout(200);
@@ -223,7 +226,7 @@ if (!process.argv.includes('--explore')) {
     return after.length === before.length + 2 ? '' : `typed "${before}" → "${after}"`;
   });
   await feature('rebinding a button with the pad takes the next press, not the A that chose it', async () => {
-    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await via(SETTINGS_PAD))) return 'could not reach Settings → Controller';
     if (!(await focusOnly('[data-bind=pad:lob]'))) return 'could not focus the Lob pad binding';
     await press(A); await page.waitForTimeout(250);
     // wait until Settings is listening, then hold Y across several frames: the capture
@@ -236,7 +239,7 @@ if (!process.argv.includes('--explore')) {
     return bound === 3 ? '' : `Lob was bound to ${bound} (A is 0)`;
   });
   await feature('leaving Settings mid-rebind does not leave the controller dead', async () => {
-    if (!(await via(ROUTES.settings))) return 'could not reach Settings';
+    if (!(await via(SETTINGS_PAD))) return 'could not reach Settings → Controller';
     if (!(await focusOnly('[data-bind=pad:lob]'))) return 'could not focus the Lob pad binding';
     await press(A); await page.waitForTimeout(400);
     // leave without pressing anything (a mouse on the back button, say)

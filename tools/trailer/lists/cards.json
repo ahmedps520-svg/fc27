@@ -1,0 +1,7 @@
+[
+ {"name":"cap-stadium","card":"cap","kicker":"EVERY MATCHDAY","text":"THE STADIUM IS FULL","frames":100,"fadeOut":10},
+ {"name":"title","card":"title","frames":57},
+ {"name":"cap-weather","card":"cap","kicker":"DAY · NIGHT · RAIN · SNOW","text":"ANY NIGHT. ANY WEATHER.","frames":100,"fadeOut":10},
+ {"name":"line-build","card":"line","kicker":"ULTIMATE XI","text":"BUILD YOUR *DREAM TEAM*","frames":57},
+ {"name":"end","card":"end","frames":186}
+]

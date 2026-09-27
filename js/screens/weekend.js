@@ -55,7 +55,7 @@ export function render() {
         </div>
         <div class="wl-search" id="wlSearch" hidden><span>Searching for a weekend opponent with a similar record…</span><button class="btn ghost" id="wlCancel">Cancel</button></div>
         <div class="wl-qual ${q.qualified ? 'ok' : ''}"><b>${q.qualified ? 'Qualified' : `Qualification ${q.points}/${q.need}`}</b>
-          <span>${q.qualified ? 'Your entry is confirmed for this weekend.' : 'Win Apex Division or Quickfire Fives matches (1 point) and Squad Clash matches (2) to qualify.'}</span>
+          <span>${q.qualified ? 'Your entry is confirmed for this weekend.' : 'Division or Fives win +1 · Squad Clash win +2'}</span>
           <i class="obj-bar"><b style="width:${Math.min(100, (q.points / q.need) * 100)}%"></b></i></div>
         ${!squadReady ? '<p class="setting-note warn">Fill all eleven slots of your Ultimate XI first.</p>' : ''}
         ${!w.open ? '<p class="hint">Rewards for a finished weekend are claimed on the Today screen once the window closes.</p>' : ''}
@@ -68,7 +68,6 @@ export function render() {
       </section>
       <section class="panel glass" id="wlBoard">
         <header class="panel-head"><h2>Online board <small>${w.id}</small></h2></header>
-        <p class="hint">Apex Division matches played online inside the window count here, validated by the server.</p>
         <div class="lb" id="wlRows"><p class="empty">Loading…</p></div>
       </section>
     </div>`;

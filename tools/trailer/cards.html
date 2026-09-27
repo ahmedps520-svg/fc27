@@ -1,0 +1,98 @@
+<!doctype html>
+<!--
+  The trailer's type (tools/trailer): title cards, captions over the footage,
+  and the end card, in the game's own look. cards.mjs opens this at 1920x1080
+  with ?card=<name>&text=<...>, pauses every animation and steps it frame by
+  frame (document.getAnimations), so the motion is exact at 30 fps.
+  Captions render on a transparent page and are laid over the footage.
+-->
+<html><head><meta charset="utf-8">
+<!-- Oswald and Inter (SIL Open Font License), variable, Latin subset: fonts/ -->
+<style>
+  @font-face { font-family: Oswald; src: url('fonts/Oswald.woff2') format('woff2'); font-weight: 200 700; }
+  @font-face { font-family: Inter; src: url('fonts/Inter.woff2') format('woff2'); font-weight: 100 900; }
+</style>
+<style>
+  :root { --g: #23c55e; --g2: #9dffc6; --ink: #05070e; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Oswald, 'Arial Narrow', sans-serif; }
+  .full { position: absolute; inset: 0; }
+  .bg { background: var(--ink); }
+  .art { background: url('../../assets/keyart.webp') center / cover; }
+  .shade { background: radial-gradient(120% 90% at 30% 50%, rgba(5,7,14,.35), rgba(5,7,14,.92)); }
+  .grid { background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 80px 80px; }
+  svg.sw { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .glow { filter: drop-shadow(0 0 18px rgba(35,197,94,.8)) drop-shadow(0 0 4px rgba(35,197,94,.9)); }
+  .draw { stroke-dasharray: 2600; stroke-dashoffset: 2600; animation: draw 0.9s cubic-bezier(.2,.8,.2,1) forwards; }
+  .d2 { animation-delay: .12s; } .d3 { animation-delay: .24s; } .d4 { animation-delay: .36s; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .word { position: absolute; left: 0; right: 0; text-align: center; color: #f6f9ff; font-weight: 700; font-style: italic; letter-spacing: -.02em; }
+  .word b { color: var(--g); font-weight: 700; text-shadow: 0 0 28px rgba(35,197,94,.7); }
+  .rise { opacity: 0; transform: translateY(40px) skewX(-6deg); animation: rise .7s cubic-bezier(.2,.9,.2,1) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  .pop { opacity: 0; transform: scale(1.35); filter: blur(12px); animation: pop .55s cubic-bezier(.2,.9,.2,1) forwards; }
+  @keyframes pop { to { opacity: 1; transform: none; filter: none; } }
+  .fade { opacity: 0; animation: fade .6s ease forwards; }
+  @keyframes fade { to { opacity: 1; } }
+  .out { animation: out .35s ease-in forwards; }
+  @keyframes out { to { opacity: 0; transform: translateX(-60px); } }
+  .ring { position: absolute; }
+  .ring circle.arc { stroke-dasharray: 60 200; animation: spin 2.4s linear infinite; transform-origin: 50% 50%; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* captions over the footage: lower left, big italic, a lit bar */
+  .cap { position: absolute; left: 110px; bottom: 120px; }
+  .cap .k { font: 600 26px/1 Oswald; letter-spacing: .32em; color: var(--g); text-shadow: 0 0 14px rgba(35,197,94,.6); }
+  .cap .t { margin-top: 12px; font: 700 italic 104px/0.92 Oswald; color: #fff; letter-spacing: -.02em; text-shadow: 0 6px 40px rgba(0,0,0,.65); }
+  .cap .bar { margin-top: 18px; height: 6px; width: 0; background: linear-gradient(90deg, var(--g), rgba(35,197,94,0)); box-shadow: 0 0 18px rgba(35,197,94,.8); animation: bar .7s .15s cubic-bezier(.2,.9,.2,1) forwards; }
+  @keyframes bar { to { width: 520px; } }
+  .chips { position: absolute; left: 0; right: 0; bottom: 250px; text-align: center; font: 600 30px/1 Oswald; letter-spacing: .28em; color: rgba(255,255,255,.8); }
+  .chips i { color: var(--g); font-style: normal; margin: 0 18px; }
+  .url { position: absolute; left: 0; right: 0; bottom: 150px; text-align: center; font: 700 44px/1 Inter, sans-serif; color: #fff; letter-spacing: .02em; }
+  .url span { color: var(--g); }
+</style></head>
+<body>
+<div id="stage" class="full"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const card = q.get('card') || 'title';
+const text = (q.get('text') || '').replace(/\*(.+?)\*/g, '<b>$1</b>');
+const kicker = q.get('kicker') || '';
+const G = '#23c55e';
+const swoosh = (cls = '') => `
+  <svg class="sw ${cls}" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" stroke-linecap="square">
+    <path class="glow draw" d="M1180 1180 L1330 1165 L2000 260" stroke="${G}" stroke-width="30"/>
+    <path class="glow draw d2" d="M1290 1190 L1420 1180 L2000 470" stroke="${G}" stroke-opacity=".35" stroke-width="12"/>
+    <path class="draw d3" d="M1380 1195 L1500 1188 L2000 640" stroke="#9dffc6" stroke-opacity=".55" stroke-width="4"/>
+    <path class="draw d4" d="M1100 1175 L1240 1160 L1960 -40" stroke="#fff" stroke-opacity=".5" stroke-width="3"/>
+  </svg>`;
+const logo = (size, y) => `
+  <div class="pop" style="position:absolute;left:0;right:0;top:${y}px;display:flex;justify-content:center;align-items:center;gap:${size * 0.28}px">
+    <svg width="${size}" height="${size}" viewBox="0 0 64 64" style="overflow:visible">
+      <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="5"/>
+      <circle class="glow" cx="32" cy="32" r="27" fill="none" stroke="${G}" stroke-width="5" stroke-linecap="round" stroke-dasharray="70 200" transform="rotate(-100 32 32)"/>
+      <text x="32" y="44" text-anchor="middle" font-family="Oswald" font-weight="700" font-style="italic" font-size="34" fill="#fff">A</text>
+    </svg>
+    <div style="font:700 italic ${size * 0.95}px/1 Oswald;color:#fff;letter-spacing:.02em">APEX <span style="color:${G};text-shadow:0 0 30px rgba(35,197,94,.75)">XI</span></div>
+  </div>`;
+const S = document.getElementById('stage');
+if (card === 'title') {
+  S.innerHTML = `<div class="full bg grid"></div><div class="full art fade" style="opacity:.0;filter:blur(3px) brightness(.55)"></div><div class="full shade"></div>${swoosh()}
+    ${logo(190, 400)}
+    <div class="word rise" style="top:640px;font-size:40px;font-style:normal;font-weight:600;letter-spacing:.42em;color:rgba(255,255,255,.85);animation-delay:.35s">THE FOOTBALL GAME IN YOUR BROWSER</div>`;
+} else if (card === 'line') {
+  S.innerHTML = `<div class="full bg grid"></div>${swoosh()}
+    ${kicker ? `<div class="word rise" style="top:380px;font-size:34px;font-style:normal;font-weight:600;letter-spacing:.42em;color:${G}">${kicker}</div>` : ''}
+    <div class="word rise" style="top:440px;font-size:150px;line-height:1;animation-delay:.08s">${text}</div>`;
+} else if (card === 'cap') {
+  S.innerHTML = `<div class="cap"><div class="k rise">${kicker}</div><div class="t rise" style="animation-delay:.06s">${text}</div><div class="bar"></div></div>`;
+} else if (card === 'end') {
+  S.innerHTML = `<div class="full art" style="filter:brightness(.6)"></div><div class="full shade"></div>${swoosh()}
+    ${logo(210, 300)}
+    <div class="word rise" style="top:560px;font-size:64px;animation-delay:.3s">PLAY FREE IN YOUR <b>BROWSER</b></div>
+    <div class="chips fade" style="animation-delay:.6s">ULTIMATE XI<i>/</i>CAREER<i>/</i>ONLINE<i>/</i>STREET<i>/</i>CUSTOM CUP</div>
+    <div class="url fade" style="animation-delay:.9s">fc27<span>.onrender.com</span></div>`;
+}
+// the stepper: every animation paused, driven to exact times
+window.__at = (ms) => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = ms; } };
+window.__ready = Promise.all([document.fonts.load('700 italic 80px Oswald'), document.fonts.load('600 30px Oswald'), document.fonts.load('700 40px Inter')]).then(() => document.fonts.ready).then(() => new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = '../../assets/keyart.webp'; }));
+</script>
+</body></html>

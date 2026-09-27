@@ -21,6 +21,7 @@ import { flagSVG } from '../components/crest.js';
 
 import { LEAGUES } from '../data/pools.js';
 import { t } from '../i18n.js';
+import { icon } from '../components/facts.js';
 
 export const TITLE = 'Trophy Room';
 
@@ -53,21 +54,21 @@ function hallHTML(s) {
         ${icons.map((p) => {
           const def = ICONS.find((d) => d.name === p.name) || {};
           return `
-          <div class="hall-card ${owned.has(p.id) ? 'owned' : ''}">
+          <div class="hall-card ${owned.has(p.id) ? 'owned' : ''}" title="${p.nation} · ${p.position} — ${ICON_LINES[def.trait] || 'a name the game is named after'}">
             ${playerCard(p, { size: 'mini' })}
-            <p class="hall-line">${flagSVG(p.nationColors, 14)} ${p.nation} · ${p.position} — ${ICON_LINES[def.trait] || 'a name the game is named after'}</p>
-            ${owned.has(p.id) ? '<span class="hall-tag">In your club</span>' : '<span class="hall-tag dim">Limited Edition packs</span>'}
+            <p class="hall-line">${flagSVG(p.nationColors, 14)} ${p.position}</p>
+            ${owned.has(p.id) ? `<span class="hall-tag">${icon('check', 13)} Yours</span>` : `<span class="hall-tag dim" title="From Limited Edition packs">${icon('lock', 13)}</span>`}
           </div>`;
         }).join('')}
       </div>
       ${board.length ? `
       <h3 class="wround">${t('trophies.honours')}</h3>
-      <table class="wtable honours">
+      <div class="wtable-scroll"><table class="wtable honours">
         <thead><tr><th>Season</th>${LEAGUES.map((l, i) => `<th title="${l}">Div ${i + 1}</th>`).join('')}<th>Continental Cup</th><th>Nations Cup</th></tr></thead>
         <tbody>
           ${board.map((h) => `<tr><td>${h.season}</td>${h.champions.map((id) => `<td>${WORLD.clubsById[id].short}</td>`).join('')}<td>${h.cup ? WORLD.clubsById[h.cup].short : '—'}</td><td>${h.nationsCup || '—'}</td></tr>`).join('')}
         </tbody>
-      </table>` : '<p class="wzone">The honours board fills in when the first world season ends.</p>'}
+      </table></div>` : '<p class="wzone">The honours board fills in when the first world season ends.</p>'}
     </section>`;
 }
 
@@ -89,10 +90,10 @@ export function render() {
             <header class="panel-head"><h2>${label} <small>${rows.filter((a) => a.complete).length}/${rows.length}</small></h2></header>
             <div class="shelf-row">
               ${rows.map((a) => `
-                <div class="trophy ${a.complete ? 'earned' : ''} ${a.complete && !a.claimed ? 'claimable' : ''}">
+                <div class="trophy ${a.complete ? 'earned' : ''} ${a.complete && !a.claimed ? 'claimable' : ''}" data-trophy title="${a.blurb}" tabindex="0">
                   ${cup(a.tier, a.complete)}
                   <b>${a.name}</b>
-                  <span>${a.blurb}</span>
+                  <span class="tr-how">${a.blurb}</span>
                   <div class="trophy-bar"><i style="width:${Math.round(100 * a.have / a.need)}%"></i></div>
                   ${a.complete && !a.claimed
                     ? `<button class="btn primary" data-claim="${a.id}">◈ ${a.apex.toLocaleString()}</button>`
@@ -105,6 +106,8 @@ export function render() {
 }
 
 export function mount(root) {
+  // v136: how to earn a trophy is a tap away, not printed under every one of them
+  root.querySelectorAll('[data-trophy]').forEach((el) => el.addEventListener('click', (e) => { if (!e.target.closest('button')) el.classList.toggle('open'); }));
   const claim = (id) => { const a = claimAchievement(id); if (a) { sfx('coin'); toast(`${a.name} · ◈ ${a.apex.toLocaleString()}`, 'good'); } return !!a; };
   root.querySelectorAll('[data-claim]').forEach((b) => b.addEventListener('click', () => { if (claim(b.dataset.claim)) { refreshCoins(); navigate('trophies'); } }));
   root.querySelector('#claimAll')?.addEventListener('click', () => {

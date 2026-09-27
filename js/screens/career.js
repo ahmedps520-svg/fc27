@@ -60,16 +60,13 @@ function modesHTML() {
       <button class="cm-mode glass" id="cmManager">
         <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Run a club'}</span>
         <b>MANAGER MODE</b>
-        <p>You are the manager. Pick your touchline persona, take charge of a real club,
-           work the transfer market, and influence matches from the technical area —
-           the players are yours to steer, never to control.</p>
+        ${facts([['shield', 'Take a club'], ['money', 'Transfers'], ['whistle', 'Call it from the touchline']], 'cm-facts')}
         <span class="cm-cta">Start →</span>
       </button>
       <button class="cm-mode glass" id="cmPlayer">
         <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `Continue · ${getState().pro.name}` : 'Be the player'}</span>
         <b>PLAYER MODE</b>
-        <p>Create a footballer — name, nation, position, look — and start at seventeen in a second tier.
-           Play only your player, earn the manager's trust, train, move clubs, win caps, and retire with a legacy.</p>
+        ${facts([['boot', 'Create a player'], ['up', 'Start at 17'], ['trophy', 'Caps and a legacy']], 'cm-facts')}
         <span class="cm-cta">${getState().pro ? 'Continue →' : 'Create your player →'}</span>
       </button>
     </div>`;

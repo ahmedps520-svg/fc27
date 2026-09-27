@@ -15,6 +15,75 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v136 — less text, part 3 (owner: "keep going with the less text stuff")
+- Words per screen, from a visible-text audit (`tests/tmp/words.mjs`, not
+  committed; it walks every screen and tab):
+  - Settings: 1,054 → one section at a time.
+  - Trophies: 918 → 462.
+  - Ultimate XI store: 470 → 315.
+  - Stadiums (528) is mostly the list of grounds and was left alone.
+- `settings.js`:
+  - `SECTIONS` / `sec` (a module variable, so it survives the redraws) and
+    a `#setTabs` row of icon subtabs;
+  - each panel carries `data-sec` and is hidden unless open; a switch uses
+    `veil()`;
+  - about 20 help lines shortened or dropped.
+  - Credits corrected: they said "no recorded audio ships", which stopped
+    being true at v121/v126.
+- Trophies: each Icon's line moves to `title`, leaving the flag and
+  position, and the tag becomes a ✓/🔒 icon. A trophy's blurb (`.tr-how`)
+  shows on tap (`.open`).
+- Store: a pack's note and odds line move into `about()` ("Odds"), "Could
+  pull" is dropped (the card strip says it), the shelf blurbs become icon
+  chips, and the event shelf's blurb goes behind an ⓘ. `squad.js` gains a
+  local `esc`.
+- Fixes found by QA:
+  - `pad-reach` goes Settings → Controller (`SETTINGS_PAD`), and its
+    pathfinder no longer steps sideways off a focused slider (a slider
+    takes left/right for its value);
+  - the honours table sits in `.wtable-scroll`;
+  - under 480 px any `.wtable` scrolls inside itself (the world table
+    overflowed a 320 px phone);
+  - Career's chips wrap at 13 px;
+  - the section row is not sticky.
+  The online bot's two-client step timed out once under load and passed
+  on a re-run.
+- Career's mode cards use `facts()` chips. The sign-in panel, Weekend
+  qualification line and online-board hint, Today's XP line and the Skills
+  controls line are shortened or moved behind an ⓘ.
+
+### The commercial (owner's ask: "a montage of the whole game and a run through")
+- 60 s, 16:9, 1080p30, with the game's music and commentary. Output:
+  - `tests/tmp/trailer/apex-xi-trailer.mp4` (full quality, 172 MB);
+  - `-share.mp4` (76 MB).
+  Neither is committed.
+- `tools/trailer/`:
+  - `scenes.mjs`: plays 30 AI matches in Node (about 40 s) and writes
+    every headed goal, distance goal, save and foul as a full-precision
+    30 fps recording.
+  - `film.mjs`: plays a recording back onto the real game in Chromium.
+    The page's rAF and performance.now are hijacked so each frame is exactly
+    1/30 s; `match.update` is a no-op, the state is written per frame, and
+    `window.__apexCam.update` is overridden with the cameras crane, follow,
+    low, tight, goal and orbit. Frames are grabbed with canvas `toDataURL`
+    (the HUD isn't in the canvas). A shot list groups shots by clubs and
+    weather, one match load each; 1080p on High runs at about 3–8 s a
+    frame (two parallel batches took about 2 h).
+  - `cards.html` / `cards.mjs`: title and end cards and captions in the
+    game's style, stepped through `document.getAnimations()`. Local
+    Oswald/Inter (OFL) are in `fonts/`.
+  - `ui.mjs`: 1920×1080 stills of the screens. Every footballer is renamed
+    from `pools.js` first (a public image carries no real names); the
+    Custom Cup uses national sides.
+  - `assemble.py`: ffmpeg cut on the music's bar (57 frames); grade; stills
+    with a zoompan push; captions overlaid. Audio is the recorded
+    highlights bed (the game's WebAudio, tapped with a MediaRecorder), a
+    brown-noise crowd with pink-noise roars at goals, 8 US-pack commentary
+    clips, sidechain ducking and loudnorm −15 LUFS.
+- To remake it: `scenes.mjs`, then `film.mjs --shots <list> --out <dir> --w
+  1920 --h 1080`, then `cards.mjs`, `ui.mjs` and `assemble.py`. The shot
+  list and card lists used are in `tools/trailer/lists/`.
+
 ### v135 — polish: the net shakes, the purchase endpoint locked down (owner's #5 and #7)
 - **The net (#5).** `js/game/net.js` has been wired into renderGL since v76.
   The audit note below, "nothing imports it", was stale and is corrected.
