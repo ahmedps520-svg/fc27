@@ -15,6 +15,46 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v138 — original colours and badges for the real clubs (backlog #35)
+- New `js/data/clubLook.js`:
+  - `clubLook(club)` gives `{ colors, shape, pattern, device }`,
+    deterministic from `clubKey(name)`: lower case, accents stripped,
+    FC/AC/CF/… dropped, "münchen" read as "munich".
+  - `PALETTE` has 36 original pairs, none of them a famous club's
+    combination.
+  - A club takes the first pair (in its own hash order) whose main hue is at
+    least 60° from each of its real hues (and whose second hue is at least
+    35° away), and not yet dealt in its league.
+  - The real pair stays on the object as `realColors`, only as what to
+    steer away from.
+  - `applyLooks(list)` applies it in place, in a fixed order.
+    `lookCrest(club)` is the crest object.
+- Applied where the tables live:
+  - `careerDb.js` (and its generator template in
+    `tools/build-career-db.py`);
+  - `countries.js`: each country's clubs form a "league" for sharing out;
+  - `careerV2.allClubs()` for the second tiers.
+- `career.js`, `pro.js` and `cup.js` build crests from the look instead of
+  the solid star.
+- A club in both Career and Kick Off is dealt once, against the career
+  table's real pair: `careerDb` loads first, and the look is cached by key.
+- Crests (`components/crest.js`):
+  - two new shapes: `heater` and `roundel`. The roundel is a ring in the
+    first colour with the code on a text path round its foot, and two
+    stars;
+  - a `chevrons` pattern and five new devices: anchor, bolt, tree, cog,
+    tower;
+  - an inner rim (the outline at 0.86, ink at 38%) on every full-size badge.
+  - The small build (under 28 px) is unchanged, so a roundel draws as a
+    plain circle there.
+- Tests: `club-look.test.mjs`:
+  - no club is within those hue margins of its real colours;
+  - no pair repeats within a career league;
+  - Career and Kick Off agree for the 20+ shared clubs;
+  - every look draws at 20 and 64 px.
+- Reference sheet: `tests/tmp/crests.mjs`, not committed. It renders every
+  career club's badge, big and small, with its pair.
+
 ### v137 — feel part 2: plant-and-cut, turning on the spot (backlog #19)
 Render only: the sweep is identical.
 - `rig.js updateCut(p, dt)`, called from `updateBank`:

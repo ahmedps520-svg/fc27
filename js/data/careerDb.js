@@ -11,9 +11,12 @@
  * Star trading cards, whose career ratings are stated in CAREER_RATINGS
  * because a career wants a footballer, not a 99.
  *
- * Badges are drawn by the game's own crest generator in each club's colours:
- * real names, real colours, original artwork.
+ * v138: real names, original colours and badges: clubLook.js deals each club
+ * a palette pair away from its real colours (the pairs below are only what it
+ * steers away from) and its own crest.
  */
+import { applyLooks } from './clubLook.js';
+
 export const CAREER_CLUBS = [
   { id:'mci', name:'Manchester City', short:'MCI', league:'Premier League', country:'England', colors:['#6cabdd','#1c2c5b'], shape:'circle' },
   { id:'mun', name:'Manchester United', short:'MUN', league:'Premier League', country:'England', colors:['#da291c','#000000'], shape:'shield' },
@@ -51,6 +54,7 @@ export const CAREER_CLUBS = [
   { id:'shb', name:'Al Shabab', short:'SHB', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#e8e8e8','#231f20'], shape:'shield' },
   { id:'ett', name:'Al Ettifaq', short:'ETT', league:'Saudi Pro League', country:'Saudi Arabia', colors:['#12704f','#c8a55f'], shape:'circle' },
 ];
+applyLooks(CAREER_CLUBS);
 
 /** Each row: [name, position, country]. Resolved to live stats at runtime. */
 export const CAREER_SQUADS = {

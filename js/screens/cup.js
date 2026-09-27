@@ -17,7 +17,7 @@ import { cup, createCup, quitCup, yourTie, matchParams, teamById, ratingOf, roun
 export const TITLE = 'Custom Cup';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const crestOf = (tm) => crestSVG({ shape: tm.shape || 'shield', pattern: tm.national ? 'halves' : 'solid', device: 'star', colors: tm.colors }, tm.short, 30);
+const crestOf = (tm) => crestSVG({ shape: tm.shape || 'shield', pattern: tm.national ? 'halves' : tm.pattern || 'solid', device: tm.device || 'star', colors: tm.colors }, tm.short, 30);
 const teamsOf = (country) => (country === INTERNATIONAL ? internationalTeams() : (countryByName(country)?.clubs || []));
 
 // the creator's draft, kept while the screen is re-rendered

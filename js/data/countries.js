@@ -8,12 +8,13 @@
  * curated squads for the clubs they share; every other club is dealt the
  * best available players of its nationality from the world pool, so the
  * names are real and the nationality is right even where the club is an
- * approximation of who plays there this season. Badges are the game's own
- * crest generator in each club's colours — real names, real colours,
- * original artwork.
+ * approximation of who plays there this season. v138: real names, original
+ * colours and badges (clubLook.js; the pairs below are only what it steers
+ * away from).
  */
 import { WORLD } from './generator.js';
 import { CAREER_CLUBS } from './careerDb.js';
+import { applyLooks, lookCrest } from './clubLook.js';
 import { squadOf } from '../career.js';
 import { nations, nationSquad } from '../world.js';
 
@@ -78,6 +79,8 @@ export const COUNTRIES = [
   ['China', [C('Shanghai Port', 'SHP', '#d81e05', '#f4f4f4'), C('Shandong Taishan', 'SDT', '#f7a600', '#0a4fa0'), C('Beijing Guoan', 'BJG', '#0c6b34', '#f4f4f4')]],
   ['India', [C('Mohun Bagan', 'MBG', '#0c6b34', '#8b0f2f'), C('Mumbai City', 'MCF', '#6cabdd', '#f4f4f4'), C('Bengaluru FC', 'BFC', '#0a4fa0', '#f4f4f4'), C('Kerala Blasters', 'KBF', '#ffd400', '#0a4fa0')]],
 ].map(([name, clubs], i) => ({ name, rank: i + 1, clubs: clubs.map((c) => ({ ...c, id: `kc-${name}-${c.short}`.replace(/\s+/g, '-').toLowerCase(), country: name })) }));
+// v138: each country's clubs share out the palette like a league
+for (const c of COUNTRIES) applyLooks(c.clubs.map((k) => Object.assign(k, { league: k.league || c.name })));
 
 export const INTERNATIONAL = 'International';
 
@@ -194,7 +197,7 @@ export function matchSquad(club) {
   const { xi, bench } = clubSquad(club);
   return {
     id: club.id, name: club.name, short: club.short, colors: club.colors, country: club.country,
-    crest: { shape: club.shape || 'shield', pattern: 'solid', device: 'star', colors: club.colors },
+    crest: lookCrest(club),
     xi, bench, rating: clubSheet(club).overall,
   };
 }
