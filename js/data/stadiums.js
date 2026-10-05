@@ -219,14 +219,32 @@ export function atmosphereFor(seed, force = {}, { month = null, warm = false } =
   const winter = !warm && month != null && (month === 11 || month === 0 || month === 1);
   if (winter && !force.weather && d < 0.11) weather = 'snow';
   const frost = force.frost ?? (winter && weather === 'clear' && time === 'night' && d > 0.45);
+  /* v143: wind, in m/s across the pitch (x along it, y across), which the
+     match pushes a ball in the air with. Calm more often than not; a wet or
+     grey day blows harder. Chosen weather keeps its seed's wind. */
+  const hw = hashStr(`wind|${seed}`);
+  const gust = ((hw & 0xff) / 255) ** 1.6;
+  const top = weather === 'rain' ? 6 : weather === 'overcast' ? 5 : weather === 'snow' ? 4 : 3;
+  const speed = Math.round(gust * top * 10) / 10;
+  const dir = (((hw >>> 8) & 0xffff) / 0xffff) * Math.PI * 2;
   return {
     time,
     weather,
+    wind: { x: Math.round(Math.cos(dir) * speed * 100) / 100, y: Math.round(Math.sin(dir) * speed * 100) / 100, speed },
     /** 0..1: how hard the rain (or snow) falls / how heavy the overcast is */
     intensity: 0.4 + c * 0.6,
     wet: weather === 'rain',
     frost,
   };
+}
+
+/** v143: one line on how the conditions play, for the loading card — the ball behaves differently, so say so. */
+export function conditionsNote(atmo) {
+  const notes = [];
+  if (atmo.weather === 'rain') notes.push('A wet pitch: the ball skids on quickly and stays low off the bounce.');
+  else if (atmo.weather === 'snow') notes.push('Snow on the pitch: the ball holds up and barely bounces.');
+  if ((atmo.wind?.speed || 0) >= 2.5) notes.push('Wind will carry balls in the air.');
+  return notes.join(' ');
 }
 
 export const TIME_LABEL = { day: 'Afternoon', dusk: 'Dusk', night: 'Night' };

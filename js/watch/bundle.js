@@ -10834,7 +10834,12 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, SURFACES = {
+    clear: { drag: 1, bounce: 1, skid: 0.8 },
+    overcast: { drag: 1, bounce: 1, skid: 0.8 },
+    rain: { drag: 0.9, bounce: 0.75, skid: 0.86 },
+    snow: { drag: 1.45, bounce: 0.6, skid: 0.68 }
+  }, WIND_PUSH = 0.1, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -11597,7 +11602,7 @@
     }
     /* ------------------------------- ball ------------------------------ */
     updateBall(dt) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a, _b, _c;
       let b = this.ball;
       if (b.owner) {
         let o = b.owner;
@@ -11640,8 +11645,10 @@
         }
       } else
         b.dip = 0, b.knuckle = 0;
-      b.px = b.x, b.py = b.y, b.pz = b.z, b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt, b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * ((_b = (_a = FIELD.ball) == null ? void 0 : _a.bounce) != null ? _b : 0.42), b.vx *= 0.8, b.vy *= 0.8) : b.vz = 0);
-      let damp = Math.pow(b.z > 0.4 ? 0.9985 : (_d = (_c = FIELD.ball) == null ? void 0 : _c.drag) != null ? _d : 0.986, dt * 60);
+      b.px = b.x, b.py = b.y, b.pz = b.z, b.x += b.vx * dt, b.y += b.vy * dt, b.z += b.vz * dt, b.vz -= GRAV * dt;
+      let sf = this.surface();
+      b.z > 0.4 && (sf.windX || sf.windY) && (b.vx += sf.windX * WIND_PUSH * dt, b.vy += sf.windY * WIND_PUSH * dt), b.z <= 0 && (b.z = 0, b.vz < -1.2 ? (b.vz = -b.vz * sf.bounce, b.vx *= sf.skid, b.vy *= sf.skid) : b.vz = 0);
+      let damp = Math.pow(b.z > 0.4 ? 0.9985 : sf.drag, dt * 60);
       if (b.vx *= damp, b.vy *= damp, b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5 && (b.vx = 0, b.vy = 0), b.noTouch = Math.max(0, (b.noTouch || 0) - dt), b.noTouch > 0) {
         this.bounds();
         return;
@@ -11652,7 +11659,7 @@
           for (let p of team.players) {
             if (p.touchLock > 0) continue;
             let r = p.role === "GK" ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5) : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
-            if ((_e = p.tr) != null && _e.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
+            if ((_a = p.tr) != null && _a.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
               let outward = b.y < CY ? -b.vy : b.vy;
               Math.min(b.y, PITCH.h - b.y) < 1.6 && outward > 1.5 && (r *= 0.45);
             }
@@ -11697,10 +11704,10 @@
             return;
           }
           if (attacking && b.z > 0.85) {
-            let jump = 2.25 + (((_f = best.tr) == null ? void 0 : _f.aerial) || 0) * 0.3 + (best.ref.stats.physical - 70) / 100, timing = clamp2(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
+            let jump = 2.25 + (((_b = best.tr) == null ? void 0 : _b.aerial) || 0) * 0.3 + (best.ref.stats.physical - 70) / 100, timing = clamp2(1 - Math.abs(b.z - Math.min(jump, 1.9)) / 1.2, 0.2, 1);
             b.lastTouch = best, this.cue("header");
             let foeH = this.nearestTo(1 - best.team, best, !0), contested = foeH && dist(foeH, best) < 2.6 ? 1.3 : 0;
-            this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28 - (contested ? 0.12 : 0), { loft: 0.2, placed: !0, sloppy: 1 - timing + contested + ((_g = best.tr) != null && _g.aerial ? -0.2 : 0) });
+            this.shoot(best, { x: 0, y: (Math.random() - 0.5) * 1.5 }, 0.5 + timing * 0.28 - (contested ? 0.12 : 0), { loft: 0.2, placed: !0, sloppy: 1 - timing + contested + ((_c = best.tr) != null && _c.aerial ? -0.2 : 0) });
             return;
           }
           if (attacking && b.z > 0.42 && b.z <= 0.85 && toGoal9 < 17 && Math.random() < 0.7) {
@@ -12097,6 +12104,29 @@
       this.release(p, nx * speed, ny * speed, power > 0.8 && d2 > 24 ? 1.6 : 0), this.ball.passKind = power > 0.8 && d2 > 24 ? "driven" : "ground", this.ball.passTo = best, this.ball.passT = this.t;
     }
     /**
+     * v143: the pitch and the air, from the weather the match is played in
+     * (`venue.atmo`, the renderer's own — including rain arriving or clearing
+     * mid-match). A wet surface is quick: the ball skids on, and comes off a
+     * bounce low and fast. Snow holds it up and kills the bounce. Wind, when the
+     * ground has it, pushes a ball in the air. Clear and overcast — and any match
+     * with no venue, the balance sweep's — play exactly as before.
+     */
+    surface() {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+      let a = (_a = this.venue) == null ? void 0 : _a.atmo, base = FIELD.ball || {}, drag0 = (_b = base.drag) != null ? _b : 0.986, bounce0 = (_c = base.bounce) != null ? _c : 0.42, weather = a ? a.change && this.minute() >= a.change.minute ? a.change.to : a.weather : "clear", key = "".concat(weather, "|").concat(drag0, "|").concat(bounce0, "|").concat((_e = (_d = a == null ? void 0 : a.wind) == null ? void 0 : _d.x) != null ? _e : 0, "|").concat((_g = (_f = a == null ? void 0 : a.wind) == null ? void 0 : _f.y) != null ? _g : 0);
+      if (((_h = this._sf) == null ? void 0 : _h.key) === key) return this._sf;
+      let k = SURFACES[weather] || SURFACES.clear;
+      return this._sf = {
+        key,
+        weather,
+        drag: 1 - (1 - drag0) * k.drag,
+        bounce: bounce0 * k.bounce,
+        skid: k.skid,
+        windX: ((_i = a == null ? void 0 : a.wind) == null ? void 0 : _i.x) || 0,
+        windY: ((_j = a == null ? void 0 : a.wind) == null ? void 0 : _j.y) || 0
+      }, this._sf;
+    }
+    /**
      * v142: the man a pass is played to, while it is still on its way to him —
      * nobody has touched it since it left the passer's foot. Null otherwise.
      */
@@ -12110,10 +12140,9 @@
      * stops rolling if he cannot get across in time.
      */
     meetPoint(p) {
-      var _a, _b;
       let b = this.ball, s = Math.hypot(b.vx, b.vy);
       if (s < 0.5) return { x: b.x, y: b.y };
-      let k = -60 * Math.log(b.z > 0.4 ? 0.9985 : (_b = (_a = FIELD.ball) == null ? void 0 : _a.drag) != null ? _b : 0.986), ux = b.vx / s, uy = b.vy / s, run = (p.maxSpeed || 7) * 0.9, x = b.x, y = b.y;
+      let k = -60 * Math.log(b.z > 0.4 ? 0.9985 : this.surface().drag), ux = b.vx / s, uy = b.vy / s, run = (p.maxSpeed || 7) * 0.9, x = b.x, y = b.y;
       for (let t = 0.1; t <= 3; t += 0.1) {
         let L3 = s / k * (1 - Math.exp(-k * t));
         if (x = clamp2(b.x + ux * L3, 0.5, PITCH.w - 0.5), y = clamp2(b.y + uy * L3, 0.5, PITCH.h - 0.5), Math.hypot(x - p.x, y - p.y) <= run * t + 1) break;

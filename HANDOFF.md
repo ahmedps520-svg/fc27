@@ -15,6 +15,33 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v143 — weather in the ball physics (backlog #15)
+Sweep byte-identical: the sweep has no venue, and clear and overcast use the
+old values.
+- `sim.js`:
+  - `Match.surface()` reads `this.venue.atmo`, including `change` once
+    `minute() >= change.minute`, and returns `{drag, bounce, skid, windX,
+    windY}`, cached by key;
+  - `SURFACES` multiplies the per-frame ground loss and the bounce, and sets
+    the pace kept through a bounce (0.8 before):
+    - rain: drag ×0.9, bounce ×0.75, skid 0.86;
+    - snow: drag ×1.45, bounce ×0.6, skid 0.68;
+  - wind accelerates an airborne ball (z > 0.4) at `WIND_PUSH` 0.1 m/s² per
+    m/s of wind;
+  - `meetPoint` uses the surface drag.
+- `stadiums.js atmosphereFor` adds `wind {x, y, speed}`, seeded by
+  `wind|seed`. Speed is gust^1.6 × top, where top is rain 6, overcast 5,
+  snow 4 and clear 3 m/s, so the median is about 1.2 m/s.
+- New `conditionsNote(atmo)` gives the line under the venue on the loading
+  card (`.gl-note`). The venue label gains "· Windy" at 2.5 m/s or more.
+- Measured (60 AI matches):
+  - rain: 2.27 goals / 13.8 shots (12345) and 2.68 / 12.9 (777);
+  - snow: 2.52 / 16.2 (777);
+  - clear with a 5 m/s wind: 2.45 / 14.7;
+  - the first try, rain drag ×0.8, cut shots to 11.5, too strong.
+- New `tests/unit/weather-ball.test.mjs`.
+- Online play is host-authoritative, so the host's `match.venue` decides it.
+
 ### v142 — passes that arrive (gameplay), smaller install
 Sweep re-baselined deliberately.
 - Finding (new `tools/pass-audit.mjs`, 20 AI matches): only 56% of passes

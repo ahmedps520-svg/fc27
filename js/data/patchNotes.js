@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v143',
+    date: '2026-10-05',
+    tag: 'Gameplay',
+    title: 'Weather you can feel',
+    lede: 'Rain, snow and wind no longer just change how a match looks: they change how the ball moves.',
+    entries: [
+      {
+        head: 'Rain',
+        summary: 'On a wet pitch the ball skids on further and stays low and quick off the bounce. Weight your passes for it.',
+        detail: 'When rain arrives mid-match, the pitch changes from that minute. Measured over 60 AI matches on two seeds, a wet match has a few fewer shots (13 to 14) and about the same goals.',
+      },
+      {
+        head: 'Snow',
+        summary: 'Snow holds the ball up and kills its bounce: through balls stop short, and long ones die where they land.',
+        detail: '',
+      },
+      {
+        head: 'Wind',
+        summary: 'Every match now has its own wind, usually light. On a blustery day it carries crosses, long balls and long-range shots off line.',
+        detail: 'A ball on the ground is unaffected. The loading card says "Windy" when it is strong enough to notice, and tells you how the pitch will play in rain or snow.',
+      },
+    ],
+  },
+  {
     version: 'v142',
     date: '2026-10-05',
     tag: 'Gameplay',
