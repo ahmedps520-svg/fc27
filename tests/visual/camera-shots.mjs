@@ -84,6 +84,10 @@ for (const venue of VENUES) {
     rows.push(row);
     if (row.black > 3) failures.push(`${venue}/${name}: ${row.black}% pure black`);
     if (row.lum < 18) failures.push(`${venue}/${name}: mean brightness ${row.lum}`);
+    /* v145: the upper bound is there to catch a lens buried in the turf. A camera high
+       overhead (the tactical view, ~35 m up) looking at midfield legitimately sees
+       nothing but pitch — CI caught one at 99.8% when the play was in the middle. */
+    if (st.pose[2] > 20) maxGrass = 100;
     if (row.grass < minGrass || row.grass > maxGrass) failures.push(`${venue}/${name}: pitch covers ${row.grass}% of the frame (want ${minGrass}–${maxGrass}%)`);
     if (st.pose.some((v) => !Number.isFinite(v))) failures.push(`${venue}/${name}: camera pose not finite`);
   };
