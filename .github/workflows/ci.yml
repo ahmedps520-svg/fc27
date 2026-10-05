@@ -32,6 +32,8 @@ jobs:
         run: node tools/release.mjs --check
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: CSS — no declaration the browser would drop
+        run: node tools/css-lint.mjs
       - name: Smoke test (phone + watch, real server)
         run: npm run test:smoke
       - name: Black-patch scan (Ultra renderer, software WebGL)
