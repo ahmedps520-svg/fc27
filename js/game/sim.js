@@ -169,6 +169,18 @@ const GRAV = 16;                   // arcade gravity, m/s^2
    line before the CPU holds the pass and looks again. */
 export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true, laneWait: 1.7 };
 
+/* v143: how the weather changes the ball (see Match.surface). drag scales the
+   rolling loss per frame (0.8 = a fifth less: a wet ball runs on), bounce the
+   height kept off the ground, skid the pace kept through a bounce. */
+export const SURFACES = {
+  clear: { drag: 1, bounce: 1, skid: 0.8 },
+  overcast: { drag: 1, bounce: 1, skid: 0.8 },
+  rain: { drag: 0.9, bounce: 0.75, skid: 0.86 },
+  snow: { drag: 1.45, bounce: 0.6, skid: 0.68 },
+};
+/** m/s² of push on a ball in the air per m/s of wind. */
+export const WIND_PUSH = 0.1;
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -1506,12 +1518,15 @@ export class Match {
     b.y += b.vy * dt;
     b.z += b.vz * dt;
     b.vz -= GRAV * dt;
+    const sf = this.surface();
+    // v143: wind pushes a ball in the air (a cross, a long ball, a shot from range)
+    if (b.z > 0.4 && (sf.windX || sf.windY)) { b.vx += sf.windX * WIND_PUSH * dt; b.vy += sf.windY * WIND_PUSH * dt; }
     if (b.z <= 0) {
       b.z = 0;
-      if (b.vz < -1.2) { b.vz = -b.vz * (FIELD.ball?.bounce ?? 0.42); b.vx *= 0.8; b.vy *= 0.8; }
+      if (b.vz < -1.2) { b.vz = -b.vz * sf.bounce; b.vx *= sf.skid; b.vy *= sf.skid; }
       else b.vz = 0;
     }
-    const damp = Math.pow(b.z > 0.4 ? 0.9985 : (FIELD.ball?.drag ?? 0.986), dt * 60);   // less drag through the air
+    const damp = Math.pow(b.z > 0.4 ? 0.9985 : sf.drag, dt * 60);   // less drag through the air
     b.vx *= damp; b.vy *= damp;
     if (b.z === 0 && Math.hypot(b.vx, b.vy) < 0.5) { b.vx = 0; b.vy = 0; }
 
@@ -2420,6 +2435,32 @@ export class Match {
   }
 
   /**
+   * v143: the pitch and the air, from the weather the match is played in
+   * (`venue.atmo`, the renderer's own — including rain arriving or clearing
+   * mid-match). A wet surface is quick: the ball skids on, and comes off a
+   * bounce low and fast. Snow holds it up and kills the bounce. Wind, when the
+   * ground has it, pushes a ball in the air. Clear and overcast — and any match
+   * with no venue, the balance sweep's — play exactly as before.
+   */
+  surface() {
+    const a = this.venue?.atmo;
+    const base = FIELD.ball || {};
+    const drag0 = base.drag ?? 0.986; const bounce0 = base.bounce ?? 0.42;
+    const weather = !a ? 'clear' : a.change && this.minute() >= a.change.minute ? a.change.to : a.weather;
+    const key = `${weather}|${drag0}|${bounce0}|${a?.wind?.x ?? 0}|${a?.wind?.y ?? 0}`;
+    if (this._sf?.key === key) return this._sf;
+    const k = SURFACES[weather] || SURFACES.clear;
+    this._sf = {
+      key, weather,
+      drag: 1 - (1 - drag0) * k.drag,
+      bounce: bounce0 * k.bounce,
+      skid: k.skid,
+      windX: a?.wind?.x || 0, windY: a?.wind?.y || 0,
+    };
+    return this._sf;
+  }
+
+  /**
    * v142: the man a pass is played to, while it is still on its way to him —
    * nobody has touched it since it left the passer's foot. Null otherwise.
    */
@@ -2439,7 +2480,7 @@ export class Match {
     const b = this.ball;
     const s = Math.hypot(b.vx, b.vy);
     if (s < 0.5) return { x: b.x, y: b.y };
-    const k = -60 * Math.log(b.z > 0.4 ? 0.9985 : (FIELD.ball?.drag ?? 0.986));
+    const k = -60 * Math.log(b.z > 0.4 ? 0.9985 : this.surface().drag);
     const ux = b.vx / s; const uy = b.vy / s;
     const run = (p.maxSpeed || 7) * 0.9;
     let x = b.x; let y = b.y;

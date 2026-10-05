@@ -26,7 +26,7 @@ import { trophyScene } from '../components/ceremony.js';
 import { weekCards, baseOf } from '../data/promos.js';
 import { say } from '../data/commentary.js';
 import { groundProfile } from '../data/grounds.js';
-import { stadiumFor, STADIUM_BY_ID, atmosphereFor, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
+import { stadiumFor, STADIUM_BY_ID, atmosphereFor, conditionsNote, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { t, lang, isRTL } from '../i18n.js';
@@ -213,7 +213,7 @@ function venueOf(params) {
   const strong = (s) => (s?.rating || 0) >= 84;
   // v119: a real derby sells out too
   const bigGame = showpiece || !!params.final || (strong(params.homeSquad) && strong(params.awaySquad)) || !!rivalryOf(params.homeSquad?.id, params.awaySquad?.id);
-  return { stadium, atmo, seasonWear: 0.08 + frac * 0.82, bigGame, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}${atmo.frost ? ' · Frost' : ''}` };
+  return { stadium, atmo, seasonWear: 0.08 + frac * 0.82, bigGame, label: `${stadium.name} · ${TIME_LABEL[atmo.time]} · ${WEATHER_LABEL[atmo.weather]}${atmo.frost ? ' · Frost' : ''}${(atmo.wind?.speed || 0) >= 2.5 ? ' · Windy' : ''}`, conditionsNote: conditionsNote(atmo) };
 }
 
 export function render(params) {
@@ -234,6 +234,7 @@ export function render(params) {
             <span class="gl-team">${crestSVG(away.crest, away.short, 54)}<b>${away.short}</b></span>
           </div>
           <p class="gl-venue">${venue.label}</p>
+          ${venue.conditionsNote ? `<p class="gl-note">${venue.conditionsNote}</p>` : ''}
           <div class="gl-bar"><i id="gmLoadFill"></i></div>
           <p class="gl-status" id="gmLoadText">Loading packages</p>
         </div>
