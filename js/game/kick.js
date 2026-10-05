@@ -35,6 +35,7 @@ export function detectKicks(m, dt, state) {
   const b = m.ball;
   for (const t of m.teams) for (const p of t.players) {
     if (p._throw) { p._throw.t += dt; if (p._throw.t >= THROW_DUR) p._throw = null; }
+    if (p._header) { p._header.t += dt; if (p._header.t >= HEADER_DUR) p._header = null; }
     if (!p._kick) continue;
     p._kick.t += dt;
     if (p._kick.t >= KICK_DUR) p._kick = null;
@@ -42,6 +43,25 @@ export function detectKicks(m, dt, state) {
   const sp = Math.hypot(b.vx || 0, b.vy || 0);
   const prev = state.sp ?? sp;
   state.sp = sp;
+  /* v146: a header — the ball at head height changes course sharply next to
+     an outfield player's head. Read from the velocity's change as a whole,
+     since a header often takes pace off rather than adding it. */
+  const pvx = state.vx ?? b.vx; const pvy = state.vy ?? b.vy; const pvz = state.vz ?? b.vz;
+  state.vx = b.vx; state.vy = b.vy; state.vz = b.vz;
+  const dv = Math.hypot((b.vx || 0) - (pvx || 0), (b.vy || 0) - (pvy || 0), (b.vz || 0) - (pvz || 0));
+  if (!b.owner && (b.z || 0) > 1.3 && (b.z || 0) < 3 && dv > HEADER_DV) {
+    let who = null; let best = 1.9;
+    for (const t of m.teams) for (const p of t.players) {
+      if (p.role === 'GK' || p.diveT > 0 || p.downT > 0) continue;
+      const d = Math.hypot(p.x - b.x, p.y - b.y);
+      if (d < best) { best = d; who = p; }
+    }
+    if (who && !(who._header && who._header.t < HEADER_DUR * 0.6)) {
+      who._header = { t: 0, rise: Math.max(0, Math.min(0.32, ((b.z || 0) - 1.75) * 0.6)) };
+      if (!(who._actT > 0)) { who._act = 'header'; who._actT = 0.5; }
+      return who;
+    }
+  }
   if (sp - prev < KICK_DV || (b.z || 0) > 2.3 || b.owner) return null;
   // v145: from above the knee it can only have left a keeper's hands — a throw
   const high = (b.z || 0) > 1.2;
@@ -64,6 +84,46 @@ export function detectKicks(m, dt, state) {
 }
 
 const ease = (s) => s * s * (3 - 2 * s);
+
+/** v146: a header — seconds, and the change of velocity (m/s) at head height that reads as one. */
+export const HEADER_DUR = 0.45;
+export const HEADER_DV = 5;
+
+/**
+ * The header's body: { hop: how far off the grass, nod: the head and
+ * shoulders thrown forward through the ball }. It is read off the ball, so it
+ * starts as the ball leaves the head: the jump is already near its top, and
+ * the nod is the follow-through.
+ */
+export function headerPose(h) {
+  if (!h || h.t >= HEADER_DUR) return null;
+  const u = h.t / HEADER_DUR;
+  return { hop: h.rise * Math.cos((Math.PI / 2) * u), nod: 0.13 * Math.sin(Math.PI * Math.min(1, u * 1.6)) };
+}
+
+/**
+ * v146: a tackle on the built figure. A slide (sim: slide 0.8 s) goes to
+ * ground — hips down, the leading leg out along the grass, leaning back; a
+ * standing tackle (0.42 s) is a lunge. Returns null when there is none, or
+ * { drop: how far the hips sink (m), lean: the torso tipped back (−) or
+ * forward, lead: the foot that goes in (+1/−1), reach: how far ahead of the
+ * hip it goes, env 0..1 }.
+ */
+export function tacklePose(p) {
+  if (!(p.slide > 0)) return null;
+  const dur = p.slideMax || (p.slide > 0.42 ? 0.8 : 0.42);
+  const u = 1 - p.slide / dur;
+  const env = Math.min(1, u / 0.12, (1 - u) / 0.22);
+  const full = dur > 0.6;
+  return {
+    env,
+    drop: (full ? 0.56 : 0.16) * env,
+    lean: (full ? -0.3 : 0.05) * env,
+    lead: p.ref?.foot === 'L' ? -1 : 1,
+    reach: full ? 0.78 : 0.62,
+    full,
+  };
+}
 
 /** v145: a keeper's overarm throw — seconds: the arm cocked behind the head, over the top, follow-through. */
 export const THROW_PHASES = [0.1, 0.1, 0.22];

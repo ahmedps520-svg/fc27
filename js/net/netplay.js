@@ -156,7 +156,9 @@ export function encodeSnapshot(match) {
     // Per-player slots are positional and append-only, same rule as PHASES:
     // a guest on an older build reads the first seven and ignores the rest.
     p: all.map((p) => [r1(p.x), r1(p.y), r2(p.dirX), r2(p.dirY), r1(p.vx), r1(p.vy),
-      r2(p.diveT || 0), r2(p.stamina ?? 1)]),
+      r2(p.diveT || 0), r2(p.stamina ?? 1),
+      // v146: a slide or a lunge, and a man on the grass — a guest drew neither
+      r2(p.slide || 0), r2(p.slideMax || 0), r2(p.downT || 0), r2(p.downMax || 0)]),
     s: [match.teams[0].score, match.teams[1].score],
     ph: PHASES.indexOf(match.phase),
     tm: r2(match.t),
@@ -296,6 +298,7 @@ export class SnapshotView {
       p.diveT = sa[6];
       // an older host does not send this, and a full tank is the safe read
       p.stamina = sa[7] ?? 1;
+      p.slide = sa[8] ?? 0; p.slideMax = sa[9] ?? 0; p.downT = sa[10] ?? 0; p.downMax = sa[11] ?? 0;
       p.celebrating = a.ce?.[i] === '1';
       if (a.so?.[i] === '1') p.sentOff = true;
       p.celebKind = a.ck && a.ck[0] === i ? a.ck[1] : null;

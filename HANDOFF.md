@@ -15,6 +15,29 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v146 — tackles and headers on the built figures; guest snapshots carry them
+Sweep byte-identical. `p.slideMax`, set in `tackle()`, is render-only.
+- `kick.js`:
+  - `tacklePose(p)` from `p.slide` / `p.slideMax`:
+    - a slide (0.8 s) drops the hips 0.56·H, tips back −0.3 and puts the
+      leading (strong) foot 0.78 ahead;
+    - a lunge (0.42 s) drops 0.16, leans 0.05 forward, reach 0.62;
+    - the envelope ramps in over 12% and out over 22%;
+  - headers: in `detectKicks`, a ball at z 1.3–3 whose velocity vector
+    changes by more than `HEADER_DV` (5 m/s) within 1.9 m of an outfield
+    player is his header. It sets `p._header {t, rise}` (rise by ball height,
+    up to 0.32 m) and `_act='header'` for the scanned clip;
+  - `headerPose` gives `{hop, nod}`: the group is lifted by hop, so the feet
+    leave the grass, and the nod is added to the lean.
+- `rig.js`: the tackle blends both feet to their targets with the envelope.
+  It suppresses a kick override, and lowers `lift`, so hips, waist and
+  shoulders all sink.
+- `netplay.js`: player snapshot slots 8–11 are appended: slide, slideMax,
+  downT, downMax (append-only, so an older guest ignores them and an older
+  host sends none). An online guest never saw a man on the grass or a slide.
+- New `tests/unit/kick-detect.test.mjs`: kick, dribble touch, keeper throw,
+  header and tackle pose.
+
 ### v145 — keeper distribution (backlog #15), goal-line crossing
 Sweep re-baselined deliberately. Goals/shots: 2.40/13.8 (12345) and
 2.63/14.5 (777); competitive 2.65/15.0 and 2.68/14.5.
