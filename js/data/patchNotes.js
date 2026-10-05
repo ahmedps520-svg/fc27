@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v142',
+    date: '2026-10-05',
+    tag: 'Gameplay',
+    title: 'Passes that arrive',
+    lede: 'Team-mates now come to meet the ball, and the CPU stops playing it into a defender standing in the way. Seven passes in ten find their man, up from just over half.',
+    entries: [
+      {
+        head: 'Meeting the pass',
+        summary: 'The player a pass is played to now comes towards the ball instead of running on, and his team-mates leave it to him.',
+        detail: 'Until now nobody was told a pass was coming to them. The receiver kept running his own line, the nearest players from both sides closed in on the ball, and 42% of passes were cut out, most of them on the way. Measured over 20 AI matches, 70% of passes now reach a team-mate, up from 56%. While a pass is travelling, defenders more than a few metres away hold their shape instead of all chasing it.',
+      },
+      {
+        head: 'Smarter CPU passing',
+        summary: 'A CPU player about to pass into a defender standing in the lane now carries the ball and looks again. Better teams spot this more often.',
+        detail: 'With more passes landing, the ball reaches the final third more often, so the CPU\'s shooting rate was lowered to keep goals and shots where they were: 2.5 to 2.8 goals and about 15 shots a match on both presets, measured over 60 matches on several seeds.',
+      },
+      {
+        head: 'Own goal line',
+        summary: 'A defender who collects a back-pass right on his own goal line stops the ball there instead of carrying it over for a corner.',
+        detail: '',
+      },
+      {
+        head: 'Smaller download',
+        summary: 'The app icons are about a tenth of their old size, and the anthem now downloads only the first time it plays, not on install.',
+        detail: 'The icons were saved with far more colours than they use: 880 KB in total, now under 110 KB, with no visible change. Offline play still works: until the anthem has been heard once, the game plays its own synthesised version.',
+      },
+    ],
+  },
+  {
     version: 'v141',
     date: '2026-10-05',
     tag: 'Polish',

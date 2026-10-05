@@ -15,6 +15,54 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v142 — passes that arrive (gameplay), smaller install
+Sweep re-baselined deliberately.
+- Finding (new `tools/pass-audit.mjs`, 20 AI matches): only 56% of passes
+  reached a team-mate and 42% were intercepted, mostly on the way. Pass pace
+  was not the cause: an arrival-speed formula (v0 = A + B·power + k·d) moved
+  completion by under 4 points. The cause was that nothing told the receiver
+  a ball was coming to him.
+- `sim.js`:
+  - `pass()` sets `ball.passTo`/`passT`, and `release()` clears it;
+  - `passTarget()` returns the receiver while nobody has touched the ball
+    since the passer and it is under 3 s old and still rolling;
+  - `meetPoint(p)` gives the first point on the ball's drag-decayed path
+    he can reach in time;
+  - in `think()`, the receiver `moveTo`s that point (×1.06), and his
+    team-mates skip the chase block (`leaveIt`);
+  - while a pass is in flight, defenders join the loose-ball chase only
+    within 6·press m instead of 14·press (the nearest chaser still goes).
+- The pass-target loop moved out of `pass()` into
+  `pickPassTarget(p, ax, ay, through, power, assist, reach, alignW)` →
+  `{ best, lane }` (pass results identical). The CPU's main pass in
+  `thinkOnBall` checks it first: when `lane < TUNE.laneWait` (1.7 m), with
+  probability q (decision quality), it carries on and looks again.
+- `TUNE.shotRate` 0.7 → 0.5. More completed passes put the ball in the final
+  third more often, and shots went to 16–17. The per-tick shot chance near
+  goal saturates, so the rate cut only trims the long-range efforts.
+- Results:
+  - completion 70% (was 56%), interceptions 27% (was 42%);
+  - sweep 12345: 2.50 goals / 15.1 shots; 777: 2.83 / 15.0;
+  - seeds 999 and 4242: 2.68 / 15.8 and 2.68 / 14.9;
+  - competitive preset: 2.47 / 15.3 and 2.42 / 15.5.
+- Bug found by `sim-invariants` (seed 9154) and fixed in the carried-ball
+  branch of `updateBall`. A defender met a back pass on his own goal line,
+  and his momentum carried it over. v79 moves a dribbled-over ball wide, so
+  it became a corner. Now a CPU carrier within 1.2 m of his own line, inside
+  the posts + 2 m, has the ball held at 1.2 m and his outward velocity zeroed.
+- Payload:
+  - icons quantised to 256 colours (881 KB → 106 KB, still opaque where the
+    tests require it);
+  - `tests/unit/pwa.test.mjs`'s PNG decoder now reads palette and tRNS PNGs;
+  - `assets/music/anthem-sa.mp3` is out of the `sw.js` precache, so it is
+    runtime-cached on first play, with the synth anthem as the offline
+    fallback.
+- CI pinned to `ubuntu-24.04` (`ubuntu-latest` becomes Ubuntu 26 on 2026-10-19).
+  The v140 and v141 runs on main were cancelled because no hosted runner was
+  assigned, not by a test failure.
+- New `tests/unit/pass-receive.test.mjs`. The `TUNE` defaults in
+  `setpieces.test.mjs` were updated.
+
 ### v141 — polish: dropped CSS found and fixed, closer camera on phones
 - Seven `font:` shorthands in `styles/main.css` had `inherit` as the font
   family, which is invalid, so the browser dropped them silently. They

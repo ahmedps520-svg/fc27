@@ -13,31 +13,36 @@ import { inflateSync } from 'node:zlib';
 const root = new URL('../../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, root));
 
-/** Decode an 8-bit RGBA, non-interlaced PNG (what the icons are). */
+/** Decode an 8-bit, non-interlaced PNG: RGBA, or (v142, the icons were shrunk to 256 colours) a palette with a tRNS chunk. */
 function png(path) {
   const d = read(path);
   assert.equal(d.readUInt32BE(12), 0x49484452, `${path}: IHDR first`);
   const w = d.readUInt32BE(16); const h = d.readUInt32BE(20);
-  assert.equal(d[24], 8, `${path}: 8-bit`); assert.equal(d[25], 6, `${path}: RGBA`); assert.equal(d[28], 0, `${path}: not interlaced`);
-  const idat = [];
+  const type = d[25];
+  assert.equal(d[24], 8, `${path}: 8-bit`); assert.ok(type === 6 || type === 3, `${path}: RGBA or palette`); assert.equal(d[28], 0, `${path}: not interlaced`);
+  const idat = []; let trns = null;
   for (let o = 8; o < d.length;) {
-    const len = d.readUInt32BE(o); const type = d.toString('ascii', o + 4, o + 8);
-    if (type === 'IDAT') idat.push(d.subarray(o + 8, o + 8 + len));
+    const len = d.readUInt32BE(o); const t = d.toString('ascii', o + 4, o + 8);
+    if (t === 'IDAT') idat.push(d.subarray(o + 8, o + 8 + len));
+    if (t === 'tRNS') trns = d.subarray(o + 8, o + 8 + len);
     o += 12 + len;
   }
+  const bpp = type === 6 ? 4 : 1;
   const raw = inflateSync(Buffer.concat(idat));
-  const stride = w * 4; const px = Buffer.alloc(stride * h);
+  const stride = w * bpp; const px = Buffer.alloc(stride * h);
   for (let y = 0; y < h; y++) {
     const f = raw[y * (stride + 1)]; const src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
     for (let x = 0; x < stride; x++) {
-      const a = x >= 4 ? px[y * stride + x - 4] : 0; const b = y ? px[(y - 1) * stride + x] : 0; const c = x >= 4 && y ? px[(y - 1) * stride + x - 4] : 0;
+      const a = x >= bpp ? px[y * stride + x - bpp] : 0; const b = y ? px[(y - 1) * stride + x] : 0; const c = x >= bpp && y ? px[(y - 1) * stride + x - bpp] : 0;
       let v = src[x];
       if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
       else if (f === 4) { const p = a + b - c; const pa = Math.abs(p - a); const pb = Math.abs(p - b); const pc = Math.abs(p - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
       px[y * stride + x] = v & 255;
     }
   }
-  return { w, h, alpha: (x, y) => px[(y * w + x) * 4 + 3] };
+  // a palette entry past the end of tRNS (or no tRNS at all) is opaque
+  const alpha = type === 6 ? (x, y) => px[(y * w + x) * 4 + 3] : (x, y) => { const i = px[y * w + x]; return trns && i < trns.length ? trns[i] : 255; };
+  return { w, h, alpha };
 }
 
 const manifest = JSON.parse(read('manifest.webmanifest'));

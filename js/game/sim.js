@@ -162,8 +162,12 @@ export const MAX_SUBS = 3;
 const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
-/* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns") */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true };
+/* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns").
+   v142: shotRate 0.7 -> 0.5 — passes now arrive (56% -> 70%), the ball reaches
+   the final third more often, and shots and goals rose with it; this puts them
+   back in the target band. laneWait: how close (m) a defender may stand to the
+   line before the CPU holds the pass and looks again. */
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true, laneWait: 1.7 };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -1444,6 +1448,16 @@ export class Match {
       }
 
       b.lastTouch = o;
+      /* v142: a CPU man who has collected it on his own goal line — a back
+         pass he ran back to meet — stops it there and turns, instead of his
+         momentum walking it over the line for a corner. */
+      const ownX = this.teams[o.team].dir > 0 ? 0 : PITCH.w;
+      if (Math.abs(b.x - ownX) < 1.2 && Math.abs(b.y - CY) < GOAL_HALF + 2 && !this.isControlled(o)) {
+        const inward = ownX === 0 ? 1 : -1;
+        b.x = ownX + inward * 1.2;
+        if (b.vx * inward < 0) b.vx = 0;
+        if (o.vx * inward < 0) o.vx = 0;
+      }
       /* v79: a dribble can go out of play. The ball is sprung ahead of the
          carrier, so running at the line used to carry it past the line
          without the game noticing — and a shot from there was released inside
@@ -2083,6 +2097,7 @@ export class Match {
     b.owner = null;
     b.lastTouch = p;
     b.shotBy = null;
+    b.passTo = null;
     b.noTouch = 0.13;
     b.curl = 0; b.dip = 0; b.knuckle = 0;
     b.shotId = (b.shotId || 0) + 1;
@@ -2256,20 +2271,14 @@ export class Match {
     return 1 - (1 - (p.stamina ?? 1)) * 0.3 - (p.injured ? 0.25 : 0);
   }
 
-  pass(p, aim, through, power = 0.35, lob = false, assist = 1) {
-    this.tally(p, 'passes');
+  /**
+   * Who a pass goes to: the team-mate the aim, distance, forwardness, width
+   * and (v103) openness pick out. Also returns how close the nearest opponent
+   * stood to the line to him (`lane`), which the CPU uses to wait for a better
+   * moment (v142).
+   */
+  pickPassTarget(p, ax, ay, through, power, assist, reach, alignW) {
     const team = this.teams[p.team];
-    /* v87: pass assist, for a person's passes only (the CPU always plays at 1).
-       0 manual: only a man almost exactly on the line of the stick is found;
-       otherwise the ball goes where it was aimed. 2 full: the best open man in
-       a wider reach, with the aim only a tiebreak. */
-    const reach = 14 + power * 44 + (assist === 2 ? 10 : 0);
-    const alignW = assist === 2 ? 0.9 : 2.6;
-    let ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX;
-    let ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY;
-    const am = Math.hypot(ax, ay) || 1;
-    ax /= am; ay /= am;
-
     /* v103 (backlog #21): is he open? A clear lane from the passer and room
        from his marker now count towards who the ball goes to — the pass used
        to pick by angle, distance and forwardness alone and went into marked
@@ -2287,7 +2296,9 @@ export class Match {
        played into that space), and in the final third a side accepts the
        risk — openness counts for a third as much there. */
     const goalXp = team.dir > 0 ? PITCH.w : 0;
+    let laneOf = 9;
     const openness = (t) => {
+      laneOf = 9;
       if (!openW) return 0;
       const risk = Math.abs(goalXp - t.x) < 36 * SCALE ? 0.35 : 1;
       if (through) {
@@ -2302,10 +2313,12 @@ export class Match {
         lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y));
         mark = Math.min(mark, dist(o, t));
       }
+      laneOf = lane;
       return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW * risk;
     };
     let best = null;
     let bestScore = -Infinity;
+    let bestLane = 9;
     for (const t of team.players) {
       if (t === p) continue;
       const dx = t.x - p.x;
@@ -2319,8 +2332,27 @@ export class Match {
       // v79: a side told to play wide looks for the man on the touchline
       const wideBonus = (Math.abs(t.y - CY) / CY) * (team.tactics?.width ?? 0.5) * 0.9;
       const score = align * alignW - d / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === 'GK' ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0) + openness(t);
-      if (score > bestScore) { bestScore = score; best = t; }
+      if (score > bestScore) { bestScore = score; best = t; bestLane = laneOf; }
     }
+
+    return { best, lane: bestLane };
+  }
+
+  pass(p, aim, through, power = 0.35, lob = false, assist = 1) {
+    this.tally(p, 'passes');
+    const team = this.teams[p.team];
+    /* v87: pass assist, for a person's passes only (the CPU always plays at 1).
+       0 manual: only a man almost exactly on the line of the stick is found;
+       otherwise the ball goes where it was aimed. 2 full: the best open man in
+       a wider reach, with the aim only a tiebreak. */
+    const reach = 14 + power * 44 + (assist === 2 ? 10 : 0);
+    const alignW = assist === 2 ? 0.9 : 2.6;
+    let ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX;
+    let ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY;
+    const am = Math.hypot(ax, ay) || 1;
+    ax /= am; ay /= am;
+
+    const { best } = this.pickPassTarget(p, ax, ay, through, power, assist, reach, alignW);
 
     this.cue('pass');
     this.ball.passer = p;
@@ -2378,11 +2410,45 @@ export class Match {
       this.cue('lob', p);
       this.release(p, nx * (d / T), ny * (d / T), 0.5 * GRAV * T);
       this.ball.noTouch = 0.3;
+      this.ball.passTo = best; this.ball.passT = this.t;
       return;
     }
     // v79: a hard, long ball is driven — it skims off the grass rather than rolling
     this.release(p, nx * speed, ny * speed, power > 0.8 && d > 24 ? 1.6 : 0);
     this.ball.passKind = power > 0.8 && d > 24 ? 'driven' : 'ground';
+    this.ball.passTo = best; this.ball.passT = this.t;
+  }
+
+  /**
+   * v142: the man a pass is played to, while it is still on its way to him —
+   * nobody has touched it since it left the passer's foot. Null otherwise.
+   */
+  passTarget() {
+    const b = this.ball;
+    if (b.owner || !b.passTo || b.lastTouch !== b.passer || this.t - b.passT > 3) return null;
+    if (b.z < 0.4 && Math.hypot(b.vx, b.vy) < 1.5) return null;          // it has stopped: a loose ball now
+    return b.passTo;
+  }
+
+  /**
+   * v142: where the receiver meets the pass — the first point on the ball's
+   * path he can be at by the time it gets there (drag included), or where it
+   * stops rolling if he cannot get across in time.
+   */
+  meetPoint(p) {
+    const b = this.ball;
+    const s = Math.hypot(b.vx, b.vy);
+    if (s < 0.5) return { x: b.x, y: b.y };
+    const k = -60 * Math.log(b.z > 0.4 ? 0.9985 : (FIELD.ball?.drag ?? 0.986));
+    const ux = b.vx / s; const uy = b.vy / s;
+    const run = (p.maxSpeed || 7) * 0.9;
+    let x = b.x; let y = b.y;
+    for (let t = 0.1; t <= 3; t += 0.1) {
+      const L = (s / k) * (1 - Math.exp(-k * t));
+      x = clamp(b.x + ux * L, 0.5, PITCH.w - 0.5); y = clamp(b.y + uy * L, 0.5, PITCH.h - 0.5);
+      if (Math.hypot(x - p.x, y - p.y) <= run * t + 1) break;
+    }
+    return { x, y };
   }
 
   /**
@@ -3194,6 +3260,14 @@ export class Match {
     const weHave = b.owner && b.owner.team === p.team;
     const press = this.pressingOf(p.team);
     const isChaser = this.chasers[p.team] === p || this.chasers2?.[p.team] === p;
+    /* v142: a pass on its way. The man it is meant for goes to meet it — he
+       used to carry on with his run while the nearest players of both sides
+       converged on the ball, so the side in possession lost 42% of its
+       passes, most of them on the way (tools/pass-audit.mjs). His team-mates
+       leave it to him. */
+    const pt = this.passTarget();
+    if (pt === p) { const mp = this.meetPoint(p); this.moveTo(p, mp.x, mp.y, dt, 1.06); return; }
+    const leaveIt = pt && pt.team === p.team;
     const target = this.shapeTarget(p);
     const goalX = team.dir > 0 ? PITCH.w : 0;
 
@@ -3205,7 +3279,7 @@ export class Match {
       this.moveTo(p, b.owner.x, b.owner.y, dt, 1.1);
       return;
     }
-    if (!weHave && (isChaser || triggered || (!b.owner && dist(p, b) < 14 * press))) {
+    if (!weHave && !leaveIt && (isChaser || triggered || (!b.owner && dist(p, b) < (pt ? 6 : 14) * press))) {
       this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
       /* Going in. How close they insist on being before they commit, and how
          often they commit at all, is the player's own aggression lifted by
@@ -3650,8 +3724,17 @@ export class Match {
       // Swept at 0.5 / 0.62 / 0.75 over 40 matches: 2.30/12.3, 2.33/12.2 and
       // 2.58/11.9. They are barely distinguishable, so the range match is the
       // reason to prefer this one, not the numbers.
-      this.pass(p, { x: team.dir, y: (Math.random() - 0.5) * 0.6 }, toGoal > 45, 0.75);
-      return;
+      const aim = { x: team.dir, y: (Math.random() - 0.5) * 0.6 };
+      /* v142: ...if it is on. A man about to play it into a defender standing
+         in the lane carries it on and looks again instead — as often as his
+         side's decision quality says he notices (passes into a blocked lane
+         arrived half the time; tools/pass-audit.mjs). */
+      const am = Math.hypot(aim.x, aim.y);
+      const look = toGoal > 45 ? null : this.pickPassTarget(p, aim.x / am, aim.y / am, false, 0.75, 1, 14 + 0.75 * 44, 2.6);
+      if (!(look?.best && look.lane < TUNE.laneWait && Math.random() < q)) {
+        this.pass(p, aim, toGoal > 45, 0.75);
+        return;
+      }
     }
 
     // carry toward goal — wide players stay in their channel and attack the

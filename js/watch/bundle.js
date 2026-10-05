@@ -10834,7 +10834,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.7, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
     let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
       ...add(take(["GK"], 1, used)),
@@ -11614,7 +11614,13 @@
           let foe = this.nearestTo(1 - o.team, o), tight = foe && dist(o, foe) < 4 ? 0.75 : 1, push2 = (0.8 + speed * 0.26) * (1.3 - skill * 0.4);
           b.vx += o.dirX * push2, b.vy += o.dirY * push2, o.touchT = (0.3 + Math.random() * 0.16) * tight * (1.25 - skill * 0.33), this.cue("touch");
         }
-        b.lastTouch = o, (b.x < 0.4 || b.x > PITCH.w - 0.4 || b.y < 0.4 || b.y > PITCH.h - 0.4) && (b.owner = null, o.touchLock = 0.3, b.vx = o.vx, b.vy = o.vy, (b.x < 0.4 || b.x > PITCH.w - 0.4) && Math.abs(b.y - CY) < GOAL_HALF + 0.3 && (b.y = CY + Math.sign(b.y - CY || 1) * (GOAL_HALF + 0.4)), this.bounds());
+        b.lastTouch = o;
+        let ownX = this.teams[o.team].dir > 0 ? 0 : PITCH.w;
+        if (Math.abs(b.x - ownX) < 1.2 && Math.abs(b.y - CY) < GOAL_HALF + 2 && !this.isControlled(o)) {
+          let inward = ownX === 0 ? 1 : -1;
+          b.x = ownX + inward * 1.2, b.vx * inward < 0 && (b.vx = 0), o.vx * inward < 0 && (o.vx = 0);
+        }
+        (b.x < 0.4 || b.x > PITCH.w - 0.4 || b.y < 0.4 || b.y > PITCH.h - 0.4) && (b.owner = null, o.touchLock = 0.3, b.vx = o.vx, b.vy = o.vy, (b.x < 0.4 || b.x > PITCH.w - 0.4) && Math.abs(b.y - CY) < GOAL_HALF + 0.3 && (b.y = CY + Math.sign(b.y - CY || 1) * (GOAL_HALF + 0.4)), this.bounds());
         return;
       }
       if (b.curl) {
@@ -11905,7 +11911,7 @@
     }
     release(p, vx, vy, vz = 0) {
       let b = this.ball;
-      b.owner = null, b.lastTouch = p, b.shotBy = null, b.noTouch = 0.13, b.curl = 0, b.dip = 0, b.knuckle = 0, b.shotId = (b.shotId || 0) + 1, b.vx = vx, b.vy = vy, b.vz = vz, b.x = clamp2(p.x + p.dirX * 1.3, 0.5, PITCH.w - 0.5), b.y = clamp2(p.y + p.dirY * 1.3, 0.5, PITCH.h - 0.5), b.z = vz > 0 ? 0.35 : b.z, p.touchLock = 0.3;
+      b.owner = null, b.lastTouch = p, b.shotBy = null, b.passTo = null, b.noTouch = 0.13, b.curl = 0, b.dip = 0, b.knuckle = 0, b.shotId = (b.shotId || 0) + 1, b.vx = vx, b.vy = vy, b.vz = vz, b.x = clamp2(p.x + p.dirX * 1.3, 0.5, PITCH.w - 0.5), b.y = clamp2(p.y + p.dirY * 1.3, 0.5, PITCH.h - 0.5), b.z = vz > 0 ? 0.35 : b.z, p.touchLock = 0.3;
     }
     /**
      * Lofted ball forward. Inside crossing range it hangs one up in the box for a
@@ -12020,16 +12026,19 @@
       var _a;
       return 1 - (1 - ((_a = p.stamina) != null ? _a : 1)) * 0.3 - (p.injured ? 0.25 : 0);
     }
-    pass(p, aim, through, power = 0.35, lob = !1, assist = 1) {
-      var _a, _b, _c, _d;
-      this.tally(p, "passes");
-      let team = this.teams[p.team], reach = 14 + power * 44 + (assist === 2 ? 10 : 0), alignW = assist === 2 ? 0.9 : 2.6, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
-      ax /= am, ay /= am;
-      let human = this.controllers.some((k) => {
+    /**
+     * Who a pass goes to: the team-mate the aim, distance, forwardness, width
+     * and (v103) openness pick out. Also returns how close the nearest opponent
+     * stood to the line to him (`lane`), which the CPU uses to wait for a better
+     * moment (v142).
+     */
+    pickPassTarget(p, ax, ay, through, power, assist, reach, alignW) {
+      var _a, _b;
+      let team = this.teams[p.team], human = this.controllers.some((k) => {
         var _a2;
         return ((_a2 = this.playerOf) == null ? void 0 : _a2.call(this, k)) === p;
-      }), openW = assist === 0 ? 0 : human ? assist === 2 ? 1 : 0.6 : this.decisionQuality(p.team), opp = this.teams[1 - p.team].players, goalXp = team.dir > 0 ? PITCH.w : 0, openness = (t) => {
-        if (!openW) return 0;
+      }), openW = assist === 0 ? 0 : human ? assist === 2 ? 1 : 0.6 : this.decisionQuality(p.team), opp = this.teams[1 - p.team].players, goalXp = team.dir > 0 ? PITCH.w : 0, laneOf = 9, openness = (t) => {
+        if (laneOf = 9, !openW) return 0;
         let risk = Math.abs(goalXp - t.x) < 36 * SCALE ? 0.35 : 1;
         if (through) {
           let sx = t.x + team.dir * 8, room = 9;
@@ -12041,17 +12050,25 @@
           let u = clamp2(((o.x - p.x) * vx + (o.y - p.y) * vy) / L3, 0.08, 1);
           lane = Math.min(lane, Math.hypot(p.x + vx * u - o.x, p.y + vy * u - o.y)), mark = Math.min(mark, dist(o, t));
         }
-        return ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW * risk;
-      }, best = null, bestScore = -1 / 0;
+        return laneOf = lane, ((Math.min(lane, 4) - 2) * 0.35 + (Math.min(mark, 5) - 2.5) * 0.15) * openW * risk;
+      }, best = null, bestScore = -1 / 0, bestLane = 9;
       for (let t of team.players) {
         if (t === p) continue;
-        let dx2 = t.x - p.x, dy2 = t.y - p.y, d3 = Math.hypot(dx2, dy2);
-        if (d3 < 3 || d3 > reach) continue;
-        let align = dx2 / d3 * ax + dy2 / d3 * ay;
+        let dx = t.x - p.x, dy = t.y - p.y, d2 = Math.hypot(dx, dy);
+        if (d2 < 3 || d2 > reach) continue;
+        let align = dx / d2 * ax + dy / d2 * ay;
         if (assist === 0 && align < 0.94) continue;
-        let forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * alignW - d3 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0) + openness(t);
-        score > bestScore && (bestScore = score, best = t);
+        let forward = (t.x - p.x) * team.dir / 40, wideBonus = Math.abs(t.y - CY) / CY * ((_b = (_a = team.tactics) == null ? void 0 : _a.width) != null ? _b : 0.5) * 0.9, score = align * alignW - d2 / 45 + forward * (through ? 1.2 : 0.5) + wideBonus + (t.role === "GK" ? -2.5 : 0) + (this.isOffside(t) ? -1.5 : 0) + openness(t);
+        score > bestScore && (bestScore = score, best = t, bestLane = laneOf);
       }
+      return { best, lane: bestLane };
+    }
+    pass(p, aim, through, power = 0.35, lob = !1, assist = 1) {
+      var _a, _b;
+      this.tally(p, "passes");
+      let team = this.teams[p.team], reach = 14 + power * 44 + (assist === 2 ? 10 : 0), alignW = assist === 2 ? 0.9 : 2.6, ax = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.x : p.dirX, ay = aim && Math.hypot(aim.x, aim.y) > 0.2 ? aim.y : p.dirY, am = Math.hypot(ax, ay) || 1;
+      ax /= am, ay /= am;
+      let { best } = this.pickPassTarget(p, ax, ay, through, power, assist, reach, alignW);
       if (this.cue("pass"), this.ball.passer = p, !best) {
         let punt = (16 + power * 22) * this.preset.passSpeed;
         this.release(p, ax * punt, ay * punt);
@@ -12071,13 +12088,37 @@
         }
         third && (third.thirdUntil = 1.8, third.thirdX = this.onsideX(team, best.x + team.dir * 14, Math.random() < 0.35 ? 2.2 : 0), third.thirdY = clamp2(best.y + (third.y > best.y ? 7 : -7), 5, PITCH.h - 5));
       }
-      let dx = tx - p.x, dy = ty - p.y, d2 = Math.hypot(dx, dy) || 1, foeP = this.nearestTo(1 - p.team, p), hurried = foeP && dist(foeP, p) < 2.4 ? 1.55 : 1, pinged = (_c = p.tr) != null && _c.pinged && d2 > 22 ? 1 - 0.25 * p.tr.pinged : 1, err = (100 - p.ref.stats.passing) / 100 * (0.13 + power * 0.1) * (this.weakFoot(p) ? 1.55 : 1) * (2 - this.formOf(p)) * hurried * pinged * (1 + Math.max(0, d2 - 22) / 20) * (Math.random() - 0.5) * 2, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2, speed = clamp2((d2 * 1.35 + 9) * (0.8 + power * 0.6) * this.preset.passSpeed * ((_d = p.tr) != null && _d.pinged && d2 > 22 ? 1.06 : 1), 14, 48);
+      let dx = tx - p.x, dy = ty - p.y, d2 = Math.hypot(dx, dy) || 1, foeP = this.nearestTo(1 - p.team, p), hurried = foeP && dist(foeP, p) < 2.4 ? 1.55 : 1, pinged = (_a = p.tr) != null && _a.pinged && d2 > 22 ? 1 - 0.25 * p.tr.pinged : 1, err = (100 - p.ref.stats.passing) / 100 * (0.13 + power * 0.1) * (this.weakFoot(p) ? 1.55 : 1) * (2 - this.formOf(p)) * hurried * pinged * (1 + Math.max(0, d2 - 22) / 20) * (Math.random() - 0.5) * 2, c = Math.cos(err), s = Math.sin(err), nx = (dx * c - dy * s) / d2, ny = (dx * s + dy * c) / d2, speed = clamp2((d2 * 1.35 + 9) * (0.8 + power * 0.6) * this.preset.passSpeed * ((_b = p.tr) != null && _b.pinged && d2 > 22 ? 1.06 : 1), 14, 48);
       if (lob) {
         let T = clamp2(d2 / 17, 0.7, 1.7);
-        this.cue("lob", p), this.release(p, nx * (d2 / T), ny * (d2 / T), 0.5 * GRAV * T), this.ball.noTouch = 0.3;
+        this.cue("lob", p), this.release(p, nx * (d2 / T), ny * (d2 / T), 0.5 * GRAV * T), this.ball.noTouch = 0.3, this.ball.passTo = best, this.ball.passT = this.t;
         return;
       }
-      this.release(p, nx * speed, ny * speed, power > 0.8 && d2 > 24 ? 1.6 : 0), this.ball.passKind = power > 0.8 && d2 > 24 ? "driven" : "ground";
+      this.release(p, nx * speed, ny * speed, power > 0.8 && d2 > 24 ? 1.6 : 0), this.ball.passKind = power > 0.8 && d2 > 24 ? "driven" : "ground", this.ball.passTo = best, this.ball.passT = this.t;
+    }
+    /**
+     * v142: the man a pass is played to, while it is still on its way to him —
+     * nobody has touched it since it left the passer's foot. Null otherwise.
+     */
+    passTarget() {
+      let b = this.ball;
+      return b.owner || !b.passTo || b.lastTouch !== b.passer || this.t - b.passT > 3 || b.z < 0.4 && Math.hypot(b.vx, b.vy) < 1.5 ? null : b.passTo;
+    }
+    /**
+     * v142: where the receiver meets the pass — the first point on the ball's
+     * path he can be at by the time it gets there (drag included), or where it
+     * stops rolling if he cannot get across in time.
+     */
+    meetPoint(p) {
+      var _a, _b;
+      let b = this.ball, s = Math.hypot(b.vx, b.vy);
+      if (s < 0.5) return { x: b.x, y: b.y };
+      let k = -60 * Math.log(b.z > 0.4 ? 0.9985 : (_b = (_a = FIELD.ball) == null ? void 0 : _a.drag) != null ? _b : 0.986), ux = b.vx / s, uy = b.vy / s, run = (p.maxSpeed || 7) * 0.9, x = b.x, y = b.y;
+      for (let t = 0.1; t <= 3; t += 0.1) {
+        let L3 = s / k * (1 - Math.exp(-k * t));
+        if (x = clamp2(b.x + ux * L3, 0.5, PITCH.w - 0.5), y = clamp2(b.y + uy * L3, 0.5, PITCH.h - 0.5), Math.hypot(x - p.x, y - p.y) <= run * t + 1) break;
+      }
+      return { x, y };
     }
     /**
      * @param {object} opts
@@ -12530,12 +12571,18 @@
       if (p.role === "GK") return this.thinkGK(p, dt);
       let b = this.ball, team = this.teams[p.team];
       if (b.owner === p) return this.thinkOnBall(p, dt);
-      let weHave = b.owner && b.owner.team === p.team, press = this.pressingOf(p.team), isChaser = this.chasers[p.team] === p || ((_a = this.chasers2) == null ? void 0 : _a[p.team]) === p, target = this.shapeTarget(p), goalX = team.dir > 0 ? PITCH.w : 0, triggered = this.pressTrigger && this.pressTrigger.team === p.team && this.t - this.pressTrigger.t < 1.4 && dist(p, b) < 16;
+      let weHave = b.owner && b.owner.team === p.team, press = this.pressingOf(p.team), isChaser = this.chasers[p.team] === p || ((_a = this.chasers2) == null ? void 0 : _a[p.team]) === p, pt = this.passTarget();
+      if (pt === p) {
+        let mp = this.meetPoint(p);
+        this.moveTo(p, mp.x, mp.y, dt, 1.06);
+        return;
+      }
+      let leaveIt = pt && pt.team === p.team, target = this.shapeTarget(p), goalX = team.dir > 0 ? PITCH.w : 0, triggered = this.pressTrigger && this.pressTrigger.team === p.team && this.t - this.pressTrigger.t < 1.4 && dist(p, b) < 16;
       if (b.owner && b.owner.team !== p.team && this.controllers.some((k) => k.team === p.team && k.press2) && this.pressMate(p.team) === p) {
         this.moveTo(p, b.owner.x, b.owner.y, dt, 1.1);
         return;
       }
-      if (!weHave && (isChaser || triggered || !b.owner && dist(p, b) < 14 * press)) {
+      if (!weHave && !leaveIt && (isChaser || triggered || !b.owner && dist(p, b) < (pt ? 6 : 14) * press)) {
         this.moveTo(p, b.x + b.vx * 0.25, b.y + b.vy * 0.25, dt, 1.06);
         let agg = this.aggressionOf(p), opp = this.teams[1 - p.team];
         if (b.owner && b.owner.team !== p.team && opp.counterT > 0 && dist(p, b.owner) < 2.6 && p.downT <= 0 && Math.abs(b.owner.x - PITCH.w / 2) < 30 && p.cards < 1 && Math.random() < (0.5 + agg) * dt) {
@@ -12824,8 +12871,11 @@
           this.pass(p, { x: team.dir, y: (Math.random() - 0.5) * 0.8 }, !0, 0.9);
           return;
         }
-        this.pass(p, { x: team.dir, y: (Math.random() - 0.5) * 0.6 }, toGoal > 45, 0.75);
-        return;
+        let aim = { x: team.dir, y: (Math.random() - 0.5) * 0.6 }, am = Math.hypot(aim.x, aim.y), look = toGoal > 45 ? null : this.pickPassTarget(p, aim.x / am, aim.y / am, !1, 0.75, 1, 14 + 0.75 * 44, 2.6);
+        if (!(look != null && look.best && look.lane < TUNE.laneWait && Math.random() < q)) {
+          this.pass(p, aim, toGoal > 45, 0.75);
+          return;
+        }
       }
       let tx = goalX, ty = wide && Math.abs(goalX - p.x) < 60 ? clamp2(p.y + Math.sign(p.y - CY) * 2, 2.5, PITCH.h - 2.5) : CY + (p.y - CY) * 0.85;
       foe && pressure < 8 && (tx += (p.x - foe.x) * 0.5, ty += (p.y - foe.y) * 1.4), this.moveTo(p, clamp2(tx, 2, PITCH.w - 2), clamp2(ty, 3, PITCH.h - 3), dt, 1);
