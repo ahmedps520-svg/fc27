@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v144',
+    date: '2026-10-05',
+    tag: 'Feel',
+    title: 'Players kick the ball',
+    lede: 'Every pass, shot and clearance now has a real leg swing: the kicking foot draws back, strikes through the ball and follows through.',
+    entries: [
+      {
+        head: 'The kick',
+        summary: 'Players now swing a leg at every pass, shot, cross and clearance. The harder the strike, the higher the follow-through, and the standing foot stays planted through contact.',
+        detail: 'Until now the figures used on phones (Medium and Low) had no kick at all: the ball just left the feet of a player who kept running. The scanned figures on High and Ultra had a kick, but only a lob ever triggered it. Both now kick for every strike, read from the ball itself, so it looks the same online and in replays. It uses the foot nearer the ball, or the player\'s stronger foot when the ball is straight ahead.',
+      },
+    ],
+  },
+  {
     version: 'v143',
     date: '2026-10-05',
     tag: 'Gameplay',

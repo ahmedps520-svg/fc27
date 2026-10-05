@@ -123,3 +123,31 @@ test('turning on the spot: one foot at a time, each lifted clear', () => {
   assert.ok(both <= 2, `both feet moving at once on ${both} frames`);
   assert.ok(lifted > 5, `the stepping foot leaves the grass (${lifted} frames)`);
 });
+
+/* v144: the kick (game/kick.js). A jogging figure strikes the ball: the kicking
+   foot comes up behind, through and up into the follow-through, never jumps,
+   and he is back on his feet stepping normally afterwards. */
+test('a kick swings the foot through and back down, without a pop', async () => {
+  const K = await import('../../js/game/kick.js');
+  const col = new THREE.Color('#3a6ad3');
+  const fig = R.buildPlayer(col, col, col, col, col, { height: 1, girth: 1, shoulders: 1 });
+  const p = { x: 0, y: 0, vx: 3, vy: 0, dirX: 1, dirY: 0, _phase: 0 };
+  const dt = 1 / 60; let prev = null; let pop = 0; let top = 0; let back = 0; let fwd = 0;
+  for (let i = 0; i < 180; i++) {
+    p.x += p.vx * dt;
+    if (i === 60) p._kick = { t: 0, side: 1, power: 0.8 };
+    if (p._kick) { p._kick.t += dt; if (p._kick.t >= K.KICK_DUR) p._kick = null; }
+    const g = R.gaitOf(p); p._phase += R.strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; R.updateBank(p, dt);
+    R.posePlayer(fig, p, p._phase, true, 0);
+    const foot = fig.parts.footR.position.clone();
+    // the strike itself is fast (a real boot is through the ball at ~20 m/s): judged outside it
+    const [a, b, c] = K.KICK_PHASES; const k = i - 60;
+    const striking = k >= Math.floor(a * 60) && k <= Math.ceil((a + b + c) * 60);
+    if (prev && i > 20 && !striking) pop = Math.max(pop, foot.distanceTo(prev) - 3 * dt);
+    if (i >= 60 && i < 60 + K.KICK_DUR * 60) { top = Math.max(top, foot.z); back = Math.min(back, foot.x - p.x); fwd = Math.max(fwd, foot.x - p.x); }
+    prev = foot;
+  }
+  assert.ok(top > 0.3, `the follow-through lifts the boot (${top.toFixed(2)} m)`);
+  assert.ok(back < -0.2 && fwd > 0.4, `drawn back (${back.toFixed(2)}) and through (${fwd.toFixed(2)})`);
+  assert.ok(pop < 0.1, `into and out of the kick, no foot jumps (${pop.toFixed(3)} m in a frame)`);
+});

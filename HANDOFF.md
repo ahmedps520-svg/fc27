@@ -15,6 +15,36 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v144 — the kick (feel), render only
+Sweep byte-identical (nothing in the sim changed).
+- Finding: `rig.js` (the built figures, which are every phone's Medium and
+  Low) had no kick pose at all. On the scanned figures, `play.js` set
+  `_act='kick'` only for cues that carry the player, which is only `lob`:
+  `pass()` cues with no argument and `shoot()` cues with the power.
+- New `js/game/kick.js` (precached):
+  - `detectKicks(m, dt, state)` runs once per rendered frame in `renderGL.js`
+    before the player loop. A ball not owned, z ≤ 1.2, whose ground speed
+    rose by ≥ 6.5 m/s (`KICK_DV`; a dribble touch is 2–3), was kicked by the
+    nearest player within 2.2 m who is not diving or down;
+  - it sets `p._kick {t, side, power}` (side is the foot nearer the ball,
+    else the strong foot, `ref.foot`) and `_act='kick'` for the scanned clip;
+  - it ages and clears kicks;
+  - works from ball state alone, so the online guest and replays get it too;
+  - over one AI match it found 104 kicks against 110 real
+    pass/shoot/cross/clear calls, 77 matched to the same player and frame;
+    the rest are mostly tackle pokes and set pieces.
+- `kickFoot(kick)` gives the kicking foot's path in the player's frame:
+  phases 0.08/0.06/0.15/0.15 s (draw back to f −0.38 with the heel up,
+  through the ball at f 0.28, follow-through to f 0.66–0.86 and z
+  0.25–0.7 by power, then down at f 0.12). `kickEnv` drives a lean back
+  (−0.07) and a hip dip (−0.05).
+- In `rig.js leg()`, the kicking foot blends from wherever it was into the
+  swing over the draw back. The standing foot is held through contact + 0.04
+  s while within reach, and a sprinting kicker then runs on off it.
+- `gait.test.mjs`: new kick test (draw back, through, a lifted
+  follow-through, no pop outside the strike, whose own pace is ~0.27
+  m/frame). Ad-hoc stills: `tests/tmp/kickstrip.mjs` (not committed, tmp).
+
 ### v143 — weather in the ball physics (backlog #15)
 Sweep byte-identical: the sweep has no venue, and clear and overcast use the
 old values.

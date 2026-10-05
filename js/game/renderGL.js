@@ -7,6 +7,7 @@ import { PITCH, GOAL_HALF, GOAL_HEIGHT, BOX } from './sim.js';
 import { NetCloth } from './net.js';
 import { faceOf } from '../components/face.js';
 import { loadPlayerModel, makeRig, poseRig, setCelebClock, setRigLod } from './playerModel.js';
+import { detectKicks } from './kick.js';
 import { pickLods } from './lodPolicy.js';
 import { createReferee, updateReferee } from './referee.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
@@ -3000,6 +3001,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     return rig;
   };
   let useModels = false;
+  const kickState = {};
   /* Resolves once there is nothing left that would visibly change the picture.
    * The loading screen waits on this, which is the whole reason it exists: the
    * match used to start on the built-in figures and swap to the scanned ones
@@ -3636,6 +3638,8 @@ export function createRenderer(canvas, match, quality, models = false) {
         lodOf = new Map();
         for (let i = 0; i < who.length; i++) { lodOf.set(who[i], lv[i]); who[i]._lod = lv[i]; }
       }
+      // v144: who kicked the ball this frame (game/kick.js) — the legs swing for it
+      detectKicks(m, dt || 0, kickState);
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
           // v134: sent off — gone from the picture

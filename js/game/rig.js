@@ -7,6 +7,7 @@
  */
 import * as THREE from '../vendor/three.module.js';
 import { celebPose, armDirs } from './celebrations.js';
+import { kickFoot, kickEnv, KICK_PHASES } from './kick.js';
 import { paintKit } from '../data/kitDesign.js';
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
@@ -369,7 +370,9 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   // leaning into the run only when running forwards; a touch back on a backpedal
   // a celebration's bow or lean back tips the torso: shoulders forward (or back) by its length × sin
   const TORSO = (SHOULDER_Z - WAIST_Z) * b.height;
-  const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf) + (C ? (TORSO * Math.sin(C.lean)) / 1.7 : 0);
+  // v144: leaning back over the ball as the foot comes through it
+  const kickE = C ? 0 : kickEnv(p._kick);
+  const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf) + (C ? (TORSO * Math.sin(C.lean)) / 1.7 : 0) - 0.07 * kickE;
   // a turn tips the body into it (p._bank, from the renderer: how fast the path is curving)
   // v137: the cut — hips drop over the planted foot and the body throws itself into the new line
   const cut = C ? 0 : cutEnv(p);
@@ -387,7 +390,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const lift = hop + bob;
 
   // v102: soft knees when moving, so a planted foot a stride ahead is within reach
-  const hipZ = HIP_Z * H + lift - 0.07 * gait - 0.16 * cut;
+  const hipZ = HIP_Z * H + lift - 0.07 * gait - 0.16 * cut - 0.05 * kickE;
   const shZ = SHOULDER_Z * H + lift - (C ? TORSO * (1 - Math.cos(C.lean)) : 0);
 
   /* v102 (feel): the legs step. Each foot is either planted — pinned to the
@@ -399,6 +402,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
      played along the facing whatever the body did: the planted foot slid at
      the body's own speed, in every direction (tools/gait-audit.mjs). */
   const feet = rig.feet || (rig.feet = {});
+  const kicking = !C && p._kick && kickFoot(p._kick) ? p._kick : null;
   const cadence = strideRate(sp) / (2 * Math.PI);              // stride cycles a second
   /* share of a cycle a foot is down, from how far a leg can sweep while planted
      (~0.7 m of ground at a running crouch): a jog comes out ~0.3 and a sprint
@@ -500,6 +504,22 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
       // lift off from wherever the heel was (a toe-off leaves it up), onto the arc
       az += ((f.fromZ ?? az) - az) * (1 - e) + Math.sin(Math.PI * s) * liftH;
       f.x = ax; f.y = ay;
+    }
+    /* v144: a kick (game/kick.js). The kicking foot follows the swing, in his
+       own frame; the standing foot stays planted where it is. When the swing
+       ends, the foot is back on the grass under him and steps on from there. */
+    if (kicking && kicking.side === (side < 0 ? -1 : 1)) {
+      const k = kickFoot(kicking);
+      ax = wx(k.f * H, k.l * H); ay = wy(k.f * H, k.l * H); az = ANKLE_Z * H + k.z * H;
+      // from wherever the foot was when the kick began, into the swing over the draw back
+      if (f.kick !== kicking) { f.kick = kicking; f.kx = f.x; f.ky = f.y; f.kz = f.z ?? az; }
+      const m0 = Math.min(1, kicking.t / KICK_PHASES[0]); const e0 = m0 * m0 * (3 - 2 * m0);
+      ax = f.kx + (ax - f.kx) * e0; ay = f.ky + (ay - f.ky) * e0; az = f.kz + (az - f.kz) * e0;
+      f.x = ax; f.y = ay; f.stance = true; f.held = false; f.landing = false;
+    } else if (kicking && kicking.t < KICK_PHASES[0] + KICK_PHASES[1] + 0.04 && f.stance
+      && Math.hypot(f.x - hx, f.y - hy) < 0.8 * (THIGH + SHIN) * H) {
+      // the standing foot: planted through the strike (a sprinting kicker runs on off it after)
+      ax = f.x; ay = f.y; az = ANKLE_Z * H;
     }
     // two-bone IK, hip to ankle, knee forward
     const T = THIGH * H; const S = SHIN * H;
