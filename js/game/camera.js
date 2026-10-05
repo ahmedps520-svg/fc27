@@ -51,6 +51,16 @@ export const presetById = (id) => CAMERA_PRESETS.find((p) => p.id === id) || CAM
 
 /** The settings the rig reads, with their ranges. */
 export const CAMERA_DEFAULTS = { preset: 'broadcast', height: 1, zoom: 1, angle: 0 };
+
+/* v141: the framing is the same at every size, so on a phone held sideways
+   (390–430 px tall) a player was ~29 px high — hard to tell who is who.
+   A short screen brings the camera in: 14% under 480 px, easing to nothing
+   by 640 px, so tablets and desktops frame exactly as before. The player's
+   own zoom setting still applies on top. */
+export function screenZoom(h = typeof window !== 'undefined' ? window.innerHeight : 0) {
+  if (!h || h >= 640) return 1;
+  return h <= 480 ? 0.86 : 0.86 + (h - 480) / 160 * 0.14;
+}
 export const cameraSettings = (s = {}) => ({
   preset: presetById(s.preset).id,
   height: clamp(Number(s.height) || 1, 0.6, 1.6),
@@ -242,7 +252,8 @@ export function createCameraRig({ settings = {}, bounds = null } = {}) {
 
   /* The open-play pose for each preset. */
   const playPose = (m) => {
-    const Z = S.zoom * zoomAuto * Math.max(0.5, Math.min(1, SCALE * 1.15));   // v80: a small pitch wants the camera closer
+    const Z = S.zoom * zoomAuto * Math.max(0.5, Math.min(1, SCALE * 1.15))   // v80: a small pitch wants the camera closer
+      * screenZoom();                                 // v141: and a short phone screen wants it a little closer too
     const H = S.height;
     const tilt = S.angle;                             // degrees: + steeper, - flatter
     const steep = 1 + tilt * 0.022; const near = 1 - tilt * 0.012;

@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v141',
+    date: '2026-10-05',
+    tag: 'Polish',
+    title: 'Closer on phones, and labels at the right size',
+    lede: 'On a phone held sideways the match camera comes in a little closer, and a handful of labels finally render at the size they were designed at.',
+    entries: [
+      {
+        head: 'Phone camera',
+        summary: 'On short screens the match camera sits a little closer (up to 14%), so players are easier to tell apart; tablets and computers frame exactly as before.',
+        detail: 'Your own camera zoom setting still applies on top.',
+      },
+      {
+        head: 'Text sizes',
+        summary: 'The player name under the scoreboard, the network badge, and some Online and Account labels were drawn larger than intended; they now fit.',
+        detail: 'A style rule the browser could not read was being ignored without a word. A new check now runs every stylesheet past the browser and fails the build if anything would be ignored.',
+      },
+    ],
+  },
+  {
     version: 'v140',
     date: '2026-10-05',
     tag: 'Gameplay',

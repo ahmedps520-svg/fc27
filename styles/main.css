@@ -2769,7 +2769,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   gap: 14px;
 }
 .acct-kicker {
-  font: 700 11px/1 var(--font-cond, inherit);
+  font: 700 11px/1 var(--font);
   letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--accent);
@@ -2791,7 +2791,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   border-radius: 9px;
   background: transparent;
   color: var(--muted);
-  font: 600 13px/1 inherit;
+  font: 600 13px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
   cursor: pointer;
   transition: background .18s, color .18s;
 }
@@ -2805,7 +2805,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.35);
   color: var(--text);
-  font: 500 15px/1 inherit;
+  font: 500 15px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
 }
 .acct-form input:focus { outline: none; border-color: var(--accent); }
 .acct-error {
@@ -2837,7 +2837,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   border-radius: 13px;
   background: var(--accent-soft);
   color: var(--accent);
-  font: 800 20px/1 inherit;
+  font: 800 20px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
 }
 .ol-id { display: flex; flex-direction: column; gap: 3px; margin-right: auto; }
 .ol-id b { font-size: 16px; }
@@ -2859,7 +2859,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .ol-card h3 { margin: 0; font-size: 19px; }
 .ol-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .ol-kicker {
-  font: 700 10px/1 inherit;
+  font: 700 10px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--accent);
@@ -2877,7 +2877,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.35);
   color: var(--text);
-  font: 700 15px/1 inherit;
+  font: 700 15px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
   letter-spacing: .22em;
   text-transform: uppercase;
   text-align: center;
@@ -2941,7 +2941,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   padding: 4px 9px;
   border-radius: 8px;
   background: rgba(0,0,0,.45);
-  font: 600 11px/1 inherit;
+  font: 600 11px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
   color: var(--muted);
   white-space: nowrap;
 }
@@ -2956,7 +2956,7 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
   width: max-content;
 }
 .stam-who {
-  font: 700 10px/1 inherit;
+  font: 700 10px/1 var(--font);   /* v141: "inherit" is not a family: the whole declaration was being dropped */
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-dim);

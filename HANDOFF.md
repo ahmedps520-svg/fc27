@@ -15,6 +15,28 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v141 — polish: dropped CSS found and fixed, closer camera on phones
+- Seven `font:` shorthands in `styles/main.css` had `inherit` as the font
+  family, which is invalid, so the browser dropped them silently. They
+  covered `.stam-who` (the active-player name under the scorebug, clipped at
+  the inherited size), `.gm-net`, `.acct-kicker/.acct-tabs/.acct-form
+  input` and `.ol-avatar/.ol-kicker/.ol-join input`. A `var(--font-cond,
+  inherit)` failed too (`--font-cond` is never defined). All now use
+  `var(--font)`.
+- New `tools/css-lint.mjs`, now a CI step after "Install Chromium":
+  - it puts every declaration in `styles/*.css` through Chromium's
+    `CSS.supports(prop, value)`;
+  - vendor-prefixed properties are skipped (they are for iOS Safari);
+  - a var() value passes at parse time whatever it holds, so a bad fallback
+    inside var() is not caught.
+- `camera.js screenZoom(h)`: the open-play pose's Z × 0.86 at an inner
+  height ≤ 480 px, easing to 1 at 640 px. A sideways phone (390–430 px)
+  frames ~14% closer. Set-piece and kick-off poses are unchanged, and so
+  is every desktop/tablet framing (camera-shots run at 1280×720).
+- Checked: a crawl of every screen and tab for failed requests found none.
+  The console showed only the autoplay and KHR_parallel_shader_compile
+  warnings.
+
 ### v140 — corners (gameplay), and no repeats inside a pack
 Sweep re-baselined deliberately.
 - New `tools/restart-audit.mjs` records, for every corner, throw-in and goal
