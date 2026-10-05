@@ -2665,6 +2665,7 @@ export class Match {
     const REACH = slide ? 4.3 : 3.1;
 
     p.slide = slide ? 0.8 : 0.42;
+    p.slideMax = p.slide;            // v146: for the renderer — a slide or a standing lunge
     p.vx = p.dirX * p.maxSpeed * (slide ? 2.05 : 1.7);
     p.vy = p.dirY * p.maxSpeed * (slide ? 2.05 : 1.7);
     if (slide) this.cue('slide', p);

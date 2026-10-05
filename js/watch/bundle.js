@@ -12241,7 +12241,7 @@
       var _a;
       if (this.advantage && this.advantage.offender === p) return;
       let b = this.ball, owner = b.owner, REACH = slide ? 4.3 : 3.1;
-      if (p.slide = slide ? 0.8 : 0.42, p.vx = p.dirX * p.maxSpeed * (slide ? 2.05 : 1.7), p.vy = p.dirY * p.maxSpeed * (slide ? 2.05 : 1.7), slide && this.cue("slide", p), !owner || owner.team === p.team) return;
+      if (p.slide = slide ? 0.8 : 0.42, p.slideMax = p.slide, p.vx = p.dirX * p.maxSpeed * (slide ? 2.05 : 1.7), p.vy = p.dirY * p.maxSpeed * (slide ? 2.05 : 1.7), slide && this.cue("slide", p), !owner || owner.team === p.team) return;
       if (owner.role === "GK") {
         p.stumble = 0.35;
         return;

@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v146',
+    date: '2026-10-05',
+    tag: 'Feel',
+    title: 'Slides, lunges and headers',
+    lede: 'Players now go to ground for a slide tackle, stretch into a standing tackle, and jump to head the ball.',
+    entries: [
+      {
+        head: 'Tackles',
+        summary: 'A slide tackle goes to ground: hips down, the leading leg out along the grass, leaning back. A standing tackle is a long lunge.',
+        detail: 'On phones (Medium and Low quality) a tackling player used to just keep running.',
+      },
+      {
+        head: 'Headers',
+        summary: 'A player heading the ball now jumps for it and nods through it, higher for a higher ball.',
+        detail: 'Like kicks, headers are read from the ball, so they show online and in replays as well.',
+      },
+      {
+        head: 'Online',
+        summary: 'Your opponent\'s tackles, slides and falls now show on your screen when you join someone else\'s online match.',
+        detail: 'The host now sends them with the match updates; before, a player who had been fouled just stood there on the joining player\'s screen.',
+      },
+    ],
+  },
+  {
     version: 'v145',
     date: '2026-10-05',
     tag: 'Gameplay',
