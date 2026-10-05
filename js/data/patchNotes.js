@@ -18,6 +18,35 @@
  */
 export const RELEASES = [
   {
+    version: 'v145',
+    date: '2026-10-05',
+    tag: 'Gameplay',
+    title: 'Keepers who distribute',
+    lede: 'Goalkeepers now roll it out, throw it overarm, punt it or drop-kick it, the way real keepers do.',
+    entries: [
+      {
+        head: 'Throws, rolls and punts',
+        summary: 'After a save, a keeper rolls it to a nearby team-mate, throws it overarm to one further away, or punts or drop-kicks it upfield when nobody is free.',
+        detail: 'Before, every keeper did one of two things: a ground pass to a free man, or a long "through ball" along the grass. Distance and hang time now depend on the kind: a punt goes up and comes down 50 to 70 m away, a drop-kick skims lower, and a throw lands at the receiver\'s feet. On the phone figures you can see the keeper\'s throwing arm.',
+      },
+      {
+        head: 'The back-pass rule',
+        summary: 'A keeper can no longer pick up a ball his own side played back to him. He kicks it, and goal kicks are kicked off the grass too.',
+        detail: 'Over 20 AI matches, keepers keep the ball after about 80% of short distributions and about two-thirds of long ones. Goals and shots are within their usual range on both presets.',
+      },
+      {
+        head: 'Evolutions',
+        summary: 'Pace Merchant is no longer offered to attacking midfielders. They rarely score or set up goals, so it took them far too long to finish; Engine Room is their track.',
+        detail: '',
+      },
+      {
+        head: 'Goal-line fix',
+        summary: 'A ball rolling steeply towards the post is now judged where it crosses the line, so one that would have gone past the post is no longer given as a goal.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v144',
     date: '2026-10-05',
     tag: 'Feel',

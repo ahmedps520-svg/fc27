@@ -7,7 +7,7 @@
  */
 import * as THREE from '../vendor/three.module.js';
 import { celebPose, armDirs } from './celebrations.js';
-import { kickFoot, kickEnv, KICK_PHASES } from './kick.js';
+import { kickFoot, kickEnv, KICK_PHASES, throwArm } from './kick.js';
 import { paintKit } from '../data/kitDesign.js';
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
@@ -577,8 +577,10 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     const s = Math.sin(ph);
     // celebrating: both arms swing up and out overhead instead of pumping
     const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
-    const shA = cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
-    const elA = cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
+    // v145: a keeper's overarm throw (game/kick.js)
+    const thr = p._throw && p._throw.side === (side < 0 ? -1 : 1) ? throwArm(p._throw) : null;
+    const shA = thr ? thr.sh : cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
+    const elA = thr ? thr.el : cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
     // hung off the outside of the deltoid, not buried in the chest
     const lat = side * (CHEST_W * b.shoulders + 0.014) + bank;
     const out = side * (cheer ? 0.34 : CHEST_W * b.shoulders + 0.042) + bank;
