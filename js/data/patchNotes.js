@@ -18,6 +18,30 @@
  */
 export const RELEASES = [
   {
+    version: 'v140',
+    date: '2026-10-05',
+    tag: 'Gameplay',
+    title: 'Corners',
+    lede: 'Blocks, scrambles and desperate clearances send the ball behind like they do in real football — about twice as many corners.',
+    entries: [
+      {
+        head: 'Blocks that go behind',
+        summary: 'A shot hammered into a defender keeps its pace and often loops off him — so blocked shots now win corners instead of dying in the box.',
+        detail: 'Corners used to come almost only from goalkeeper saves (about two a match). Measured over 60 AI matches on two seeds they are now 3.3 to 3.6, from saves, blocks, headers and clearances. Goals average 2.3 a match, up slightly from set pieces; shots and possession are unchanged.',
+      },
+      {
+        head: 'Clearances under pressure',
+        summary: 'A defender hurried in his own box with a forward on him now hacks it behind or over now and then, and a header flicked away from the goal mouth actually reaches the line.',
+        detail: 'Those flicks and slices used to have the pace of a back-pass and died in the six-yard box.',
+      },
+      {
+        head: 'Packs',
+        summary: 'A pack can no longer give you the same player twice.',
+        detail: 'The weekly Nations pack could repeat a card when that week\'s nation had few cards of a rarity; a repeat now becomes a different player from the next rarity up.',
+      },
+    ],
+  },
+  {
     version: 'v139',
     date: '2026-09-27',
     tag: 'Polish',

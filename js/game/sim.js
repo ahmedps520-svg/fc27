@@ -1551,9 +1551,14 @@ export class Match {
         if (bestD < 1.7) {
           if (b.shotBy && b.shotBy.team !== best.team) { b.shotBy = null; this.cue('block', best); }   // blocked
           const a = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 2.2;
-          const s = speed * 0.42;
+          /* v140: a ball struck hard into a body keeps much of its pace and often
+             loops off it — it used to keep 42% and die on the grass, so a blocked
+             shot almost never went behind (0.15 corners a match from 3.6 blocks;
+             tools/restart-audit.mjs). */
+          const s = speed * (0.5 + Math.random() * 0.3);
           b.vx = Math.cos(a) * s;
           b.vy = Math.sin(a) * s;
+          if (Math.random() < 0.45) b.vz = Math.max(b.vz, 2 + Math.random() * 4);
           b.lastTouch = best;
           best.touchLock = 0.3;
         }
@@ -1599,7 +1604,8 @@ export class Match {
           if (Math.random() < 0.22 && Math.abs(best.y - CY) > 3) {
             // off his head and behind — away from the goal mouth, never into his own net
             const away = Math.sign(best.y - CY);
-            b.vx = -t9.dir * (4 + Math.random() * 4); b.vy = away * (6 + Math.random() * 5); b.vz = 3 + Math.random() * 2;
+            // v140: with the pace to get there — at 4–8 m/s it died in the six-yard box instead of going out
+            b.vx = -t9.dir * (9 + Math.random() * 6); b.vy = away * (5 + Math.random() * 5); b.vz = 3 + Math.random() * 2;
           } else {
             const a = Math.atan2((Math.random() - 0.5) * 1.8, t9.dir);
             const sp = 12 + Math.random() * 8;
@@ -2102,10 +2108,14 @@ export class Match {
     const team = this.teams[p.team];
     const side = Math.sign(p.y - CY) || (Math.random() < 0.5 ? -1 : 1);
     const ownX = team.dir > 0 ? 0 : PITCH.w;
-    // shinned behind from near his own byline, now and then
-    if (Math.abs(p.x - ownX) < 10 && Math.abs(p.y - CY) > GOAL_HALF + 3 && Math.random() < 0.3) {
+    // shinned behind from near his own byline, now and then; v140: and in his own box with a forward
+    // on him, a hurried clearance goes behind or over as often as it goes away (real corners come from these)
+    const pressed = this.teams[1 - p.team].players.some((q) => q.role !== 'GK' && dist(q, p) < 2.2);
+    const nearLine = Math.abs(p.x - ownX) < 10 && Math.abs(p.y - CY) > GOAL_HALF + 3;
+    const inBox = Math.abs(p.x - ownX) < 17 && Math.abs(p.y - CY) < 20;
+    if ((nearLine && Math.random() < 0.3) || (inBox && pressed && Math.random() < 0.3)) {
       this.cue('clear', p);
-      this.release(p, -team.dir * (6 + Math.random() * 6), side * (3 + Math.random() * 5), 3);
+      this.release(p, -team.dir * (11 + Math.random() * 6), side * (3 + Math.random() * 5), 3);
       this.ball.noTouch = 0.3;
       return;
     }
