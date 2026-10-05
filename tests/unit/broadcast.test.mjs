@@ -72,6 +72,8 @@ test('goal and full-time context', () => {
   assert.ok(C.fullTimeKeys({ score: [1, 0], final: true })[0] === 'finalWin');
   assert.equal(C.weatherKey({ weather: 'rain' }), 'weatherRain');
   assert.equal(C.weatherKey({ weather: 'clear', time: 'night' }), 'night');
+  assert.equal(C.weatherKey({ weather: 'clear', wind: { speed: 4.2 } }), 'weatherWind', 'v146: a strong wind is mentioned');
+  assert.equal(C.weatherKey({ weather: 'rain', wind: { speed: 5 } }), 'weatherRain', 'rain says more than wind');
 });
 
 test('offside margin, form, and the pundit', () => {

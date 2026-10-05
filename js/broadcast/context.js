@@ -35,6 +35,8 @@ export function derbyOf(home, away, clubs) {
 export function weatherKey(atmo = {}) {
   if (atmo.weather === 'rain') return 'weatherRain';
   if (atmo.weather === 'snow') return 'weatherSnow';
+  // v146: a strong wind (it moves the ball since v143) is worth a word on a dry day
+  if ((atmo.wind?.speed || 0) >= 3.5) return 'weatherWind';
   if (atmo.weather === 'overcast') return 'weatherOvercast';
   return atmo.time === 'night' ? 'night' : 'weatherClear';
 }

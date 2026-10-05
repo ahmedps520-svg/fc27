@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v147',
+    date: '2026-10-05',
+    tag: 'Presentation',
+    title: 'The commentators feel the wind',
+    lede: 'On a blustery day the commentary team mentions the wind at kick-off, in English and Arabic.',
+    entries: [
+      {
+        head: 'Wind',
+        summary: 'When a strong wind is blowing, the kick-off commentary warns that high balls will be hard to judge.',
+        detail: 'Since v143 the wind really does move the ball in the air, so it is worth knowing about. The recorded US voices have the new lines too.',
+      },
+    ],
+  },
+  {
     version: 'v146',
     date: '2026-10-05',
     tag: 'Feel',
