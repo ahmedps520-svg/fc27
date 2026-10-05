@@ -10470,8 +10470,20 @@
     } : null;
   }
   function openPack(pack, seen = /* @__PURE__ */ new Set(), needGK = !1) {
-    let scope = filterOf(pack.filter), draw2 = (rarity, extra = null) => {
-      let p = drawPlayer(rarity, seen, scope && extra ? (p2) => scope(p2) && extra(p2) : scope || extra), dup = seen.has(p.id);
+    let scope = filterOf(pack.filter), inPack = /* @__PURE__ */ new Set(), LADDER2 = ["bronze", "silver", "gold", "special"], draw2 = (rarity, extra = null) => {
+      let only = scope && extra ? (p2) => scope(p2) && extra(p2) : scope || extra, p = drawPlayer(rarity, seen, only);
+      if (inPack.has(p.id)) {
+        let at = Math.max(0, LADDER2.indexOf(rarity)), order = [...LADDER2.slice(at + 1), ...LADDER2.slice(0, at).reverse()];
+        for (let r of order) {
+          let q = drawPlayer(r, inPack, only);
+          if (q && !inPack.has(q.id)) {
+            p = q;
+            break;
+          }
+        }
+      }
+      inPack.add(p.id);
+      let dup = seen.has(p.id);
       return seen.add(p.id), { p, dup };
     }, pulls = [];
     for (let i = 0; i < pack.size; i++) pulls.push(draw2(rollRarity(pack.odds)));
@@ -11654,8 +11666,8 @@
         if (speed > limit) {
           if (bestD < 1.7) {
             b.shotBy && b.shotBy.team !== best.team && (b.shotBy = null, this.cue("block", best));
-            let a = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 2.2, s = speed * 0.42;
-            b.vx = Math.cos(a) * s, b.vy = Math.sin(a) * s, b.lastTouch = best, best.touchLock = 0.3;
+            let a = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 2.2, s = speed * (0.5 + Math.random() * 0.3);
+            b.vx = Math.cos(a) * s, b.vy = Math.sin(a) * s, Math.random() < 0.45 && (b.vz = Math.max(b.vz, 2 + Math.random() * 4)), b.lastTouch = best, best.touchLock = 0.3;
           }
         } else if (best.role === "GK" && b.shotBy && best.team !== b.shotBy.team) {
           if (this.teams[b.shotBy.team].onTarget++, !this.keeperContact(best, speed)) return;
@@ -11670,7 +11682,7 @@
           if (best.role !== "GK" && Math.hypot((t9.dir > 0 ? 0 : PITCH.w) - best.x, CY - best.y) < 20 && b.z > 0.85 && b.lastTouch && b.lastTouch.team !== best.team) {
             if (b.lastTouch = best, b.owner = null, b.noTouch = 0.2, best.touchLock = 0.3, this.cue("header"), Math.random() < 0.22 && Math.abs(best.y - CY) > 3) {
               let away = Math.sign(best.y - CY);
-              b.vx = -t9.dir * (4 + Math.random() * 4), b.vy = away * (6 + Math.random() * 5), b.vz = 3 + Math.random() * 2;
+              b.vx = -t9.dir * (9 + Math.random() * 6), b.vy = away * (5 + Math.random() * 5), b.vz = 3 + Math.random() * 2;
             } else {
               let a = Math.atan2((Math.random() - 0.5) * 1.8, t9.dir), sp = 12 + Math.random() * 8;
               b.vx = Math.cos(a) * sp, b.vy = Math.sin(a) * sp, b.vz = 4 + Math.random() * 3;
@@ -11906,9 +11918,9 @@
      * accurate — which is why so many of them end up in the stand.
      */
     clear(p) {
-      let team = this.teams[p.team], side = Math.sign(p.y - CY) || (Math.random() < 0.5 ? -1 : 1), ownX = team.dir > 0 ? 0 : PITCH.w;
-      if (Math.abs(p.x - ownX) < 10 && Math.abs(p.y - CY) > GOAL_HALF + 3 && Math.random() < 0.3) {
-        this.cue("clear", p), this.release(p, -team.dir * (6 + Math.random() * 6), side * (3 + Math.random() * 5), 3), this.ball.noTouch = 0.3;
+      let team = this.teams[p.team], side = Math.sign(p.y - CY) || (Math.random() < 0.5 ? -1 : 1), ownX = team.dir > 0 ? 0 : PITCH.w, pressed = this.teams[1 - p.team].players.some((q) => q.role !== "GK" && dist(q, p) < 2.2), nearLine = Math.abs(p.x - ownX) < 10 && Math.abs(p.y - CY) > GOAL_HALF + 3, inBox = Math.abs(p.x - ownX) < 17 && Math.abs(p.y - CY) < 20;
+      if (nearLine && Math.random() < 0.3 || inBox && pressed && Math.random() < 0.3) {
+        this.cue("clear", p), this.release(p, -team.dir * (11 + Math.random() * 6), side * (3 + Math.random() * 5), 3), this.ball.noTouch = 0.3;
         return;
       }
       let a = Math.atan2(side * (0.55 + Math.random() * 0.65), team.dir) + (Math.random() - 0.5) * 0.5, sp = 24 + Math.random() * 9 + p.ref.stats.physical * 0.04;

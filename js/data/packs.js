@@ -307,9 +307,25 @@ export function filterOf(f) {
 
 export function openPack(pack, seen = new Set(), needGK = false) {
   const scope = filterOf(pack.filter);
+  /* v140: never the same card twice in one pack. A narrow pack (the weekly
+   * Nations pack, when that week's nation has few cards of a rarity) used to
+   * hand the same player back in a second slot. A repeat is redrawn from the
+   * next rarity up, then down, still inside the pack's filter; duplicates of
+   * the collection stay what they always were (they pay out as dups). */
+  const inPack = new Set();
+  const LADDER = ['bronze', 'silver', 'gold', 'special'];
   const draw = (rarity, extra = null) => {
     const only = scope && extra ? (p) => scope(p) && extra(p) : (scope || extra);
-    const p = drawPlayer(rarity, seen, only);
+    let p = drawPlayer(rarity, seen, only);
+    if (inPack.has(p.id)) {
+      const at = Math.max(0, LADDER.indexOf(rarity));
+      const order = [...LADDER.slice(at + 1), ...LADDER.slice(0, at).reverse()];
+      for (const r of order) {
+        const q = drawPlayer(r, inPack, only);
+        if (q && !inPack.has(q.id)) { p = q; break; }
+      }
+    }
+    inPack.add(p.id);
     const dup = seen.has(p.id);
     seen.add(p.id);
     return { p, dup };

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './_dom.mjs';
-import { PACKS, PACK_BY_ID, rollRarity, drawPlayer, openPack, dupValue, RARITY_RANK, packTone } from '../../js/data/packs.js';
+import { PACKS, PACK_BY_ID, rollRarity, drawPlayer, openPack, dupValue, RARITY_RANK, packTone, nationOfWeek } from '../../js/data/packs.js';
 import { WORLD } from '../../js/data/generator.js';
 
 test('every pack is well formed and its odds sum to one', () => {
@@ -60,4 +60,16 @@ test('a needGK pack always carries a keeper; a full collection pays in dups', ()
   const drawn = openPack(PACK_BY_ID('silver'), all);
   assert.ok(drawn.every(({ dup }) => dup));
   for (const { p } of drawn) assert.ok(dupValue(p) > 0 && Number.isInteger(dupValue(p)));
+});
+
+test('v140: never the same card twice in one pack, whichever nation the weekly pack is on', async () => {
+  const nationsPack = PACKS.find((p) => p.id === 'nations') || { id: 'nations', size: 3, odds: { bronze: 0.2, silver: 0.4, gold: 0.35, special: 0.05 } };
+  // every nation the weekly pack rotates through: a year of weeks covers them all
+  const nations = new Set(Array.from({ length: 52 }, (_, w) => nationOfWeek(w * 604_800_000)));
+  for (const nation of nations) {
+    for (let i = 0; i < 40; i++) {
+      const ids = openPack({ ...nationsPack, filter: { nations: [nation] } }, new Set()).map(({ p }) => p.id);
+      assert.equal(new Set(ids).size, ids.length, `${nation}: ${ids}`);
+    }
+  }
 });

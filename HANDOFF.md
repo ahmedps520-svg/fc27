@@ -15,6 +15,46 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v140 — corners (gameplay), and no repeats inside a pack
+Sweep re-baselined deliberately.
+- New `tools/restart-audit.mjs` records, for every corner, throw-in and goal
+  kick, the last event before the ball went out.
+  - Before: 2.15 corners a match (1.88 from saves; 0.15 from 3.6 blocks;
+    0.03 from 8.5 clearances; none from defensive headers), against real
+    football's ~6 scaled to our shots.
+  - Throw-ins 5.2 (real ~26) and goal kicks 4.2 (real ~10).
+- `sim.js`, three changes:
+  - A fast ball off a body keeps 50–80% of its speed (it kept 42%) and
+    loops 45% of the time (vz 2–6).
+  - A defensive header flicked behind leaves at 9–15 m/s along the line
+    (it was 4–8).
+  - A clearance is shinned behind either near the byline (30%, as before)
+    or, new, in his own box with a forward within 2.2 m (30%). Either way it
+    now leaves at 11–17 m/s (it was 6–12).
+- Corners after, from saves 1.7, blocks 0.8, headers 0.35, clears 0.3.
+- Sweeps (60 matches):
+
+  | | goals | corners | shots |
+  |---|---|---|---|
+  | 12345 | 2.03 → 2.00 | 1.90 → 3.63 | 14.98 → 14.60 |
+  | 777 | 2.07 → 2.57 | 2.27 → 3.28 | 14.98 → 15.18 |
+  | Competitive 12345 | 2.27 → 2.20 | 1.88 → 3.18 | 14.77 → 15.12 |
+
+  Possession and fouls are about the same, and goals stay inside 2–3. The
+  goldens are re-recorded.
+- Still low: throw-ins (~6), goal kicks (~4) and fouls (~7.7 against ~13).
+  Throw-ins would mostly have to come from misplaced passes, which moves
+  turnovers and possession. Measure first if that is touched.
+- `packs.js openPack`:
+  - A card already pulled in this pack is redrawn from the next rarity up,
+    then down, inside the pack's filter (`inPack`). Duplicates of the
+    collection are unchanged (they pay out).
+  - Found because `packs.test.mjs` started failing on 2026-10-05: the
+    weekly Nations pack (`nationOfWeek`) landed on a week whose nation
+    repeats.
+  - New test: every nation the weekly pack rotates through, 40 packs each,
+    with no repeat inside a pack.
+
 ### v139 — polish: sudden-turn feet, our own mode names
 - `rig.js`: three fixes to the foot stepper.
   - The frame the sim whips a runner round used to jump a foot 0.27–0.33 m.
