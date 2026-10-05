@@ -80,7 +80,10 @@ function runMatch(seed, homeId, awayId) {
       // a ball that was in play and went between the posts under the bar is a goal
       if (phase0 === 'play' && m.stoppages > stop0 && m.stoppage !== 'goal') {
         const crossed = (b0.x > 0.4 && prevBall.x > 0.4 && b0.x < 1.6) || (b0.x < PITCH.w - 0.4 && b0.x > PITCH.w - 1.6);
-        if (crossed && Math.abs(b0.y - CY) < GOAL_HALF - 0.3 && b0.z < GOAL_HEIGHT - 0.3 && Math.hypot(b0.x - prevBall.x, 0) > 0.05 && (m.stoppage === 'goalkick' || m.stoppage === 'corner')) {
+        // where it crosses the line (v145: as the goal check above does), not where it was a frame before
+        const lineX0 = b0.x < PITCH.w / 2 ? 0 : PITCH.w;
+        const yc0 = Math.abs(b0.vx) > 0.5 && (lineX0 - b0.x) * b0.vx > 0 ? b0.y + (lineX0 - b0.x) * (b0.vy / b0.vx) : b0.y;
+        if (crossed && Math.abs(b0.y - CY) < GOAL_HALF - 0.3 && Math.abs(yc0 - CY) < GOAL_HALF - 0.3 && b0.z < GOAL_HEIGHT - 0.3 && Math.hypot(b0.x - prevBall.x, 0) > 0.05 && (m.stoppage === 'goalkick' || m.stoppage === 'corner')) {
           fail(`ball went out between the posts under the bar (y ${b0.y.toFixed(2)}, z ${b0.z.toFixed(2)}) and gave a ${m.stoppage}`);
         }
       }

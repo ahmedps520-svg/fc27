@@ -15,6 +15,46 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v145 — keeper distribution (backlog #15), goal-line crossing
+Sweep re-baselined deliberately. Goals/shots: 2.40/13.8 (12345) and
+2.63/14.5 (777); competitive 2.65/15.0 and 2.68/14.5.
+- `sim.js`:
+  - the keeper's distribution moved out of `updateBall` into
+    `distribute(o)`:
+    - with a free man (the same 34 m / 7 m-clear test, 70% of the time):
+      roll at 0.3 power from his hands when the man is under 16 m;
+      otherwise an overarm throw, re-aimed at `ball.passTo` with a 0.3 s
+      lead, from z 1.9, T = d/21 (0.45–1.3 s), landing at his feet;
+      otherwise a pass at 0.45 power from his feet;
+    - with nobody free: long to the furthest-forward onside team-mate within
+      72 m (+5 m ahead): a punt (55%; T d/21, 1.9–2.8 s, from z 0.9), a
+      drop-kick (T d/30, 1.2–2.0 s), or, off the grass, a kick (T d/25,
+      1.5–2.4 s). The horizontal speed is corrected for air drag so it is not
+      short, and `ball.passTo` is set, so the target meets it (v142);
+  - `p.inHands` is true after a save (keeperContact) and after a loose-ball
+    pickup the other side last touched. It is false after a goal kick and
+    after a ball his own side played back (the back-pass rule);
+  - `ball.gkKind` records the kind for audits.
+- New `tools/keeper-audit.mjs`, per kind: frequency, kept after 3 s, metres
+  gained. Short pass 81% kept, long kick 68% kept and ~75 m gained, punt
+  60%. Hands distributions are rare (~0.65 a match), because most saves are
+  parried.
+- `kick.js`: a ball leaving at z 1.2–2.3 near a keeper is a throw
+  (`p._throw`). `throwArm()` drives the throwing arm in `rig.js` (shoulder
+  −0.6 → −2.75 cocked → −4.25 over the top → −5.6 follow-through, over
+  0.42 s). A punt or drop-kick leaves at z 0.9, so it shows as a kick.
+- Goal-line bug (sim-invariants seed 9000). `bounds()` gave a goal from
+  `b.y` at x within 0.4 m of the line. A parry rolling steeply by the post
+  was given while its path crossed outside the post. Now the crossing y is
+  extrapolated along the velocity and must also be inside the posts. The
+  invariant test's "went in, given as a corner" check now uses the same
+  crossing.
+- New `tests/unit/keeper-dist.test.mjs`.
+- `evolutions.js`: the Pace Merchant track no longer fits a CAM. The evo audit
+  had it at 66 matches to finish (48.5 on main before this, already the
+  worst), because a CAM is rarely the scorer or the last pass. CAMs keep
+  Engine Room and Rising Star.
+
 ### v144 — the kick (feel), render only
 Sweep byte-identical (nothing in the sim changed).
 - Finding: `rig.js` (the built figures, which are every phone's Medium and

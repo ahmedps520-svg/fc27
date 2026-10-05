@@ -11607,11 +11607,7 @@
       if (b.owner) {
         let o = b.owner;
         if (b.z = 0.16, b.vz = 0, o.role === "GK") {
-          if (o.holdT += dt, b.x = o.x + o.dirX * 1.1, b.y = o.y + o.dirY * 1.1, b.vx = b.vy = 0, o.holdT > (this.teams[o.team].tactics.tempo === "slow" ? 2.6 : 0.9)) {
-            o.holdT = 0;
-            let team = this.teams[o.team], free = team.players.filter((q) => q !== o && q.role !== "GK" && dist(q, o) < 34).map((q) => [q, this.nearestTo(1 - o.team, q)]).filter(([q, f]) => !f || dist(q, f) > 7).sort((x, y) => dist(x[0], o) - dist(y[0], o))[0];
-            TUNE.keeperDist && free && Math.random() < 0.7 ? this.pass(o, { x: free[0].x - o.x, y: free[0].y - o.y }, !1, 0.45) : this.pass(o, { x: team.dir, y: (Math.random() - 0.5) * 0.5 }, !0, 0.85);
-          }
+          o.holdT += dt, b.x = o.x + o.dirX * 1.1, b.y = o.y + o.dirY * 1.1, b.vx = b.vy = 0, o.holdT > (this.teams[o.team].tactics.tempo === "slow" ? 2.6 : 0.9) && (o.holdT = 0, this.distribute(o));
           return;
         }
         let speed = Math.hypot(o.vx, o.vy), dx = b.x - o.x, dy = b.y - o.y, gap = Math.hypot(dx, dy), skill = o.ref.stats.dribbling / 100, lead = 0.85 + speed * 0.13, off = 0.34 * strongSide(o), tx = o.x + o.dirX * lead + o.dirY * off, ty = o.y + o.dirY * lead - o.dirX * off, stiff = (30 + skill * 26) * this.preset.control, damp2 = 10;
@@ -11684,7 +11680,7 @@
           }
         } else if (best.role === "GK" && b.shotBy && best.team !== b.shotBy.team) {
           if (this.teams[b.shotBy.team].onTarget++, !this.keeperContact(best, speed)) return;
-          b.shotBy = null, b.owner = best, b.lastTouch = best, best.holdT = 0, best.diveT = 0;
+          b.shotBy = null, b.owner = best, b.lastTouch = best, best.holdT = 0, best.diveT = 0, best.inHands = !0;
         } else {
           b.shotBy = null;
           let t9 = this.teams[best.team], goalX9 = t9.dir > 0 ? PITCH.w : 0, toGoal9 = Math.hypot(goalX9 - best.x, CY - best.y), attacking = best.role !== "GK" && toGoal9 < 19 && (!b.lastTouch || b.lastTouch.team === best.team || b.lastTouch.role === "GK" || !0);
@@ -11722,7 +11718,7 @@
               return;
             }
           }
-          b.passer && b.passer.team !== best.team && (b.passer = null), b.owner = best, b.lastTouch = best, best.holdT = 0;
+          b.passer && b.passer.team !== best.team && (b.passer = null), best.role === "GK" && (best.inHands = !b.lastTouch || b.lastTouch.team !== best.team), b.owner = best, b.lastTouch = best, best.holdT = 0;
         }
       }
       this.bounds();
@@ -11781,8 +11777,8 @@
           return;
         }
         if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
-          let leftGoal = b.x < 0.4;
-          if (Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
+          let leftGoal = b.x < 0.4, lineX = leftGoal ? 0 : PITCH.w, yc = (lineX - b.x) * b.vx > 0 && Math.abs(b.vx) > 0.5 ? b.y + (lineX - b.x) * (b.vy / b.vx) : b.y;
+          if (Math.abs(b.y - CY) < GOAL_HALF && Math.abs(yc - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
             this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
             return;
           }
@@ -11792,7 +11788,7 @@
             return;
           }
           let side = this.teams[defending], gk = side.players.find((p) => p.role === "GK") || side.players[0];
-          b.x = clamp2(b.x, 3, PITCH.w - 3), b.y = clamp2(b.y, 6, PITCH.h - 6), b.z = 0, gk.x = leftGoal ? 6 : PITCH.w - 6, gk.y = b.y, b.vx = b.vy = b.vz = 0, b.owner = gk, b.lastTouch = gk, gk.holdT = 0, this.markStoppage("goalkick");
+          b.x = clamp2(b.x, 3, PITCH.w - 3), b.y = clamp2(b.y, 6, PITCH.h - 6), b.z = 0, gk.x = leftGoal ? 6 : PITCH.w - 6, gk.y = b.y, b.vx = b.vy = b.vz = 0, b.owner = gk, b.lastTouch = gk, gk.holdT = 0, gk.inHands = !1, this.markStoppage("goalkick");
         }
       }
     }
@@ -12102,6 +12098,47 @@
         return;
       }
       this.release(p, nx * speed, ny * speed, power > 0.8 && d2 > 24 ? 1.6 : 0), this.ball.passKind = power > 0.8 && d2 > 24 ? "driven" : "ground", this.ball.passTo = best, this.ball.passT = this.t;
+    }
+    /**
+     * v145: a keeper's distribution. It used to be one of two things: a ground
+     * pass to a free man, or a "through ball" along the grass upfield — no
+     * keeper ever threw it or kicked it in the air. Now, as real keepers do:
+     *   - a free team-mate close by gets it rolled out (from his hands) or
+     *     passed (at his feet);
+     *   - one further away, from his hands, gets it thrown overarm: flat and
+     *     quick, from shoulder height, landing at his feet;
+     *   - nobody free, and it goes long to the most advanced man onside: a
+     *     high punt from his hands, or a flatter drop-kick, or (off the
+     *     grass, a goal kick or a back pass) a lofted kick.
+     * `inHands` says which: set on a save or a claim, cleared for a goal kick
+     * and for a ball his own side played back to him.
+     */
+    distribute(o) {
+      let team = this.teams[o.team], b = this.ball, hands = !!o.inHands;
+      o.inHands = !1;
+      let free = team.players.filter((q) => q !== o && q.role !== "GK" && dist(q, o) < 34).map((q) => [q, this.nearestTo(1 - o.team, q)]).filter(([q, f]) => !f || dist(q, f) > 7).sort((x, y) => dist(x[0], o) - dist(y[0], o))[0];
+      if (TUNE.keeperDist && free && Math.random() < 0.7) {
+        let q = free[0], d3 = dist(q, o);
+        this.pass(o, { x: q.x - o.x, y: q.y - o.y }, !1, hands && d3 < 16 ? 0.3 : 0.45);
+        let to = b.passTo;
+        if (!hands || d3 < 16 || !to) {
+          b.gkKind = hands ? "roll" : "pass";
+          return;
+        }
+        let tx = to.x + to.vx * 0.3 - o.x, ty = to.y + to.vy * 0.3 - o.y, td = Math.hypot(tx, ty) || 1, T2 = clamp2(td / 21, 0.45, 1.3), z02 = 1.9;
+        b.x = o.x + o.dirX * 0.4, b.y = o.y + o.dirY * 0.4, b.z = z02, b.vx = tx / T2, b.vy = ty / T2, b.vz = (0.5 * GRAV * T2 * T2 - z02) / T2, b.noTouch = 0.25, b.gkKind = "throw";
+        return;
+      }
+      let target = null, far = -1 / 0;
+      for (let q of team.players) {
+        if (q === o || q.role === "GK" || dist(q, o) > 72 || this.isOffside(q)) continue;
+        let ahead = (q.x - o.x) * team.dir;
+        ahead > far && (far = ahead, target = q);
+      }
+      let tx0 = target ? target.x + team.dir * 5 : o.x + team.dir * 52, ty0 = target ? target.y : CY + (Math.random() - 0.5) * 30, kind = hands ? Math.random() < 0.55 ? "punt" : "dropkick" : "kick", err = (Math.random() - 0.5) * (kind === "punt" ? 0.16 : 0.1), dx = tx0 - o.x, dy = ty0 - o.y, d2 = Math.hypot(dx, dy) || 1;
+      dx /= d2, dy /= d2;
+      let c = Math.cos(err), sn = Math.sin(err), ux = dx * c - dy * sn, uy = dx * sn + dy * c, T = kind === "punt" ? clamp2(d2 / 21, 1.9, 2.8) : kind === "dropkick" ? clamp2(d2 / 30, 1.2, 2) : clamp2(d2 / 25, 1.5, 2.4), z0 = kind === "kick" ? 0.35 : 0.9, k = -60 * Math.log(0.9985), v = d2 * k / (1 - Math.exp(-k * T));
+      this.cue("pass"), b.passer = o, this.noteOffside(o), this.release(o, ux * v, uy * v, (0.5 * GRAV * T * T - z0) / T), b.z = z0, b.noTouch = 0.3, b.passTo = target, b.passT = this.t, b.gkKind = kind;
     }
     /**
      * v143: the pitch and the air, from the weather the match is played in

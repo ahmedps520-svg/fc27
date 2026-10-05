@@ -1393,17 +1393,9 @@ export class Match {
         b.x = o.x + o.dirX * 1.1;
         b.y = o.y + o.dirY * 1.1;
         b.vx = b.vy = 0;
-        // Distribution with intent: a full-back or midfielder in space gets it
-        // rolled out; nobody free and it goes long over the top.
         if (o.holdT > (this.teams[o.team].tactics.tempo === 'slow' ? 2.6 : 0.9)) {   // v79: seeing the game out, he takes his time
           o.holdT = 0;
-          const team = this.teams[o.team];
-          const free = team.players.filter((q) => q !== o && q.role !== 'GK' && dist(q, o) < 34)
-            .map((q) => [q, this.nearestTo(1 - o.team, q)])
-            .filter(([q, f]) => !f || dist(q, f) > 7)
-            .sort((x, y) => dist(x[0], o) - dist(y[0], o))[0];
-          if (TUNE.keeperDist && free && Math.random() < 0.7) this.pass(o, { x: free[0].x - o.x, y: free[0].y - o.y }, false, 0.45);
-          else this.pass(o, { x: team.dir, y: (Math.random() - 0.5) * 0.5 }, true, 0.85);
+          this.distribute(o);
         }
         return;
       }
@@ -1600,6 +1592,7 @@ export class Match {
         b.lastTouch = best;
         best.holdT = 0;
         best.diveT = 0;
+        best.inHands = true;
       } else {
         b.shotBy = null;
 
@@ -1686,6 +1679,8 @@ export class Match {
           }
         }
         if (b.passer && b.passer.team !== best.team) b.passer = null;   // the other side won it: no assist
+        // v145: a keeper may pick it up unless his own side played it to him (the back-pass rule)
+        if (best.role === 'GK') best.inHands = !b.lastTouch || b.lastTouch.team !== best.team;
         b.owner = best;
         b.lastTouch = best;
         best.holdT = 0;
@@ -1801,7 +1796,12 @@ export class Match {
     }
     if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
       const leftGoal = b.x < 0.4;
-      if (Math.abs(b.y - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
+      /* v145: judged where it crosses the line, not 0.4 m short of it — a ball
+         rolling in steeply by the post (a parry, say) was given while its path
+         took it outside the post (sim-invariants seed 9000). */
+      const lineX = leftGoal ? 0 : PITCH.w;
+      const yc = (lineX - b.x) * b.vx > 0 && Math.abs(b.vx) > 0.5 ? b.y + (lineX - b.x) * (b.vy / b.vx) : b.y;
+      if (Math.abs(b.y - CY) < GOAL_HALF && Math.abs(yc - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
         this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
         return;
       }
@@ -1828,6 +1828,7 @@ export class Match {
       b.owner = gk;
       b.lastTouch = gk;
       gk.holdT = 0;
+      gk.inHands = false;            // v145: a goal kick is kicked off the grass
       this.markStoppage('goalkick');
     }
   }
@@ -2432,6 +2433,71 @@ export class Match {
     this.release(p, nx * speed, ny * speed, power > 0.8 && d > 24 ? 1.6 : 0);
     this.ball.passKind = power > 0.8 && d > 24 ? 'driven' : 'ground';
     this.ball.passTo = best; this.ball.passT = this.t;
+  }
+
+  /**
+   * v145: a keeper's distribution. It used to be one of two things: a ground
+   * pass to a free man, or a "through ball" along the grass upfield — no
+   * keeper ever threw it or kicked it in the air. Now, as real keepers do:
+   *   - a free team-mate close by gets it rolled out (from his hands) or
+   *     passed (at his feet);
+   *   - one further away, from his hands, gets it thrown overarm: flat and
+   *     quick, from shoulder height, landing at his feet;
+   *   - nobody free, and it goes long to the most advanced man onside: a
+   *     high punt from his hands, or a flatter drop-kick, or (off the
+   *     grass, a goal kick or a back pass) a lofted kick.
+   * `inHands` says which: set on a save or a claim, cleared for a goal kick
+   * and for a ball his own side played back to him.
+   */
+  distribute(o) {
+    const team = this.teams[o.team];
+    const b = this.ball;
+    const hands = !!o.inHands; o.inHands = false;
+    const free = team.players.filter((q) => q !== o && q.role !== 'GK' && dist(q, o) < 34)
+      .map((q) => [q, this.nearestTo(1 - o.team, q)])
+      .filter(([q, f]) => !f || dist(q, f) > 7)
+      .sort((x, y) => dist(x[0], o) - dist(y[0], o))[0];
+    if (TUNE.keeperDist && free && Math.random() < 0.7) {
+      const q = free[0]; const d = dist(q, o);
+      this.pass(o, { x: q.x - o.x, y: q.y - o.y }, false, hands && d < 16 ? 0.3 : 0.45);
+      const to = b.passTo;
+      if (!hands || d < 16 || !to) { b.gkKind = hands ? 'roll' : 'pass'; return; }
+      // the throw: re-aimed at the man the pass picked, from shoulder height, landing at his feet
+      const tx = to.x + to.vx * 0.3 - o.x; const ty = to.y + to.vy * 0.3 - o.y; const td = Math.hypot(tx, ty) || 1;
+      const T = clamp(td / 21, 0.45, 1.3); const z0 = 1.9;
+      b.x = o.x + o.dirX * 0.4; b.y = o.y + o.dirY * 0.4; b.z = z0;
+      b.vx = (tx / T); b.vy = (ty / T); b.vz = (0.5 * GRAV * T * T - z0) / T;
+      b.noTouch = 0.25; b.gkKind = 'throw';
+      return;
+    }
+    // long: the furthest-forward team-mate onside within range
+    let target = null; let far = -Infinity;
+    for (const q of team.players) {
+      if (q === o || q.role === 'GK' || dist(q, o) > 72 || this.isOffside(q)) continue;
+      const ahead = (q.x - o.x) * team.dir;
+      if (ahead > far) { far = ahead; target = q; }
+    }
+    const tx0 = target ? target.x + team.dir * 5 : o.x + team.dir * 52;
+    const ty0 = target ? target.y : CY + (Math.random() - 0.5) * 30;
+    const kind = !hands ? 'kick' : Math.random() < 0.55 ? 'punt' : 'dropkick';
+    const err = (Math.random() - 0.5) * (kind === 'punt' ? 0.16 : 0.1);
+    let dx = tx0 - o.x; let dy = ty0 - o.y;
+    const d = Math.hypot(dx, dy) || 1;
+    dx /= d; dy /= d;
+    const c = Math.cos(err); const sn = Math.sin(err);
+    const ux = dx * c - dy * sn; const uy = dx * sn + dy * c;
+    // hang time: a punt goes up, a drop-kick skims, a kick off the grass between the two
+    const T = kind === 'punt' ? clamp(d / 21, 1.9, 2.8) : kind === 'dropkick' ? clamp(d / 30, 1.2, 2.0) : clamp(d / 25, 1.5, 2.4);
+    const z0 = kind === 'kick' ? 0.35 : 0.9;
+    const k = -60 * Math.log(0.9985);                                 // the air's own drag, so it is not short
+    const v = (d * k) / (1 - Math.exp(-k * T));
+    this.cue('pass');
+    b.passer = o;
+    this.noteOffside(o);
+    this.release(o, ux * v, uy * v, (0.5 * GRAV * T * T - z0) / T);
+    b.z = z0; b.noTouch = 0.3;
+    b.passTo = target; b.passT = this.t;
+    b.gkKind = kind;
   }
 
   /**

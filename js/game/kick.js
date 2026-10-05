@@ -34,6 +34,7 @@ const REACH = 2.2;
 export function detectKicks(m, dt, state) {
   const b = m.ball;
   for (const t of m.teams) for (const p of t.players) {
+    if (p._throw) { p._throw.t += dt; if (p._throw.t >= THROW_DUR) p._throw = null; }
     if (!p._kick) continue;
     p._kick.t += dt;
     if (p._kick.t >= KICK_DUR) p._kick = null;
@@ -41,14 +42,17 @@ export function detectKicks(m, dt, state) {
   const sp = Math.hypot(b.vx || 0, b.vy || 0);
   const prev = state.sp ?? sp;
   state.sp = sp;
-  if (sp - prev < KICK_DV || (b.z || 0) > 1.2 || b.owner) return null;
+  if (sp - prev < KICK_DV || (b.z || 0) > 2.3 || b.owner) return null;
+  // v145: from above the knee it can only have left a keeper's hands — a throw
+  const high = (b.z || 0) > 1.2;
   let who = null; let best = REACH;
   for (const t of m.teams) for (const p of t.players) {
-    if (p.diveT > 0 || p.downT > 0) continue;
+    if (p.diveT > 0 || p.downT > 0 || (high && p.role !== 'GK')) continue;
     const d = Math.hypot(p.x - b.x, p.y - b.y);
     if (d < best) { best = d; who = p; }
   }
   if (!who || (who._kick && who._kick.t < KICK_DUR * 0.5)) return null;
+  if (high) { who._throw = { t: 0, side: who.ref?.foot === 'L' ? -1 : 1 }; return who; }
   // the foot nearer the ball, or his stronger one when it is straight ahead
   const lat = (b.x - who.x) * -(who.dirY || 0) + (b.y - who.y) * (who.dirX || 0);
   const strong = who.ref?.foot === 'L' ? -1 : 1;
@@ -60,6 +64,27 @@ export function detectKicks(m, dt, state) {
 }
 
 const ease = (s) => s * s * (3 - 2 * s);
+
+/** v145: a keeper's overarm throw — seconds: the arm cocked behind the head, over the top, follow-through. */
+export const THROW_PHASES = [0.1, 0.1, 0.22];
+export const THROW_DUR = THROW_PHASES.reduce((a, b) => a + b, 0);
+
+/**
+ * The throwing arm's angles `t` seconds in: { sh, el } — the shoulder swing
+ * and the forearm, in rig.js's convention (0 hanging, + forwards, ±π overhead).
+ * The ball has already gone when this starts (it is read off the ball), so the
+ * wind-up is brisk and the follow-through carries the look of it.
+ */
+export function throwArm(th) {
+  if (!th || th.t >= THROW_DUR) return null;
+  const [a, b, c] = THROW_PHASES;
+  const keys = [[0, -0.6, -0.4], [a, -2.75, -4.0], [a + b, -4.25, -4.35], [a + b + c, -5.6, -5.4]];
+  let i = 0;
+  while (i < keys.length - 2 && th.t >= keys[i + 1][0]) i++;
+  const [t0, s0, e0] = keys[i]; const [t1, s1, e1] = keys[i + 1];
+  const u = ease(Math.max(0, Math.min(1, (th.t - t0) / (t1 - t0))));
+  return { sh: s0 + (s1 - s0) * u, el: e0 + (e1 - e0) * u };
+}
 
 /**
  * Where the kicking foot is, in his own frame, `t` seconds into the kick:
