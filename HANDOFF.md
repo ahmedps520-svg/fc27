@@ -15,6 +15,16 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v147 — wind in the commentary
+- `broadcast/context.js weatherKey`: a wind of 3.5 m/s or more on a dry day
+  (not rain or snow) gives `weatherWind`, said at kick-off.
+- Lines were added in `commentaryVoices.js` (English and Arabic context banks)
+  and `voicePackUS.js`.
+- The four US clips were rendered with `tools/voice-pack.mjs`: kokoro-js
+  installed in a scratch directory, and ffmpeg from the imageio-ffmpeg
+  wheel (`FFMPEG=$(python3 -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())")`).
+  The pack is now 3.26 MB.
+
 ### v146 — tackles and headers on the built figures; guest snapshots carry them
 Sweep byte-identical. `p.slideMax`, set in `tackle()`, is render-only.
 - `kick.js`:

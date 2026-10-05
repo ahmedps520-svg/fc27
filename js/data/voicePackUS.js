@@ -107,6 +107,7 @@ export const PACK_US = {
     weatherRain: ['The rain is pouring down. The ball will skid.', 'Wet night, slick field.'],
     weatherSnow: ['Snow is falling. A real winter game.', 'The snow is coming down.'],
     weatherOvercast: ['Gray skies overhead today.', 'A cool, cloudy day for football.'],
+    weatherWind: ['Big wind out there today. Anything in the air is an adventure.', 'Gusty conditions. Keep it on the ground.'],
     weatherClear: ['Perfect conditions for football.', 'Beautiful day for a game.'],
     night: ['Under the lights. There\'s nothing quite like it.', 'A night game, and the place is buzzing.'],
     weatherTurn: ['The weather has turned here.', 'Conditions are changing.'],
