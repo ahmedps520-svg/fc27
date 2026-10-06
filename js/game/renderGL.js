@@ -3272,8 +3272,12 @@ export function createRenderer(canvas, match, quality, models = false) {
     for (let t = 0; t < 2; t++) for (const p of m.teams[t].players) {
       const sp = Math.hypot(p.vx || 0, p.vy || 0);
       if (sp < 5.2 || Math.random() > dt * 9) continue;
-      const c = wet ? [0.75, 0.82, 0.92] : [0.62, 0.56, 0.42];
-      fxSpawn(p.x - (p.dirX || 0) * 0.3, p.y - (p.dirY || 0) * 0.3, 0.05, (Math.random() - 0.5) * 0.8 - (p.dirX || 0) * 1.2, (Math.random() - 0.5) * 0.8 - (p.dirY || 0) * 1.2, 0.6 + Math.random() * (wet ? 1.4 : 0.8), c[0], c[1], c[2], wet ? 0.35 : 0.6, 4);
+      /* v155: faint. The pool is additive (it is the fireworks'), so a sandy
+         colour added to the grass glowed yellow-green, and big points near the
+         lens plus the bloom made a bright pool under every sprinter on the
+         phone tiers. A third of the colour and a shorter life read as a puff. */
+      const c = wet ? [0.26, 0.29, 0.33] : [0.2, 0.18, 0.13];
+      fxSpawn(p.x - (p.dirX || 0) * 0.3, p.y - (p.dirY || 0) * 0.3, 0.05, (Math.random() - 0.5) * 0.8 - (p.dirX || 0) * 1.2, (Math.random() - 0.5) * 0.8 - (p.dirY || 0) * 1.2, 0.6 + Math.random() * (wet ? 1.4 : 0.8), c[0], c[1], c[2], wet ? 0.3 : 0.4, 4);
     }
     if (wet && (m.ball.z || 0) < 0.25 && Math.hypot(m.ball.vx || 0, m.ball.vy || 0) > 4 && Math.random() < dt * 20) {
       for (let k = 0; k < 3; k++) fxSpawn(m.ball.x, m.ball.y, 0.1, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 1 + Math.random() * 1.5, 0.8, 0.86, 0.95, 0.35, 4);

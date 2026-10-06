@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v155',
+    date: '2026-10-06',
+    tag: 'Fix',
+    title: 'No more glowing feet',
+    lede: 'On phones, sprinting players no longer leave a bright glowing pool on the grass behind them.',
+    entries: [
+      {
+        head: 'Boot dust',
+        summary: 'The dust and spray kicked up by sprinting boots is now a faint puff, not a bright yellow-green glow under every runner.',
+        detail: 'The effect shared the fireworks\' glowing particles, so on Medium quality the dust added light to the grass instead of dirtying it, and the bloom spread it out. Found by watching a match at phone settings.',
+      },
+    ],
+  },
+  {
     version: 'v154',
     date: '2026-10-06',
     tag: 'Feel',

@@ -15,6 +15,19 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v155 — boot dust no longer glows (render only)
+- Found by a phone-quality match screenshot (`tests/tmp/phoneshot.mjs`,
+  Medium, 844×390): bright yellow-green pools under sprinters. The boot
+  dust and splash (`bootFx`, kind 4) uses the fireworks' Points material,
+  which is additive. The sandy colour [0.62, 0.56, 0.42] added light to the
+  green turf, the points are large near the lens (size ∝ 300/depth), and
+  the bloom spread them.
+- Now the colour is about a third ([0.2, 0.18, 0.13] dry, [0.26, 0.29, 0.33]
+  wet) and the life is 0.4 s (0.3 wet), down from 0.6 (0.35). The fireworks
+  are unchanged.
+- Also in this round: `pad-reach` waits for the release-notes card rather
+  than a fixed 2.5 s (it flaked on CI for v154).
+
 ### v154 — keepers hold the ball (render only)
 Sweep byte-identical.
 - The sim keeps an owned ball at z 0.16, 1.1 m ahead of its owner (a keeper
