@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v164',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'English that reads right in Arabic',
+    lede: 'With Arabic chosen, the English that remains (club names, blurbs, scores) no longer has its full stops, plus signs and counts thrown to the wrong end.',
+    entries: [
+      {
+        head: 'Mixed text',
+        summary: 'Lines like "Take a real club." or "0 of 52 earned" and goal differences like +7 now read correctly when the game is in Arabic.',
+        detail: 'In a right-to-left page, a line of English had its closing full stop moved to the front, a count moved to the end ("of 52 earned 0") and +7 shown as 7+. Every line of text now takes its direction from its own first letter, so English reads left to right and Arabic right to left, side by side on the same screen. The back arrow and the match screen keep the page direction.',
+      },
+    ],
+  },
+  {
     version: 'v163',
     date: '2026-10-06',
     tag: 'Language',
