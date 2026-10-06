@@ -171,7 +171,7 @@ export function createHeat() {
     },
     total(ti) { return grids[ti].reduce((a, b) => a + b, 0); },
     /** Paint team ti's map onto a canvas. */
-    draw(canvas, ti, color = '#ff5a3c') {
+    draw(canvas, ti, color = '#ff5a3c', label = 'ATTACKING →') {
       const c = canvas.getContext('2d'); if (!c) return;
       const W = canvas.width; const H = canvas.height;
       c.clearRect(0, 0, W, H);
@@ -192,7 +192,7 @@ export function createHeat() {
       c.beginPath(); c.moveTo(W / 2, 0); c.lineTo(W / 2, H); c.stroke();
       c.beginPath(); c.arc(W / 2, H / 2, H * 0.14, 0, Math.PI * 2); c.stroke();
       c.strokeRect(0, H * 0.22, W * 0.16, H * 0.56); c.strokeRect(W * 0.84, H * 0.22, W * 0.16, H * 0.56);
-      c.fillStyle = 'rgba(255,255,255,.7)'; c.font = `${Math.round(H * 0.08)}px system-ui`; c.fillText('ATTACKING →', W - H * 0.08 * 8, H * 0.1);
+      c.fillStyle = 'rgba(255,255,255,.7)'; c.font = `${Math.round(H * 0.08)}px system-ui`; c.textAlign = 'right'; c.direction = 'ltr'; c.fillText(label, W - H * 0.06, H * 0.1); c.textAlign = 'start';
     },
   };
 }

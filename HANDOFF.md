@@ -15,6 +15,14 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v163 — the match in Arabic
+- New i18n keys: `match.*` (goal card, half/full time, advantage, replay), `sp.*` (set-piece banners), `hint.*` (first-match tips, with `{button}` vars), `facts.*`, `pause.secondHalf/select/resumeShort`.
+- `t()` vars now use a function replacement, so `$` in a value is taken literally.
+- `play.js`: `SP_TEXT` → `SP_KINDS` + `t()`; HINTS, goal card, half time, full time, match facts, pause nav all via `t()`. Button words stay English (they match the pad).
+- `director.halfTimeHTML/drawHeat` take the label from `lang`; `graphics.heat.draw(canvas, ti, color, label)` right-aligns it.
+- CSS `[dir=rtl]`: no letter-spacing/italic on match words, `.gc-word` in the UI font, `.gc-score/.half-score/.gm-final` stay LTR, set-piece title nowrap.
+- Test: `tests/unit/i18n-match.test.mjs`.
+
 ### v162 — `--muted` was never defined; css-lint catches undefined variables
 - An audit of every `var(--x)` without a fallback against every definition
   (stylesheets, plus inline styles and `setProperty` in js/ and index.html)

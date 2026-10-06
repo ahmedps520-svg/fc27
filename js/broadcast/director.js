@@ -208,14 +208,14 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
     },
     halfTimeHTML() {
       const tm = match.teams;
-      return `<div class="bc-heat"><span class="pm-k">Heat maps · first half</span><div class="bc-heat-row">
+      return `<div class="bc-heat"><span class="pm-k">${lang === 'ar' ? 'خريطة الحركة · الشوط الأول' : 'Heat maps · first half'}</span><div class="bc-heat-row">
         <figure><canvas width="240" height="156" data-heat="0"></canvas><figcaption>${tm[0].short}</figcaption></figure>
         <figure><canvas width="240" height="156" data-heat="1"></canvas><figcaption>${tm[1].short}</figcaption></figure></div></div>`;
     },
     drawHeat(root) {
       root.querySelectorAll('canvas[data-heat]').forEach((c) => {
         const ti = Number(c.dataset.heat);
-        heat.draw(c, ti, ti === 0 ? '#3fd08a' : '#ff6a4a');
+        heat.draw(c, ti, ti === 0 ? '#3fd08a' : '#ff6a4a', lang === 'ar' ? 'الهجوم →\u200E' : 'ATTACKING →');
       });
     },
 

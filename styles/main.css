@@ -4305,6 +4305,11 @@ html.large-text .tile-name { font-size: 27px; }
 [dir="rtl"] .setting-row > div:first-child { text-align: right; }
 [dir="rtl"] .ts-kit span { margin-left: 0; margin-right: auto; }
 [dir="rtl"] .seg button i, [dir="rtl"] .seg button b { direction: rtl; }
+/* v163: the match words in Arabic — joined letters cannot be tracked apart or slanted, and the scores keep reading left to right */
+[dir="rtl"] .gc-word, [dir="rtl"] .half-word, [dir="rtl"] .gm-setpiece b, [dir="rtl"] .gm-ft, [dir="rtl"] .gm-adv, [dir="rtl"] .replay-tag, [dir="rtl"] .gm-hints { letter-spacing: 0; font-style: normal; }
+[dir="rtl"] .gm-setpiece b { white-space: nowrap; }
+[dir="rtl"] .gc-word { font-family: var(--font); font-size: clamp(54px, 11vw, 140px); line-height: 1.1; }
+[dir="rtl"] .gc-score, [dir="rtl"] .half-score, [dir="rtl"] .gm-final { direction: ltr; }
 
 /* ---- v71: onboarding ---- */
 .onboard { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 13, .78); backdrop-filter: blur(6px); }

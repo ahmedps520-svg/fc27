@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v163',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'The match in Arabic',
+    lede: 'With Arabic chosen in Settings, the match itself now speaks it too: the goal card, set-piece banners, coaching tips, half time and full time.',
+    entries: [
+      {
+        head: 'Match screen',
+        summary: 'GOAL, Corner, Penalty, Half time, Full time, the match facts and the first-match tips now show in Arabic when Arabic is your language.',
+        detail: 'The menus were translated but the match screen was still all English. Every word on it now comes from the same dictionary as the menus. Button names (SHOOT, CROSS and the rest) stay as the on-screen pad labels them, so a tip always matches the button under your thumb. Arabic words are no longer spaced out or slanted, which broke their joined letters, and the scores still read left to right.',
+      },
+    ],
+  },
+  {
     version: 'v162',
     date: '2026-10-06',
     tag: 'Polish',
