@@ -1542,8 +1542,17 @@ export class Match {
           if (p.touchLock > 0) continue;
           // a ball in the air can be attacked from further out — you jump for it,
           // and a keeper mid-dive is stretching at full span
-          let r = p.role === 'GK' ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5)
+          let r = p.role === 'GK' ? (p.diveT > 0 ? 2.9 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5)
             : (p.slide > 0 ? 2.2 : (b.z > 0.8 ? 2.15 : 1.7));
+          /* v168: a dive reaches the way he dived. Behind him there are only
+             his trailing legs — he used to stop a ball 2.5 m the other way
+             from a dive the wrong way, a save that cannot be drawn. */
+          if (p.role === 'GK' && p.diveT > 0 && (b.y - p.y) * (p.diveDir || 0) < -0.3) r = Math.min(r, 1.6);
+          /* To keep his saves as they were (200-match sweeps, both seeds: goals
+             2.46/2.54 before, 2.56/2.52 after), the full stretch the way he dives
+             goes 2.6 → 2.9 m and he guesses the line of a shot better (readErr
+             7.6 → 5.4): a keeper beaten now is beaten by the shot, not by
+             reaching for it behind his back. */
           /* v79: a ball running out fast right on the touchline is hard to keep
              in — you cannot stretch over the line for it. */
           // v79: an Anchor reads the pass into the space in front of his defence
@@ -1807,6 +1816,11 @@ export class Match {
          took it outside the post (sim-invariants seed 9000). */
       const lineX = leftGoal ? 0 : PITCH.w;
       const yc = (lineX - b.x) * b.vx > 0 && Math.abs(b.vx) > 0.5 ? b.y + (lineX - b.x) * (b.vy / b.vx) : b.y;
+      /* v168: still in front of the line and coming back out (blocked on the
+         line, say) — it has not gone anywhere yet. It was judged here 40 cm
+         short, so a block that bounced back by the post was given as a goal
+         (sim-invariants seed 9385). */
+      if ((lineX - b.x) * b.vx < -0.05 && (leftGoal ? b.x > 0 : b.x < PITCH.w)) return;
       if (Math.abs(b.y - CY) < GOAL_HALF && Math.abs(yc - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
         this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
         return;
@@ -3911,7 +3925,7 @@ export class Match {
       // The read is judged once per shot and carries an error scaled to the keeper's quality.
       if (p.readId !== b.shotId) {
         p.readId = b.shotId;
-        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5));   // v80: shots come quicker in small-sided
+        p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 5.4 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5));   // v80: shots come quicker in small-sided
         p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22;  // beatable at pace (v79: a touch slower)
       }
       p.reactT = Math.max(0, (p.reactT || 0) - dt);

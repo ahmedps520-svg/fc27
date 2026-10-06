@@ -11655,8 +11655,8 @@
         for (let team of this.teams)
           for (let p of team.players) {
             if (p.touchLock > 0) continue;
-            let r = p.role === "GK" ? (p.diveT > 0 ? 2.6 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5) : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
-            if ((_a = p.tr) != null && _a.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
+            let r = p.role === "GK" ? (p.diveT > 0 ? 2.9 : 1.68) * Math.min(1, 0.45 + 0.55 * GOAL_HALF / 5.5) : p.slide > 0 ? 2.2 : b.z > 0.8 ? 2.15 : 1.7;
+            if (p.role === "GK" && p.diveT > 0 && (b.y - p.y) * (p.diveDir || 0) < -0.3 && (r = Math.min(r, 1.6)), (_a = p.tr) != null && _a.anchor && !b.owner && b.lastTouch && b.lastTouch.team !== p.team && b.z < 1 && (r *= 1 + 0.18 * p.tr.anchor), p.role !== "GK") {
               let outward = b.y < CY ? -b.vy : b.vy;
               Math.min(b.y, PITCH.h - b.y) < 1.6 && outward > 1.5 && (r *= 0.45);
             }
@@ -11779,6 +11779,7 @@
         }
         if (b.x < 0.4 || b.x > PITCH.w - 0.4) {
           let leftGoal = b.x < 0.4, lineX = leftGoal ? 0 : PITCH.w, yc = (lineX - b.x) * b.vx > 0 && Math.abs(b.vx) > 0.5 ? b.y + (lineX - b.x) * (b.vy / b.vx) : b.y;
+          if ((lineX - b.x) * b.vx < -0.05 && (leftGoal ? b.x > 0 : b.x < PITCH.w)) return;
           if (Math.abs(b.y - CY) < GOAL_HALF && Math.abs(yc - CY) < GOAL_HALF && b.z < GOAL_HEIGHT) {
             this.scoreGoal(leftGoal ? 1 : 0, leftGoal ? -1 : 1, leftGoal ? 0 : PITCH.w);
             return;
@@ -12970,7 +12971,7 @@
       }
       let dx = b.x - goalX, dy = b.y - CY, d2 = Math.hypot(dx, dy) || 1, closing = b.vx * inward < -1, standOff = clamp2(d2 * 0.18, 1.6, 5.5), tx = goalX + inward * standOff, ty = CY + dy * (standOff / d2), urgency = 1.06;
       if (!b.owner && closing && d2 < 30) {
-        p.readId !== b.shotId && (p.readId = b.shotId, p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 7.6 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5)), p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22), p.reactT = Math.max(0, (p.reactT || 0) - dt);
+        p.readId !== b.shotId && (p.readId = b.shotId, p.readErr = (Math.random() - 0.5) * 2 * (1.34 - p.ref.overall / 100) * 5.4 * (2.2 - 1.2 * Math.min(1, GOAL_HALF / 5.5)), p.reactT = 0.09 + (1.05 - p.ref.overall / 100) * 0.22), p.reactT = Math.max(0, (p.reactT || 0) - dt);
         let t = (tx - b.x) / b.vx;
         if (p.reactT <= 0 && t > 0 && t < 2.2) {
           let cross = b.y + b.vy * t + p.readErr;
