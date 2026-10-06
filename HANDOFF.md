@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v154 — keepers hold the ball (render only)
+Sweep byte-identical.
+- The sim keeps an owned ball at z 0.16, 1.1 m ahead of its owner (a keeper
+  too, which is where it is distributed from), so a keeper "holding" it
+  stood behind a ball on the grass.
+- `renderGL.js`: when the owner is a GK and `inHands !== false` (set by v145;
+  goal kicks and back passes are false), the ball is drawn 0.3 m ahead at
+  z 1.14. Each GK's `p._holdBall` is set per frame.
+- `rig.js arm()`: `_holdBall` sets shoulder 0.75 and forearm 2.1, cradling
+  the ball at the chest. The throw pose (v145) takes precedence.
+- An online guest has no `inHands`, so `!== false` treats any keeper
+  possession as in hands there.
+- Test in `gait.test.mjs`.
+
 ### v153 — keeper distribution in the commentary; cabinet QA; CI flake
 Sweep byte-identical (a cue draws no random number).
 - `sim.js distribute()` cues `gkThrow` (an overarm throw) and `gkLong` (a

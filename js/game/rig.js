@@ -595,8 +595,10 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
     // v145: a keeper's overarm throw (game/kick.js)
     const thr = p._throw && p._throw.side === (side < 0 ? -1 : 1) ? throwArm(p._throw) : null;
-    const shA = thr ? thr.sh : cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
-    const elA = thr ? thr.el : cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
+    // v154: a keeper with the ball in his hands holds it to his chest
+    const hold = !thr && p._holdBall;
+    const shA = thr ? thr.sh : hold ? 0.75 : cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
+    const elA = thr ? thr.el : hold ? 2.1 : cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
     // hung off the outside of the deltoid, not buried in the chest
     const lat = side * (CHEST_W * b.shoulders + 0.014) + bank;
     const out = side * (cheer ? 0.34 : CHEST_W * b.shoulders + 0.042) + bank;
