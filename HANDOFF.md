@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v168 — keepers save the way they dive; no goals from short of the line
+- `sim.js` claim loop: a diving GK's reach is 1.6 m behind the dive (`(b.y-p.y)*diveDir < -0.3`); full dive reach 2.6 → 2.9; `readErr` factor 7.6 → 5.4. 200-match sweeps: goals 2.46/2.54 before → 2.53/2.53 after. Goldens re-recorded.
+- `bounds()`: a ball in front of the line moving back into play is not judged (seed 9385 gave a goal for a block bouncing out 16 cm short).
+- `tools/keeper-save-audit.mjs` (save geometry: sideways distance, dive direction). Wrong-way diving saves 26/92 → 16/116 (all ≤ 1.6 m).
+- CI fix merged earlier: `touch-editor.mjs` clears a late kick from the previous press before each flick.
+
 ## v167 — Arabic card bodies (Career, Skills, Ultimate XI tabs)
 - Keys `career.*` (tiles, facts, CTAs), `skills.nav.*`, `skills.best/loading/signIn`, `drill.<id>` + `.blurb` (AR only; `tOr` in skills.js falls back to the drill's own text), `uxi.*` sub-tabs, `squad.kicker`.
 - Still English in Arabic: pack/store card text, squad summary labels (Positions filled, Chemistry), World table headers, Settings rows.

@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v168',
+    date: '2026-10-06',
+    tag: 'Gameplay',
+    title: 'Keepers save the way they dive',
+    lede: 'A keeper who dives the wrong way can no longer stop the shot behind his back, and a ball blocked on the line no longer counts as a goal.',
+    entries: [
+      {
+        head: 'Keepers',
+        summary: 'No more saves made by a keeper diving away from the ball. Keepers read the shot a little better instead, so they save about as many as before.',
+        detail: 'A diving keeper could reach a ball 2.6 metres away in any direction, so about a quarter of diving saves came from a dive the wrong way: a save that could not be shown on screen. Behind the dive he now has only his trailing legs. To keep goals per match where they were (checked over 800 computer-played matches), keepers misjudge the line of a shot less often and stretch a little further the way they go. A beaten keeper is now beaten by the shot.',
+      },
+      {
+        head: 'The goal line',
+        summary: 'A ball blocked just in front of the line and bouncing back into play is no longer given as a goal.',
+        detail: 'The ball was judged 40 cm before the line, so a shot blocked right on the line by the post, bouncing back out, could be counted as in. The automated match checks found one; it is now only judged once it is going over.',
+      },
+    ],
+  },
+  {
     version: 'v167',
     date: '2026-10-06',
     tag: 'Language',

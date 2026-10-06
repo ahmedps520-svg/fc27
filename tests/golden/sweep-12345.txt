@@ -1,19 +1,19 @@
 60 matches, seed 12345, authentic
-  goals        2.40        (target 2-3)
-  shots        13.75       (target 11-15)
-  on target    6.07
-  conversion   17.5%
-  home poss    50.90%
-  crosses      6.20        (3.52 with a man in the box)
-  cross comp   32.7%       (a team-mate's the next touch; cut-backs not counted)
-  headers      2.22 at goal, 0.48 headed goals
-  on target %  44.1%       (real ~34%)
-  fouls        8.47    (real, scaled to these shots: 12.1)
-  yellows      1.80    (real, scaled to these shots: 2.1)
-  reds         0.07    (real, scaled to these shots: 0.1)
-  corners      3.10    (real, scaled to these shots: 5.5)
-  throw-ins    5.30    (real, scaled to these shots: 24.2)
-  goal kicks   3.88    (real, scaled to these shots: 9.4)
-  offsides     1.22    (real, scaled to these shots: 2.2)
-  free kicks   8.43
-  penalties    0.12
+  goals        2.55        (target 2-3)
+  shots        14.83       (target 11-15)
+  on target    6.48
+  conversion   17.2%
+  home poss    49.68%
+  crosses      6.27        (3.75 with a man in the box)
+  cross comp   32.3%       (a team-mate's the next touch; cut-backs not counted)
+  headers      2.62 at goal, 0.50 headed goals
+  on target %  43.7%       (real ~34%)
+  fouls        8.60    (real, scaled to these shots: 13.1)
+  yellows      1.68    (real, scaled to these shots: 2.3)
+  reds         0.12    (real, scaled to these shots: 0.1)
+  corners      3.32    (real, scaled to these shots: 5.9)
+  throw-ins    5.75    (real, scaled to these shots: 26.1)
+  goal kicks   4.08    (real, scaled to these shots: 10.1)
+  offsides     1.10    (real, scaled to these shots: 2.4)
+  free kicks   8.05
+  penalties    0.08
