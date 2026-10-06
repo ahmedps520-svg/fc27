@@ -1,13 +1,13 @@
 60 matches, seed 777, authentic
   goals        2.55        (target 2-3)
   shots        15.05       (target 11-15)
-  on target    7.05
+  on target    6.43
   conversion   16.9%
   home poss    51.03%
   crosses      6.67        (4.17 with a man in the box)
   cross comp   41.1%       (a team-mate's the next touch; cut-backs not counted)
   headers      3.08 at goal, 0.90 headed goals
-  on target %  46.8%       (real ~34%)
+  on target %  42.7%       (real ~34%)
   fouls        8.47    (real, scaled to these shots: 13.2)
   yellows      1.73    (real, scaled to these shots: 2.3)
   reds         0.15    (real, scaled to these shots: 0.1)

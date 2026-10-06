@@ -11680,7 +11680,11 @@
             b.vx = Math.cos(a) * s, b.vy = Math.sin(a) * s, Math.random() < 0.45 && (b.vz = Math.max(b.vz, 2 + Math.random() * 4)), b.lastTouch = best, best.touchLock = 0.3;
           }
         } else if (best.role === "GK" && b.shotBy && best.team !== b.shotBy.team) {
-          if (this.teams[b.shotBy.team].onTarget++, !this.keeperContact(best, speed)) return;
+          {
+            let gx = this.teams[best.team].dir > 0 ? 0 : PITCH.w, tl = Math.abs(b.vx) > 0.5 ? (gx - b.x) / b.vx : 0, yc = tl > 0 ? b.y + b.vy * tl : b.y, zc = tl > 0 ? b.z + b.vz * tl - 4.9 * tl * tl : b.z;
+            Math.abs(yc - CY) < GOAL_HALF + 0.11 && zc < GOAL_HEIGHT + 0.11 && this.teams[b.shotBy.team].onTarget++;
+          }
+          if (!this.keeperContact(best, speed)) return;
           b.shotBy = null, b.owner = best, b.lastTouch = best, best.holdT = 0, best.diveT = 0, best.inHands = !0;
         } else {
           b.shotBy = null;
