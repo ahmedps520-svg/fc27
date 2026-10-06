@@ -71,6 +71,13 @@ try {
   // the match uses it
   await page.evaluate(async () => (await import('/js/app.js')).navigate('play', { homeId: 'c1', awayId: 'c2', duration: 1200, skill: 1, mode: 'single' }));
   await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase === 'play', null, { timeout: 180000 });
+  /* measured on the in-possession pad: defending, LOB is hidden (a zero box read
+     as 576 px out on CI when the other side won the kick-off) — give him the ball first */
+  await page.waitForFunction(() => {
+    const m = window.__apexMatch; const me = m.playerOf(m.controllers[0]);
+    if (m.ball.owner !== me) { m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0; m.ball.vx = m.ball.vy = m.ball.vz = 0; }
+    return document.querySelector('#tpad [data-slot="shoot"] b')?.textContent === 'SHOOT' && !document.querySelector('#tpad [data-slot="lob"]')?.hidden;
+  }, null, { timeout: 30000, polling: 100 }).catch(() => {});
   const inMatch = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#tpad .tbtn')].map((b) => { const r = b.getBoundingClientRect(); return [b.dataset.slot, { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, r: r.width / 2 }]; })));
   const off = Math.max(...Object.keys(edited).map((k) => Math.hypot(edited[k].x - inMatch[k].x, edited[k].y - inMatch[k].y)));
   check(off <= 2, `every button is where it was left in the editor (worst ${off.toFixed(1)} px)`);
