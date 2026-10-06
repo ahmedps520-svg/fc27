@@ -228,9 +228,9 @@ export function render(params = {}) {
     ${moversHTML(state)}`;
   return `
     ${screenHead({
-      kicker: 'A hundred clubs · eight divisions',
+      kicker: t('world.kicker2'),
       title: t('world.title'),
-      sub: `Season ${state.season} · Round ${state.round} of ${state.rounds} · a round a day, two up and two down`,
+      sub: t('world.sub', { season: state.season, round: state.round, rounds: state.rounds }),
       motif: 'ladder', tone: 'b',
     })}
     <div class="seg wtabs" id="wtabs">

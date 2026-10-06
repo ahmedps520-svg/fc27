@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v165 — Arabic screen heads
+- `app.js` top bar: `t('title.<screen>')` when the dictionary has it (only AR has `title.*`), else `mod.TITLE`.
+- `screenHead` strings for career (4 heads), settings, skills, street (2), world, trophies now via `t()`; new keys `career.*`, `settings.kicker/sub`, `skills.*`, `street.*`, `world.kicker2/sub`, `trophies.earned/toCollect`.
+- Today's date uses `ar-u-nu-latn-ca-gregory` in Arabic (Western digits).
+- Still English in Arabic: card bodies (Manager/Player Mode tiles, drill blurbs, store pack text, squad tabs).
+
 ## v164 — bidi for mixed text in Arabic
 - `styles/main.css` `[dir=rtl] :is(p, span, b, …, button, .hint) { unicode-bidi: plaintext; }` — each line takes its direction from its first strong character (fixes ".Take a real club", "of 52 earned 0", "7+").
 - Exempt: `.gm` HUD inline text and `.gm-hints` (Arabic hints start with a Latin button name) and `.icon-btn` (the back chevron must mirror).

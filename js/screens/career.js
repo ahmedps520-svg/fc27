@@ -7,6 +7,7 @@
  * one screen with six tabs because a career is lived weekly: Overview is where
  * you land, everything else is a look sideways.
  */
+import { t } from '../i18n.js';
 import { lookCrest } from '../data/clubLook.js';
 import { getState, update } from '../state.js';
 import {
@@ -56,7 +57,7 @@ export function render(params = {}) {
 
 function modesHTML() {
   return `
-    ${screenHead({ kicker: 'Mode 03', title: 'Career', sub: 'Take a real club. Live with the results.', motif: 'season', tone: 'b' })}
+    ${screenHead({ kicker: t('career.kicker'), title: t('menu.career'), sub: t('career.sub'), motif: 'season', tone: 'b' })}
     <div class="cm-modes">
       <button class="cm-mode glass" id="cmManager">
         <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Run a club'}</span>
@@ -75,7 +76,7 @@ function modesHTML() {
 
 function managerHTML() {
   return `
-    ${screenHead({ kicker: 'Manager Mode', title: 'Choose your manager', sub: 'A real name on the touchline, or your own.', motif: 'season', tone: 'b' })}
+    ${screenHead({ kicker: t('career.manager'), title: t('career.chooseManager'), sub: t('career.chooseManager.sub'), motif: 'season', tone: 'b' })}
     <div class="mgr-grid">
       <button class="mgr-card glass is-custom" id="mgrCustom">
         <span class="mgr-face plus">+</span>
@@ -107,7 +108,7 @@ function customHTML() {
           style="background:${kind === 'hairstyle' ? '#222' : v}">${kind === 'hairstyle' ? i + 1 : ''}</button>`).join('')}
     </div>`;
   return `
-    ${screenHead({ kicker: 'Manager Mode', title: 'Create your manager', sub: 'This is who stands in your technical area.', motif: 'season', tone: 'b' })}
+    ${screenHead({ kicker: t('career.manager'), title: t('career.createManager'), sub: t('career.createManager.sub'), motif: 'season', tone: 'b' })}
     <div class="cs-layout">
       <aside class="cs-preview glass">
         <span class="csp-face">${faceSVG({ id: `cust-${c.skin}-${c.hair}-${c.hairColor}-${c.beard}`, name: c.first || 'You' }, 96, SUITS[c.suit])}</span>
@@ -142,7 +143,7 @@ function customHTML() {
 function clubsHTML() {
   const leagues = [...new Set(CAREER_CLUBS.map((c) => c.league))];
   return `
-    ${screenHead({ kicker: 'Manager Mode', title: 'Choose your club', sub: 'Every squad is real. So is the table you will answer to.', motif: 'season', tone: 'b' })}
+    ${screenHead({ kicker: t('career.manager'), title: t('career.chooseClub'), sub: t('career.chooseClub.sub'), motif: 'season', tone: 'b' })}
     ${leagues.map((lg) => `
       <section class="cc-league">
         <h3>${lg} <span>${leagueClubs(lg)[0].country}</span></h3>

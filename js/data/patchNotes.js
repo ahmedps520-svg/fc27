@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v165',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'Every screen named in Arabic',
+    lede: 'The bar at the top and the heading of Career, Settings, Skills, Street, The World and the Trophy Room now read in Arabic when Arabic is your language.',
+    entries: [
+      {
+        head: 'Headings',
+        summary: 'Screen names, headings and their one-line descriptions are now translated, and Today shows the date in Arabic.',
+        detail: 'These were the last English headings left in the Arabic menus: the name in the top bar, plus the title and line under it on the Career screens (including choosing or creating a manager and a club), Settings, Skills & Practice, Street, The World and the Trophy Room. Numbers stay in Western digits, as in the rest of the game.',
+      },
+    ],
+  },
+  {
     version: 'v164',
     date: '2026-10-06',
     tag: 'Language',

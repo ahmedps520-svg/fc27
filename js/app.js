@@ -12,7 +12,7 @@ import { backupNow } from './saveSafety.js';
 import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
 import { setBindings, setToggles, setPadTuning } from './game/input.js';
-import { applyLanguage } from './i18n.js';
+import { applyLanguage, t } from './i18n.js';
 
 /* v87: code-split. The title screen and the menu ship with the boot; every
  * other screen is its own chunk, fetched the first time it is visited (and
@@ -74,7 +74,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v164';
+export const APP_VERSION = 'v165';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -268,7 +268,9 @@ export function navigate(name, params = {}) {
   root.scrollTop = 0;
   window.scrollTo({ top: 0 });
 
-  title.textContent = mod.TITLE || 'APEX XI';
+  // v165: the bar's name in the player's language, where the dictionary has one
+  const tk = `title.${name}`; const tt = t(tk);
+  title.textContent = tt !== tk ? tt : mod.TITLE || 'APEX XI';
   backBtn.hidden = name === 'menu' || name === 'splash';
   document.body.classList.toggle('on-splash', name === 'splash');
   /* THE SCROLL-WHEEL FIX. `body.in-game` carries `overflow: hidden`, and it

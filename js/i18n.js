@@ -47,6 +47,13 @@ const AR = {
   'hint.skill.touch': '{skill} اسحب ← حركة مهارية', 'hint.skill.pad': 'اضغط باستمرار {skill} + العصا ← حركة مهارية', 'hint.tactics': '{key} تكتيك سريع', 'hint.lob': '{lob} كرة ساقطة فوق الدفاع', 'hint.shoot.touch': 'اسحب {shoot} ↑ ساقطة · ↔ لولبية', 'hint.shoot.pad': 'اضغط باستمرار {shoot} = قوة · {curl} = لولبية', 'hint.deadball': 'الكرات الثابتة: صوّب بالعصا', 'hint.pause': '{pause} التبديلات والتكتيك', 'hint.defend.touch': '{slide} · اضغط باستمرار {jockey} · اضغط باستمرار {press}', 'hint.defend.pad': '{shoot} تدخل انزلاقي · اضغط باستمرار {jockey} مراقبة · اضغط باستمرار {press} ضغط',
   'facts.possession': 'الاستحواذ', 'facts.shots': 'التسديدات', 'facts.onTarget': 'على المرمى', 'facts.xg': 'الأهداف المتوقعة', 'facts.bigChances': 'فرص محققة', 'facts.corners': 'الركنيات', 'facts.fouls': 'الأخطاء', 'facts.goals': 'الأهداف', 'facts.noGoals': 'لا أهداف بعد.',
   'pause.secondHalf': 'ابدأ الشوط الثاني', 'pause.select': 'اختيار', 'pause.resumeShort': 'استئناف',
+  'title.career': 'المسيرة', 'title.settings': 'الإعدادات', 'title.skills': 'المهارات', 'title.street': 'الشارع', 'title.world': 'العالم', 'title.today': 'اليوم', 'title.trophies': 'غرفة الجوائز', 'title.quick': 'انطلاق', 'title.squad': 'التشكيلة المثالية', 'title.stadiums': 'الملاعب', 'title.builder': 'مصمّم الملاعب', 'title.online': 'الحساب', 'title.pro': 'مسيرة اللاعب', 'title.cup': 'كأس مخصّصة', 'title.weekend': 'تحدي نهاية الأسبوع', 'title.match': 'يوم المباراة', 'title.play': 'المباراة',
+  'career.kicker': 'الوضع 03', 'career.sub': 'تولَّ نادياً حقيقياً. وتحمّل النتائج.', 'career.manager': 'وضع المدرب', 'career.chooseManager': 'اختر مدربك', 'career.chooseManager.sub': 'اسم حقيقي على خط التماس، أو اسمك أنت.', 'career.createManager': 'أنشئ مدربك', 'career.createManager.sub': 'هذا من يقف في منطقتك الفنية.', 'career.chooseClub': 'اختر ناديك', 'career.chooseClub.sub': 'كل تشكيلة حقيقية. وكذلك الجدول الذي ستُحاسَب عليه.',
+  'settings.kicker': 'النظام', 'settings.sub': 'كيف تبدو اللعبة وتُسمع وتعمل على هذا الجهاز.',
+  'skills.kicker': 'أوضاع سريعة', 'skills.title': 'المهارات والتدريب', 'skills.sub': 'تمارين بلوحات صدارة، وركلات ترجيح، وملعب لك وحدك.',
+  'street.kicker': 'الوضع · الشارع', 'street.sub': '{name} · المستوى {lvl} · {rep} سمعة · {won}/{played} فوز', 'street.create': 'أنشئ لاعبك', 'street.create.sub': 'ثلاثة ضد ثلاثة على سطح، وخمسة على الرمل. المهارات تمنحك الأسلوب، والأسلوب يمنحك الشارع.',
+  'world.kicker2': 'مئة نادٍ · ثماني درجات', 'world.sub': 'الموسم {season} · الجولة {round} من {rounds} · جولة كل يوم، صعود اثنين وهبوط اثنين',
+  'trophies.earned': '{n} من {of} محقّقة', 'trophies.toCollect': '{n} بانتظار الاستلام',
   'common.back': 'رجوع', 'common.continue': 'متابعة', 'common.play': 'العب', 'common.open': 'افتح', 'common.close': 'إغلاق',
 };
 
@@ -85,6 +92,12 @@ const EN = {
   'hint.skill.touch': '{skill} swipe → a trick', 'hint.skill.pad': 'hold {skill} + stick → a trick', 'hint.tactics': '{key} quick tactics', 'hint.lob': '{lob} chip it over the top', 'hint.shoot.touch': 'Flick {shoot} ↑ chip · ↔ bend', 'hint.shoot.pad': 'hold {shoot} = power · {curl} = bend', 'hint.deadball': 'Dead ball: aim with the stick', 'hint.pause': '{pause} subs &amp; tactics', 'hint.defend.touch': '{slide} · hold {jockey} · hold {press}', 'hint.defend.pad': '{shoot} slide · hold {jockey} jockey · hold {press} press',
   'facts.possession': 'Possession', 'facts.shots': 'Shots', 'facts.onTarget': 'On target', 'facts.xg': 'Expected goals', 'facts.bigChances': 'Big chances', 'facts.corners': 'Corners', 'facts.fouls': 'Fouls', 'facts.goals': 'Goals', 'facts.noGoals': 'No goals yet.',
   'pause.secondHalf': 'Start Second Half', 'pause.select': 'Select', 'pause.resumeShort': 'Resume',
+  'career.kicker': 'Mode 03', 'career.sub': 'Take a real club. Live with the results.', 'career.manager': 'Manager Mode', 'career.chooseManager': 'Choose your manager', 'career.chooseManager.sub': 'A real name on the touchline, or your own.', 'career.createManager': 'Create your manager', 'career.createManager.sub': 'This is who stands in your technical area.', 'career.chooseClub': 'Choose your club', 'career.chooseClub.sub': 'Every squad is real. So is the table you will answer to.',
+  'settings.kicker': 'System', 'settings.sub': 'How the game looks, sounds and runs on this device.',
+  'skills.kicker': 'Quick modes', 'skills.title': 'Skills & Practice', 'skills.sub': 'Drills with leaderboards, a shootout, and a pitch to yourself.',
+  'street.kicker': 'Mode · Street', 'street.sub': '{name} · level {lvl} · {rep} rep · {won}/{played} won', 'street.create': 'Create your baller', 'street.create.sub': 'Three a side on a rooftop, five on the sand. Skills win you style; style wins you the street.',
+  'world.kicker2': 'A hundred clubs · eight divisions', 'world.sub': 'Season {season} · Round {round} of {rounds} · a round a day, two up and two down',
+  'trophies.earned': '{n} of {of} earned', 'trophies.toCollect': '{n} to collect',
   'common.back': 'Back', 'common.continue': 'Continue', 'common.play': 'Play', 'common.open': 'Open', 'common.close': 'Close',
 };
 

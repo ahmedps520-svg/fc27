@@ -92,7 +92,7 @@ export function render() {
   const all = evaluateAll(s, WORLD.playersById);
   const earned = all.filter((a) => a.complete).length;
   const unclaimed = all.filter((a) => a.complete && !a.claimed);
-  const head = screenHead({ kicker: t('trophies.kicker'), title: t('trophies.title'), sub: `${earned} of ${ACHIEVEMENTS.length} earned${unclaimed.length ? ` · ${unclaimed.length} to collect` : ''}`, motif: 'ladder', tone: 'b' });
+  const head = screenHead({ kicker: t('trophies.kicker'), title: t('trophies.title'), sub: `${t('trophies.earned', { n: earned, of: ACHIEVEMENTS.length })}${unclaimed.length ? ` · ${t('trophies.toCollect', { n: unclaimed.length })}` : ''}`, motif: 'ladder', tone: 'b' });
   const hall = hallHTML(s);
   return head + `
     <div class="trophies">
