@@ -5531,3 +5531,15 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 #gmRoot.gm-goal-on #gmTouch, #gmRoot.gm-replay-on #gmTouch,
 #gmRoot.gm-goal-on .gm-hints, #gmRoot.gm-replay-on .gm-hints { visibility: hidden; }
 #gmRoot.gm-goal-on:has(#gmTouch:not([hidden])) .bc-sub { top: auto; bottom: 14px; }
+
+/* v157: on a phone held sideways the top of the screen is short, and the
+   transient boards landed on the stamina bar and on each other. The bar is not
+   needed while a set-piece banner or the added-time board is up; a review card
+   sits below the set-piece banner and sends the caption to the bottom-left
+   (the stick's empty corner) instead of on top of its picture. */
+@media (max-height: 520px) {
+  #gmRoot:has(.gm-setpiece:not([hidden])) .gm-stam,
+  #gmRoot:has(#bcBoard:not([hidden])) .gm-stam { visibility: hidden; }
+  #gmRoot:has(.gm-setpiece:not([hidden])) .bc-review { top: 108px; }
+}
+#gmRoot:has(#bcReview:not([hidden])):has(#gmTouch:not([hidden])) .bc-sub { top: auto; bottom: 14px; left: 14px; translate: none; max-width: 48vw; text-align: start; }

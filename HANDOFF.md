@@ -15,6 +15,19 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v157 — phone overlay collisions (CSS)
+- Found with phone screenshots of staged set pieces and half time
+  (`tests/tmp/moments2.mjs`, 844×390): the set-piece banner (top 52,
+  centred) and the added-time board (`#bcBoard`, top 62, left) covered the
+  stamina bar; the penalty review (`#bcReview`, top 76) touched the banner;
+  and the touch-layout subtitle (top 136) sat on the review's picture.
+- `main.css`:
+  - under `max-height: 520px`, `.gm-stam` hides while the set-piece banner
+    or `#bcBoard` is up, and `.bc-review` moves to top 108 when a set-piece
+    banner is showing;
+  - on touch, while `#bcReview` is up, `.bc-sub` goes to the bottom-left
+    (max 48vw).
+
 ### v156 — goals and replays on phones (UI)
 - Found with phone-quality screenshots of a rainy night match and a forced
   goal (`tests/tmp/moments.mjs`). During the GOAL card the touch pad showed

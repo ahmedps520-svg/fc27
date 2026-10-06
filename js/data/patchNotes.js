@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v157',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'Tidier set pieces on phones',
+    lede: 'On a phone held sideways, the set-piece banner, the added-time board and the penalty review no longer land on top of other things.',
+    entries: [
+      {
+        head: 'Less clutter at the top of the screen',
+        summary: 'While a corner, free-kick or penalty banner or the added-time board is showing, the stamina bar steps aside instead of being half covered.',
+        detail: 'A penalty review card now sits below the penalty banner, and while it is up the commentary caption moves to the bottom-left corner instead of covering the review picture.',
+      },
+    ],
+  },
+  {
     version: 'v156',
     date: '2026-10-06',
     tag: 'Polish',
