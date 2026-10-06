@@ -15,6 +15,22 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v149 — club songs (backlog #17: per-club chants, generated audio only)
+- `audio.js clubSong(name)` gives a `CHANTS`-shaped pattern from an FNV hash
+  of the name:
+  - 60% major, else minor;
+  - the root is MIDI 57–64;
+  - eight steps, mostly by step (±1 at 75%, ±2 otherwise), 22% rests or
+    claps, ending on the root;
+  - 2–3 bars.
+- `chant()` now also accepts a pattern object. 57 or more distinct songs
+  per 60 clubs (`tests/unit/club-song.test.mjs`).
+- `play.js`:
+  - the goal chant is now the scoring club's song (it was a fixed 'goal'
+    line);
+  - the in-play chant is the club's own song 45% of the time: the home
+    end's, or, when the away side leads, the away end's 60% of the time.
+
 ### v148 — the fuzzer found a crash; nightly CI (backlog #18)
 Sweep byte-identical.
 - Promoted from `tests/tmp` (both exit 1 on any problem):
