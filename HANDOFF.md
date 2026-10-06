@@ -15,6 +15,24 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v150 — promo reveals (backlog #17: animated card reveals per promo)
+- `promos.js campaignOfCard(id)` maps a `pr:<campaign>:<id>` card to its
+  campaign, from CAMPAIGNS or EVENT_CAMPAIGNS.
+- `squad.js runPackAnimation`:
+  - the walk-out order now ranks campaign cards last (so one is revealed)
+    before sorting by rating;
+  - `celebrate()` hands a promo pull to `promoWeather(camp)`: 52
+    `.confetti.promo-fx.fx-<id>` particles in the campaign's colours plus
+    white, with the shake;
+  - the walk-out card gets `promo-back fx-<id>` and `--promo-a/b`, so the
+    card back shows the campaign's name on its gradient.
+- CSS (end of `main.css`):
+  - `fxStreak` (future), `fxSand` (desert, blowing across), `fxSnow`
+    (winter), green and white ribbons (nationalday);
+  - hidden under reduce-motion.
+- Checked with a scripted Campaign-pack opening (`tests/tmp/promoreveal.mjs`,
+  not committed). New `tests/unit/promo-reveal.test.mjs`.
+
 ### v149 — club songs (backlog #17: per-club chants, generated audio only)
 - `audio.js clubSong(name)` gives a `CHANTS`-shaped pattern from an FNV hash
   of the name:

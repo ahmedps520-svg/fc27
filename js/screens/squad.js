@@ -1,6 +1,6 @@
 import { getState, update, DIVISIONS, refreshObjectives, LADDER_SIZE, ULTIMATE_RUNGS } from '../state.js';
 import { kitOf, kitSVG, KIT_PATTERNS, KIT_SWATCHES } from '../data/kitDesign.js';
-import { campaignNow, campaignEndsIn, baseOf } from '../data/promos.js';
+import { campaignNow, campaignEndsIn, baseOf, campaignOfCard } from '../data/promos.js';
 import { evolvedRef } from '../evolutions.js';
 import { WORLD, getPlayer, getClub } from '../data/generator.js';
 import { FORMATIONS, RARITY, POSITIONS } from '../data/pools.js';
@@ -1866,9 +1866,12 @@ function runPackAnimation(root, drawn, coins, onDone) {
    *
    * `drawn` is sorted alongside, because `dup` is looked up by index and the
    * two lists have to keep pointing at the same card. */
+  /* v150: a campaign card is the point of a promo pack, so it is the one that
+     walks out (last), whatever it is rated against the rest of the pull. */
+  const promoRank = (p) => (campaignOfCard(p.id) ? 1 : 0);
   const order = drawn
     .map((d, i) => ({ d, i }))
-    .sort((a, b) => (a.d.p.overall - b.d.p.overall) || (a.i - b.i));
+    .sort((a, b) => (promoRank(a.d.p) - promoRank(b.d.p)) || (a.d.p.overall - b.d.p.overall) || (a.i - b.i));
   drawn = order.map((o) => o.d);
   const pulls = drawn.map((x) => x.p);
   const isDup = (i) => !!drawn[i].dup;
@@ -1938,6 +1941,8 @@ function runPackAnimation(root, drawn, coins, onDone) {
      card explodes, none of them do. */
   const celebrate = (p) => {
     if (document.documentElement.classList.contains('reduce-motion')) return;
+    const camp = campaignOfCard(p.id);
+    if (camp) { promoWeather(camp); return; }
     if (p.rarity !== 'special' && p.rarity !== 'star' && p.rarity !== 'icon') return;
     stage.classList.remove('shake');
     void stage.offsetWidth;
@@ -1956,6 +1961,27 @@ function runPackAnimation(root, drawn, coins, onDone) {
     at(2200, () => conf.remove());
   };
 
+  /* v150: a promo pull gets its campaign's own reveal — the card back in its
+     colours with its name, and the stage filled with its weather: light
+     streaks for Future Stars, blowing sand for the Desert, snow for the
+     Winter Legends, green and white for National Day. */
+  const promoWeather = (camp) => {
+    stage.classList.remove('shake');
+    void stage.offsetWidth;
+    stage.classList.add('shake');
+    const [a, b] = camp.colors;
+    const conf = document.createElement('div');
+    conf.className = `confetti promo-fx fx-${camp.id}`;
+    conf.innerHTML = Array.from({ length: 52 }, (_, i) => {
+      const col = [a, b, '#ffffff'][i % 3];
+      return `<i style="left:${(Math.random() * 100).toFixed(1)}%;--c:${col};`
+        + `animation-delay:${(Math.random() * 0.6).toFixed(2)}s;`
+        + `animation-duration:${(1.4 + Math.random() * 1.2).toFixed(2)}s"></i>`;
+    }).join('');
+    stage.appendChild(conf);
+    at(2800, () => conf.remove());
+  };
+
   const showCard = (p) => {
     revealed = true;
     sfx('reveal', p.rarity);
@@ -1964,8 +1990,9 @@ function runPackAnimation(root, drawn, coins, onDone) {
     void overlay.offsetWidth;
     overlay.classList.add('flash');
     celebrate(p);
+    const promoCamp = campaignOfCard(p.id);
     walkout.innerHTML = `
-      <div class="walkout-card reveal-${p.rarity} flipping"><div class="card-back" aria-hidden="true">XI</div>${playerCard(p, { size: 'full' })}
+      <div class="walkout-card reveal-${p.rarity} flipping${promoCamp ? ` promo-back fx-${promoCamp.id}` : ''}"${promoCamp ? ` style="--promo-a:${promoCamp.colors[0]};--promo-b:${promoCamp.colors[1]}"` : ''}><div class="card-back" aria-hidden="true">${promoCamp ? `<span>${promoCamp.name}</span>` : 'XI'}</div>${playerCard(p, { size: 'full' })}
         ${isDup(index) ? `<span class="dup-tag">Already yours · ◈${dupValue(p).toLocaleString()}</span>` : ''}
       </div>`;
     nextBtn.textContent = 'Add to collection';

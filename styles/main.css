@@ -5489,3 +5489,30 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .trophies > *, .trophies .panel { min-width: 0; }
 /* v136: a league table wider than a small phone scrolls inside itself rather than pushing the page */
 @media (max-width: 480px) { .wtable { display: block; max-width: 100%; overflow-x: auto; } }
+
+/* ---- v150: a promo pull's own reveal (squad.js promoWeather) ---- */
+.walkout-card.promo-back .card-back {
+  background:
+    radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--promo-a) 70%, transparent), transparent 62%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .06) 0 4px, transparent 4px 11px),
+    linear-gradient(180deg, var(--promo-b), #070a14);
+  border-color: var(--promo-a);
+}
+.walkout-card.promo-back .card-back span {
+  display: block; max-width: 80%; text-align: center; font-size: 22px; line-height: 1.05; letter-spacing: -.01em;
+  text-shadow: 0 0 18px var(--promo-a);
+}
+.promo-fx i { position: absolute; top: -24px; animation: confFall linear forwards; background: var(--c); }
+/* Future Stars: thin streaks of light falling fast */
+.fx-future i { width: 2px; height: 34px; border-radius: 2px; opacity: .9; box-shadow: 0 0 8px var(--c); animation-name: fxStreak; }
+@keyframes fxStreak { to { transform: translateY(110vh); opacity: .2; } }
+/* Heroes of the Desert: sand blown across the stage */
+.fx-desert i { width: 4px; height: 4px; border-radius: 50%; top: auto; bottom: calc(10% + var(--y, 0%)); left: -10px !important; animation-name: fxSand; }
+.fx-desert i:nth-child(3n) { --y: 30%; } .fx-desert i:nth-child(3n + 1) { --y: 55%; } .fx-desert i:nth-child(3n + 2) { --y: 75%; }
+@keyframes fxSand { to { transform: translate(110vw, -30px); opacity: 0; } }
+/* Winter Legends: slow snow */
+.fx-winter i { width: 7px; height: 7px; border-radius: 50%; background: #ffffff; opacity: .9; animation-name: fxSnow; animation-timing-function: ease-in-out; }
+@keyframes fxSnow { 50% { transform: translate(18px, 50vh); } to { transform: translate(-10px, 105vh); opacity: .5; } }
+/* National Day: green and white ribbons */
+.fx-nationalday i { width: 12px; height: 5px; border-radius: 2px; }
+.reduce-motion .promo-fx { display: none; }
