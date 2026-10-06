@@ -35,5 +35,20 @@ const page = await browser.newPage();
 const bad = await page.evaluate((decls) => decls.filter((d) => !CSS.supports(d.prop, d.value)), decls);
 await browser.close();
 for (const d of bad) console.log(`${d.file}:${d.line}  ${d.prop}: ${d.value.slice(0, 80)}`);
-console.log(bad.length ? `css-lint: ${bad.length} of ${decls.length} declarations would be dropped` : `css-lint: ok (${decls.length} declarations)`);
-process.exit(bad.length ? 1 : 0);
+
+/* v162: a var() with no fallback whose custom property is never set — not in
+   any stylesheet, not in an inline style or setProperty in the scripts — is
+   invalid at computed time, and the declaration falls back to inherit/initial
+   as if it were dropped. `--muted` was asked for 27 times and never defined. */
+const allCss = files.map((f) => readFileSync(f, 'utf8')).join('\n');
+const jsFiles = [];
+const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { if (e.name !== 'vendor') walk(`${d}/${e.name}`); } else if (e.name.endsWith('.js')) jsFiles.push(`${d}/${e.name}`); } };
+walk('js');
+const js = jsFiles.map((f) => readFileSync(f, 'utf8')).join('\n') + readFileSync('index.html', 'utf8');
+const defined = new Set([...`${allCss}\n${js}`.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]).concat([...js.matchAll(/setProperty\(\s*['"`](--[\w-]+)/g)].map((m) => m[1])));
+const undef = [...new Set([...allCss.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)].map((m) => m[1]))].filter((v) => !defined.has(v));
+for (const v of undef) console.log(`never defined, used without a fallback: var(${v})`);
+
+const n = bad.length + undef.length;
+console.log(n ? `css-lint: ${bad.length} of ${decls.length} declarations would be dropped, ${undef.length} variable(s) never defined` : `css-lint: ok (${decls.length} declarations)`);
+process.exit(n ? 1 : 0);

@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v162',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'Softer secondary text',
+    lede: 'Captions and labels across the Account, Online and squad screens that were meant to be soft grey now are, instead of glaring white.',
+    entries: [
+      {
+        head: 'Secondary text',
+        summary: 'Sign-in notes, online records, connection status, the chemistry key and other small print now show in muted grey, so the important text stands out again.',
+        detail: 'Twenty-seven style rules asked for a "muted" colour that had never been defined, so the browser ignored all of them. A new automatic check now flags any colour or size that refers to something that doesn\'t exist.',
+      },
+    ],
+  },
+  {
     version: 'v161',
     date: '2026-10-06',
     tag: 'Polish',
