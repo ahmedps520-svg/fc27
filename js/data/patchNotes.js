@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v160',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'Career hubs on phones',
+    lede: 'The Manager and Player Career hubs make better use of a sideways phone, and a Player Career caption no longer runs through its label.',
+    entries: [
+      {
+        head: 'Career hubs',
+        summary: 'With your phone held sideways, the club and player cards at the top of both career hubs shrink to a compact band, so the tabs and today\'s fixture show without scrolling.',
+        detail: 'In the Player Career, the line explaining manager trust no longer overlaps the "Manager trust" label above it.',
+      },
+    ],
+  },
+  {
     version: 'v159',
     date: '2026-10-06',
     tag: 'Polish',
