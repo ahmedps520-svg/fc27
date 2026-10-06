@@ -1600,7 +1600,17 @@ export class Match {
         }
       } else if (best.role === 'GK' && b.shotBy && best.team !== b.shotBy.team) {
         // a keeper reaching an opponent's shot is a save — held or parried away
-        this.teams[b.shotBy.team].onTarget++;
+        /* v172: but only a shot that was going in counts as on target. Since a
+           keeper stretches 2.9 m (v168) he touches balls already going wide of
+           the post, and those were counted on target too (45% of all shots
+           against about a third in real football). */
+        {
+          const gx = this.teams[best.team].dir > 0 ? 0 : PITCH.w;
+          const tl = Math.abs(b.vx) > 0.5 ? (gx - b.x) / b.vx : 0;
+          const yc = tl > 0 ? b.y + b.vy * tl : b.y;
+          const zc = tl > 0 ? b.z + b.vz * tl - 4.9 * tl * tl : b.z;
+          if (Math.abs(yc - CY) < GOAL_HALF + 0.11 && zc < GOAL_HEIGHT + 0.11) this.teams[b.shotBy.team].onTarget++;
+        }
         if (!this.keeperContact(best, speed)) return;
         b.shotBy = null;
         b.owner = best;

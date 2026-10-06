@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v172 — on target only if it was going in
+- `sim.js` claim loop: a keeper's touch adds `onTarget` only when the shot's projected crossing is inside the frame (|y−CY| < GOAL_HALF+0.11, z < GOAL_HEIGHT+0.11). Stat only: goals and shots in the sweep are byte-identical; on target % 43.7/46.8 → 40.0/42.7. Goldens re-recorded.
+- CPU shot distances (tests/tmp/shotdist.mjs, 20 matches): <12 m 10% · 12–18 m 20% · 18–25 m 29% · 25+ m 41%. The remaining gap to ~34% is the sim's own accuracy — a balance question, not taken on here.
+- Test: `tests/unit/on-target.test.mjs` (fails without the fix).
+
 ## v171 — full time in Arabic
 - `postmatch.js` imports `tx` (not in the watch bundle): stat sheet labels, Player of the match, Dressing room. `play.js`: the full-time stat bars, the panel tabs, the share button, the momentum fallback.
 - Audit notes (no change): `tools/human-match-audit.mjs` CPU shots against the scripted person come mostly after the script loses the ball (298 of 300 turnovers are its own man dribbling into defenders) or within 6 s of a restart; support for a person carrier equals a CPU carrier (open men ahead 1.34 vs 1.26, none open 30% vs 31%).

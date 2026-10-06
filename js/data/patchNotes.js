@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v172',
+    date: '2026-10-06',
+    tag: 'Fix',
+    title: 'Honest shots on target',
+    lede: 'A shot only counts as on target if it was going in. A keeper tipping away a ball that was already wide no longer adds one.',
+    entries: [
+      {
+        head: 'Match stats',
+        summary: '"On target" in Match Facts and at full time now counts only shots that were heading inside the posts and under the bar.',
+        detail: 'Any shot a keeper touched was counted on target, including ones he stretched for that were already going wide of the post. Keepers reach further since v168, so the count had crept up to about 45% of all shots. It is now about 41%, closer to real football. How matches play is unchanged: only the stat is.',
+      },
+    ],
+  },
+  {
     version: 'v171',
     date: '2026-10-06',
     tag: 'Language',
