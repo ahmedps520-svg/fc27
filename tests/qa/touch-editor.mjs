@@ -105,6 +105,14 @@ try {
     // drawn frames, not the match clock (which stands still through a stoppage)
     const frames = (n) => page.evaluate((k) => new Promise((res) => { let i = 0; const f = () => (++i >= k ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
     await frames(4);
+    /* the pad has to be showing the in-possession buttons before the press: on a
+       slow runner the ball could slip away in those frames, and the flick (only
+       read in possession) became a plain shot (CI, v147) — hand it back until it does */
+    await page.waitForFunction(() => {
+      const m = window.__apexMatch; const me = m.playerOf(m.controllers[0]);
+      if (m.ball.owner !== me) { m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0; m.ball.vx = m.ball.vy = m.ball.vz = 0; }
+      return document.querySelector('#tpad [data-slot="shoot"] b')?.textContent === 'SHOOT';
+    }, null, { timeout: 30000, polling: 100 }).catch(() => {});
     const b = await box(`#tpad [data-slot="${slot}"]`);
     await touch('touchStart', b.x, b.y);
     for (let i = 1; i <= 6; i++) { await touch('touchMove', b.x + (dx * i) / 6, b.y + (dy * i) / 6); await page.waitForTimeout(16); }
