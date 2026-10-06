@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v166 — a person's aimed shots aim inside the post
+- `sim.js` human shot path: `aim.y * 0.78` when the stick is to one side (target 0.7 of the way to the post instead of 0.855). Human-only; the sweep is identical.
+- `tools/human-shot-audit.mjs [N] [aim]`: a scripted seat shoots from 12/16/20 m, three lateral spots, three holds, centre/corner aim, assist 0/1, the keeper on his line. Corner misses 56% → 43%.
+- Test: `tests/unit/human-shot-aim.test.mjs`.
+- Next look: the spread itself is wide close in (±0.26 rad for an 80 shooter at 12 m); the CPU shares it, so any change needs a sweep.
+
 ## v165 — Arabic screen heads
 - `app.js` top bar: `t('title.<screen>')` when the dictionary has it (only AR has `title.*`), else `mod.TITLE`.
 - `screenHead` strings for career (4 heads), settings, skills, street (2), world, trophies now via `t()`; new keys `career.*`, `settings.kicker/sub`, `skills.*`, `street.*`, `world.kicker2/sub`, `trophies.earned/toCollect`.

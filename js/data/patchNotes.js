@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v166',
+    date: '2026-10-06',
+    tag: 'Gameplay',
+    title: 'Corners, not posts',
+    lede: 'Aim a shot at the corner and it now goes for the corner, inside the post, instead of for the post itself.',
+    entries: [
+      {
+        head: 'Aimed shots',
+        summary: 'Shots with the stick pushed to one side miss far less often: they aim just inside the post, and the keeper still has to get there.',
+        detail: 'A new test takes thousands of shots from 12 to 20 metres with nobody in the way. Aimed at a corner, more than half missed, even from the penalty spot, because a full stick aimed nine tenths of the way to the post and the strike\'s own error pushed half of them wide. Shots now aim a little further inside, as the computer\'s own placed shots do: misses fell from 56% to 43%, and more of the rest now test the keeper. Your shots only; the computer-controlled sides are unchanged.',
+      },
+    ],
+  },
+  {
     version: 'v165',
     date: '2026-10-06',
     tag: 'Language',
