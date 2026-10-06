@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v160 — career hubs on phones (CSS)
+- `tests/tmp/sweep2.mjs` (W H tag) screenshots the SBC tab
+  (`[data-utab="challenges"]`), a started Manager Career (overview, squad,
+  transfers, fixtures, cup), a started Player Career and a Street hub with a
+  baller.
+- Player Career → Form: `.hint` has `margin-top: -6px` (meant to sit under
+  headings), so under `.ov-meters` the trust explanation overlapped the
+  "Manager trust" label. `.ov-meters + .hint { margin-top: 10px }`.
+- Landscape under 500 px: `.chub` (both career hubs) now has 10/16
+  padding, a 46 px crest or face, an 18 px name and tighter chips, the same
+  idea as v159's screen-head.
+- Checked and fine: the SBC list, career squad, transfers, fixtures and cup,
+  and the Street hub in both orientations.
+
 ### v159 — compact screen heads on short landscape screens (CSS)
 - The sweep (`tests/tmp/sweep.mjs W H tag`: the Store tab, Settings,
   Trophies, Street, Skills, Online and Career at 390×844 and 844×390) found
