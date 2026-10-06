@@ -42,6 +42,11 @@ const AR = {
   'onboard.welcome': 'أهلاً بك في APEX XI', 'onboard.body': 'إليك فريقك الأول. مباراة إرشادية مدتها دقيقة تعلّمك التحكم، ثم تصل إلى لوحة اليوم ومكافآتك الأولى بانتظارك.',
   'onboard.start': 'ابدأ المباراة الإرشادية', 'onboard.skip': 'تخطَّ، أعرف الطريق',
   'guide.move': 'حرّك اللاعب بالعصا اليسرى أو WASD', 'guide.sprint': 'اضغط باستمرار على الجري (Shift / R2)', 'guide.pass': 'مرّر (X / A)', 'guide.shoot': 'سدّد (Space / B) — اضغط باستمرار للقوة', 'guide.tackle': 'دافع: اضغط تدخل عندما لا تملك الكرة', 'guide.switch': 'بدّل اللاعب (Q / L1)', 'guide.done': 'أحسنت — العب حتى صافرة النهاية',
+  'match.goal': 'هدف', 'match.halfTime': 'نهاية الشوط الأول', 'match.halfNote': 'أجرِ تغييراتك، ثم ابدأ الشوط الثاني.', 'match.fullTime': 'نهاية المباراة', 'match.ftSpectating': 'نهاية المباراة · مشاهدة', 'match.ended': 'انتهت المباراة', 'match.oppLeft': 'غادر المنافس — احتُسب لك الفوز', 'match.advantage': 'أفضلية', 'match.replay': 'إعادة',
+  'sp.corner': 'ركنية', 'sp.corner.how': 'صوّب بالعصا · CROSS إلى المنطقة · SHORT لزميل', 'sp.freekick': 'ركلة حرة', 'sp.freekick.how': 'صوّب بالعصا · اضغط باستمرار SHOOT للقوة · CROSS أو SHORT', 'sp.penalty': 'ركلة جزاء', 'sp.penalty.how': 'اختر الجهة بالعصا · اضغط باستمرار SHOOT — قوة أكثر، مخاطرة أكثر', 'sp.throwin': 'رمية تماس', 'sp.throwin.how': 'صوّب بالعصا · THROW قصيرة أو LONG بعيدة', 'sp.other': 'كرة ثابتة',
+  'hint.skill.touch': '{skill} اسحب ← حركة مهارية', 'hint.skill.pad': 'اضغط باستمرار {skill} + العصا ← حركة مهارية', 'hint.tactics': '{key} تكتيك سريع', 'hint.lob': '{lob} كرة ساقطة فوق الدفاع', 'hint.shoot.touch': 'اسحب {shoot} ↑ ساقطة · ↔ لولبية', 'hint.shoot.pad': 'اضغط باستمرار {shoot} = قوة · {curl} = لولبية', 'hint.deadball': 'الكرات الثابتة: صوّب بالعصا', 'hint.pause': '{pause} التبديلات والتكتيك', 'hint.defend.touch': '{slide} · اضغط باستمرار {jockey} · اضغط باستمرار {press}', 'hint.defend.pad': '{shoot} تدخل انزلاقي · اضغط باستمرار {jockey} مراقبة · اضغط باستمرار {press} ضغط',
+  'facts.possession': 'الاستحواذ', 'facts.shots': 'التسديدات', 'facts.onTarget': 'على المرمى', 'facts.xg': 'الأهداف المتوقعة', 'facts.bigChances': 'فرص محققة', 'facts.corners': 'الركنيات', 'facts.fouls': 'الأخطاء', 'facts.goals': 'الأهداف', 'facts.noGoals': 'لا أهداف بعد.',
+  'pause.secondHalf': 'ابدأ الشوط الثاني', 'pause.select': 'اختيار', 'pause.resumeShort': 'استئناف',
   'common.back': 'رجوع', 'common.continue': 'متابعة', 'common.play': 'العب', 'common.open': 'افتح', 'common.close': 'إغلاق',
 };
 
@@ -75,6 +80,11 @@ const EN = {
   'onboard.welcome': 'Welcome to APEX XI', 'onboard.body': 'Here is your first squad. A one-minute guided match teaches the controls, then you land on the Today hub with your first rewards waiting.',
   'onboard.start': 'Start the guided match', 'onboard.skip': 'Skip, I know my way',
   'guide.move': 'Move with the left stick or WASD', 'guide.sprint': 'Hold SPRINT (Shift / R2)', 'guide.pass': 'PASS (X / A)', 'guide.shoot': 'SHOOT (Space / B) — hold for power', 'guide.tackle': 'Defend: press TACKLE when you do not have the ball', 'guide.switch': 'SWITCH player (Q / L1)', 'guide.done': 'Well played — play on to the whistle',
+  'match.goal': 'GOAL', 'match.halfTime': 'HALF TIME', 'match.halfNote': 'Make your changes, then kick off the second half.', 'match.fullTime': 'Full time', 'match.ftSpectating': 'Full time · spectating', 'match.ended': 'Match ended', 'match.oppLeft': 'Opponent left — win awarded', 'match.advantage': 'Advantage', 'match.replay': 'REPLAY',
+  'sp.corner': 'Corner', 'sp.corner.how': 'Aim with the stick · CROSS into the box · SHORT to a team-mate', 'sp.freekick': 'Free kick', 'sp.freekick.how': 'Aim with the stick · hold SHOOT for power · CROSS or SHORT', 'sp.penalty': 'Penalty', 'sp.penalty.how': 'Pick a side with the stick · hold SHOOT — more power, more risk', 'sp.throwin': 'Throw-in', 'sp.throwin.how': 'Aim with the stick · THROW short or LONG', 'sp.other': 'Set piece',
+  'hint.skill.touch': '{skill} swipe → a trick', 'hint.skill.pad': 'hold {skill} + stick → a trick', 'hint.tactics': '{key} quick tactics', 'hint.lob': '{lob} chip it over the top', 'hint.shoot.touch': 'Flick {shoot} ↑ chip · ↔ bend', 'hint.shoot.pad': 'hold {shoot} = power · {curl} = bend', 'hint.deadball': 'Dead ball: aim with the stick', 'hint.pause': '{pause} subs &amp; tactics', 'hint.defend.touch': '{slide} · hold {jockey} · hold {press}', 'hint.defend.pad': '{shoot} slide · hold {jockey} jockey · hold {press} press',
+  'facts.possession': 'Possession', 'facts.shots': 'Shots', 'facts.onTarget': 'On target', 'facts.xg': 'Expected goals', 'facts.bigChances': 'Big chances', 'facts.corners': 'Corners', 'facts.fouls': 'Fouls', 'facts.goals': 'Goals', 'facts.noGoals': 'No goals yet.',
+  'pause.secondHalf': 'Start Second Half', 'pause.select': 'Select', 'pause.resumeShort': 'Resume',
   'common.back': 'Back', 'common.continue': 'Continue', 'common.play': 'Play', 'common.open': 'Open', 'common.close': 'Close',
 };
 
@@ -88,7 +98,7 @@ export const isRTL = () => lang() === 'ar';
 export function t(key, vars) {
   const d = DICT[lang()] || EN;
   let s = d[key] ?? EN[key] ?? key;
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), () => String(v));
   return s;
 }
 

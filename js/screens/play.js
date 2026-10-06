@@ -330,18 +330,18 @@ export function render(params) {
       <div class="gm-setpiece" id="gmSetPiece" hidden></div>
       <div class="gm-hints" id="gmHints" hidden></div>
       <div class="gm-alerts">
-        <div class="gm-adv" id="gmAdv" role="status" hidden>Advantage</div>
+        <div class="gm-adv" id="gmAdv" role="status" hidden>${t('match.advantage')}</div>
         <div class="gm-booking" id="gmBooking" role="status" hidden><i class="gb-card" aria-hidden="true"></i><b></b><span></span></div>
       </div>
 
       <div class="goal-card" id="goalCard" hidden>
-        <span class="gc-word">GOAL</span>
+        <span class="gc-word">${t('match.goal')}</span>
         <span class="gc-scorer" id="gcScorer"></span>
         <span class="gc-score" id="gcScore"></span>
       </div>
 
       <div class="replay-tag" id="replayTag" hidden>
-        <span class="rt-dot"></span>REPLAY <i class="rt-angle" id="rtAngle"></i>
+        <span class="rt-dot"></span>${t('match.replay')} <i class="rt-angle" id="rtAngle"></i>
         <em>hold ◯</em>
         <button class="rt-skip" id="rtSkip" type="button">SKIP</button>
       </div>
@@ -548,12 +548,7 @@ export function mount(root, params) {
   /* --------------------------- set-piece prompt --------------------------- */
   const spEl = root.querySelector('#gmSetPiece');
   let spShown = null;
-  const SP_TEXT = {
-    corner: ['Corner', 'Aim with the stick · CROSS into the box · SHORT to a team-mate'],
-    freekick: ['Free kick', 'Aim with the stick · hold SHOOT for power · CROSS or SHORT'],
-    penalty: ['Penalty', 'Pick a side with the stick · hold SHOOT — more power, more risk'],
-    throwin: ['Throw-in', 'Aim with the stick · THROW short or LONG'],
-  };
+  const SP_KINDS = new Set(['corner', 'freekick', 'penalty', 'throwin']);
   const paintSetPiece = () => {
     const sp = match.setPiece;
     const seat = match.controllers[online ? online.seat : 0];
@@ -563,7 +558,7 @@ export function mount(root, params) {
     const key = `${sp.kind}:${secs}`;
     if (key === spShown) return;
     spShown = key;
-    const [title, how0] = SP_TEXT[sp.kind] || ['Set piece', ''];
+    const [title, how0] = SP_KINDS.has(sp.kind) ? [t(`sp.${sp.kind}`), t(`sp.${sp.kind}.how`)] : [t('sp.other'), ''];
     // v82: name the buttons on the device in hand (touch already shows the words on its buttons)
     const how = lastDevice() === 'touch' ? how0 : how0.replace(/\b(SHOOT|CROSS|SHORT|THROW|LONG)\b/g, (w) => `${w} (${promptFor({ SHOOT: 'shoot', CROSS: 'cross', SHORT: 'pass', THROW: 'pass', LONG: 'through' }[w])})`);
     spEl.hidden = false;
@@ -602,13 +597,14 @@ export function mount(root, params) {
   const touch = () => lastDevice() === 'touch';
   const HINTS = [
     // v82: the prompts name the button on whatever you are holding — keyboard, controller or touch
-    () => (touch() ? '<kbd>SKILL</kbd> swipe → a trick' : `hold ${k('skill')} + stick → a trick`),
-    () => (lastDevice() === 'keyboard' ? '<kbd>1</kbd>–<kbd>5</kbd> quick tactics' : '<kbd>⚑</kbd> quick tactics'),
-    () => `${touch() ? '<kbd>LOB</kbd>' : k('lob')} chip it over the top`,
-    () => (touch() ? 'Flick <kbd>SHOOT</kbd> ↑ chip · ↔ bend' : `hold ${k('shoot')} = power · ${k('curl')} = bend`),
-    'Dead ball: aim with the stick',
-    '<kbd>❚❚</kbd> subs &amp; tactics',
-    () => (touch() ? '<kbd>SLIDE</kbd> · hold <kbd>JOCKEY</kbd> · hold <kbd>PRESS</kbd>' : `${k('shoot')} slide · hold ${k('jockey')} jockey · hold ${k('press')} press`),
+    // v163: the words come from i18n; the buttons stay as the pad labels them
+    () => (touch() ? t('hint.skill.touch', { skill: '<kbd>SKILL</kbd>' }) : t('hint.skill.pad', { skill: k('skill') })),
+    () => t('hint.tactics', { key: lastDevice() === 'keyboard' ? '<kbd>1</kbd>–<kbd>5</kbd>' : '<kbd>⚑</kbd>' }),
+    () => t('hint.lob', { lob: touch() ? '<kbd>LOB</kbd>' : k('lob') }),
+    () => (touch() ? t('hint.shoot.touch', { shoot: '<kbd>SHOOT</kbd>' }) : t('hint.shoot.pad', { shoot: k('shoot'), curl: k('curl') })),
+    () => t('hint.deadball'),
+    () => t('hint.pause', { pause: '<kbd>❚❚</kbd>' }),
+    () => (touch() ? t('hint.defend.touch', { slide: '<kbd>SLIDE</kbd>', jockey: '<kbd>JOCKEY</kbd>', press: '<kbd>PRESS</kbd>' }) : t('hint.defend.pad', { shoot: k('shoot'), jockey: k('jockey'), press: k('press') })),
   ];
   let hintIdx = 0;
   let hintTimer = 0;
@@ -2658,25 +2654,25 @@ export function mount(root, params) {
       const [ph, pa] = match.possession();
       const [h, a] = match.teams;
       const rows = [
-        ['Possession', `${ph}%`, `${pa}%`],
-        ['Shots', h.shots, a.shots],
-        ['On target', h.onTarget, a.onTarget],
-        ['Expected goals', (h.xg || 0).toFixed(2), (a.xg || 0).toFixed(2)],
-        ['Big chances', h.bigChances || 0, a.bigChances || 0],
-        ['Corners', h.cornerCount || 0, a.cornerCount || 0],
-        ['Fouls', match.fouls?.[0] || 0, match.fouls?.[1] || 0],
-        ['Goals', h.score, a.score],
+        [t('facts.possession'), `${ph}%`, `${pa}%`],
+        [t('facts.shots'), h.shots, a.shots],
+        [t('facts.onTarget'), h.onTarget, a.onTarget],
+        [t('facts.xg'), (h.xg || 0).toFixed(2), (a.xg || 0).toFixed(2)],
+        [t('facts.bigChances'), h.bigChances || 0, a.bigChances || 0],
+        [t('facts.corners'), h.cornerCount || 0, a.cornerCount || 0],
+        [t('facts.fouls'), match.fouls?.[0] || 0, match.fouls?.[1] || 0],
+        [t('facts.goals'), h.score, a.score],
       ];
       const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
         .sort((x, y) => x[1].minute - y[1].minute);
       return `
-        <h3>Match Facts</h3>
+        <h3>${t('pause.facts')}</h3>
         <div class="p-facts">
           ${rows.map(([k, x, y]) => `<div><b>${x}</b><span>${k}</span><b>${y}</b></div>`).join('')}
         </div>
         ${goals.length
           ? `<ul class="gm-goals">${goals.map(([t, s]) => `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>`
-          : '<p class="p-note">No goals yet.</p>'}
+          : `<p class="p-note">${t('facts.noGoals')}</p>`}
         ${commentLog.length ? `<h3 class="p-sub">Commentary</h3><ul class="p-log">${commentLog.slice(-12).reverse().map((c) => `<li><i>${c.minute}'</i>${c.line}</li>`).join('')}</ul>` : ''}`;
     }
     if (id === 'controls') {
@@ -2700,11 +2696,11 @@ export function mount(root, params) {
       <div class="pause ${halfTime ? 'is-half' : ''}">
         ${halfTime ? `
           <div class="half-head">
-            <span class="half-word">HALF TIME</span>
+            <span class="half-word">${t('match.halfTime')}</span>
             <span class="half-score">
               ${match.teams[0].short} ${match.teams[0].score} – ${match.teams[1].score} ${match.teams[1].short}
             </span>
-            <span class="half-note">Make your changes, then kick off the second half.</span>
+            <span class="half-note">${t('match.halfNote')}</span>
             ${director && match.half === 1 ? director.halfTimeHTML() : ''}
           </div>` : `
           <div class="pause-head">
@@ -2721,13 +2717,13 @@ export function mount(root, params) {
         <nav class="pause-nav">
           ${PAUSE_ITEMS.map((it, i) => `
             <button class="pause-item ${i === navIdx ? 'on' : ''} ${it.id === section ? 'open' : ''}"
-                    data-nav="${i}">${it.id === 'sound' ? `Sound: ${getState().settings.sound === false ? 'Off' : 'On'}` : it.id === 'resume'
-                      ? (halfTime ? 'Start Second Half'
+                    data-nav="${i}">${it.id === 'sound' ? `${t('pause.sound')}: ${t(getState().settings.sound === false ? 'off' : 'on')}` : it.id === 'resume'
+                      ? (halfTime ? t('pause.secondHalf')
                         : (online && (online.host ? syncLeft > 0 : guestSynced)) ? 'Resuming soon…' : it.label)
                       : it.label}</button>`).join('')}
         </nav>
         <div class="pause-panel">${panelFor(section)}</div>
-        <div class="pause-hints"><b>✕</b> Select <b>◯</b> Resume</div>
+        <div class="pause-hints"><b>✕</b> ${t('pause.select')} <b>◯</b> ${t('pause.resumeShort')}</div>
       </div>`;
     if (halfTime && director) director.drawHeat(overlay);
   }
@@ -2958,7 +2954,7 @@ export function mount(root, params) {
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
-        <span class="gm-ft">${spectating ? (oppGone ? 'Match ended' : 'Full time · spectating') : oppGone ? 'Opponent left — win awarded' : 'Full time'}</span>
+        <span class="gm-ft">${t(spectating ? (oppGone ? 'match.ended' : 'match.ftSpectating') : oppGone ? 'match.oppLeft' : 'match.fullTime')}</span>
         <div class="gm-final">
           <div>${crestSVG(h.club.crest, h.short, 40)}<b>${h.short}</b></div>
           <span>${h.score} – ${a.score}</span>
