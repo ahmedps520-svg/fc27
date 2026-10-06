@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v159',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'More room on a sideways phone',
+    lede: 'With your phone held sideways, the menu screens now open on their content instead of a big title card.',
+    entries: [
+      {
+        head: 'Compact titles in landscape',
+        summary: 'On short screens the title card at the top of each menu screen shrinks to one slim line, so the store, settings, skills and the rest show what you came for straight away.',
+        detail: 'A phone held sideways is about 390 pixels tall, and the full title card plus the top bar took roughly 260 of them. On Ultimate XI, with its tab bar at the bottom, only a sliver of the store showed when you arrived.',
+      },
+    ],
+  },
+  {
     version: 'v158',
     date: '2026-10-06',
     tag: 'Fix',

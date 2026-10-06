@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v159 — compact screen heads on short landscape screens (CSS)
+- The sweep (`tests/tmp/sweep.mjs W H tag`: the Store tab, Settings,
+  Trophies, Street, Skills, Online and Career at 390×844 and 844×390) found
+  that in landscape the `.screen-head` card (~150 px) plus the top bar ate
+  ~260 of 390 px. With the Ultimate XI bottom nav, ~50 px of content showed.
+- `main.css`: under `max-height: 500px` and `orientation: landscape`, the
+  head becomes one line (padding 8/16, kicker 9 px, title 26 px, `.sh-sub`
+  hidden), about 55 px tall.
+- Portrait screens look fine. The SBC tab click in the sweep didn't land
+  (the bottom-nav selector differs); left for the next sweep.
+
 ### v158 — empty squad slots (CSS)
 - Found in a 390×844 screenshot of the squad hub (`tests/tmp/menus.mjs`): in
   4-3-3 the empty CDM slot overlapped both CB slots. Every empty `.slot`
