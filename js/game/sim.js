@@ -580,7 +580,7 @@ export class Match {
     }
     const takers = this.teams[kickoffSide].players;
     const taker = takers.find((p) => p.role === 'FWD' && !p.parked)
-      || takers.find((p) => p.role === 'MID' && !p.parked) || takers.filter((p) => !p.parked).pop();
+      || takers.find((p) => p.role === 'MID' && !p.parked) || takers.filter((p) => !p.parked).pop() || takers[0];
     taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6;
     taker.y = CY;
     this.kickoffTaker = taker;
@@ -2799,6 +2799,10 @@ export class Match {
     if (!p || p.sentOff) return;
     if (p.role === 'GK') { this.book(p); return; }
     const team = this.teams[p.team];
+    /* v148: never the last man on the pitch. In the street 1v1 (the watch)
+       a red left a side with nobody, and the next kick-off threw
+       (tests/fuzz/simfuzz.mjs) — the free kick stands, the man stays. */
+    if (!team.players.some((q) => q !== p && !q.parked && q.role !== 'GK')) return;
     p.sentOff = true;
     this.reds[p.team] += 1;
     this.cue('red', p);

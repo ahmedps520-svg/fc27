@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v148',
+    date: '2026-10-05',
+    tag: 'Fix',
+    title: 'A crash in watch 1v1, and nightly testing',
+    lede: 'A red card in the watch\'s 1v1 street game could freeze the match. It can\'t now, and the game is tested much harder every night.',
+    entries: [
+      {
+        head: '1v1 fix',
+        summary: 'In the watch\'s 1v1 street game, a red card for your only player could crash the match at the next kick-off. The last player on a side is no longer sent off.',
+        detail: 'Found by a match fuzzer that plays hundreds of seeded AI games on every pitch size and checks every frame.',
+      },
+      {
+        head: 'Behind the scenes',
+        summary: 'Every night, the game now plays hundreds of AI matches on every pitch, soaks 60 full matches in a browser, and random-clicks every screen on desktop and phone.',
+        detail: '',
+      },
+    ],
+  },
+  {
     version: 'v147',
     date: '2026-10-05',
     tag: 'Presentation',

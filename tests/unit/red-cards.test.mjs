@@ -69,3 +69,18 @@ test('denying a clear chance: through on goal with nobody covering, yes; a defen
   v.vx = -atk.dir * 3;
   assert.equal(m.deniedChance(v, o), false, 'going away from goal');
 });
+
+test('v148: the last man on the pitch is never sent off (street 1v1), and play goes on', async () => {
+  const { setField } = await import('../../js/game/field.js');
+  setField('street1');
+  try {
+    const { Match: M } = await import('../../js/game/sim.js');
+    const { WORLD: W } = await import('../../js/data/generator.js');
+    const m = new M(W.clubs[0].id, W.clubs[1].id, { human: null, duration: 60, field: 'street1' });
+    const p = m.teams[0].players.find((q) => q.role !== 'GK');
+    m.sendOff(p, 'serious foul play');
+    assert.ok(!p.sentOff && !p.parked, 'he stays on');
+    m.resetPositions(0);                                  // threw before: no kick-off taker
+    assert.ok(m.kickoffTaker);
+  } finally { setField('full'); }
+});

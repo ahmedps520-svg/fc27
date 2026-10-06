@@ -15,6 +15,24 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v148 — the fuzzer found a crash; nightly CI (backlog #18)
+Sweep byte-identical.
+- Promoted from `tests/tmp` (both exit 1 on any problem):
+  - `tests/fuzz/simfuzz.mjs`: seeded AI matches on every field and preset;
+    sent-off men are skipped, and a slide may reach 16 m/s;
+  - `tests/qa/monkey.mjs`: random clicks on every screen.
+- New `.github/workflows/nightly.yml` (02:17 UTC and on demand):
+  - simfuzz with 12 matches per field and preset (~50 s);
+  - a 60-match soak seeded by the run number;
+  - the monkey on desktop and on phone.
+- The bug: `street1` (the watch's 1v1, `players: 1`). A red card parked the
+  side's only player, and `resetPositions` found no taker and threw at the
+  next kick-off. Now `sendOff` returns without a card when the man is his
+  side's last unparked outfield player, and the taker lookup falls back to
+  `players[0]`. Test added in `red-cards.test.mjs`.
+- Local runs: simfuzz 12 clean (252 matches, 47 s); monkey with 15 clicks
+  clean on all 15 screens (desktop).
+
 ### v147 — wind in the commentary
 - `broadcast/context.js weatherKey`: a wind of 3.5 m/s or more on a dry day
   (not rain or snow) gives `weatherWind`, said at kick-off.

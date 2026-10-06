@@ -11129,7 +11129,7 @@
         for (let p of team.players)
           half && p.x > PITCH.w / 2 - 2 && (p.x = PITCH.w / 2 - 2 - (p.role === "FWD" ? 3 : 8)), !half && p.x < PITCH.w / 2 + 2 && (p.x = PITCH.w / 2 + 2 + (p.role === "FWD" ? 3 : 8));
       }
-      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD" && !p.parked) || takers.find((p) => p.role === "MID" && !p.parked) || takers.filter((p) => !p.parked).pop();
+      let takers = this.teams[kickoffSide].players, taker = takers.find((p) => p.role === "FWD" && !p.parked) || takers.find((p) => p.role === "MID" && !p.parked) || takers.filter((p) => !p.parked).pop() || takers[0];
       taker.x = PITCH.w / 2 - this.teams[kickoffSide].dir * 1.6, taker.y = CY, this.kickoffTaker = taker, this.selectForKickoff(), Object.assign(this.ball, {
         x: PITCH.w / 2,
         y: CY,
@@ -12300,6 +12300,7 @@
         return;
       }
       let team = this.teams[p.team];
+      if (!team.players.some((q) => q !== p && !q.parked && q.role !== "GK")) return;
       p.sentOff = !0, this.reds[p.team] += 1, this.cue("red", p), this.bookings.push({ team: p.team, name: p.ref.name, minute: this.minute(), red: !0, why, x: p.x, y: p.y }), this.feed.unshift("".concat(this.minute(), "'  ").concat(team.short, " — ").concat(p.ref.name, " sent off (").concat(why, ")")), this.ball.owner === p && this.release(p, 0, 0, 0), this.reshapeAfterRed(team, p), p.parked = !0, this.parkedAny = !0;
       for (let c of this.controllers) this.playerOf(c) === p && this.cycleActive(c);
       let r = this.pst[p.ref.id];
