@@ -783,6 +783,10 @@ select {
 }
 .slot-pos { font-size: 8px; font-weight: 800; letter-spacing: .1em; color: var(--text-dim); }
 .slot-pos.empty { color: rgba(255, 255, 255, .4); }
+/* v158: the page-wide `.empty` (an empty-state message: 26 px of padding) was also
+   matching these position labels, doubling every empty slot — they overlapped
+   on a phone (the CDM sat on both centre-backs in a 4-3-3) */
+.slot-pos.empty, .bslot-pos.empty { padding: 0; line-height: 1.2; margin: 0; }
 .slot-chem {
   position: absolute; top: -6px; left: -6px; width: 17px; height: 17px; border-radius: 50%;
   display: grid; place-items: center; font-size: 9px; font-weight: 800;
