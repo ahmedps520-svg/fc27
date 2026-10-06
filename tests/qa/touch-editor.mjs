@@ -120,6 +120,12 @@ try {
       if (m.ball.owner !== me) { m.ball.owner = me; m.ball.x = me.x; m.ball.y = me.y; m.ball.z = 0; m.ball.vx = m.ball.vy = m.ball.vz = 0; }
       return document.querySelector('#tpad [data-slot="shoot"] b')?.textContent === 'SHOOT';
     }, null, { timeout: 30000, polling: 100 }).catch(() => {});
+    /* the previous press can still be in the queue when this one starts (its
+       release lands a frame or two after the reset above on a slow runner), and
+       every check then read the kick before its own (CI, v167) — let it land,
+       then forget it */
+    await frames(3);
+    await page.evaluate(() => { window.__kicks = []; });
     const b = await box(`#tpad [data-slot="${slot}"]`);
     await touch('touchStart', b.x, b.y);
     for (let i = 1; i <= 6; i++) { await touch('touchMove', b.x + (dx * i) / 6, b.y + (dy * i) / 6); await page.waitForTimeout(16); }
