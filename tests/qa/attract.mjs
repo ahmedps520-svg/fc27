@@ -48,7 +48,13 @@ try {
 
   // 2. a controller button leaves
   await page.evaluate(() => { window.__simPad.buttons[0] = { pressed: true, touched: true, value: 1 }; });
-  await page.waitForSelector('#startBtn', { timeout: 30000 });
+  /* 60 s, not 30: on a slow runner the demo takes a minute just to kick off, and
+     tearing the match down for the title is slow too (CI, v168). If it still
+     does not leave, say what is on screen, so a real hang shows as one. */
+  await page.waitForSelector('#startBtn', { timeout: 60000 }).catch(async (e) => {
+    console.log('  still in the demo:', JSON.stringify(await page.evaluate(() => ({ attract: !!document.querySelector('.gm-attract'), load: document.getElementById('gmLoad')?.hidden, t: window.__apexMatch?.t, phase: window.__apexMatch?.phase }))));
+    throw e;
+  });
   await page.evaluate(() => { window.__simPad.buttons[0] = { pressed: false, touched: false, value: 0 }; });
   check(true, 'a controller button goes back to the title');
 
@@ -56,7 +62,7 @@ try {
   await page.waitForSelector('.gm-attract', { timeout: 60000 });
   await page.waitForTimeout(1500);
   await page.keyboard.press('KeyQ');
-  await page.waitForSelector('#startBtn', { timeout: 30000 });
+  await page.waitForSelector('#startBtn', { timeout: 60000 });
   check(true, 'a key goes back to the title');
 
   // 4. the final whistle goes back to the title, not to a result screen
