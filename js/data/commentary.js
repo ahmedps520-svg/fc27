@@ -135,6 +135,8 @@ const L = {
   weather: ['Perfect conditions for football.', 'The floodlights are on and the surface looks quick.', 'A good crowd in tonight.'],
   penaltyScored: ['Coolly taken. {player} scores from the spot.', 'Penalty converted by {player}.', '{player} sends the keeper the wrong way.'],
   penaltyMissed: ['Saved! {keeper} keeps the penalty out!', 'He has missed it! {player} puts the penalty wide.', 'Off the post from the spot!'],
+  keeperThrow: ['{player} rolls it out quickly.', 'A quick throw from {player} — they go again.', '{player} throws it out to start the move.'],
+  keeperLong: ['{player} launches it upfield.', 'A big punt from {player}.', '{player} goes long.', 'Up and over from {player}.'],
   keeperClaim: ['Claimed by {keeper}.', '{keeper} comes and takes it.', 'Safe hands. {keeper} gathers.'],
   late: ['Time is running out for {opp}.', 'Into the closing stages, {score}.', '{team} looking to see this out.', 'Stoppage time approaches.'],
   comeback: ['{team} are level! {score}.', 'Back in it! {score}.', 'The comeback is on for {team}.'],

@@ -15,6 +15,22 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v153 — keeper distribution in the commentary; cabinet QA; CI flake
+Sweep byte-identical (a cue draws no random number).
+- `sim.js distribute()` cues `gkThrow` (an overarm throw) and `gkLong` (a
+  punt or drop-kick; not a kick off the grass).
+- `play.js CUE_KEY` maps them to the new `keeperThrow` and `keeperLong`
+  lines (`commentary.js` English, `commentaryVoices.js` Arabic, `{player}`
+  = the keeper). The US recorded pack has no clips for them, so it stays
+  silent there.
+- `tests/qa/bot.mjs`: new `cabinet` flow. A save with two trophies lists
+  both, and in the bot's no-WebGL browser `#cab3d` is hidden instead of
+  throwing.
+- CI flake (v151 run): touch-editor measured the in-match pad right after
+  kick-off. If the other side had the ball, LOB was hidden and its zero box
+  read as 576 px out. It now gives the player the ball and waits for the
+  in-possession pad (as the flick check does since the earlier fix).
+
 ### v152 — the trophy cabinet (backlog #17: 3D trophy cabinet room)
 - New `js/cabinet.js`:
   - `addTrophy(club, {kind, title, sub, key})` dedupes by key into

@@ -12126,7 +12126,7 @@
           return;
         }
         let tx = to.x + to.vx * 0.3 - o.x, ty = to.y + to.vy * 0.3 - o.y, td = Math.hypot(tx, ty) || 1, T2 = clamp2(td / 21, 0.45, 1.3), z02 = 1.9;
-        b.x = o.x + o.dirX * 0.4, b.y = o.y + o.dirY * 0.4, b.z = z02, b.vx = tx / T2, b.vy = ty / T2, b.vz = (0.5 * GRAV * T2 * T2 - z02) / T2, b.noTouch = 0.25, b.gkKind = "throw";
+        b.x = o.x + o.dirX * 0.4, b.y = o.y + o.dirY * 0.4, b.z = z02, b.vx = tx / T2, b.vy = ty / T2, b.vz = (0.5 * GRAV * T2 * T2 - z02) / T2, b.noTouch = 0.25, b.gkKind = "throw", this.cue("gkThrow", o);
         return;
       }
       let target = null, far = -1 / 0;
@@ -12138,7 +12138,7 @@
       let tx0 = target ? target.x + team.dir * 5 : o.x + team.dir * 52, ty0 = target ? target.y : CY + (Math.random() - 0.5) * 30, kind = hands ? Math.random() < 0.55 ? "punt" : "dropkick" : "kick", err = (Math.random() - 0.5) * (kind === "punt" ? 0.16 : 0.1), dx = tx0 - o.x, dy = ty0 - o.y, d2 = Math.hypot(dx, dy) || 1;
       dx /= d2, dy /= d2;
       let c = Math.cos(err), sn = Math.sin(err), ux = dx * c - dy * sn, uy = dx * sn + dy * c, T = kind === "punt" ? clamp2(d2 / 21, 1.9, 2.8) : kind === "dropkick" ? clamp2(d2 / 30, 1.2, 2) : clamp2(d2 / 25, 1.5, 2.4), z0 = kind === "kick" ? 0.35 : 0.9, k = -60 * Math.log(0.9985), v = d2 * k / (1 - Math.exp(-k * T));
-      this.cue("pass"), b.passer = o, this.noteOffside(o), this.release(o, ux * v, uy * v, (0.5 * GRAV * T * T - z0) / T), b.z = z0, b.noTouch = 0.3, b.passTo = target, b.passT = this.t, b.gkKind = kind;
+      this.cue("pass"), b.passer = o, this.noteOffside(o), this.release(o, ux * v, uy * v, (0.5 * GRAV * T * T - z0) / T), b.z = z0, b.noTouch = 0.3, b.passTo = target, b.passT = this.t, b.gkKind = kind, kind !== "kick" && this.cue("gkLong", o);
     }
     /**
      * v143: the pitch and the air, from the weather the match is played in
@@ -14310,6 +14310,8 @@
     weather: ["Perfect conditions for football.", "The floodlights are on and the surface looks quick.", "A good crowd in tonight."],
     penaltyScored: ["Coolly taken. {player} scores from the spot.", "Penalty converted by {player}.", "{player} sends the keeper the wrong way."],
     penaltyMissed: ["Saved! {keeper} keeps the penalty out!", "He has missed it! {player} puts the penalty wide.", "Off the post from the spot!"],
+    keeperThrow: ["{player} rolls it out quickly.", "A quick throw from {player} — they go again.", "{player} throws it out to start the move."],
+    keeperLong: ["{player} launches it upfield.", "A big punt from {player}.", "{player} goes long.", "Up and over from {player}."],
     keeperClaim: ["Claimed by {keeper}.", "{keeper} comes and takes it.", "Safe hands. {keeper} gathers."],
     late: ["Time is running out for {opp}.", "Into the closing stages, {score}.", "{team} looking to see this out.", "Stoppage time approaches."],
     comeback: ["{team} are level! {score}.", "Back in it! {score}.", "The comeback is on for {team}."],
