@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v151',
+    date: '2026-10-06',
+    tag: 'Feel',
+    title: 'Keepers fly for the top corner',
+    lede: 'Keepers dive differently for high and low shots, and a dive or a fall no longer leaves a face floating in mid-air.',
+    entries: [
+      {
+        head: 'High and low dives',
+        summary: 'For a high shot the keeper flies up with both hands reaching over his head to tip it. For a low one he stretches flat along the grass.',
+        detail: 'The game already knew how high each shot was; the dive just never showed it.',
+      },
+      {
+        head: 'Fixes',
+        summary: 'On phones (Medium and Low quality), a diving keeper or a fouled player no longer leaves his eyes and mouth floating where his head had been.',
+        detail: 'Online, a joining player now sees each dive go the right way; before, every dive went the same way on their screen.',
+      },
+    ],
+  },
+  {
     version: 'v150',
     date: '2026-10-06',
     tag: 'Ultimate XI',
