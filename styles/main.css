@@ -3971,6 +3971,9 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .ev-pack { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ev-pack-body { display: flex; flex-direction: column; gap: 3px; }
 .ev-pack-body b { font-size: 16px; }
+/* v161: the promise pills are coloured by --pk, which only the pack tiles set — here it was
+   undefined, so the pills had no fill or border and read as oddly indented centred text */
+.ev-pack-body { --pk: var(--ev, var(--accent)); align-items: flex-start; }
 .obj-list { display: grid; gap: 8px; }
 .obj { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 4px 12px; align-items: center; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--panel); border: 1px solid var(--line); margin-bottom: 8px; }
 .obj-text { display: flex; flex-direction: column; gap: 2px; }

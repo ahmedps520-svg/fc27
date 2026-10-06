@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v161',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'The weekly pack, tidied',
+    lede: 'The week\'s league pack at the top of the Store now shows its details as proper tags instead of loose, oddly indented text.',
+    entries: [
+      {
+        head: 'Store',
+        summary: 'The weekly league pack\'s "league only" and featured-player lines are now coloured tags in the event\'s colour, lined up under the pack name.',
+        detail: 'Also checked this round: with pass assist at any setting, your passes reach a team-mate about 83% of the time (the CPU side manages 71–76%), close to real football. No change needed.',
+      },
+    ],
+  },
+  {
     version: 'v160',
     date: '2026-10-06',
     tag: 'Polish',
