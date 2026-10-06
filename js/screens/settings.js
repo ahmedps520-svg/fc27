@@ -11,7 +11,7 @@ import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, lo
 import { VOICE_PACKS } from '../data/voicePackUS.js';
 import { clipUrl } from '../broadcast/voice.js';
 import { startTutorial, tutorialSeen } from '../tutorial.js';
-import { t, LANGS, setLang, applyLanguage } from '../i18n.js';
+import { t, tx, LANGS, setLang, applyLanguage } from '../i18n.js';
 import { describeRenderer } from '../game/gpu.js';
 import { deviceClass } from '../game/render3d.js';
 import { CAMERA_PRESETS, cameraSettings } from '../game/camera.js';
@@ -73,7 +73,7 @@ export function render() {
     <!-- v136: one section at a time, picked from a row of icons. The whole
          screen was ~1,000 words and three screens tall on a phone. -->
     <nav class="subtabs set-tabs" id="setTabs" role="tablist">
-      ${SECTIONS.map(([id, label, ic]) => `<button class="subtab ${sec === id ? 'on' : ''}" data-sec-tab="${id}" role="tab" aria-selected="${sec === id}">${icon(ic, 15)}<span>${label}</span></button>`).join('')}
+      ${SECTIONS.map(([id, label, ic]) => `<button class="subtab ${sec === id ? 'on' : ''}" data-sec-tab="${id}" role="tab" aria-selected="${sec === id}">${icon(ic, 15)}<span>${tx(label)}</span></button>`).join('')}
     </nav>
     <!-- App sits first on purpose. Everything in it is what someone opens
          Settings to find when something is wrong — the build to quote in a bug
@@ -82,7 +82,7 @@ export function render() {
          a phone in landscape shows 430px of it, so the panel sat three screens
          down behind the things people rarely change twice. -->
     <section data-sec="app" ${secHidden('app')} class="panel glass">
-      <header class="panel-head"><h2>App</h2></header>
+      <header class="panel-head"><h2>${tx("App")}</h2></header>
       <!-- First in the panel that is first on the screen: someone who does not
            know how the game works should not have to know where to look. -->
       <div class="setting-row">
@@ -93,23 +93,23 @@ export function render() {
         </button>
       </div>
       <div class="setting-row">
-        <div><b>Support</b><span>Bugs and ideas.</span></div>
+        <div><b>${tx("Support")}</b><span>${tx("Bugs and ideas.")}</span></div>
         <a href="mailto:support@apexxi.online" class="btn ghost">Send email</a>
       </div>
       <div class="setting-row">
-        <div><b>What's new</b><span>Every change, newest first.</span></div>
+        <div><b>${tx("What's new")}</b><span>${tx("Every change, newest first.")}</span></div>
         <a href="notes.html" target="_blank" rel="noopener" class="btn ghost">Changelog</a>
       </div>
       <div class="setting-row">
-        <div><b>Version</b></div>
+        <div><b>${tx("Version")}</b></div>
         <span class="tag">${APP_VERSION}</span>
       </div>
       <div class="setting-row">
-        <div><b>Build</b><span>Quote it in a bug report.</span></div>
+        <div><b>${tx("Build")}</b><span>${tx("Quote it in a bug report.")}</span></div>
         <span class="tag mono" id="buildTag">checking…</span>
       </div>
       <div class="setting-row">
-        <div><b>Force update</b><span>Reload the latest build.</span></div>
+        <div><b>${tx("Force update")}</b><span>${tx("Reload the latest build.")}</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
       </div>
       <!-- Diagnostic, not a feature. The mouse wheel has now had three separate
@@ -117,67 +117,67 @@ export function render() {
            what the wheel actually did on the machine that has the problem:
            scroll over the box it draws and screenshot the readout. -->
       <div class="setting-row">
-        <div><b>Scroll check</b><span>If the mouse wheel misbehaves.</span></div>
+        <div><b>${tx("Scroll check")}</b><span>${tx("If the mouse wheel misbehaves.")}</span></div>
         <button class="btn ghost" id="scrollCheck">Open</button>
       </div>
     </section>
 
     <section data-sec="match" ${secHidden('match')} class="panel glass">
-      <header class="panel-head"><h2>Career sim</h2></header>
+      <header class="panel-head"><h2>${tx("Career sim")}</h2></header>
       <div class="setting-row">
-        <div><b>Sim speed</b></div>
+        <div><b>${tx("Sim speed")}</b></div>
         <div class="seg" id="speedSeg">
-          ${[['normal', 'Normal'], ['fast', 'Fast'], ['instant', 'Instant']].map(([v, l]) =>
+          ${[['normal', tx('Normal')], ['fast', tx('Fast')], ['instant', tx('Instant')]].map(([v, l]) =>
             `<button class="${s.simSpeed === v ? 'on' : ''}" data-speed="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="setting-row">
-        <div><b>Full commentary</b></div>
+        <div><b>${tx("Full commentary")}</b></div>
         <button class="switch ${s.commentary ? 'on' : ''}" id="commentaryTgl" role="switch"
                 aria-checked="${s.commentary}"><i></i></button>
       </div>
     </section>
 
     <section data-sec="match" ${secHidden('match')} class="panel glass" id="broadcastSet">
-      <header class="panel-head"><h2>Broadcast</h2></header>
+      <header class="panel-head"><h2>${tx("Broadcast")}</h2></header>
       <div class="setting-row">
-        <div><b>Spoken commentary</b></div>
+        <div><b>${tx("Spoken commentary")}</b></div>
         <button class="switch ${s.commVoice !== false ? 'on' : ''}" id="commVoiceTgl" role="switch" aria-checked="${s.commVoice !== false}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Subtitles</b></div>
+        <div><b>${tx("Subtitles")}</b></div>
         <button class="switch ${s.subtitles !== false ? 'on' : ''}" id="subsTgl" role="switch" aria-checked="${s.subtitles !== false}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Commentators</b></div>
+        <div><b>${tx("Commentators")}</b></div>
         <div class="seg seg-wrap">${[['us', 'American'], ['device', 'Device voice']].map(([v, l]) => `<button class="${(s.commPack || 'us') === v ? 'on' : ''}" data-setseg="commPack:${v}">${l}</button>`).join('')}
           <button class="btn ghost sm" id="commHear" aria-label="Hear the commentators">▶ Hear</button></div>
       </div>
-      ${segRow('Commentary language', 'commLang', [['auto', 'Game language'], ['en', 'English'], ['ar', 'العربية']], s.commLang || 'auto')}
+      ${segRow(tx('Commentary language'), 'commLang', [['auto', tx('Game language')], ['en', 'English'], ['ar', 'العربية']], s.commLang || 'auto')}
       ${segRow('Pre-match show', 'pregame', [['full', 'Full'], ['short', 'Walk-out only'], ['off', 'Off']], s.pregame || 'full')}
       <div class="setting-row">
-        <div><b>On-screen graphics</b></div>
+        <div><b>${tx("On-screen graphics")}</b></div>
         <button class="switch ${s.broadcastGfx !== false ? 'on' : ''}" id="bcGfxTgl" role="switch" aria-checked="${s.broadcastGfx !== false}"><i></i></button>
       </div>
       ${segRow('Menu theme', 'menuTheme', [['auto', 'By date'], ['off', 'Off'], ['nationalDay', 'National Day'], ['ramadan', 'Ramadan'], ['winter', 'Winter']], s.menuTheme || 'auto')}
     </section>
 
     <section data-sec="match" ${secHidden('match')} class="panel glass">
-      <header class="panel-head"><h2>Sound</h2></header>
+      <header class="panel-head"><h2>${tx("Sound")}</h2></header>
       <div class="setting-row">
-        <div><b>Audio</b></div>
+        <div><b>${tx("Audio")}</b></div>
         <button class="switch ${s.sound !== false ? 'on' : ''}" id="soundTgl" role="switch"
                 aria-checked="${s.sound !== false}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Music</b></div>
+        <div><b>${tx("Music")}</b></div>
         <div class="seg" id="musicSeg">
           ${[[0, 'Off'], [0.3, 'Low'], [0.5, 'Mid'], [0.85, 'High']].map(([v, l]) =>
             `<button class="${(s.musicVol ?? 0.5) === v ? 'on' : ''}" data-music="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="setting-row">
-        <div><b>Effects</b></div>
+        <div><b>${tx("Effects")}</b></div>
         <div class="seg" id="sfxSeg">
           ${[[0, 'Off'], [0.5, 'Low'], [0.9, 'Mid'], [1.3, 'High']].map(([v, l]) =>
             `<button class="${(s.sfxVol ?? 0.9) === v ? 'on' : ''}" data-sfx="${v}">${l}</button>`).join('')}
@@ -205,20 +205,20 @@ export function render() {
       </div>
       ${segRow('Colour vision filter (in a match)', 'colorFilter', [['none', 'Off'], ['protan', 'Protan'], ['deutan', 'Deutan'], ['tritan', 'Tritan']], s.colorFilter || 'none')}
       <div class="setting-row">
-        <div><b>One-handed touch</b></div>
+        <div><b>${tx("One-handed touch")}</b></div>
         <button class="switch ${s.oneHanded ? 'on' : ''}" id="oneHandTgl" role="switch" aria-checked="${!!s.oneHanded}"><i></i></button>
       </div>
       ${segRow('One-handed side', 'oneHandedSide', [['left', 'Left'], ['right', 'Right']], s.oneHandedSide || 'right')}
       <div class="setting-row">
-        <div><b>Touch buttons</b><span id="touchLayoutSub">${isCustom(s.touchLayout) ? 'Your own layout.' : 'Round the right thumb.'} Move and resize them.</span></div>
+        <div><b>${tx("Touch buttons")}</b><span id="touchLayoutSub">${isCustom(s.touchLayout) ? 'Your own layout.' : 'Round the right thumb.'} Move and resize them.</span></div>
         <button class="btn ghost sm" id="touchLayoutBtn">Customise</button>
       </div>
       <div class="setting-row">
-        <div><b>Sprint</b></div>
+        <div><b>${tx("Sprint")}</b></div>
         <div class="seg"><button class="${s.sprintToggle ? '' : 'on'}" data-setseg="sprintToggle:">Hold</button><button class="${s.sprintToggle ? 'on' : ''}" data-setseg="sprintToggle:1">Toggle</button></div>
       </div>
       <div class="setting-row">
-        <div><b>Goal celebration</b><span id="celebSub">${(CELEBRATIONS.find((c) => c.id === s.celebration) || { blurb: 'A different one each time, by who scored.' }).blurb}</span></div>
+        <div><b>${tx("Goal celebration")}</b><span id="celebSub">${(CELEBRATIONS.find((c) => c.id === s.celebration) || { blurb: 'A different one each time, by who scored.' }).blurb}</span></div>
         <select id="celebSel" aria-label="Goal celebration">
           <option value="random"${!s.celebration || s.celebration === 'random' ? ' selected' : ''}>Random</option>
           ${CELEBRATIONS.map((c) => `<option value="${c.id}"${s.celebration === c.id ? ' selected' : ''}>${c.name}</option>`).join('')}
@@ -229,13 +229,13 @@ export function render() {
     </section>
 
     <section data-sec="graphics" ${secHidden('graphics')} class="panel glass" id="perfSet">
-      <header class="panel-head"><h2>Performance</h2></header>
+      <header class="panel-head"><h2>${tx("Performance")}</h2></header>
       <div class="setting-row">
-        <div><b>Battery saver</b><span>30 fps, lighter picture.</span></div>
+        <div><b>${tx("Battery saver")}</b><span>${tx("30 fps, lighter picture.")}</span></div>
         <button class="switch ${s.battery ? 'on' : ''}" id="batteryTgl" role="switch" aria-checked="${!!s.battery}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>Keep the frame rate</b><span>Trims effects when a match stutters.</span></div>
+        <div><b>${tx("Keep the frame rate")}</b><span>${tx("Trims effects when a match stutters.")}</span></div>
         <button class="switch ${s.governor !== false ? 'on' : ''}" id="govTgl" role="switch" aria-checked="${s.governor !== false}"><i></i></button>
       </div>
     </section>
@@ -243,12 +243,12 @@ export function render() {
     <section data-sec="graphics" ${secHidden('graphics')} class="panel glass">
       <header class="panel-head"><h2>${t('settings.look')}</h2></header>
       <div class="setting-row" hidden>
-        <div><b>Reduce motion</b></div>
+        <div><b>${tx("Reduce motion")}</b></div>
         <button class="switch ${s.reduceMotion ? 'on' : ''}" id="motionTgl2" role="switch"
                 aria-checked="${s.reduceMotion}"><i></i></button>
       </div>
       <div class="setting-row">
-        <div><b>3D detail</b><span>${deviceClass() === 'phone' && !devUnlocked() ? 'Performance keeps a phone at its frame rate; Fidelity is everything the desktop Ultra does.' : 'Auto reads the GPU and picks Low, Medium or High. Ultra is for a desktop with a real GPU.'}</span></div>
+        <div><b>${tx("3D detail")}</b><span>${deviceClass() === 'phone' && !devUnlocked() ? 'Performance keeps a phone at its frame rate; Fidelity is everything the desktop Ultra does.' : 'Auto reads the GPU and picks Low, Medium or High. Ultra is for a desktop with a real GPU.'}</span></div>
         <div class="seg" id="qualitySeg">
           ${(deviceClass() === 'phone' && !devUnlocked()
             ? [['medium', 'Performance'], ['cinema', 'Fidelity']]
@@ -261,7 +261,7 @@ export function render() {
       </p>
       ${(() => { const c = cameraSettings(s.camera); return `
       <div class="setting-row cam-row">
-        <div><b>Camera</b><span id="camBlurb">${CAMERA_PRESETS.find((p) => p.id === c.preset).blurb} The 🎥 button in a match (V on a keyboard) changes it as you play.</span></div>
+        <div><b>${tx("Camera")}</b><span id="camBlurb">${CAMERA_PRESETS.find((p) => p.id === c.preset).blurb} The 🎥 button in a match (V on a keyboard) changes it as you play.</span></div>
         <div class="seg cam-seg" id="camSeg">
           ${CAMERA_PRESETS.map((p) => `<button class="${c.preset === p.id ? 'on' : ''}" data-cam="${p.id}">${p.name}</button>`).join('')}
         </div>
@@ -273,58 +273,58 @@ export function render() {
         <button class="btn ghost sm" id="camReset">Reset</button>
       </div>`; })()}
       <div class="setting-row">
-        <div><b>Renderer</b><span id="rendererNote">${describeRenderer()}</span></div>
+        <div><b>${tx("Renderer")}</b><span id="rendererNote">${describeRenderer()}</span></div>
         <div class="seg" id="rendererSeg">
           ${[['auto', 'Auto'], ['webgl', 'WebGL2'], ['webgpu', 'WebGPU (beta)']].map(([v, l]) => `<button class="${(s.renderer || 'auto') === v ? 'on' : ''}" data-renderer="${v}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="setting-row">
-        <div><b>Show FPS</b></div>
+        <div><b>${tx("Show FPS")}</b></div>
         <button class="switch ${s.showFps ? 'on' : ''}" id="fpsTgl" role="switch"
                 aria-checked="${!!s.showFps}"><i></i></button>
       </div>
     </section>
 
     <section data-sec="save" ${secHidden('save')} class="panel glass">
-      <header class="panel-head"><h2>Save</h2></header>
+      <header class="panel-head"><h2>${tx("Save")}</h2></header>
       <div class="setting-row">
-        <div><b>Apex</b></div>
+        <div><b>${tx("Apex")}</b></div>
         <span class="coin-chip">◈ ${(st.club.apex || 0).toLocaleString()}</span>
       </div>
       <div class="setting-row">
-        <div><b>Ultimate</b></div>
+        <div><b>${tx("Ultimate")}</b></div>
         <span class="coin-chip ult">✦ ${(st.club.ultimate || 0).toLocaleString()}</span>
       </div>
       <div class="setting-row">
         <div><b>${st.club.collection.length} cards · ${st.club.packsOpened} packs</b></div>
       </div>
       <div class="setting-row">
-        <div><b>Back up</b></div>
+        <div><b>${tx("Back up")}</b></div>
         <button class="btn ghost" id="exportBtn">Download</button>
       </div>
       <div class="setting-row">
-        <div><b>Restore from a file</b><span>Backed up first.</span></div>
+        <div><b>${tx("Restore from a file")}</b><span>${tx("Backed up first.")}</span></div>
         <label class="btn ghost" for="importFile">Choose file<input type="file" id="importFile" accept=".json,application/json" hidden></label>
       </div>
-      ${listBackups().length ? `<div class="setting-row sv-backups"><div><b>Automatic backups</b><span>Daily, last three.</span></div>
+      ${listBackups().length ? `<div class="setting-row sv-backups"><div><b>${tx("Automatic backups")}</b><span>${tx("Daily, last three.")}</span></div>
         <div class="sv-list">${listBackups().map((b, i) => `<button class="btn ghost sm" data-restore="${i}">${new Date(b.at).toLocaleDateString()}${b.manual ? ' · before a restore' : ''}</button>`).join('')}</div></div>` : ''}
       <div class="setting-row">
-        <div><b>Reset save</b></div>
+        <div><b>${tx("Reset save")}</b></div>
         <button class="btn ghost danger" id="resetBtn">Reset</button>
       </div>
     </section>
 
     <section data-sec="pad" ${secHidden('pad')} class="panel glass" id="rebind">
-      <header class="panel-head"><h2>Button map</h2><button class="btn ghost sm" id="bindReset">Defaults</button></header>
+      <header class="panel-head"><h2>${tx("Button map")}</h2><button class="btn ghost sm" id="bindReset">${tx('Defaults')}</button></header>
       <div class="setting-row">
-        <div><b>Stick deadzone</b><span>Raise it if your player drifts.</span></div>
+        <div><b>${tx("Stick deadzone")}</b><span>${tx("Raise it if your player drifts.")}</span></div>
         <input type="range" id="padDead" min="5" max="45" step="1" value="${Math.round((s.padDeadzone ?? 0.22) * 100)}" aria-label="Stick deadzone">
       </div>
       <div class="setting-row">
-        <div><b>Stick response</b><span>Left quick · right fine.</span></div>
+        <div><b>${tx("Stick response")}</b><span>${tx("Left quick · right fine.")}</span></div>
         <input type="range" id="padCurve" min="50" max="200" step="10" value="${Math.round((s.padCurve ?? 1) * 100)}" aria-label="Stick response">
       </div>
-      <div class="setting-row"><div><b>Vibration</b><span>Pads and Android phones.</span></div>
+      <div class="setting-row"><div><b>${tx("Vibration")}</b><span>${tx("Pads and Android phones.")}</span></div>
         <button class="switch ${s.rumble !== false ? 'on' : ''}" id="rumbleTgl" role="switch" aria-checked="${s.rumble !== false}"><i></i></button></div>
       <p class="hint">Pick a control, then press its new key or button.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
@@ -335,7 +335,7 @@ export function render() {
     </section>
 
     <section data-sec="pad" ${secHidden('pad')} class="panel glass about">
-      <header class="panel-head"><h2>Controller layout</h2></header>
+      <header class="panel-head"><h2>${tx("Controller layout")}</h2></header>
       <div class="ctrl-grid">${controllerLayout()}</div>
       <h3 class="skills-head">Skill moves <small>★ on a card = the moves he can do</small></h3>
       <div class="ctrl-grid skills-grid">
@@ -349,7 +349,7 @@ export function render() {
         and portraits are drawn rather than photographed — they are not likenesses.</p>
     </section>
     <section data-sec="app" ${secHidden('app')} class="panel glass about credits" id="credits">
-      <header class="panel-head"><h2>Credits</h2><span class="tag">${APP_VERSION}</span></header>
+      <header class="panel-head"><h2>${tx("Credits")}</h2><span class="tag">${APP_VERSION}</span></header>
       <p><b>APEX XI</b> — an original football game, made by the APEX XI team and developed with Claude Code.</p>
       <dl class="credit-list">
         <dt>Game, simulation, pitches and grounds</dt><dd>Written for APEX XI. Every stadium, crowd, kit, badge and portrait is drawn in code.</dd>
@@ -707,7 +707,7 @@ export function mount(root) {
     const draw = () => {
       const log = wheelDiagnostics();
       box.innerHTML = `
-        <header><b>Scroll check</b><button class="btn ghost" id="sdClose">Close</button></header>
+        <header><b>${tx("Scroll check")}</b><button class="btn ghost" id="sdClose">Close</button></header>
         <p class="sd-note">Scroll the wheel anywhere on the page, then screenshot this.</p>
         <div class="sd-grid">
           <span>page scrollTop</span><b>${Math.round(doc.scrollTop)}</b>

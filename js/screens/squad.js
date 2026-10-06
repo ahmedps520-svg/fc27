@@ -29,7 +29,7 @@ import { openCheckout } from '../components/checkout.js';
 import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
 import { trade, kindOf } from '../economy.js';
 import { facts, about, icon } from '../components/facts.js';
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -907,22 +907,22 @@ export function render() {
   return tabs + sorry + sub + `
     <div class="sb-head">
       <div class="sb-metrics glass">
-        <div class="metric"><b class="big">${chem.rating || '--'}</b><span>Squad rating</span></div>
+        <div class="metric"><b class="big">${chem.rating || '--'}</b><span>${tx('Squad rating')}</span></div>
         <div class="metric">
-          <b class="big chem-num" data-chem="${chem.team}">${chem.team}</b><span>Chemistry</span>
+          <b class="big chem-num" data-chem="${chem.team}">${chem.team}</b><span>${tx('Chemistry')}</span>
           <i class="chem-bar"><b style="width:${chem.team}%"></b></i>
         </div>
-        <div class="metric"><b class="big">${chem.placedCount}<small>/11</small></b><span>Positions filled</span></div>
+        <div class="metric"><b class="big">${chem.placedCount}<small>/11</small></b><span>${tx('Positions filled')}</span></div>
       </div>
       <div class="sb-actions">
         <label class="field">
-          <span>Formation</span>
+          <span>${tx('Formation')}</span>
           <select id="formationSel">
             ${Object.keys(FORMATIONS).map((f) => `<option value="${f}" ${f === formation ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
         </label>
-        <button class="btn ghost" id="autoFill">Auto fill</button>
-        <button class="btn ghost" id="clearXI">Clear</button>
+        <button class="btn ghost" id="autoFill">${tx('Auto fill')}</button>
+        <button class="btn ghost" id="clearXI">${tx('Clear')}</button>
       </div>
     </div>
 

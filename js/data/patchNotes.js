@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v169',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'Settings, squad and tables in Arabic',
+    lede: 'Settings, the squad builder\'s summary and buttons, and the league tables in The World now read in Arabic when Arabic is your language.',
+    entries: [
+      {
+        head: 'More of the menus',
+        summary: 'Every Settings row, tab and heading, the squad rating, chemistry and formation labels, and the league table columns are translated.',
+        detail: 'Settings had over forty English labels left; each row now has its Arabic name and its short note. In Ultimate XI the summary over the pitch (squad rating, chemistry, positions filled, formation) and the Auto fill and Clear buttons are translated, and the World tables head their columns in Arabic (played, won, drawn, lost, goal difference, points).',
+      },
+    ],
+  },
+  {
     version: 'v168',
     date: '2026-10-06',
     tag: 'Gameplay',
