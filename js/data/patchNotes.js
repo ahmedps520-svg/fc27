@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v149',
+    date: '2026-10-06',
+    tag: 'Atmosphere',
+    title: 'Every club has its own song',
+    lede: 'Each club\'s fans now have their own terrace song, sung when their side scores and while they are on top.',
+    entries: [
+      {
+        head: 'Terrace songs',
+        summary: 'Every club has its own chant tune, the same in every match. The scorers\' end sings it after a goal, and the home or away end sings theirs during play.',
+        detail: 'Every tune is generated from the club\'s name in the game\'s own crowd voice: no recordings, nothing to download. The score-following chants (a bouncing one when winning, a defiant one when losing) are still there between them.',
+      },
+    ],
+  },
+  {
     version: 'v148',
     date: '2026-10-05',
     tag: 'Fix',

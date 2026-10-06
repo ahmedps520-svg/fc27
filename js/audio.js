@@ -457,12 +457,37 @@ const CHANTS = {
   losing:  { steps: [[57], [], [60], [], [59], [57], [], []], bars: 2, notes: true },
   level:   { steps: [['x'], [], ['x'], ['x'], [], ['x'], ['x'], ['x']], bars: 3, notes: false },
 };
+/**
+ * v149: a club's own terrace song, made from its name — the same tune every
+ * match, home or away, and different from every other club's (as far as eight
+ * notes and a clap allow). A major or minor scale from a root in a singable
+ * range, a melody that steps more than it leaps and comes home on the root,
+ * and a clap on some of the rests.
+ */
+const MAJOR = [0, 2, 4, 5, 7, 9, 11, 12];
+const MINOR = [0, 2, 3, 5, 7, 8, 10, 12];
+export function clubSong(name = '') {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
+  const scale = rnd() < 0.6 ? MAJOR : MINOR;
+  const root = 57 + Math.floor(rnd() * 8);           // A3 to E4: a stand can sing it
+  let deg = 0; const steps = [];
+  for (let i = 0; i < 8; i++) {
+    if (i === 7) { steps.push([root]); break; }      // home on the root
+    if (i > 0 && rnd() < 0.22) { steps.push(rnd() < 0.5 ? ['x'] : []); continue; }
+    const move = rnd(); deg = Math.max(0, Math.min(7, deg + (move < 0.4 ? 1 : move < 0.75 ? -1 : move < 0.88 ? 2 : -2)));
+    steps.push([root + scale[deg]]);
+  }
+  return { steps, bars: 2 + Math.floor(rnd() * 2), notes: true };
+}
+
 let chantUntil = 0;
 export function chant(kind = 'hum', level = 0.6) {
   if (!settings.enabled || !settings.sfx) return;
   if (!ready && !initAudio()) return;
   if (ctx.state === 'suspended') return;
-  const c = CHANTS[kind] || CHANTS.hum;
+  const c = typeof kind === 'object' ? kind : CHANTS[kind] || CHANTS.hum;
   const t0 = now();
   if (t0 < chantUntil) return;                       // one at a time
   const eighth = 60 / 132 / 2;

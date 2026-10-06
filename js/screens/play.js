@@ -16,7 +16,7 @@ import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
 import { settleStreet } from '../streetMode.js';
 import { runShootout } from './shootout.js';
-import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, announce, silenceAnnouncer, startAnthem, startAnthemFile, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
+import { sfx, startCrowd, setCrowd, stopCrowd, stopMusic, resumeAudio, setAudioSettings, startRain, stopRain, chant, clubSong, announce, silenceAnnouncer, startAnthem, startAnthemFile, stopAnthem, startHighlightsBed, stopHighlightsBed } from '../audio.js';
 import { createDirector } from '../broadcast/director.js';
 import { createPregame, previewText, teamRating } from '../broadcast/pregame.js';
 import { applyTouchLayout, clearTouchLayout } from '../components/touchLayout.js';
@@ -2185,7 +2185,9 @@ export function mount(root, params) {
         chantT = derbyDay ? 14 + Math.random() * 16 : 28 + Math.random() * 30;   // v119: a derby sings twice as often
         // v78: what they sing follows the score, from the home end's point of view
         const diff = match.teams[0].score - match.teams[1].score;
-        const song = diff > 0 ? (Math.random() < 0.7 ? 'winning' : 'clap') : diff < 0 ? (Math.random() < 0.6 ? 'losing' : 'hum') : (Math.random() < 0.5 ? 'level' : 'hum');
+        let song = diff > 0 ? (Math.random() < 0.7 ? 'winning' : 'clap') : diff < 0 ? (Math.random() < 0.6 ? 'losing' : 'hum') : (Math.random() < 0.5 ? 'level' : 'hum');
+        // v149: and often it is their own song — the home end's, or the away end's when they are on top
+        if (Math.random() < 0.45) song = clubSong((diff < 0 && Math.random() < 0.6 ? match.teams[1] : match.teams[0]).name || '');
         chant(song, 0.35 + (1 - near) * 0.5 + (Math.abs(diff) > 1 && diff > 0 ? 0.15 : 0));
       }
     }
@@ -2305,7 +2307,7 @@ export function mount(root, params) {
       goalCard.hidden = false;
       goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
-      chant('goal', 1);
+      chant(t ? clubSong(t.name || '') : 'goal', 1);         // v149: the scorers' end sings their own song
       if (t && match.scorerName && match.scorerName !== 'Own goal' && !director?.desk.pack) announce(`Goal for ${t.name}. ${match.scorerName}.`);   // (the desk's goal call carries the subtitle)
       if (t && director) { const lastGoal = t.scorers[t.scorers.length - 1]; director.goal({ team: match.teams.indexOf(t), scorerId: lastGoal?.id, scorerName: match.scorerName, own: !!lastGoal?.own || match.scorerName === 'Own goal' }); }
       gcScore.textContent = `${t ? t.short : ''}  ${match.teams[0].score} – ${match.teams[1].score}`;
