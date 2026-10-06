@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v152',
+    date: '2026-10-06',
+    tag: 'Trophy Room',
+    title: 'A cabinet for your silverware',
+    lede: 'Everything you win now goes in a lit 3D trophy cabinet at the top of the Trophy Room.',
+    entries: [
+      {
+        head: 'Your silverware',
+        summary: 'League titles, cups, the World Tournament, your own Custom Cups and Player Career awards all stand on glass shelves, each with its own trophy, and the list below says when and with whom.',
+        detail: 'Titles and awards from careers you played before this update are already on the shelf. On the lowest quality setting you get the list without the 3D view.',
+      },
+    ],
+  },
+  {
     version: 'v151',
     date: '2026-10-06',
     tag: 'Feel',

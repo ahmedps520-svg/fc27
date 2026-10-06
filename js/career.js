@@ -162,6 +162,7 @@ export function newWorld(manager, clubId) {
   const leagueOf = Object.fromEntries(v2.allClubs().map((c) => [c.id, c.league]));
   const car = {
     v: 3,
+    started: Date.now(),          // v152: tells one career's trophies from another's
     manager,
     clubId,
     coins: START_COINS,

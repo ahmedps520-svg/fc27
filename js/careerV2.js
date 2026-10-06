@@ -27,6 +27,7 @@ import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS } from './data/careerDb.js';
 import { applyLooks } from './data/clubLook.js';
 import { pend } from './progress.js';
+import { addTrophy } from './cabinet.js';
 import { rateOf, ageOf, valueIn, cardByName } from './careerPeople.js';
 
 /* ------------------------------------------------------------------ *
@@ -416,6 +417,10 @@ export function seasonReviewV2(car, table, otherOrder = []) {
     review.offers = pool.sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
     car.stats.sackings = (car.stats.sackings | 0) + 1;
   }
+  // v152: the trophy cabinet
+  const clubName = allClubs().find((c) => c.id === car.clubId)?.name || 'Manager Career';
+  if (review.champion) addTrophy(stateClub(), { kind: 'league', title: `${league} title`, sub: `${clubName} · season ${car.season}`, key: `car:${car.started || 0}:${car.season}:league` });
+  if (review.cup) addTrophy(stateClub(), { kind: 'cup', title: 'Cup winners', sub: `${clubName} · season ${car.season}`, key: `car:${car.started || 0}:${car.season}:cup` });
   // crossover rewards
   if (review.champion) pend(carState(), { kind: 'career', title: `${top} champions!`, sub: 'Career crossover', apex: 20000, pack: 'prime' });
   else if (review.promoted) pend(carState(), { kind: 'career', title: 'Promoted!', sub: 'Career crossover', apex: 10000, pack: 'gold' });
