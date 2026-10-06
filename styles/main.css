@@ -11,6 +11,9 @@
   --text: #eef2fb;
   --text-dim: #8b97b0;
   --text-mute: #5c6780;
+  /* v162: 27 rules (Account, Online, chemistry key…) asked for --muted, which was never
+     defined — every one was dropped and the text came out full white */
+  --muted: var(--text-dim);
   /* APEX green. `applyTheme` sets these on <html> too, but they are stated here
      so the first paint is already the right colour rather than a cyan flash. */
   --accent: #23c55e;

@@ -15,6 +15,20 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v162 — `--muted` was never defined; css-lint catches undefined variables
+- An audit of every `var(--x)` without a fallback against every definition
+  (stylesheets, plus inline styles and `setProperty` in js/ and index.html)
+  found one: `--muted`, used in 27 rules (`.acct-*`, `.ol-*`, `.chem-key`
+  and others) and never set. Those declarations were invalid at computed
+  time, so the text inherited full white.
+- `:root` now has `--muted: var(--text-dim)`, which follows themes that
+  change the text colours.
+- `tools/css-lint.mjs` (runs in CI) has a second check: any
+  fallback-less `var()` whose property is never defined fails the build.
+  Verified by temporarily renaming the definition.
+- Not covered: a variable defined only in some containers and used outside
+  them (v161's `--pk`). That needs the cascade, so it is left to screenshots.
+
 ### v161 — the weekly pack's tags; a person's pass completion measured
 - Store, the event shelf (`squad.js eventShelf`): `.sp-promise` pills take
   their colour from `--pk`, which only the pack tiles set. On the event
