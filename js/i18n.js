@@ -54,6 +54,10 @@ const AR = {
   'street.kicker': 'الوضع · الشارع', 'street.sub': '{name} · المستوى {lvl} · {rep} سمعة · {won}/{played} فوز', 'street.create': 'أنشئ لاعبك', 'street.create.sub': 'ثلاثة ضد ثلاثة على سطح، وخمسة على الرمل. المهارات تمنحك الأسلوب، والأسلوب يمنحك الشارع.',
   'world.kicker2': 'مئة نادٍ · ثماني درجات', 'world.sub': 'الموسم {season} · الجولة {round} من {rounds} · جولة كل يوم، صعود اثنين وهبوط اثنين',
   'trophies.earned': '{n} من {of} محقّقة', 'trophies.toCollect': '{n} بانتظار الاستلام',
+  'career.continue': 'متابعة', 'career.runClub': 'أدِر نادياً', 'career.managerMode': 'وضع المدرب', 'career.f.takeClub': 'تولَّ نادياً', 'career.f.transfers': 'الانتقالات', 'career.f.touchline': 'قُد من خط التماس', 'career.start': 'ابدأ ←', 'career.bePlayer': 'كن اللاعب', 'career.playerMode': 'وضع اللاعب', 'career.f.createPlayer': 'أنشئ لاعباً', 'career.f.start17': 'ابدأ في السابعة عشرة', 'career.f.legacy': 'مباريات دولية وإرث', 'career.continueCta': 'تابع ←', 'career.createPlayerCta': 'أنشئ لاعبك ←',
+  'skills.nav.drills': 'ألعاب المهارة', 'skills.nav.pens': 'ركلات الترجيح', 'skills.nav.practice': 'ساحة التدريب', 'skills.best': 'الأفضل', 'skills.loading': 'جارٍ تحميل اللوحة…', 'skills.signIn': 'سجّل الدخول (التشكيلة المثالية ← أونلاين) لتنشر نتيجتك في اللوحة.',
+  'drill.slalom': 'المراوغة بين الأعلام', 'drill.slalom.blurb': 'ثماني بوابات، وساعة توقيت، وتحكّمك القريب بالكرة.', 'drill.freekicks': 'أهداف الركلات الحرة', 'drill.freekicks.blurb': 'خمس ركلات، خمسة أهداف، وحائط واحد.', 'drill.crossing': 'العرضيات', 'drill.crossing.blurb': 'أصب المنطقة المضيئة من خط المرمى. ست كرات.', 'drill.passing': 'بوابات التمرير', 'drill.passing.blurb': 'ستون ثانية. مرّر عبر البوابة التي تضيء.',
+  'squad.kicker': 'الوضع 02', 'uxi.packs': 'الحزم', 'uxi.locker': 'الخزانة', 'uxi.icons': 'تبادل الأساطير', 'uxi.market': 'السوق', 'uxi.binder': 'الألبوم', 'uxi.ultimate': 'المثالية', 'uxi.squad': 'التشكيلة', 'uxi.evos': 'التطويرات', 'uxi.badge': 'شعار النادي', 'uxi.kit': 'الطقم', 'uxi.clubName': 'اسم النادي',
   'common.back': 'رجوع', 'common.continue': 'متابعة', 'common.play': 'العب', 'common.open': 'افتح', 'common.close': 'إغلاق',
 };
 
@@ -98,6 +102,9 @@ const EN = {
   'street.kicker': 'Mode · Street', 'street.sub': '{name} · level {lvl} · {rep} rep · {won}/{played} won', 'street.create': 'Create your baller', 'street.create.sub': 'Three a side on a rooftop, five on the sand. Skills win you style; style wins you the street.',
   'world.kicker2': 'A hundred clubs · eight divisions', 'world.sub': 'Season {season} · Round {round} of {rounds} · a round a day, two up and two down',
   'trophies.earned': '{n} of {of} earned', 'trophies.toCollect': '{n} to collect',
+  'career.continue': 'Continue', 'career.runClub': 'Run a club', 'career.managerMode': 'MANAGER MODE', 'career.f.takeClub': 'Take a club', 'career.f.transfers': 'Transfers', 'career.f.touchline': 'Call it from the touchline', 'career.start': 'Start →', 'career.bePlayer': 'Be the player', 'career.playerMode': 'PLAYER MODE', 'career.f.createPlayer': 'Create a player', 'career.f.start17': 'Start at 17', 'career.f.legacy': 'Caps and a legacy', 'career.continueCta': 'Continue →', 'career.createPlayerCta': 'Create your player →',
+  'skills.nav.drills': 'Skill games', 'skills.nav.pens': 'Penalty shootout', 'skills.nav.practice': 'Practice arena', 'skills.best': 'Best', 'skills.loading': 'Loading the board…', 'skills.signIn': 'Sign in (Ultimate XI → Online) to post to the board.',
+  'squad.kicker': 'Mode 02', 'uxi.packs': 'Packs', 'uxi.locker': 'Locker', 'uxi.icons': 'Icon Exchange', 'uxi.market': 'Market', 'uxi.binder': 'Binder', 'uxi.ultimate': 'Ultimate', 'uxi.squad': 'Squad', 'uxi.evos': 'Evolutions', 'uxi.badge': 'Club Badge', 'uxi.kit': 'Kit', 'uxi.clubName': 'Club Name',
   'common.back': 'Back', 'common.continue': 'Continue', 'common.play': 'Play', 'common.open': 'Open', 'common.close': 'Close',
 };
 

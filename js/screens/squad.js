@@ -430,8 +430,8 @@ export function storeView() {
    * because "you have packs waiting" is the reason to go there. */
   const subs = `
     <nav class="subtabs" id="sSubs">
-      ${[['packs', 'Packs'], ['locker', `Locker${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
-         ['icons', 'Icon Exchange'], ['market', 'Market'], ['binder', 'Binder'], ['ultimate', '<b class="ult-sub">✦</b> Ultimate']]
+      ${[['packs', t('uxi.packs')], ['locker', `${t('uxi.locker')}${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
+         ['icons', t('uxi.icons')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`]]
         .map(([id, label]) =>
           `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -846,7 +846,7 @@ export function render() {
   const u = s.ultimate;
   const div = DIVISIONS[u.divIdx];
   const head = screenHead({
-    kicker: 'Mode 02',
+    kicker: t('squad.kicker'),
     title: t('squad.title'),
     sub: `${div.name} · ${u.wins}W ${u.draws}D ${u.losses}L`
        + `${u.streak >= 2 ? ` · ${u.streak} in a row` : ''}`,
@@ -894,7 +894,7 @@ export function render() {
    * other read as a hierarchy instead of as fourteen buttons. */
   const sub = `
     <nav class="subtabs" id="cSubs">
-      ${[['squad', 'Squad'], ['evos', 'Evolutions'], ['badge', 'Club Badge'], ['kit', 'Kit'], ['name', 'Club Name']]
+      ${[['squad', t('uxi.squad')], ['evos', t('uxi.evos')], ['badge', t('uxi.badge')], ['kit', t('uxi.kit')], ['name', t('uxi.clubName')]]
         .map(([id, label]) =>
           `<button class="subtab ${clubTab === id ? 'on' : ''}" data-ctab="${id}">${label}</button>`).join('')}
     </nav>`;

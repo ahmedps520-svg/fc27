@@ -4,6 +4,8 @@
  * set-piece training in a real match engine).
  */
 import { t } from '../i18n.js';
+// v167: the dictionary's word where it has one, the drill's own otherwise
+const tOr = (k, d) => { const s = t(k); return s === k ? d : s; };
 import { getState, update } from '../state.js';
 import { navigate, toast, refreshCoins, veil } from '../app.js';
 import { about } from '../components/facts.js';
@@ -23,10 +25,10 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const bests = () => getState().skills?.best || {};
 
 export function render() {
-  const NAV = [['drills', 'Skill games'], ['pens', 'Penalty shootout'], ['practice', 'Practice arena']];
+  const NAV = [['drills', 'skills.nav.drills'], ['pens', 'skills.nav.pens'], ['practice', 'skills.nav.practice']];
   return `
     ${screenHead({ kicker: t('skills.kicker'), title: t('skills.title'), sub: t('skills.sub'), motif: 'season', tone: 'c' })}
-    <nav class="cnav" id="skTabs">${NAV.map(([id, l]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}">${l}</button>`).join('')}</nav>
+    <nav class="cnav" id="skTabs">${NAV.map(([id, l]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}">${t(l)}</button>`).join('')}</nav>
     ${tab === 'pens' ? pensHTML() : tab === 'practice' ? practiceHTML() : drillsHTML()}
     <div class="drill-stage" id="drillStage" hidden></div>`;
 }
@@ -35,10 +37,10 @@ function drillsHTML() {
   const b = bests();
   return `<div class="sk-grid">${DRILLS.map((d) => `
     <section class="panel glass sk-card">
-      <header class="panel-head"><h2>${d.name}</h2><span class="tag">Best ${b[d.id] ?? '–'}</span></header>
-      <p class="hint">${d.blurb}</p>
-      <ol class="sk-board" data-board="${d.id}"><li class="empty">${api.isSignedIn() ? 'Loading the board…' : 'Sign in (Ultimate XI → Online) to post to the board.'}</li></ol>
-      <button class="btn primary" data-drill="${d.id}">Play</button>
+      <header class="panel-head"><h2>${tOr(`drill.${d.id}`, d.name)}</h2><span class="tag">${t('skills.best')} ${b[d.id] ?? '–'}</span></header>
+      <p class="hint">${tOr(`drill.${d.id}.blurb`, d.blurb)}</p>
+      <ol class="sk-board" data-board="${d.id}"><li class="empty">${t(api.isSignedIn() ? 'skills.loading' : 'skills.signIn')}</li></ol>
+      <button class="btn primary" data-drill="${d.id}">${t('common.play')}</button>
     </section>`).join('')}</div>
     ${about('Keyboard: WASD or arrows to move and aim, K (or Space) to strike — hold longer for power. Pad: left stick and ○/✕. Touch: the pad and the button on screen.', 'Controls')}`;
 }
@@ -47,7 +49,7 @@ function pensHTML() {
   const clubs = WORLD.clubs.slice(0, 40);
   penClub = penClub || clubs[0].id;
   return `<section class="panel glass">
-    <header class="panel-head"><h2>Penalty shootout</h2></header>
+    <header class="panel-head"><h2>${t('skills.nav.pens')}</h2></header>
     <p class="hint">Five each, then sudden death. Stop the marker to place your kick; the keeper guesses.</p>
     <label class="field"><span>Your side</span><select id="penClub">${clubs.map((c) => `<option value="${c.id}" ${c.id === penClub ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <button class="btn primary big" id="penGo">Take the walk</button>
@@ -57,7 +59,7 @@ function pensHTML() {
 
 function practiceHTML() {
   return `<section class="panel glass">
-    <header class="panel-head"><h2>Practice arena</h2></header>
+    <header class="panel-head"><h2>${t('skills.nav.practice')}</h2></header>
     <p class="hint">Your team on a full pitch against a keeper and nobody else. No clock, no offside. Free-roam, or stage a set piece from the pause menu: a free kick where you stand, a penalty, a corner.</p>
     <div class="offer-actions">
       <button class="btn primary big" data-practice="free">Free roam</button>

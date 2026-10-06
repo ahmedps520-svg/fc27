@@ -60,16 +60,16 @@ function modesHTML() {
     ${screenHead({ kicker: t('career.kicker'), title: t('menu.career'), sub: t('career.sub'), motif: 'season', tone: 'b' })}
     <div class="cm-modes">
       <button class="cm-mode glass" id="cmManager">
-        <span class="cm-kicker">${getState().career ? `Continue · ${careerClub(getState().career.clubId)?.name || ''}` : 'Run a club'}</span>
-        <b>MANAGER MODE</b>
-        ${facts([['shield', 'Take a club'], ['money', 'Transfers'], ['whistle', 'Call it from the touchline']], 'cm-facts')}
-        <span class="cm-cta">Start →</span>
+        <span class="cm-kicker">${getState().career ? `${t('career.continue')} · ${careerClub(getState().career.clubId)?.name || ''}` : t('career.runClub')}</span>
+        <b>${t('career.managerMode')}</b>
+        ${facts([['shield', t('career.f.takeClub')], ['money', t('career.f.transfers')], ['whistle', t('career.f.touchline')]], 'cm-facts')}
+        <span class="cm-cta">${t('career.start')}</span>
       </button>
       <button class="cm-mode glass" id="cmPlayer">
-        <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `Continue · ${getState().pro.name}` : 'Be the player'}</span>
-        <b>PLAYER MODE</b>
-        ${facts([['boot', 'Create a player'], ['up', 'Start at 17'], ['trophy', 'Caps and a legacy']], 'cm-facts')}
-        <span class="cm-cta">${getState().pro ? 'Continue →' : 'Create your player →'}</span>
+        <span class="cm-kicker">${getState().pro && !getState().pro.retired ? `${t('career.continue')} · ${getState().pro.name}` : t('career.bePlayer')}</span>
+        <b>${t('career.playerMode')}</b>
+        ${facts([['boot', t('career.f.createPlayer')], ['up', t('career.f.start17')], ['trophy', t('career.f.legacy')]], 'cm-facts')}
+        <span class="cm-cta">${getState().pro ? t('career.continueCta') : t('career.createPlayerCta')}</span>
       </button>
     </div>`;
 }
