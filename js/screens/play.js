@@ -863,6 +863,7 @@ export function mount(root, params) {
     };
     clip = null;
     replayTag.hidden = false;
+    root.querySelector('#gmRoot')?.classList.add('gm-replay-on');   // v156: the pad steps aside (the tag skips it)
     rtAngle.textContent = replay.passes.length > 1 ? `· ANGLE 1/${replay.passes.length}` : '';
     director?.wipe();
     gl?.setReplay(true);
@@ -875,6 +876,7 @@ export function mount(root, params) {
     allPlayers().forEach((p, i) => { p.celebrating = replay.celeb[i]; });
     replay = null;
     replayTag.hidden = true;
+    root.querySelector('#gmRoot')?.classList.remove('gm-replay-on');
     director?.wipe();
     gl?.setReplay(false);
     if (highlightIdx >= 0) nextHighlight();
@@ -2306,6 +2308,7 @@ export function mount(root, params) {
     if (match.phase === 'goal' && lastPhase !== 'goal') {
       const t = scoringTeam();
       goalCard.hidden = false;
+      root.querySelector('#gmRoot')?.classList.add('gm-goal-on');   // v156: pad away, subtitle below the card
       goalCard.style.setProperty('--team', t ? t.colors[0] : 'var(--accent)');
       gcScorer.textContent = match.scorerName || '';
       chant(t ? clubSong(t.name || '') : 'goal', 1);         // v149: the scorers' end sings their own song
@@ -2353,6 +2356,7 @@ export function mount(root, params) {
     if (match.phase !== 'goal' && lastPhase === 'goal') {
       goalCard.classList.remove('show');
       goalCard.hidden = true;
+      root.querySelector('#gmRoot')?.classList.remove('gm-goal-on');
       startReplay();                       // celebration over — roll the tape
     }
     lastPhase = match.phase;

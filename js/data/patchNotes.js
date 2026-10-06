@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v156',
+    date: '2026-10-06',
+    tag: 'Polish',
+    title: 'A clear view of the goal',
+    lede: 'On phones, the buttons and tips get out of the way while you celebrate a goal and watch its replay, and the commentary caption no longer hides under the GOAL card.',
+    entries: [
+      {
+        head: 'Goals and replays on phones',
+        summary: 'The touch buttons and the coaching tip now hide during goal celebrations and replays, when there is nothing to press. They come back for the kick-off.',
+        detail: 'On a touch screen the commentary caption sits at the top, out of the buttons\' way, which put it right under the big GOAL card. During a goal it now moves to the bottom, into the space the buttons have left. A replay can still be skipped by tapping the replay tag.',
+      },
+    ],
+  },
+  {
     version: 'v155',
     date: '2026-10-06',
     tag: 'Fix',

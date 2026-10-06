@@ -5524,3 +5524,10 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .cab-list li span { grid-row: span 2; font-size: 20px; }
 .cab-list li b { font-size: 13px; }
 .cab-list li em { font-style: normal; font-size: 11px; color: var(--text-dim); }
+
+/* v156: through a goal's celebration nothing is controlled — the touch pad steps
+   aside, and the subtitle (moved to the top on touch, under the GOAL card) drops
+   to the bottom where the pad was */
+#gmRoot.gm-goal-on #gmTouch, #gmRoot.gm-replay-on #gmTouch,
+#gmRoot.gm-goal-on .gm-hints, #gmRoot.gm-replay-on .gm-hints { visibility: hidden; }
+#gmRoot.gm-goal-on:has(#gmTouch:not([hidden])) .bc-sub { top: auto; bottom: 14px; }
