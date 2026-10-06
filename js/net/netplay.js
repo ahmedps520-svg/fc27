@@ -158,7 +158,9 @@ export function encodeSnapshot(match) {
     p: all.map((p) => [r1(p.x), r1(p.y), r2(p.dirX), r2(p.dirY), r1(p.vx), r1(p.vy),
       r2(p.diveT || 0), r2(p.stamina ?? 1),
       // v146: a slide or a lunge, and a man on the grass — a guest drew neither
-      r2(p.slide || 0), r2(p.slideMax || 0), r2(p.downT || 0), r2(p.downMax || 0)]),
+      r2(p.slide || 0), r2(p.slideMax || 0), r2(p.downT || 0), r2(p.downMax || 0),
+      // v151: which way, and how high, a keeper dives — a guest saw every dive one way
+      p.diveDir || 0, p.diveHigh ? 1 : 0]),
     s: [match.teams[0].score, match.teams[1].score],
     ph: PHASES.indexOf(match.phase),
     tm: r2(match.t),
@@ -299,6 +301,7 @@ export class SnapshotView {
       // an older host does not send this, and a full tank is the safe read
       p.stamina = sa[7] ?? 1;
       p.slide = sa[8] ?? 0; p.slideMax = sa[9] ?? 0; p.downT = sa[10] ?? 0; p.downMax = sa[11] ?? 0;
+      if (sa[12] != null) { p.diveDir = sa[12]; p.diveHigh = sa[13] === 1; }
       p.celebrating = a.ce?.[i] === '1';
       if (a.so?.[i] === '1') p.sentOff = true;
       p.celebKind = a.ck && a.ck[0] === i ? a.ck[1] : null;

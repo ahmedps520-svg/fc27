@@ -674,6 +674,9 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
  */
 export function poseDown(rig, p) {
   const { parts } = rig;
+  /* v151: the face is placed by posePlayer only — on the grass or in a dive it stayed
+     where the standing head had been, floating (or, never placed, at full size) */
+  parts.eyeL.visible = false; parts.eyeR.visible = false; parts.mouth.visible = false;
   const T = Math.max(0.001, p.downMax || 1.6);
   // 0 at the moment of impact, 1 when he is back on his feet
   const t = 1 - Math.max(0, Math.min(1, p.downT / T));
@@ -757,12 +760,18 @@ export function poseDown(rig, p) {
  */
 export function poseDive(rig, p, fine) {
   const { parts } = rig;
+  /* v151: the face is placed by posePlayer only — on the grass or in a dive it stayed
+     where the standing head had been, floating (or, never placed, at full size) */
+  parts.eyeL.visible = false; parts.eyeR.visible = false; parts.mouth.visible = false;
   const t = 1 - Math.max(0, Math.min(1, p.diveT / 0.75));   // 0 -> takeoff, 1 -> landed
   const air = Math.sin(t * Math.PI);                        // arc through the dive
   const s = p.diveDir || 1;
-  const lay = Math.min(1, t * 2.6);                         // how flat the body is
+  // v151: a high ball is flown at — the body rises, stays more upright, hands up to tip it;
+  // a low one is smothered along the grass
+  const hi = p.diveHigh ? 1 : 0;
+  const lay = Math.min(1, t * 2.6) * (hi ? 0.75 : 1);       // how flat the body is
 
-  const bodyZ = 0.34 + air * 0.55;
+  const bodyZ = 0.34 + air * (hi ? 0.95 : 0.38);
   const reach = 0.5 + air * 0.45;
   // lateral offsets measured out from the keeper along the dive
   const at = (o, z) => [p.x, p.y + s * o, z];
@@ -788,8 +797,9 @@ export function poseDive(rig, p, fine) {
     [parts.armL, parts.foreL, parts.handL, parts.sleeveL, 0.16],
     [parts.armR, parts.foreR, parts.handR, parts.sleeveR, -0.16],
   ]) {
-    const e = at(0.5 * lay + reach * 0.5, sz2 + off * 0.5 + 0.05);
-    const h = at(0.5 * lay + reach, sz2 + off + 0.1);
+    const up = hi * air;                                    // a high dive reaches up over the head
+    const e = at(0.5 * lay + reach * (0.5 - 0.15 * up), sz2 + off * 0.5 + 0.05 + 0.3 * up);
+    const h = at(0.5 * lay + reach * (1 - 0.3 * up), sz2 + off + 0.1 + 0.6 * up);
     segment(u, sx2, sy2, sz2, e[0], e[1], e[2], 0.049);
     segment(sl, sx2, sy2, sz2,
       sx2 + (e[0] - sx2) * 0.52, sy2 + (e[1] - sy2) * 0.52, sz2 + (e[2] - sz2) * 0.52, 0.068, 1);

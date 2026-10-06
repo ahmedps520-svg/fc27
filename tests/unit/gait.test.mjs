@@ -151,3 +151,17 @@ test('a kick swings the foot through and back down, without a pop', async () => 
   assert.ok(back < -0.2 && fwd > 0.4, `drawn back (${back.toFixed(2)}) and through (${fwd.toFixed(2)})`);
   assert.ok(pop < 0.1, `into and out of the kick, no foot jumps (${pop.toFixed(3)} m in a frame)`);
 });
+
+/* v151: in a dive or on the grass the face is not left floating where the
+   standing head was (posePlayer places it; poseDive and poseDown did not). */
+test('diving or down, no part of the face is left behind in the air', () => {
+  const col = new THREE.Color('#3a6ad3');
+  const fig = R.buildPlayer(col, col, col, col, col, { height: 1, girth: 1, shoulders: 1 });
+  R.posePlayer(fig, { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0 }, 0, true, 0);
+  for (const p of [{ diveT: 0.4, diveDir: 1, diveHigh: true }, { diveT: 0.4, diveDir: -1 }, { downT: 0.6, downMax: 1 }]) {
+    R.posePlayer(fig, { x: 3, y: 2, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0, ...p }, 0, true, 0);
+    for (const k of ['eyeL', 'eyeR', 'mouth']) assert.equal(fig.parts[k].visible, false, `${k} hidden`);
+  }
+  R.posePlayer(fig, { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0 }, 0, true, 0);
+  assert.equal(fig.parts.eyeL.visible, true, 'and back when he is up');
+});

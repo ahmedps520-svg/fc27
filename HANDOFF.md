@@ -15,6 +15,23 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v151 — high and low dives; the floating face; dives online
+Sweep byte-identical.
+- `rig.js poseDive` uses `p.diveHigh` (set by the sim since v79, unused
+  until now):
+  - high: body z 0.34 + 0.95·air, lay ×0.75, hands raised by 0.6·air
+    and elbows by 0.3·air;
+  - low: body z 0.34 + 0.38·air, flat.
+- Bug: `poseDive` and `poseDown` never placed `eyeL`, `eyeR` or `mouth`. In
+  a match they stayed at the standing head's last position, floating mid-air
+  through every dive and fall. On a never-stood figure they rendered at their
+  default unit scale (a giant dome, seen in a test strip). Both functions now
+  hide them; `posePlayer` sets visible = fine again. Test in
+  `gait.test.mjs`.
+- `netplay.js`: player snapshot slots 12–13 (diveDir, diveHigh). A guest
+  never received `diveDir`, so every dive went the same way on a guest's
+  screen.
+
 ### v150 — promo reveals (backlog #17: animated card reveals per promo)
 - `promos.js campaignOfCard(id)` maps a `pr:<campaign>:<id>` card to its
   campaign, from CAMPAIGNS or EVENT_CAMPAIGNS.
