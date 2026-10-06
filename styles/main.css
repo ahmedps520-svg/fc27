@@ -4305,6 +4305,11 @@ html.large-text .tile-name { font-size: 27px; }
 [dir="rtl"] .setting-row > div:first-child { text-align: right; }
 [dir="rtl"] .ts-kit span { margin-left: 0; margin-right: auto; }
 [dir="rtl"] .seg button i, [dir="rtl"] .seg button b { direction: rtl; }
+/* v164: in Arabic, a line of English (a club name, a blurb not yet translated, "+7")
+   reads in its own direction — its full stop stays at the end and a sign stays
+   before its number — while the page around it stays right to left */
+[dir="rtl"] :is(p, span, b, small, em, strong, td, th, label, figcaption, li, h1, h2, h3, h4, a, button, .hint) { unicode-bidi: plaintext; }
+[dir="rtl"] .gm :is(span, b, em, i), [dir="rtl"] .gm-hints, [dir="rtl"] .icon-btn { unicode-bidi: normal; }
 /* v163: the match words in Arabic — joined letters cannot be tracked apart or slanted, and the scores keep reading left to right */
 [dir="rtl"] .gc-word, [dir="rtl"] .half-word, [dir="rtl"] .gm-setpiece b, [dir="rtl"] .gm-ft, [dir="rtl"] .gm-adv, [dir="rtl"] .replay-tag, [dir="rtl"] .gm-hints { letter-spacing: 0; font-style: normal; }
 [dir="rtl"] .gm-setpiece b { white-space: nowrap; }

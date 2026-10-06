@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v164 — bidi for mixed text in Arabic
+- `styles/main.css` `[dir=rtl] :is(p, span, b, …, button, .hint) { unicode-bidi: plaintext; }` — each line takes its direction from its first strong character (fixes ".Take a real club", "of 52 earned 0", "7+").
+- Exempt: `.gm` HUD inline text and `.gm-hints` (Arabic hints start with a Latin button name) and `.icon-btn` (the back chevron must mirror).
+- Found with an Arabic menu sweep at 390×844 and 844×390 (`tests/tmp/sweep-ar.mjs`, not committed). Still English in Arabic: screen heads and blurbs for Career, Settings, Skills, Street, World, the squad tabs.
+
 ## v163 — the match in Arabic
 - New i18n keys: `match.*` (goal card, half/full time, advantage, replay), `sp.*` (set-piece banners), `hint.*` (first-match tips, with `{button}` vars), `facts.*`, `pause.secondHalf/select/resumeShort`.
 - `t()` vars now use a function replacement, so `$` in a value is taken literally.
