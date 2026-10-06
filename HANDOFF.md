@@ -15,6 +15,10 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v167 — Arabic card bodies (Career, Skills, Ultimate XI tabs)
+- Keys `career.*` (tiles, facts, CTAs), `skills.nav.*`, `skills.best/loading/signIn`, `drill.<id>` + `.blurb` (AR only; `tOr` in skills.js falls back to the drill's own text), `uxi.*` sub-tabs, `squad.kicker`.
+- Still English in Arabic: pack/store card text, squad summary labels (Positions filled, Chemistry), World table headers, Settings rows.
+
 ## v166 — a person's aimed shots aim inside the post
 - `sim.js` human shot path: `aim.y * 0.78` when the stick is to one side (target 0.7 of the way to the post instead of 0.855). Human-only; the sweep is identical.
 - `tools/human-shot-audit.mjs [N] [aim]`: a scripted seat shoots from 12/16/20 m, three lateral spots, three holds, centre/corner aim, assist 0/1, the keeper on his line. Corner misses 56% → 43%.

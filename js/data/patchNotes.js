@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v167',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'Career, Skills and Ultimate XI in Arabic',
+    lede: 'The Career mode tiles, every drill on the Skills screen and the Ultimate XI tabs now read in Arabic when Arabic is your language.',
+    entries: [
+      {
+        head: 'More of the menus',
+        summary: 'Manager Mode, Player Mode, the skill drills, the shootout and practice tabs, and the Club and Store tabs of Ultimate XI are translated.',
+        detail: 'Following the headings last time, this covers the cards under them: the two Career modes and what each offers, the four skill games with their descriptions and leaderboards, and the tabs inside Ultimate XI (Squad, Evolutions, Club Badge, Kit, Club Name, Packs, Locker, Icon Exchange, Market, Binder). Player and club names stay as they are.',
+      },
+    ],
+  },
+  {
     version: 'v166',
     date: '2026-10-06',
     tag: 'Gameplay',
