@@ -457,7 +457,7 @@ export function storeView() {
     const freeReady = free && Date.now() >= (s.club.freeAt || 0);
     return `
       <article class="store-pack rar-${packTone(p)}" title="${esc(p.note || '')}">
-        ${meta.badge ? `<span class="sp-badge b-${meta.badge}">${{ new: 'New', updated: 'Updated', back: 'Back', season: 'Event' }[meta.badge]}</span>` : p.limited ? '<span class="sp-tag">Limited</span>' : ''}
+        ${meta.badge ? `<span class="sp-badge b-${meta.badge}">${tx({ new: 'New', updated: 'Updated', back: 'Back', season: 'Event' }[meta.badge])}</span>` : p.limited ? `<span class="sp-tag">${tx('Limited')}</span>` : ''}
         ${meta.leavesIn ? `<span class="sp-leaves">${icon('clock', 12)} ${fmtLeft(meta.leavesIn)}</span>` : ''}
         <div class="sp-art">
           <span class="sp-fan" aria-hidden="true"><i></i><i></i></span>
@@ -469,15 +469,15 @@ export function storeView() {
         </div>
         <b class="sp-name">${p.weekly ? `${p.name}: ${nationOfWeek()}` : p.variant === 'campaign' ? campaignNow().name : p.name}</b>
         ${p.promise ? `<span class="sp-promise">${p.promise}</span>` : ''}
-        ${p.id === 'limited' ? `<span class="sp-alt">${icon('trophy', 12)} or 12 division wins</span>` : ''}
+        ${p.id === 'limited' ? `<span class="sp-alt">${icon('trophy', 12)} ${tx('or 12 division wins')}</span>` : ''}
         ${cardStrip(samplePulls(p, 3), { size: 'mini', cls: 'sp-strip' })}
         <!-- v136: the pitch and the odds, a tap away rather than printed on every pack -->
-        ${about(`${p.note ? `${esc(p.note)}<br>` : ''}${oddsLine(p)}`, 'Odds')}
+        ${about(`${p.note ? `${esc(p.note)}<br>` : ''}${oddsLine(p)}`, tx('Odds'))}
         <!-- last child on purpose: the auto top margin on the button is what
              lines every price in a shelf up on one baseline -->
         <button class="btn ${locked || (free && !freeReady) ? 'ghost' : 'primary'}"
                 data-buy-pack="${p.id}" ${locked ? 'disabled' : ''}>
-          ${free ? (freeReady ? 'Claim free' : `Free in ${fmtLeft((s.club.freeAt || 0) - Date.now())}`)
+          ${free ? (freeReady ? tx('Claim free') : `${tx('Free in')} ${fmtLeft((s.club.freeAt || 0) - Date.now())}`)
                  : `◈ ${p.cost.toLocaleString()}`}
         </button>
       </article>`;
@@ -492,16 +492,16 @@ export function storeView() {
     .sort((a, b) => (promoFirst[a.badge] ?? 9) - (promoFirst[b.badge] ?? 9));
   const onShelf = catalog.filter((x) => !(x.pack.cat === 'promo' || x.badge));
   const SHELVES = [
-    ['promo', 'Promo', `${icon('clock', 12)} ${campaignNow().name} · ${fmtLeft(campaignEndsIn() * 1000)}`, promo],
-    ['free', 'On the house', `${icon('clock', 12)} every 6 h`, null],
-    ['standard', 'Standard', '', null],
-    ['premium', 'Premium', `${icon('up', 12)} better odds`, null],
-    ['limited', 'Limited & Icons', `${icon('star', 12)} guaranteed`, null],
+    ['promo', tx('Promo'), `${icon('clock', 12)} ${campaignNow().name} · ${fmtLeft(campaignEndsIn() * 1000)}`, promo],
+    ['free', tx('On the house'), `${icon('clock', 12)} ${tx('every 6 h')}`, null],
+    ['standard', tx('Standard'), '', null],
+    ['premium', tx('Premium'), `${icon('up', 12)} ${tx('better odds')}`, null],
+    ['limited', tx('Limited & Icons'), `${icon('star', 12)} ${tx('guaranteed')}`, null],
   ];
 
   return subs + shelfEvent + `
     <div class="store-head">
-      <h2>Packs</h2>
+      <h2>${tx('Packs')}</h2>
       <span class="coin-chip">◈ ${(s.club.apex || 0).toLocaleString()}</span>
     </div>
     ${SHELVES.map(([cat, title, blurb, items]) => {

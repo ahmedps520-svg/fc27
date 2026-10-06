@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v170',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'The store in Arabic',
+    lede: 'The Ultimate XI store now reads in Arabic too: its shelves, badges, the free pack\'s timer and the buttons.',
+    entries: [
+      {
+        head: 'Store',
+        summary: 'Shelf names (Promo, On the house, Standard, Premium, Limited & Icons), the New/Back/Event badges, Claim free and the odds button are translated.',
+        detail: 'This was the last part of the menus still in English with Arabic chosen. Pack and player names stay as they are. Behind the scenes, a new test plays whole matches with a scripted player on one side (attacking, passing, shooting, tackling and switching) and checks for anything that only shows over a full match: a man stuck under your control, your man left far from the ball, foul rates. It found nothing wrong.',
+      },
+    ],
+  },
+  {
     version: 'v169',
     date: '2026-10-06',
     tag: 'Language',
