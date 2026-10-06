@@ -165,3 +165,15 @@ test('diving or down, no part of the face is left behind in the air', () => {
   R.posePlayer(fig, { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0 }, 0, true, 0);
   assert.equal(fig.parts.eyeL.visible, true, 'and back when he is up');
 });
+
+/* v154: a keeper with the ball in his hands holds it at his chest. */
+test('a keeper holding the ball has both hands in front of his chest', () => {
+  const col = new THREE.Color('#3a6ad3');
+  const fig = R.buildPlayer(col, col, col, col, col, { height: 1, girth: 1, shoulders: 1 });
+  const p = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, _phase: 0, role: 'GK', _holdBall: true };
+  R.posePlayer(fig, p, 0, true, 0);
+  for (const h of [fig.parts.handL, fig.parts.handR]) {
+    assert.ok(h.position.x > 0.3, `in front of him (${h.position.x.toFixed(2)} m)`);
+    assert.ok(h.position.z > 1.0, `at chest height (${h.position.z.toFixed(2)} m)`);
+  }
+});

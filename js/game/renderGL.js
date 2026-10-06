@@ -3640,6 +3640,8 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
       // v144: who kicked the ball this frame (game/kick.js) — the legs swing for it
       detectKicks(m, dt || 0, kickState);
+      // v154: who has the ball in his arms (rig.js folds them round it)
+      for (const t of m.teams) for (const p of t.players) p._holdBall = p.role === 'GK' && m.ball.owner === p && p.inHands !== false;
       for (let t = 0; t < 2; t++) {
         for (const p of m.teams[t].players) {
           // v134: sent off — gone from the picture
@@ -3766,7 +3768,11 @@ export function createRenderer(canvas, match, quality, models = false) {
         cine.setFocus(focusDist);
       }
 
-      ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19 + surfaceAt(m.ball.x, m.ball.y));
+      /* v154: a keeper holding it has it in his arms at his chest, not at his
+         toes a metre in front (where the sim keeps it, to pass it from) */
+      const holder = m.ball.owner && m.ball.owner.role === 'GK' && m.ball.owner.inHands !== false ? m.ball.owner : null;
+      if (holder) ball.position.set(holder.x + (holder.dirX || 0) * 0.3, holder.y + (holder.dirY || 0) * 0.3, 1.14 + surfaceAt(holder.x, holder.y));
+      else ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19 + surfaceAt(m.ball.x, m.ball.y));
       // Roll it. Angular speed is v/r about the axis perpendicular to travel,
       // so the ball visibly spins along the ground instead of sliding.
       {

@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v154',
+    date: '2026-10-06',
+    tag: 'Feel',
+    title: 'Keepers hold the ball',
+    lede: 'A keeper who catches the ball now holds it to his chest in both arms, instead of standing behind a ball on the grass.',
+    entries: [
+      {
+        head: 'In his hands',
+        summary: 'After a save or a claim, the keeper cradles the ball at his chest until he throws, rolls or kicks it.',
+        detail: 'For a goal kick, or a back-pass he isn\'t allowed to pick up, the ball stays at his feet, as it should.',
+      },
+    ],
+  },
+  {
     version: 'v153',
     date: '2026-10-06',
     tag: 'Presentation',
