@@ -14,6 +14,7 @@
 import { getState, update } from './state.js';
 import { COUNTRIES, internationalTeams, clubSheet, matchSquad, internationalSquad } from './data/countries.js';
 import { hashStr } from './data/stadiums.js';
+import { addTrophy } from './cabinet.js';
 
 export const CUP_SIZES = [4, 8, 16];
 const ROUND_NAMES = { 16: 'Round of 16', 8: 'Quarter-finals', 4: 'Semi-finals', 2: 'Final' };
@@ -107,7 +108,11 @@ export function onResult(scored, conceded) {
   const won = winner === c.you;
   advance(c);
   if (!won) { c.out = true; while (!c.done) advance(c); }
-  update((st) => { st.club.customCup = c; });
+  update((st) => {
+    st.club.customCup = c;
+    // v152: the trophy cabinet
+    if (c.done && c.champion === c.you) addTrophy(st.club, { kind: 'custom', title: c.name || 'Custom Cup', sub: teamById(c.you)?.name || '', key: `cc:${c.seed}` });
+  });
   return { won, pens, stage, champion: c.done && c.champion === c.you, done: c.done };
 }
 

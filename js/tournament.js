@@ -12,6 +12,7 @@ import { getState, update } from './state.js';
 import { worldTournamentDraw, nationSquad, nations } from './world.js';
 import { hashStr } from './data/stadiums.js';
 import { pend } from './progress.js';
+import { addTrophy } from './cabinet.js';
 
 const STAGES = ['group', 'r16', 'qf', 'sf', 'final', 'done'];
 
@@ -130,7 +131,7 @@ export function onResult(scored, conceded) {
     if (!won) { tt.out = true; tt.stage = 'done'; out.out = true; return; }
     const idx = STAGES.indexOf(tt.stage);
     const next = STAGES[idx + 1];
-    if (next === 'done') { tt.stage = 'done'; tt.champion = true; out.champion = true; pend(s, { title: `World Tournament champions with ${tt.nation}`, apex: 25000, pack: 'special' }); return; }
+    if (next === 'done') { tt.stage = 'done'; tt.champion = true; out.champion = true; addTrophy(s.club, { kind: 'world', title: 'World Tournament', sub: tt.nation, key: `wt:${tt.edition}` }); pend(s, { title: `World Tournament champions with ${tt.nation}`, apex: 25000, pack: 'special' }); return; }
     // the rest of the bracket is hashed round by round; my opponent is whoever comes through the tie paired with mine
     const survivors = advanceOthers(tt, idx);
     tt.stage = next;

@@ -22,6 +22,7 @@ import { flagSVG } from '../components/crest.js';
 import { LEAGUES } from '../data/pools.js';
 import { t } from '../i18n.js';
 import { icon } from '../components/facts.js';
+import { cabinet } from '../cabinet.js';
 
 export const TITLE = 'Trophy Room';
 
@@ -72,6 +73,20 @@ function hallHTML(s) {
     </section>`;
 }
 
+/** v152: what you have actually won (cabinet.js), on lit shelves in 3D, with the list beneath. */
+const KIND_TIER = { league: 'gold', cup: 'silver', world: 'gold', custom: 'bronze', award: 'gold' };
+function cabinetHTML(s) {
+  const list = cabinet(s);
+  return `
+    <section class="panel glass cabinet">
+      <header class="panel-head"><h2>${t('trophies.cabinet')}</h2><span class="ph-sub">${list.length}</span></header>
+      ${list.length ? `
+        <canvas class="cab-3d" id="cab3d" aria-label="${list.length} trophies in the cabinet"></canvas>
+        <ul class="cab-list">${list.slice().reverse().map((x) => `<li><span aria-hidden="true">${cup(KIND_TIER[x.kind] || 'gold', true)}</span><b>${x.title}</b><em>${x.sub || ''}</em></li>`).join('')}</ul>`
+        : `<p class="wzone">${t('trophies.cabinetEmpty')}</p>`}
+    </section>`;
+}
+
 export function render() {
   const s = getState();
   const all = evaluateAll(s, WORLD.playersById);
@@ -81,6 +96,7 @@ export function render() {
   const hall = hallHTML(s);
   return head + `
     <div class="trophies">
+      ${cabinetHTML(s)}
       ${hall}
       ${unclaimed.length > 1 ? `<button class="btn primary" id="claimAll">Collect all · ◈ ${unclaimed.reduce((n, a) => n + a.apex, 0).toLocaleString()}</button>` : ''}
       ${GROUPS.map(([gid, label]) => {
@@ -106,6 +122,16 @@ export function render() {
 }
 
 export function mount(root) {
+  // v152: the cabinet in 3D, where the device can draw it (not on the lowest quality)
+  let cab = null; let gone = false;
+  const canvas = root.querySelector('#cab3d');
+  const st = getState().settings || {};
+  if (canvas && st.quality !== 'min') {
+    import('../game/cabinet3d.js').then((m) => {
+      if (gone) return;
+      try { cab = m.openCabinet(canvas, cabinet(), { reduceMotion: document.documentElement.classList.contains('reduce-motion') }); } catch { canvas.hidden = true; }
+    }).catch(() => { canvas.hidden = true; });
+  } else if (canvas) canvas.hidden = true;
   // v136: how to earn a trophy is a tap away, not printed under every one of them
   root.querySelectorAll('[data-trophy]').forEach((el) => el.addEventListener('click', (e) => { if (!e.target.closest('button')) el.classList.toggle('open'); }));
   const claim = (id) => { const a = claimAchievement(id); if (a) { sfx('coin'); toast(`${a.name} · ◈ ${a.apex.toLocaleString()}`, 'good'); } return !!a; };
@@ -116,4 +142,5 @@ export function mount(root) {
     for (const [id, r] of Object.entries(s.club.achievements || {})) if (!r.claimed && claim(id)) n += 1;
     if (n) { refreshCoins(); navigate('trophies'); }
   });
+  return () => { gone = true; cab?.dispose(); };
 }

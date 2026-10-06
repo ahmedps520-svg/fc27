@@ -15,6 +15,31 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v152 — the trophy cabinet (backlog #17: 3D trophy cabinet room)
+- New `js/cabinet.js`:
+  - `addTrophy(club, {kind, title, sub, key})` dedupes by key into
+    `state.club.cabinet`;
+  - `cabinet(s)` adds trophies read back from `pro.trophies` and from
+    `career.history` positions of 1, so older saves are not empty.
+- Hooks:
+  - `careerV2.seasonReviewV2` (league title, cup), keyed
+    `car:<career.started>:<season>:…`; `career.js` now stamps `started` on
+    new careers;
+  - `tournament.js` (World Tournament, `wt:<edition>`);
+  - `customCup.onResult` (`cc:<seed>`).
+- New `js/game/cabinet3d.js` (precached, lazily imported by the Trophies
+  screen except on quality 'min'):
+  - procedural trophy models: league cup, lidded cup with big handles,
+    globe, shield, ball on a plinth;
+  - a wooden cabinet, glass shelves (six per shelf, three shelves, newest
+    first), a spotlight per shelf, a PMREM env from a canvas gradient;
+  - trophies turn slowly and the camera sways (one static frame under
+    reduce-motion); disposed by the screen's cleanup.
+- `trophies.js`: a "Your silverware" panel (3D view and a list with cup
+  icons). i18n keys `trophies.cabinet` and `trophies.cabinetEmpty` (en, ar).
+- New `tests/unit/cabinet.test.mjs`. Screenshots taken with
+  `tests/tmp/cabshot.mjs` (not committed).
+
 ### v151 — high and low dives; the floating face; dives online
 Sweep byte-identical.
 - `rig.js poseDive` uses `p.diveHigh` (set by the sim since v79, unused

@@ -5516,3 +5516,11 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 /* National Day: green and white ribbons */
 .fx-nationalday i { width: 12px; height: 5px; border-radius: 2px; }
 .reduce-motion .promo-fx { display: none; }
+
+/* ---- v152: the trophy cabinet ---- */
+.cabinet .cab-3d { display: block; width: 100%; height: clamp(200px, 38vw, 360px); border-radius: 12px; background: #0c0907; }
+.cab-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.cab-list li { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
+.cab-list li span { grid-row: span 2; font-size: 20px; }
+.cab-list li b { font-size: 13px; }
+.cab-list li em { font-style: normal; font-size: 11px; color: var(--text-dim); }
