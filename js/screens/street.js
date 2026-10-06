@@ -2,6 +2,7 @@
  * Street screen (v82): create your baller, then the tour, quick games in any
  * cage, the locker and the crew. Rules: streetMode.js; venues: data/street.js.
  */
+import { t } from '../i18n.js';
 import { getState, update } from '../state.js';
 import { navigate, toast, veil } from '../app.js';
 import { screenHead } from '../components/screenHead.js';
@@ -27,7 +28,7 @@ export function render() {
   const into = st.xp % S.LEVEL_XP;
   const NAV = [['tour', 'Tour'], ['quick', 'Quick game'], ['locker', 'Baller & locker'], ['crew', 'Crew']];
   return `
-    ${screenHead({ kicker: 'Mode · Street', title: 'Street', sub: `${st.baller.name} · level ${lvl} · ${st.rep} rep · ${st.won}/${st.played} won`, motif: 'ladder', tone: 'c' })}
+    ${screenHead({ kicker: t('street.kicker'), title: t('menu.street'), sub: t('street.sub', { name: st.baller.name, lvl, rep: st.rep, won: st.won, played: st.played }), motif: 'ladder', tone: 'c' })}
     <div class="st-bar"><span>Level ${lvl}</span><i class="obj-bar"><b style="width:${(into / S.LEVEL_XP) * 100}%"></b></i><span>${into}/${S.LEVEL_XP} XP</span></div>
     <nav class="cnav" id="stTabs">${NAV.map(([id, l]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}">${l}</button>`).join('')}</nav>
     ${tab === 'quick' ? quickHTML() : tab === 'locker' ? lockerHTML(st) : tab === 'crew' ? crewHTML(st) : tourHTML(st)}`;
@@ -39,7 +40,7 @@ function createHTML() {
   const look = { skin: LOOK_SKINS[d.skin], hair: LOOK_HAIRS[d.hair], style: d.style, beard: d.beard };
   const sw = (key, list) => `<div class="cs-swatches" data-key="${key}">${list.map((v, i) => `<button class="cs-sw ${d[key] === i ? 'on' : ''}" data-i="${i}" style="background:${v}" aria-label="${key} ${i + 1}"></button>`).join('')}</div>`;
   return `
-    ${screenHead({ kicker: 'Mode · Street', title: 'Create your baller', sub: 'Three a side on a rooftop, five on the sand. Skills win you style; style wins you the street.', motif: 'ladder', tone: 'c' })}
+    ${screenHead({ kicker: t('street.kicker'), title: t('street.create'), sub: t('street.create.sub'), motif: 'ladder', tone: 'c' })}
     <div class="cs-layout">
       <aside class="cs-preview glass"><span class="csp-face">${faceSVG({ id: 'baller', name: d.name || 'You', look }, 104, '#1d2a44')}</span>
         <b>${esc(d.name || 'Your street name')}</b><span>#${d.number} · ${d.position} · ${esc(d.nation)}</span></aside>

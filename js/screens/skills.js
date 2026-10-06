@@ -3,6 +3,7 @@
  * stand-alone penalty shootout, and the practice arena (free roam and
  * set-piece training in a real match engine).
  */
+import { t } from '../i18n.js';
 import { getState, update } from '../state.js';
 import { navigate, toast, refreshCoins, veil } from '../app.js';
 import { about } from '../components/facts.js';
@@ -24,7 +25,7 @@ const bests = () => getState().skills?.best || {};
 export function render() {
   const NAV = [['drills', 'Skill games'], ['pens', 'Penalty shootout'], ['practice', 'Practice arena']];
   return `
-    ${screenHead({ kicker: 'Quick modes', title: 'Skills & Practice', sub: 'Drills with leaderboards, a shootout, and a pitch to yourself.', motif: 'season', tone: 'c' })}
+    ${screenHead({ kicker: t('skills.kicker'), title: t('skills.title'), sub: t('skills.sub'), motif: 'season', tone: 'c' })}
     <nav class="cnav" id="skTabs">${NAV.map(([id, l]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}">${l}</button>`).join('')}</nav>
     ${tab === 'pens' ? pensHTML() : tab === 'practice' ? practiceHTML() : drillsHTML()}
     <div class="drill-stage" id="drillStage" hidden></div>`;

@@ -65,9 +65,9 @@ export function render() {
   const st = getState();
   return `
     ${screenHead({
-      kicker: 'System',
-      title: 'Settings',
-      sub: 'How the game looks, sounds and runs on this device.',
+      kicker: t('settings.kicker'),
+      title: t('settings.title'),
+      sub: t('settings.sub'),
       motif: 'faders', tone: 'd',
     })}
     <!-- v136: one section at a time, picked from a row of icons. The whole

@@ -20,7 +20,7 @@ import { weekendWindow, currentWeekend, matchesLeft, rankFor, untilText } from '
 import * as progress from '../progress.js';
 import { DAILY } from '../progress.js';
 import { worldState } from '../world.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 
 let showAllTiers = false;   // v92: the season grid shows a window of tiers unless asked for all
 
@@ -161,7 +161,7 @@ function worldPanel() {
 
 export function render() {
   const s = getState();
-  const head = screenHead({ kicker: t('today.kicker'), title: t('today.title'), sub: new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
+  const head = screenHead({ kicker: t('today.kicker'), title: t('today.title'), sub: new Date().toLocaleDateString(lang() === 'ar' ? 'ar-u-nu-latn-ca-gregory' : undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
   return head + `<div class="today">${claimsPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${worldPanel()}${objectivesPanel(s)}</div>`;
 }
 
