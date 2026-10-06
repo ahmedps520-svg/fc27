@@ -13,7 +13,7 @@ import { flagSVG } from '../components/crest.js';
 import { stadiumFor } from '../data/stadiums.js';
 import { cardStrip } from '../components/playerCard.js';
 import { enterFullscreen } from '../fullscreen.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
 
 export const TITLE = 'World';
 
@@ -28,7 +28,7 @@ function tableHTML(div) {
   return `
     ${cardStrip(stars, { size: 'mini', cls: 'wstars' })}
     <table class="wtable">
-      <thead><tr><th>#</th><th class="club">${t('world.club')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th class="form">${t('world.form')}</th></tr></thead>
+      <thead><tr><th>#</th><th class="club">${t('world.club')}</th>${['P', 'W', 'D', 'L', 'GD', 'Pts'].map((h) => `<th>${tx(h)}</th>`).join('')}<th class="form">${t('world.form')}</th></tr></thead>
       <tbody>
         ${div.table.map((row, i) => {
           const c = WORLD.clubsById[row.id];
@@ -201,7 +201,7 @@ function tournamentHTML() {
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>${flag(t.nation)} ${t.nation}</h2><span class="ph-sub">World Tournament · ${t.stage === 'group' ? 'Group ' + String.fromCharCode(65 + t.groupIndex) : t.stage === 'done' ? (t.champion ? 'Champions!' : 'Out') : t.stage.toUpperCase()}</span></header>
-      <table class="wtable"><thead><tr><th>#</th><th class="club">Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+      <table class="wtable"><thead><tr><th>#</th><th class="club">${tx('Nation')}</th>${['P', 'W', 'D', 'L', 'GD', 'Pts'].map((h) => `<th>${tx(h)}</th>`).join('')}</tr></thead>
         <tbody>${table.map((r, i) => `<tr class="${i < 2 ? 'up' : ''} ${r.id === t.nation ? 'mine' : ''}"><td>${i + 1}</td><td class="club"><span class="wclub">${flag(r.id)}<b>${r.id}</b></span></td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>`).join('')}</tbody></table>
       <h3 class="wround">Your matches</h3>
       <div class="wfix">

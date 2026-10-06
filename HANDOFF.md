@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v169 — Settings, squad summary and World tables in Arabic
+- `i18n.js` `tx(en)`: Arabic looked up by the English text (`AR_TEXT`), English passes through. For short labels where a key would only repeat the English.
+- Settings: every row label and note, the section tabs, panel heads, sim speed and commentary-language segments. Squad: metrics, Formation, Auto fill, Clear. World: table headers (both tables) and "Nation".
+- Also merged since v168: `tests/qa/attract.mjs` waits 60 s for the demo to hand back (slow-runner flake) and prints the state if not.
+- Phone play-through harness `tests/tmp/playthru.mjs` (not committed): SwiftShader runs ~1 match-second per 15 s, too slow for a full match; nothing off in what it covered.
+
 ## v168 — keepers save the way they dive; no goals from short of the line
 - `sim.js` claim loop: a diving GK's reach is 1.6 m behind the dive (`(b.y-p.y)*diveDir < -0.3`); full dive reach 2.6 → 2.9; `readErr` factor 7.6 → 5.4. 200-match sweeps: goals 2.46/2.54 before → 2.53/2.53 after. Goldens re-recorded.
 - `bounds()`: a ball in front of the line moving back into play is not judged (seed 9385 gave a goal for a block bouncing out 16 cm short).
