@@ -1,0 +1,31 @@
+# v148 (backlog #18): the long checks that do not fit in every push's CI —
+# a bigger soak, the sim fuzzer across every field and preset, and the
+# random-click monkey. Runs once a night on main, and on demand.
+name: Nightly
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  long:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Sim fuzzer (every field and preset, 12 matches each)
+        run: node tests/fuzz/simfuzz.mjs 12
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Soak (60 matches, random modes and settings)
+        run: node tests/qa/soak.mjs --matches 60 --seed ${{ github.run_number }}
+      - name: Monkey (random clicks on every screen, desktop and phone)
+        run: |
+          node tests/qa/monkey.mjs --clicks 15 --seed ${{ github.run_number }}
+          node tests/qa/monkey.mjs --clicks 15 --seed ${{ github.run_number }} --view phone
