@@ -50,6 +50,8 @@ export const EVENT_CAMPAIGNS = [
     eligible: (p) => p.nation === 'Saudi Arabia' && p.overall >= 68 && p.rarity !== 'icon' && !/ Jr$| Nassr$| Shabab$/.test(p.name), boost: 10, stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 } },
 ];
 const campaignById = (id) => CAMPAIGNS.find((x) => x.id === id) || EVENT_CAMPAIGNS.find((x) => x.id === id);
+/** v150: the campaign a promo card (`pr:<campaign>:<id>`) belongs to, or null — for its reveal. */
+export const campaignOfCard = (id) => (typeof id === 'string' && id.startsWith('pr:') ? campaignById(id.split(':')[1]) || null : null);
 /** Seconds until the campaign turns over. */
 export const campaignEndsIn = (now = Date.now()) => Math.ceil(((weekNow(now) + 1) * WEEK - now) / 1000);
 

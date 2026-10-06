@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v150',
+    date: '2026-10-06',
+    tag: 'Ultimate XI',
+    title: 'Promo cards get their own reveal',
+    lede: 'Pull a campaign card and it walks out in its campaign\'s colours, with that campaign\'s weather filling the stage.',
+    entries: [
+      {
+        head: 'Promo reveals',
+        summary: 'Future Stars cards arrive in streaks of light, Heroes of the Desert in blowing sand, Winter Legends in falling snow, National Day cards in green and white. The card back carries the campaign\'s name and colours.',
+        detail: 'In a promo pack, the campaign card is now the one that walks out, even when another card in the pack is rated higher. It is the card you bought the pack for.',
+      },
+    ],
+  },
+  {
     version: 'v149',
     date: '2026-10-06',
     tag: 'Atmosphere',
