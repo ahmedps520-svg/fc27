@@ -1242,7 +1242,13 @@ export class Match {
           const dist = Math.hypot(gx - p.x, CY - p.y);
           c.charge = chip ? 0.5 : Math.max(0.42, Math.min(0.92, 0.3 + dist / 38));
         }
-        this.shoot(p, aim, Math.max(0.28, c.charge), {
+        /* v166: a full stick to the side picks the corner, not the post. It
+           used to aim at nine tenths of the way to the post, so half of the
+           strike's own error went wide: from 12 m with nobody near, more than
+           half the shots aimed at a corner missed. Now it aims inside the
+           post with room for the error, like the CPU's own placed shots. */
+        const sAim = aim && Math.abs(aim.y) > 0.2 ? { x: aim.x, y: aim.y * 0.78 } : aim;
+        this.shoot(p, sAim, Math.max(0.28, c.charge), {
           loft: chip ? 2.6 : curled ? 0.9 : 1,
           curl: curled ? 46 : 0,
           chip,
