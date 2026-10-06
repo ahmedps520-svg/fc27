@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v161 — the weekly pack's tags; a person's pass completion measured
+- Store, the event shelf (`squad.js eventShelf`): `.sp-promise` pills take
+  their colour from `--pk`, which only the pack tiles set. On the event
+  shelf it was undefined, so the pills had no fill or border and rendered as
+  padded, centred text. `.ev-pack-body` now sets `--pk: var(--ev, accent)`
+  and left-aligns them.
+- New `tools/human-pass-audit.mjs` (scripted seat: stick towards goal, tap
+  PASS after ~1 s of carrying). A person's passes reach a team-mate 84/82/83%
+  at assist 0/1/2; the CPU side manages 71–76%. Healthy (real ~80%), so no
+  change.
+
 ### v160 — career hubs on phones (CSS)
 - `tests/tmp/sweep2.mjs` (W H tag) screenshots the SBC tab
   (`[data-utab="challenges"]`), a started Manager Career (overview, squad,
