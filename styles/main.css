@@ -604,6 +604,15 @@ select {
   .screen-head { padding: 16px 18px 15px; }
   .sh-motif { opacity: .2; }
 }
+/* v159: a phone held sideways is ~390 px tall. The full title card plus the top
+   bar took ~260 px of it, and with Ultimate XI's tab bar about 50 px of the
+   screen's own content showed on arrival. Short screens get a one-line card. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .screen-head { margin-bottom: 10px; padding: 8px 16px 9px; }
+  .sh-kicker { font-size: 9px; letter-spacing: .25em; }
+  .sh-title { font-size: 26px; }
+  .sh-sub { display: none; }
+}
 
 /* The wordmark on the menu, sharing the cover's typography exactly — same
    family, same 800 italic, same white-over-green split — just sized for a
