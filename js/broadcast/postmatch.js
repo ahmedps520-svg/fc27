@@ -9,6 +9,7 @@
  */
 import { crestSVG } from '../components/crest.js';
 import { faceSVG } from '../components/face.js';
+import { tx } from '../i18n.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const band = (r) => (r >= 8 ? 'r-top' : r >= 7 ? 'r-good' : r >= 6 ? 'r-ok' : 'r-low');
@@ -20,7 +21,7 @@ export function potmHTML(potm, match) {
   const ref = team.players.find((p) => p.ref.id === potm.id)?.ref || { id: potm.id, name: potm.name };
   return `
     <div class="pm-potm" style="--kit:${team.colors?.[0] || '#243049'}">
-      <span class="pm-k">Player of the match</span>
+      <span class="pm-k">${tx('Player of the match')}</span>
       <div class="pm-face">${faceSVG(ref, 84, team.colors?.[0])}</div>
       <b>${esc(potm.name)}</b>
       <em>${esc(team.short)} · ${potm.goals ? `${potm.goals} goal${potm.goals > 1 ? 's' : ''} · ` : ''}${potm.km} km</em>
@@ -57,7 +58,7 @@ export function teamStats(match) {
   ];
 }
 export function statsHTML(match) {
-  return `<div class="gm-stats pm-stats">${teamStats(match).map(([k, h, a]) => `<div><b>${h}</b><span>${k}</span><b>${a}</b></div>`).join('')}</div>`;
+  return `<div class="gm-stats pm-stats">${teamStats(match).map(([k, h, a]) => `<div><b>${h}</b><span>${tx(k)}</span><b>${a}</b></div>`).join('')}</div>`;
 }
 
 /** The momentum of the whole match as a filled line: home above, away below. */
@@ -95,7 +96,7 @@ export function reaction({ mine, theirs, comeback = false, final = false, manage
   return { scene: 'Silence. Boots off without a word; the manager speaks low and short.', quote: pick(['"Not good enough today. We will be better next week."', '"We win together and we lose together."', '"We made it too easy for them. That is on all of us."']) };
 }
 export function reactionHTML(r, manager = 'The manager') {
-  return `<div class="pm-react"><span class="pm-k">Dressing room</span><p>${esc(r.scene)}</p><blockquote>${esc(r.quote)}<cite>— ${esc(manager)}</cite></blockquote></div>`;
+  return `<div class="pm-react"><span class="pm-k">${tx('Dressing room')}</span><p>${esc(r.scene)}</p><blockquote>${esc(r.quote)}<cite>— ${esc(manager)}</cite></blockquote></div>`;
 }
 
 /* ------------------------------ result card ------------------------------ */

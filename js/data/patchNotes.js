@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v171',
+    date: '2026-10-06',
+    tag: 'Language',
+    title: 'Full time in Arabic',
+    lede: 'The screen every match ends on now reads in Arabic too: the score summary, player of the match, ratings, stats, momentum and the dressing room.',
+    entries: [
+      {
+        head: 'Full time',
+        summary: 'The stat bars, the full stat sheet, the tabs and the share button on the full-time screen are translated.',
+        detail: 'Possession, shots, expected goals, big chances, passes, tackles, saves, distance, bookings and red cards all have their Arabic names, as do the Player of the match, Ratings, Stats, Momentum and Dressing room panels. We also checked, with a scripted player over whole matches, that your team-mates offer as many open passes when you carry the ball as when the computer does: about the same, so nothing to change there.',
+      },
+    ],
+  },
+  {
     version: 'v170',
     date: '2026-10-06',
     tag: 'Language',

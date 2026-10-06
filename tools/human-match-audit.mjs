@@ -15,14 +15,14 @@ const { CY } = await import('../js/game/field.js');
 const { WORLD } = await import('../js/data/generator.js');
 const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const N = Number(process.argv[2] ?? 8); const MIN = Number(process.argv[3] ?? 6);
-const tot = { gf: 0, ga: 0, shots: 0, cpuShots: 0, passes: 0, passOk: 0, tackles: 0, fouls: 0, cpuFouls: 0, yel: 0, red: 0, sw: 0, far: 0, def: 0, dists: [], stuck: 0, phases: {} };
+const tot = { gf: 0, ga: 0, shots: 0, cpuShots: 0, passes: 0, passOk: 0, tackles: 0, fouls: 0, cpuFouls: 0, yel: 0, red: 0, sw: 0, far: 0, def: 0, dists: [], stuck: 0, phases: {}, poss: [0, 0], src: {}, lost: 0, lostMe: 0, cpuD: [] };
 for (let g = 0; g < N; g++) {
   Math.random = mulberry32(700 + g);
   const C = WORLD.clubs;
   const m = new Match(C[g].id, C[g + 10].id, { human: 0, duration: MIN * 60 });
   const me = () => m.playerOf(m.controllers[0]);
   const t0 = m.teams[0];
-  let carry = 0; let press = null; let pend = null; let lastPos = null; let stillT = 0;
+  let carry = 0; let prevOwner = null; let press = null; let pend = null; let lastPos = null; let stillT = 0;
   const inp = { _p: new Set(), _r: new Set(), _h: new Set(), ax: { x: 0, y: 0 },
     axis() { return this.ax; }, pressed(a) { return this._p.has(a); }, released(a) { return this._r.has(a); }, held(a) { return this._h.has(a); },
     value() { return 1; }, rstick() { return { x: 0, y: 0 }; }, takeGesture() { return null; }, clear() { this._p.clear(); this._r.clear(); } };
@@ -31,6 +31,8 @@ for (let g = 0; g < N; g++) {
   const realTackle = m.tackle.bind(m); m.tackle = (p, ...a) => { if (p === me()) tot.tackles++; return realTackle(p, ...a); };
   const cue = m.cue.bind(m);
   m.cue = (n, a) => { if (n === "foul") { if (a?.team === 0) tot.fouls++; else tot.cpuFouls++; const st = new Error().stack.split("\n")[2].match(/sim\.js:(\d+)/)?.[1]; tot.src[`${a?.team}:${st}`] = (tot.src[`${a?.team}:${st}`] || 0) + 1; } return cue(n, a); };
+  const sh = m.shoot.bind(m); let lastLoss = -99; let lastSP = -99;
+  m.shoot = (p, ...a) => { if (p.team === 1) { const gx = m.teams[1].dir > 0 ? PITCH.w : 0; const d = Math.hypot(gx - p.x, CY - p.y); const k = m.t - lastSP < 6 ? 'set piece' : m.t - lastLoss < 8 ? 'after the person lost it' : 'build-up'; tot.src[k] = (tot.src[k] || 0) + 1; tot.cpuD.push(d); } return sh(p, ...a); };
   const cyc = m.cycleActive.bind(m); m.cycleActive = (c) => { tot.sw++; return cyc(c); };
   for (let s = 0; s < MIN * 60 * 60 * 1.5 && m.phase !== 'end'; s++) {
     tot.phases[m.phase] = (tot.phases[m.phase] || 0) + 1;
@@ -61,6 +63,10 @@ for (let g = 0; g < N; g++) {
       if (stillT > 4) { tot.stuck++; stillT = 0; }
       lastPos = { x: p.x, y: p.y };
     }
+    if (m.ball.owner) tot.poss[m.ball.owner.team]++;
+    if (m.phase !== 'play') lastSP = m.t;
+    if (prevOwner && prevOwner.team === 0 && m.ball.owner && m.ball.owner.team === 1) { lastLoss = m.t; tot.lost++; if (prevOwner === me()) tot.lostMe++; }
+    if (m.ball.owner) prevOwner = m.ball.owner;
     m.update(1 / 60, [inp]); inp.clear();
     if (pend) { const o = m.ball.owner; if (m.phase !== 'play' || m.t - pend.t > 5) pend = null; else if (o && o !== pend.p) { tot.passes++; if (o.team === 0) tot.passOk++; pend = null; } }
   }
@@ -73,3 +79,6 @@ const ds = tot.dists.sort((x, y) => x - y);
 console.log(`\ntotal over ${N}: goals ${tot.gf}–${tot.ga} · shots ${tot.shots}/${tot.cpuShots} · passes ${tot.passOk}/${tot.passes} · tackles ${tot.tackles} · fouls ${tot.fouls} (CPU ${tot.cpuFouls}) · switches ${tot.sw}`);
 console.log(`defending: man under control from the ball, median ${ds[ds.length >> 1]?.toFixed(1)} m, over 25 m ${(100 * tot.far / Math.max(1, tot.def)).toFixed(0)}% of the time · stuck spells ${tot.stuck}`);
 console.log('phases (frames):', JSON.stringify(tot.phases));
+const cd = tot.cpuD.sort((x, y) => x - y);
+console.log('CPU shots by origin', JSON.stringify(tot.src), '· distance median', cd[cd.length >> 1]?.toFixed(1), '· turnovers', tot.lost, '(from the person\'s own man', tot.lostMe + ')');
+console.log('possession', tot.poss.map((x) => (100 * x / (tot.poss[0] + tot.poss[1])).toFixed(0) + '%').join(' / '));
