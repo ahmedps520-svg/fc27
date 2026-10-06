@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v153',
+    date: '2026-10-06',
+    tag: 'Presentation',
+    title: 'The commentators watch the keeper',
+    lede: 'The commentary now calls a keeper\'s quick throw or big punt upfield.',
+    entries: [
+      {
+        head: 'Keeper distribution',
+        summary: 'A quick throw to start a move, or a punt sent long, now gets its own line from the commentator, in English and Arabic.',
+        detail: 'These are the throws, punts and drop-kicks keepers learned in v145.',
+      },
+    ],
+  },
+  {
     version: 'v152',
     date: '2026-10-06',
     tag: 'Trophy Room',

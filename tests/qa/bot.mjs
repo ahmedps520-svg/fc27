@@ -256,6 +256,23 @@ try {
     await ctx.close();
   });
 
+  // v153: the trophy cabinet (v152) — the list from a save's silverware, and a page that
+  // cannot draw WebGL (this bot's browser) still renders, with the 3D view hidden
+  await flow('cabinet', async () => {
+    const cabinet = [{ kind: 'league', title: 'Premier Division title', sub: 'QA FC · season 1', key: 'qa1', at: 1 }, { kind: 'world', title: 'World Tournament', sub: 'Brazil', key: 'qa2', at: 2 }];
+    const { ctx, page } = await boot('cabinet', baseSave({ settings: { quality: 'high', reduceMotion: true, tutorialDone: true, models: 'simple' }, club: { cabinet } }));
+    await go(page, 'trophies');
+    await page.waitForSelector('.cabinet .cab-list li', { timeout: 10000 });
+    const n = await page.$$eval('.cabinet .cab-list li', (els) => els.length);
+    assert.equal(n, 2, 'both trophies listed');
+    await page.waitForTimeout(1500);
+    const hidden = await page.$eval('#cab3d', (c) => c.hidden);
+    assert.ok(hidden, 'no WebGL: the 3D view steps aside');
+    await go(page, 'menu');
+    step('cabinet lists the silverware, and falls back without WebGL');
+    await ctx.close();
+  });
+
   await flow('online', async () => {
     const mk = async (tag) => {
       const { ctx, page } = await boot(tag, baseSave({ club: { apex: 5000 } }));

@@ -2468,6 +2468,7 @@ export class Match {
       b.x = o.x + o.dirX * 0.4; b.y = o.y + o.dirY * 0.4; b.z = z0;
       b.vx = (tx / T); b.vy = (ty / T); b.vz = (0.5 * GRAV * T * T - z0) / T;
       b.noTouch = 0.25; b.gkKind = 'throw';
+      this.cue('gkThrow', o);              // v153: for the commentary
       return;
     }
     // long: the furthest-forward team-mate onside within range
@@ -2498,6 +2499,7 @@ export class Match {
     b.z = z0; b.noTouch = 0.3;
     b.passTo = target; b.passT = this.t;
     b.gkKind = kind;
+    if (kind !== 'kick') this.cue('gkLong', o);   // v153: a punt or a drop-kick is called
   }
 
   /**

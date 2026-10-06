@@ -509,6 +509,7 @@ export function mount(root, params) {
     goal: 'goal', shot: 'shot', shotWide: 'shotWide', save: 'save', post: 'post', cross: 'cross', header: 'header',
     bigChance: 'bigChance', cornerKick: 'cornerKick', freekick: 'freekick', penaltyAwarded: 'penaltyAwarded',
     throwin: 'throwin', foul: 'foul', advantage: 'advantage', card: 'card', red: 'red', injury: 'injury', sub: 'sub', counter: 'counter', skill: 'skill', lob: 'lob',
+    gkThrow: 'keeperThrow', gkLong: 'keeperLong',   // v153: the keeper's distribution
     offside: 'offside', volley: 'volley', bicycle: 'bicycle', knuckle: 'knuckle', heavyTouch: 'heavyTouch', tactic: 'tactic', adapt: 'adapt',
   };
   let lastCommentAt = -9;
