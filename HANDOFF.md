@@ -15,6 +15,10 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v171 — full time in Arabic
+- `postmatch.js` imports `tx` (not in the watch bundle): stat sheet labels, Player of the match, Dressing room. `play.js`: the full-time stat bars, the panel tabs, the share button, the momentum fallback.
+- Audit notes (no change): `tools/human-match-audit.mjs` CPU shots against the scripted person come mostly after the script loses the ball (298 of 300 turnovers are its own man dribbling into defenders) or within 6 s of a restart; support for a person carrier equals a CPU carrier (open men ahead 1.34 vs 1.26, none open 30% vs 31%).
+
 ## v170 — the store in Arabic; whole-match person audit
 - Store shelves, badges, Limited tag, Claim free / Free in, Odds, "or 12 division wins", Packs head via `tx()`.
 - `tools/human-match-audit.mjs [matches] [minutes]`: a scripted person seat (carries at goal, passes, shoots inside 22 m, chases and tackles, switches). At v170 over 6×6-min: no stuck spells, man-to-ball median 11.7 m defending (over 25 m 7% of the time), fouls by the CPU on the person 87 vs 43 the other way (CPU v CPU: 55/41) — the script dribbles straight at goal, so more contact. Free-kick waits are the 9 s countdown the script never takes.

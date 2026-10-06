@@ -29,7 +29,7 @@ import { groundProfile } from '../data/grounds.js';
 import { stadiumFor, STADIUM_BY_ID, atmosphereFor, conditionsNote, TIME_LABEL, WEATHER_LABEL, hashStr } from '../data/stadiums.js';
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
-import { t, lang, isRTL } from '../i18n.js';
+import { t, tx, lang, isRTL } from '../i18n.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import * as customCup from '../customCup.js';
@@ -2938,13 +2938,13 @@ export function mount(root, params) {
         <div class="pm-block">
           ${potmHTML(ratedAll.potm, match)}
           <div class="pm-tabs" role="tablist">
-            <button data-pm="ratings">Ratings</button><button data-pm="stats">Stats</button><button data-pm="momentum">Momentum</button><button data-pm="room">Dressing room</button>
+            ${[['ratings', 'Ratings'], ['stats', 'Stats'], ['momentum', 'Momentum'], ['room', 'Dressing room']].map(([k, l]) => `<button data-pm="${k}">${tx(l)}</button>`).join('')}
           </div>
           <div class="pm-pane" data-pane="ratings" hidden>${ratingsHTML(ratedAll, match)}</div>
           <div class="pm-pane" data-pane="stats" hidden>${statsHTML(match)}</div>
-          <div class="pm-pane" data-pane="momentum" hidden>${momentumSVG(director.mom.series(), [h.colors?.[0], a.colors?.[0]]) || '<p class="hint">Not enough of the match to draw.</p>'}</div>
+          <div class="pm-pane" data-pane="momentum" hidden>${momentumSVG(director.mom.series(), [h.colors?.[0], a.colors?.[0]]) || `<p class="hint">${tx('Not enough of the match to draw.')}</p>`}</div>
           <div class="pm-pane" data-pane="room" hidden>${reactionHTML(rx, mgrName)}</div>
-          <button class="btn ghost" data-o="share">⇪ Share the result card</button>
+          <button class="btn ghost" data-o="share">⇪ ${tx('Share the result card')}</button>
         </div>`;
     }
     if (params.final && myScore > theirScore && !spectating) {
@@ -2968,10 +2968,10 @@ export function mount(root, params) {
         ${goals.length ? `<ul class="gm-goals">${goals.map(([t, s]) =>
           `<li><i>${s.minute}'</i> ${s.name} <em>${t}</em></li>`).join('')}</ul>` : ''}
         <div class="gm-stats split">
-          <div style="--l:${split(ph, pa)}%"><b>${ph}%</b><span>Possession</span><b>${pa}%</b></div>
-          <div style="--l:${split(h.shots, a.shots)}%"><b>${h.shots}</b><span>Shots (${h.onTarget} on)</span><b>${a.shots}</b></div>
-          <div style="--l:${split(h.xg || 0, a.xg || 0)}%"><b>${(h.xg || 0).toFixed(2)}</b><span>Expected goals</span><b>${(a.xg || 0).toFixed(2)}</b></div>
-          <div style="--l:${split(h.bigChances || 0, a.bigChances || 0)}%"><b>${h.bigChances || 0}</b><span>Big chances</span><b>${a.bigChances || 0}</b></div>
+          <div style="--l:${split(ph, pa)}%"><b>${ph}%</b><span>${tx('Possession')}</span><b>${pa}%</b></div>
+          <div style="--l:${split(h.shots, a.shots)}%"><b>${h.shots}</b><span>${tx('Shots')} (${h.onTarget} ${tx('on')})</span><b>${a.shots}</b></div>
+          <div style="--l:${split(h.xg || 0, a.xg || 0)}%"><b>${(h.xg || 0).toFixed(2)}</b><span>${tx('Expected goals')}</span><b>${(a.xg || 0).toFixed(2)}</b></div>
+          <div style="--l:${split(h.bigChances || 0, a.bigChances || 0)}%"><b>${h.bigChances || 0}</b><span>${tx('Big chances')}</span><b>${a.bigChances || 0}</b></div>
         </div>
         ${goalClips.length ? `<button class="btn ghost" data-o="highlights">▶ Highlights · ${goalClips.length} goal${goalClips.length > 1 ? 's' : ''}</button>` : ''}
         ${goalClips.length && clipSupported() ? '<button class="btn ghost" data-o="clip">⬇ Save highlights as a clip (WebM)</button>' : ''}
