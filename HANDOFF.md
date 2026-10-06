@@ -15,6 +15,23 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v158 — empty squad slots (CSS)
+- Found in a 390×844 screenshot of the squad hub (`tests/tmp/menus.mjs`): in
+  4-3-3 the empty CDM slot overlapped both CB slots. Every empty `.slot`
+  measured 58×96 instead of ~58×42.
+- Cause: the page-wide empty-state rule `.empty { padding: 26px 12px }`
+  (main.css 249) also matched `<span class="slot-pos empty">` (and
+  `bslot-pos empty` in the builder). `.slot-pos.empty` and
+  `.bslot-pos.empty` now reset padding, margin and line-height. No other
+  element uses the bare `empty` class as a modifier; the rest are
+  `ov-empty`, `ol-empty` and the like.
+- Also checked this round, nothing to fix:
+  - full-time card at 844×390 (it scrolls to Rematch/Quit);
+  - walk-out banner;
+  - menu, Kick Off and Today at 390×844;
+  - the corner camera "still at the centre" was software-GL slowness,
+    because the 1.1 s blend runs on capped frame dt.
+
 ### v157 — phone overlay collisions (CSS)
 - Found with phone screenshots of staged set pieces and half time
   (`tests/tmp/moments2.mjs`, 844×390): the set-piece banner (top 52,

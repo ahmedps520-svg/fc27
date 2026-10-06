@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v158',
+    date: '2026-10-06',
+    tag: 'Fix',
+    title: 'Empty squad slots back to size',
+    lede: 'Empty positions on the Ultimate XI pitch were twice as tall as they should be. On a phone they overlapped each other.',
+    entries: [
+      {
+        head: 'Squad pitch',
+        summary: 'Empty slots on the squad pitch and in the squad builder are compact again, so a 4-3-3\'s holding midfielder no longer sits on top of both centre-backs on a phone.',
+        detail: 'A style meant for "nothing here yet" messages was also matching the position label inside an empty slot, adding 26 px of padding above and below it. Found by checking the menus on a 390 px phone.',
+      },
+    ],
+  },
+  {
     version: 'v157',
     date: '2026-10-06',
     tag: 'Polish',
