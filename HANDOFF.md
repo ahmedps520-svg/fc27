@@ -15,6 +15,22 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+### v156 — goals and replays on phones (UI)
+- Found with phone-quality screenshots of a rainy night match and a forced
+  goal (`tests/tmp/moments.mjs`). During the GOAL card the touch pad showed
+  its defending set (TACKLE/SLIDE…). On touch the subtitle is at
+  `top: 136px` (5287) to clear the pad, so it sat under the GOAL card.
+- `play.js`:
+  - `#gmRoot.gm-goal-on` is set while the goal card is up (from the goal
+    phase until the replay starts);
+  - `gm-replay-on` is set in `startReplay`/`endReplay`.
+- `main.css`:
+  - both classes hide `#gmTouch` and `.gm-hints` (visibility, so the
+    layout keeps its place);
+  - during the goal, `.bc-sub` returns to the bottom (`top: auto; bottom:
+    14px`) on touch;
+  - the replay is still skipped by tapping its tag.
+
 ### v155 — boot dust no longer glows (render only)
 - Found by a phone-quality match screenshot (`tests/tmp/phoneshot.mjs`,
   Medium, 844×390): bright yellow-green pools under sprinters. The boot
