@@ -13030,7 +13030,7 @@
       let b = this.ball, team = this.teams[gk.team], inward = team.dir > 0 ? 1 : -1, hands = gk.ref.overall / 100 * this.preset.hands, holdable = 17 + hands * 13;
       if (this.tally(gk, "saves"), speed < holdable && gk.diveT <= 0 && Math.random() < 0.36 + hands * 0.34)
         return this.saveKind = "catch", this.cue("save"), !0;
-      let side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1), out = speed * (0.34 + Math.random() * 0.2), lineX = team.dir > 0 ? 0 : PITCH.w, tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7, tipRound = !tipOver && Math.random() < 0.55;
+      let side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1), out = speed * (0.34 + Math.random() * 0.2), lineX = team.dir > 0 ? 0 : PITCH.w, tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7, tipRound = !tipOver && Math.random() < 0.75;
       if (this.saveKind = tipOver ? "over" : tipRound ? "round" : "parry", this.cue("save"), tipOver)
         b.vx = -inward * (2 + Math.random() * 1.5), b.vy *= 0.3, b.vz = 6 + Math.random() * 2, b.noTouch = 0.6;
       else if (tipRound)

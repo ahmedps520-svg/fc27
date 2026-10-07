@@ -4049,7 +4049,8 @@ export class Match {
        keeper's fingertips lift it up and over, behind for a corner. */
     const lineX = team.dir > 0 ? 0 : PITCH.w;
     const tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7;
-    const tipRound = !tipOver && Math.random() < 0.55;
+    // v180: 0.55 → 0.75 — a keeper turns more round the post (corners 3.2 → 3.8 a match, goals unchanged; 200-match sweeps)
+    const tipRound = !tipOver && Math.random() < 0.75;
     // v175: what kind of save it was, for the commentary — said once it is known
     this.saveKind = tipOver ? 'over' : tipRound ? 'round' : 'parry';
     this.cue('save');
