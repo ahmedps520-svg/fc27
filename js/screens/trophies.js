@@ -20,9 +20,10 @@ import { ICONS } from '../data/pools.js';
 import { flagSVG } from '../components/crest.js';
 
 import { LEAGUES } from '../data/pools.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
 import { icon } from '../components/facts.js';
 import { cabinet } from '../cabinet.js';
+import { listGoals, getGoal, deleteGoal } from '../goalGallery.js';
 
 export const TITLE = 'Trophy Room';
 
@@ -97,6 +98,7 @@ export function render() {
   return head + `
     <div class="trophies">
       ${cabinetHTML(s)}
+      <section class="panel glass goal-gallery" id="goalGallery" hidden></section>
       ${hall}
       ${unclaimed.length > 1 ? `<button class="btn primary" id="claimAll">Collect all · ◈ ${unclaimed.reduce((n, a) => n + a.apex, 0).toLocaleString()}</button>` : ''}
       ${GROUPS.map(([gid, label]) => {
@@ -121,7 +123,30 @@ export function render() {
     </div>`;
 }
 
+/* v182: the goals you kept from full time (goalGallery.js) — tap one to watch it again */
+const escG = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function fillGallery(root) {
+  const el = root.querySelector('#goalGallery');
+  if (!el) return;
+  const list = await listGoals();
+  if (!list.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `
+    <header class="panel-head"><h2>${tx('Your goals')}</h2><span class="ph-sub">${list.length}</span></header>
+    <ul class="gg-list">${list.map((g) => `
+      <li><button class="gg-play" data-goal="${escG(g.id)}"><i aria-hidden="true">▶</i><b>${g.minute ?? ''}'</b><span>${escG(g.scorer || tx('Goal'))}</span><em>${escG((g.teams || []).join(' · '))} ${escG(g.score || '')}</em></button>
+      <button class="gg-del" data-goal-del="${escG(g.id)}" aria-label="${tx('Remove')}">✕</button></li>`).join('')}</ul>`;
+  el.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', async () => {
+    const g = await getGoal(b.dataset.goal);
+    if (g) navigate('play', { duration: 360, ...g.stage, gallery: g });
+  }));
+  el.querySelectorAll('[data-goal-del]').forEach((b) => b.addEventListener('click', async () => {
+    await deleteGoal(b.dataset.goalDel); fillGallery(root);
+  }));
+}
+
 export function mount(root) {
+  fillGallery(root);
   // v152: the cabinet in 3D, where the device can draw it (not on the lowest quality)
   let cab = null; let gone = false;
   const canvas = root.querySelector('#cab3d');

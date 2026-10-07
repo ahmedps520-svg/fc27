@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v182',
+    date: '2026-10-07',
+    tag: 'New',
+    title: 'Your goals, kept',
+    lede: 'Keep the goals from any match and watch them again whenever you like, from the Trophy Room.',
+    entries: [
+      {
+        head: 'Goal gallery',
+        summary: 'At full time, "Keep these goals" saves the match\'s goals. The Trophy Room lists them under Your goals; tap one to watch its replay again.',
+        detail: 'The highlights used to disappear with the match. Now each kept goal is stored on your device with everything needed to stage it again (the two sides, the ground and the weather) and plays back with the same replay angles as on the night, then takes you back to the Trophy Room. The newest 24 are kept; remove any you do not want with the ✕.',
+      },
+    ],
+  },
+  {
     version: 'v181',
     date: '2026-10-07',
     tag: 'Gameplay',

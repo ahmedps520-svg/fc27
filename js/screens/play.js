@@ -30,6 +30,7 @@ import { stadiumFor, STADIUM_BY_ID, atmosphereFor, conditionsNote, TIME_LABEL, W
 import { GUIDE_STEPS, finishOnboarding } from '../onboarding.js';
 import { navigate, refreshCoins, toast } from '../app.js';
 import { t, tx, lang, isRTL } from '../i18n.js';
+import { keepGoals, packFrames, stageOf } from '../goalGallery.js';
 import { EMOTES, emoteText } from '../data/emotes.js';
 import * as tournament from '../tournament.js';
 import * as customCup from '../customCup.js';
@@ -364,6 +365,8 @@ export function mount(root, params) {
      paid or recorded, and any input (or the final whistle) goes back to the
      title. */
   const attract = !!params.attract;
+  // v182: a kept goal played back from the Trophy Room — stage it, run its replay, go back
+  const gallery = params.gallery || null;
   /* A spectator is a guest that never speaks: the host's snapshots pour in
    * exactly as they do for the away player, and nothing goes back up — no
    * input, no pause requests, no result. */
@@ -616,7 +619,7 @@ export function mount(root, params) {
   const guided = !!params.guided;
   let guideIdx = 0;
   let guideHold = 0;
-  const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online && !attract;
+  const wantHints = (getState().flags?.hintMatches | 0) < 3 && mode !== 'career' && !online && !attract && !gallery;
   if (wantHints) update((st) => { st.flags.hintMatches = (st.flags.hintMatches | 0) + 1; });
 
   const scoreH = root.querySelector('#gmScore');
@@ -722,6 +725,10 @@ export function mount(root, params) {
       minute: match.minute(),
       angle: goalClips.length % 4,
       seq: goalClips.length,
+      // v182: what the gallery shows for it
+      scorer: match.celebrant?.ref?.name || '',
+      teams: [match.teams[0].short, match.teams[1].short],
+      score: `${match.teams[0].score}–${match.teams[1].score}`,
     };
     /* The director picks the passes: the build-up first, then one or two
        slowed angles chosen by the kind of goal (see directReplay). */
@@ -838,7 +845,11 @@ export function mount(root, params) {
   const nextHighlight = () => {
     if (highlightIdx < 0) return false;
     highlightIdx += 1;
-    if (highlightIdx >= goalClips.length) { highlightIdx = -1; stopHighlightsBed(); overlay.hidden = false; stopClip(); return false; }
+    if (highlightIdx >= goalClips.length) {
+      highlightIdx = -1; stopHighlightsBed();
+      if (gallery) { navigate('trophies'); return false; }
+      overlay.hidden = false; stopClip(); return false;
+    }
     clip = goalClips[highlightIdx];
     return startReplay();
   };
@@ -1516,7 +1527,7 @@ export function mount(root, params) {
       // subtitles replace the text feed (they carry the same lines, and who said them)
       if (director.gfx && S.subtitles !== false) shell.classList.add('bc-subtitled');
     }
-    if (!online && !S.reduceMotion && !view) {
+    if (!online && !S.reduceMotion && !view && !gallery) {
       const kind = S.pregame || 'full';
       if (kind !== 'off' && bcAllowed && !guided && !attract) {
         const [hm, aw] = match.teams;
@@ -1545,8 +1556,8 @@ export function mount(root, params) {
         shell.classList.add('pregame-on');
       } else startWalkout();
       gl?.tifo(true);
-    } else { gl?.tifo(true); director?.kickoff(); }
-    if (match.venue?.stadium && !online) {
+    } else if (!gallery) { gl?.tifo(true); director?.kickoff(); }
+    if (match.venue?.stadium && !online && !gallery) {
       const st = match.venue.stadium;
       const gate = Math.round((st.capacity || 30000) * (0.7 + match.venue.atmo.intensity * 0.25) / 100) * 100;
       const pa = `Welcome to ${st.name}. Today's match: ${match.teams[0].name} against ${match.teams[1].name}. Attendance ${gate.toLocaleString()}.`;
@@ -1555,6 +1566,12 @@ export function mount(root, params) {
     }
     // the clock restarts here, or the match opens having "missed" the wait
     last = performance.now();
+    if (gallery) {
+      const c = { frames: gallery.frames, post: POST_FRAMES, goalX: gallery.goalX, minute: gallery.minute, angle: gallery.angle || 0, seq: 0 };
+      c.passes = directReplay(c, { late: (gallery.minute || 0) >= 80 });
+      goalClips.push(c);
+      playHighlights();
+    }
     return true;
   }
 
@@ -2977,6 +2994,7 @@ export function mount(root, params) {
         </div>
         ${goalClips.length ? `<button class="btn ghost" data-o="highlights">▶ Highlights · ${goalClips.length} goal${goalClips.length > 1 ? 's' : ''}</button>` : ''}
         ${goalClips.length && clipSupported() ? '<button class="btn ghost" data-o="clip">⬇ Save highlights as a clip (WebM)</button>' : ''}
+        ${goalClips.length && !online ? `<button class="btn ghost" data-o="keepGoals">☆ ${tx('Keep these goals')}</button>` : ''}
         ${div ? `
           <div class="div-result ${div.promoted ? 'up' : div.relegated ? 'down' : ''}">
             <span class="dr-kicker">${div.promoted ? 'Promoted' : div.relegated ? 'Relegated' : 'Apex Division'}</span>
@@ -3066,6 +3084,14 @@ export function mount(root, params) {
       if (o === 'pens') { offerShootout(); return; }
       if (o === 'resume') setPaused(false);
       if (o === 'highlights') { playHighlights(); return; }
+      if (o === 'keepGoals') {
+        const btn = e.target.closest('[data-o]'); if (btn) btn.disabled = true;
+        const stage = stageOf(params);
+        keepGoals(goalClips.map((c) => ({ stage, frames: packFrames(c.frames), goalX: c.goalX, minute: c.minute, angle: c.angle, scorer: c.scorer, teams: c.teams, score: c.score })))
+          .then((n) => toast(`${n} goal${n > 1 ? 's' : ''} kept · Trophy Room`, 'good'))
+          .catch(() => { toast('Could not keep them on this device', 'warn'); if (btn) btn.disabled = false; });
+        return;
+      }
       if (o === 'share') {
         const cv = drawResultCard(document.createElement('canvas'), {
           home: match.teams[0], away: match.teams[1], score: [match.teams[0].score, match.teams[1].score],

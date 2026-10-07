@@ -15,6 +15,13 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v182 — the goal gallery (backlog #16: goal-of-the-week gallery)
+- `js/goalGallery.js`: IndexedDB `apexxi-goals` / store `goals`; `keepGoals(entries)` (newest `MAX` 24), `listGoals`, `getGoal`, `deleteGoal`; `packFrames` rounds positions to 2 dp; `stageOf(params)` keeps only homeId/awayId/squads/venueId/atmo/atmoSeed/street/fives/field/clash/mode (never career/ultimate/weekend).
+- `play.js`: goal clips carry scorer/teams/score; full time shows "☆ Keep these goals" (not online); `params.gallery` skips pregame/kick-off/PA and hint counting, loads the clip into `goalClips` and `playHighlights()`, and `nextHighlight` navigates back to the Trophy Room when it ends.
+- `trophies.js`: "Your goals" panel filled after mount (hidden when empty); play and ✕ remove.
+- Tried and dropped this round: offsides (passer misreading the line 30%: 1.41/1.45 → 1.56/1.52; with eager runs 1.66/1.59 but goals −0.12) — not worth it.
+- Test: `tests/qa/gallery.mjs` (score, full time, keep, Trophy Room, play back, return). Not in CI yet (≈5 min on SwiftShader).
+
 ## v181 — more fouls in open play
 - `sim.js` tackle foul chance × `FOUL_OPEN` (1.25) outside the box (inside stays `TUNE.boxCare`); `TUNE.shotRate` 0.5 → 0.52 to hold goals. 200-match sweeps vs v180: fouls 8.15/8.39 → 9.52/9.54, yellows 1.77/1.68 → 1.99/2.00, reds 0.10 = , pens 0.15/0.12 → 0.14/0.10, goals 2.65/2.46 → 2.62/2.37, shots 14.9/14.8. (1.4 alone took goals to 2.47/2.23.) Goldens re-recorded; simfuzz clean.
 - `gameplay.test.mjs` throw-in floor 5 → 3.5 (12 short matches gave 4.33 while the sweeps held 5.1); `setpieces.test.mjs` TUNE default updated.
