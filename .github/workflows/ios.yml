@@ -55,6 +55,33 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "::error::version must look like 1.0 or 1.0.1"; missing=1; }
           exit $missing
 
+      - name: API key (cleaned and checked)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Secrets pasted on Windows carry \r and stray spaces; trim the IDs and
+          # check their shape, then rebuild the .p8 (app/ci/asc-key.sh).
+          clean() { printf '%s' "$1" | tr -d ' \t\r\n"'"'"; }
+          KEY_ID="$(clean "$ASC_KEY_ID")"; ISSUER_ID="$(clean "$ASC_ISSUER_ID")"; TEAM_ID="$(clean "$APPLE_TEAM_ID")"
+          bad=0
+          [[ "$KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error title=ASC_KEY_ID::should be the 10-character Key ID (letters and digits), e.g. 2X9R4HXF34"; bad=1; }
+          [[ "$ISSUER_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "::error title=ASC_ISSUER_ID::should be the Issuer ID shown above the keys list, like 57246542-96fe-1a63-e053-0824d011072a"; bad=1; }
+          [[ "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error title=APPLE_TEAM_ID::should be the 10-character Team ID from developer.apple.com → Membership"; bad=1; }
+          [ $bad = 0 ] || exit 1
+          echo "::add-mask::$KEY_ID"; echo "::add-mask::$ISSUER_ID"; echo "::add-mask::$TEAM_ID"
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${KEY_ID}.p8"
+          bash app/ci/asc-key.sh "$KEY_PATH"
+          {
+            echo "KEY_ID=$KEY_ID"
+            echo "ISSUER_ID=$ISSUER_ID"
+            echo "TEAM_ID=$TEAM_ID"
+            echo "KEY_PATH=$KEY_PATH"
+          } >> "$GITHUB_ENV"
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -71,20 +98,7 @@ jobs:
           node build-www.mjs
           npx cap sync ios
 
-      - name: API key
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/keys"
-          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
-          chmod 600 "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
-
       - name: Archive
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild archive \
             -project app/ios/App/App.xcodeproj \
@@ -93,10 +107,10 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             MARKETING_VERSION="$VERSION" \
@@ -105,10 +119,6 @@ jobs:
           test -d "$RUNNER_TEMP/App.xcarchive" || { echo "::error::archive failed — see the log above"; exit 1; }
 
       - name: Sign and upload to App Store Connect
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -117,7 +127,7 @@ jobs:
           <dict>
             <key>method</key><string>app-store-connect</string>
             <key>destination</key><string>upload</string>
-            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
             <key>manageAppVersionAndBuildNumber</key><false/>
@@ -129,9 +139,9 @@ jobs:
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
           echo "### Uploaded APEX XI $VERSION ($BUILD) to App Store Connect" >> "$GITHUB_STEP_SUMMARY"
           echo "It shows in TestFlight once Apple has processed it, usually 10–30 minutes." >> "$GITHUB_STEP_SUMMARY"
 
