@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v181',
+    date: '2026-10-07',
+    tag: 'Gameplay',
+    title: 'A bit more bite',
+    lede: 'Challenges in open play are a little more reckless, so matches have more fouls, free kicks and bookings, closer to real football, with goals where they were.',
+    entries: [
+      {
+        head: 'Fouls',
+        summary: 'About 9.5 fouls a match instead of 8, and 2 yellow cards instead of 1.7. Penalties and red cards are unchanged.',
+        detail: 'Matches were short of fouls: about 8 a game against roughly 13 in real football for the same number of shots. A challenge outside the box is now a quarter more likely to be a foul when it is mistimed; inside the box nothing changes, so penalties stay as rare as they were. More free kicks broke up attacks a little, so the computer shoots a touch more often to keep goals per match the same (checked over 800 computer-played matches).',
+      },
+    ],
+  },
+  {
     version: 'v180',
     date: '2026-10-07',
     tag: 'Gameplay',
