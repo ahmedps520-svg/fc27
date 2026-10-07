@@ -74,6 +74,10 @@ export const PACK_US = {
     goal: ['Look at the movement before that. Textbook.', 'The keeper had no chance. None.', 'Clinical. That\'s what you want from your attackers.', 'That\'s a finish you\'ll see on the highlights all week.', 'You cannot defend that. Perfection.'],
     ownGoal: ['Cruel. He was only trying to clear it.', 'Nothing you can do about that one. Just unlucky.', 'He\'ll want to forget that one fast.'],
     save: ['Top-class goalkeeping.', 'Strong wrists. He had to be.', 'That\'s why he\'s the number one.', 'Reaction save. Incredible reflexes.'],
+    // v179: the analyst on the kind of save
+    tipOver: ['Fingertips. That was going in under the bar.', 'Just enough on it to lift it over.', 'Great spring. He had to get right up there.'],
+    tipRound: ['Strong hand to push it round the post.', 'He gets enough on it to take it wide.', 'Full stretch. That\'s a proper save.'],
+    saveCatch: ['Simple for him. Body behind it.', 'No rebound, no drama. That\'s good goalkeeping.', 'He makes it look easy.'],
     post: ['Inches. That\'s all it is at this level.', 'So unlucky. Another day, that goes in.', 'The goalkeeper was beaten, too.'],
     shotWide: ['Snatched at it. Too much hurry.', 'He had more time than he thought.', 'He\'ll be disappointed with that one.'],
     bigChance: ['That\'s the kind of chance you have to take.', 'You don\'t get many of those.', 'He should score there.'],

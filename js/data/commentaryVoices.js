@@ -44,6 +44,10 @@ export const CO = {
     'He read it early. Positioning does half the work.', 'Brave, too. He does not care who is coming in.',
     'A save like that is worth a goal.', 'Great hands. Nothing spilled.', 'He was down so quickly for a big man.',
   ],
+  // v179: the kind of save (play.js), for the device voice
+  tipOver: ['Fingertips. That was going in under the bar.', 'Just enough on it to lift it over.', 'Great spring to get up there.'],
+  tipRound: ['Strong hand to push it round the post.', 'Full stretch, and enough on it to take it wide.', 'That is a proper save.'],
+  saveCatch: ['Simple for him. Body behind it.', 'No rebound, no drama.', 'He makes it look easy.'],
   post: [
     'Inches. That is all it is at this level.', 'The woodwork saves them. They are riding their luck.',
     'He could not have hit it much better.', 'You felt the whole ground gasp.', 'On another day that goes in off the post.',

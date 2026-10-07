@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v179 — the analyst's save lines
+- `director.js co()` uses the finer key when the analyst's bank has it, else `BASE_KEY` (and its CO_CHANCE); `line()` now passes the finer key to `co()`.
+- `voicePackUS.js` co: `tipOver`, `tipRound`, `saveCatch` (3 each), rendered with Kokoro (`--only co-<key>`); `commentaryVoices.js CO` has the same three for the device voice.
+- Checked and left: keeper reach by height — the claim loop allows z < 2.5 for everyone, which already covers the frame (bar 2.44); quality backlog's per-release perf budget exists (`tests/perf/*`).
+
 ## v178 — the tip-over pose (render only)
 - `kick.js detectKicks`: a loose ball above 1.8 m whose vz jumps by > 5 m/s next to a keeper (≤ 2.8 m) sets `gk._tip = { t, side }` (side 0 mid-dive); checked before the header test. `tipArm(tp)` → `{ up }` over `TIP_DUR` 0.45 s.
 - `rig.js`: standing, the tip-side arm blends to overhead (sh −3.0, el −3.2) by `up`; in `poseDive`, `up = max(hi·air, tip.up)` lifts the hands.

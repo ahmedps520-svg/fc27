@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v179',
+    date: '2026-10-07',
+    tag: 'Commentary',
+    title: 'The analyst on the save',
+    lede: 'The second commentator now has his own take on a tip over the bar, a save round the post and a clean catch.',
+    entries: [
+      {
+        head: 'Commentary',
+        summary: 'Nine new recorded lines for the analyst, three for each kind of save.',
+        detail: 'Since v175 the play-by-play says which kind of save it was; the analyst still answered every save with the same general lines. He now has his own for each kind, in the recorded voice and the device voice, and falls back to his general ones if a language has none.',
+      },
+    ],
+  },
+  {
     version: 'v178',
     date: '2026-10-07',
     tag: 'Feel',
