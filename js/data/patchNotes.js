@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v175',
+    date: '2026-10-07',
+    tag: 'Commentary',
+    title: 'The save as it happened',
+    lede: 'The commentary now says what kind of save it was: held, tipped over the bar, or turned round the post.',
+    entries: [
+      {
+        head: 'Commentary',
+        summary: 'Saves get their own lines for a clean catch, a tip over the bar and a push round the post, and "tipped over" is only said when it was.',
+        detail: 'The save lines were one pile, so the commentary could cry "Tipped over!" at a ball the keeper had just caught. The match now records how each save was made, and the line comes from the matching set. It goes with last update\'s tip-overs.',
+      },
+    ],
+  },
+  {
     version: 'v174',
     date: '2026-10-07',
     tag: 'Gameplay',

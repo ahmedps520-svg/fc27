@@ -294,11 +294,16 @@ if (!process.argv.includes('--explore')) {
     return JSON.stringify(seats) === '[0,1]' ? '' : `seats ${JSON.stringify(seats)} (tokens ${sides})`;
   });
   await feature('B closes a modal (the release notes)', async () => {
-    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('apexxi.save.v1')); s.flags.notesSeen = 'v1'; localStorage.setItem('apexxi.save.v1', JSON.stringify(s)); });
+    /* through the app's own state, not straight into storage: the app saves what
+       it holds as the page goes, and that write could put the current version
+       back over ours before the reload read it (CI on v174) */
+    await page.evaluate(async () => { (await import('/js/state.js')).update((s) => { s.flags.notesSeen = 'v1'; }); });
     await page.goto(`${server.url}/`); await page.waitForSelector('#startBtn'); await page.waitForTimeout(400);
     // waited for, not timed: a slow runner took longer than the old fixed 2.5 s (CI on v154)
     await press(A); await page.waitForSelector('.np-layer', { timeout: 15000 }).catch(() => {});
-    if (!(await page.$('.np-layer'))) return 'the release-notes card did not appear (nothing to close)';
+    // the first press can land before the title is listening on a slow runner: still on it, press again
+    if (!(await page.$('.np-layer')) && (await page.$('#startBtn'))) { await press(A); await page.waitForSelector('.np-layer', { timeout: 15000 }).catch(() => {}); }
+    if (!(await page.$('.np-layer'))) return `the release-notes card did not appear (nothing to close) ${JSON.stringify(await page.evaluate(async () => ({ seen: JSON.parse(localStorage.getItem('apexxi.save.v1')).flags.notesSeen, hash: location.hash, menu: !!document.querySelector('[data-go]'), tut: !!document.querySelector('.tut, .tutorial, .onb') })))}`;
     await press(B); await page.waitForTimeout(700);
     return (await page.$('.np-layer')) ? 'B left the card open' : '';
   });

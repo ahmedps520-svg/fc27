@@ -531,6 +531,8 @@ export function mount(root, params) {
       else if (lead >= 2) setTimeout(() => comment('extend', match.goalTeam), 1600);
       return;
     }
+    // v175: a save is said as what it was — held, tipped over, turned round the post
+    if (name === 'save') { comment({ catch: 'saveCatch', over: 'tipOver', round: 'tipRound' }[match.saveKind] || 'save', arg); return; }
     comment(key, arg);
   };
   let lastClockLine = -1;

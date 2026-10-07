@@ -4034,10 +4034,10 @@ export class Match {
 
     this.tally(gk, 'saves');
     if (speed < holdable && gk.diveT <= 0 && Math.random() < 0.36 + hands * 0.34) {   // v79: fewer clean catches, more parries
+      this.saveKind = 'catch';
       this.cue('save');
       return true;                                    // clean catch
     }
-    this.cue('save');
 
     // Parry. Most are pushed back into play, but a good save on a shot heading
     // for the corner is tipped round the post — behind the line, so it becomes
@@ -4050,6 +4050,9 @@ export class Match {
     const lineX = team.dir > 0 ? 0 : PITCH.w;
     const tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7;
     const tipRound = !tipOver && Math.random() < 0.55;
+    // v175: what kind of save it was, for the commentary — said once it is known
+    this.saveKind = tipOver ? 'over' : tipRound ? 'round' : 'parry';
+    this.cue('save');
 
     if (tipOver) {
       b.vx = -inward * (2 + Math.random() * 1.5);
