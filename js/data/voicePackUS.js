@@ -27,6 +27,10 @@ export const PACK_US = {
     save: ['Saved! Great stop!', 'What a save!', 'The keeper says no!', 'Denied! Terrific goalkeeping!', 'Parried away!'],
     post: ['Off the post!', 'Woodwork! So close!', 'It rattles the crossbar!', 'Hits the frame of the goal!'],
     goal: ['GOAL! What a finish!', 'It\'s in! GOAL!', 'GOAL! Oh, you beauty!', 'They score! What a moment!', 'GOAL! Right into the back of the net!', 'He buries it! GOAL!', 'GOAL! Unstoppable!', 'And it\'s in! The crowd goes wild!'],
+    // v177: lines the play-by-play had none of, so the voice went quiet on them
+    keeperThrow: ['Quick throw from the keeper.', 'Rolled out to the full-back.', 'The keeper starts it from the back.'],
+    keeperLong: ['The keeper goes long.', 'A big kick upfield.', 'Launched from the back.'],
+    clock: ['The clock ticks on.', 'Time moving along here.', 'Plenty still to play for.'],
     ownGoal: ['Oh no! Into his own net!', 'Own goal! That\'s a disaster!', 'It goes in off the defender! Own goal!'],
     cross: ['Swung in!', 'Here comes the cross.', 'Delivered into the box!', 'Ball into the danger zone.'],
     header: ['Header!', 'He rises and heads it!', 'Gets his head on it!'],
