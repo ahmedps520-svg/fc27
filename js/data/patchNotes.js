@@ -18,6 +18,25 @@
  */
 export const RELEASES = [
   {
+    version: 'v174',
+    date: '2026-10-07',
+    tag: 'Gameplay',
+    title: 'Top corners and tip-overs',
+    lede: 'The computer now lifts some of its shots towards the bar, so goals go in high as well as low, and keepers tip the high ones over for a corner.',
+    entries: [
+      {
+        head: 'Shots',
+        summary: 'About three in ten of the computer\'s shots now rise towards the crossbar. Before, every one stayed below knee height.',
+        detail: 'Measured over 40 matches, not a single goal had gone in above 1.6 metres; three quarters went in under half a metre. The computer\'s shots were all struck low on purpose. Now about three in ten rise, so you see top corners, and some fly over the bar. Goals per match are the same as before (checked over 800 computer-played matches).',
+      },
+      {
+        head: 'Keepers',
+        summary: 'A shot near the crossbar can now be tipped over the bar for a corner, not only pushed round the post.',
+        detail: 'When a keeper meets a high shot far enough off his line, he usually lifts it over the bar. Before, every parry went round a post or back into play.',
+      },
+    ],
+  },
+  {
     version: 'v173',
     date: '2026-10-07',
     tag: 'Feel',

@@ -159,6 +159,7 @@ export const PRESSING = { low: 0.7, normal: 1, high: 1.4 };
 export const BENCH_SIZE = 5;
 export const MAX_SUBS = 3;
 
+const HIGH_SHOT = 0.3;               // v174: share of CPU efforts struck to rise
 const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
@@ -3821,7 +3822,11 @@ export class Match {
         // v99: a better CPU looks up first — the side the keeper is not covering, and tighter to it
         if (over && gk && Math.random() < over) post = -Math.sign(gk.y - CY) || post;
         this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0 ? 1 : 1) }, 0.55 + Math.random() * 0.45, {
-          loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
+          /* v174: and lifts some. Every effort used to be kept down (a peak under
+             half a metre), so not one goal went in above 1.6 m — no top corners,
+             and nothing for a keeper to tip over the bar. About three in ten now
+             rise towards the bar; the rest stay low as before. */
+          loft: chip ? 2.6 : Math.random() < HIGH_SHOT ? 0.75 + Math.random() * 0.35 : 0.32 + Math.random() * 0.3,
           curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
           chip,
           ...(over ? { sloppy: -0.45 * over } : {}),
@@ -4039,9 +4044,19 @@ export class Match {
     // a corner rather than a rebound.
     const side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1);
     const out = speed * (0.34 + Math.random() * 0.2);
-    const tipRound = Math.random() < 0.55;
+    /* v174: a high one is tipped over the bar. A shot near the crossbar met
+       far enough off the line that it clears the bar on the way up — the
+       keeper's fingertips lift it up and over, behind for a corner. */
+    const lineX = team.dir > 0 ? 0 : PITCH.w;
+    const tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7;
+    const tipRound = !tipOver && Math.random() < 0.55;
 
-    if (tipRound) {
+    if (tipOver) {
+      b.vx = -inward * (2 + Math.random() * 1.5);
+      b.vy *= 0.3;
+      b.vz = 6 + Math.random() * 2;
+      b.noTouch = 0.6;
+    } else if (tipRound) {
       b.vx = -inward * (5 + Math.random() * 5);     // carry it behind the goal line
       b.vy = side * out * 1.1;
       b.vz = 2 + Math.random() * 3;
@@ -4070,7 +4085,7 @@ export class Match {
     b.lastTouch = gk;                                 // keeper touched it last -> corner if it goes out
     b.shotBy = null;
     b.noTouch = Math.max(b.noTouch || 0, 0.18);
-    gk.touchLock = tipRound ? 0.8 : 0.35;
+    gk.touchLock = tipRound || tipOver ? 0.8 : 0.35;
     this.parries = (this.parries || 0) + 1;
     return false;
   }

@@ -10834,7 +10834,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, SURFACES = {
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, HIGH_SHOT = 0.3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, SURFACES = {
     clear: { drag: 1, bounce: 1, skid: 0.8 },
     overcast: { drag: 1, bounce: 1, skid: 0.8 },
     rain: { drag: 0.9, bounce: 0.75, skid: 0.86 },
@@ -12913,7 +12913,11 @@
         if (Math.random() < (3.3 - toGoal / (22 * sc)) * TUNE.shotRate * rateMul * (slow && toGoal > 14 ? 0.4 : 1) * dt) {
           let far = toGoal > 17, gk = this.teams[1 - p.team].players.find((q2) => q2.role === "GK"), chip = gk && Math.abs(gk.x - goalX) > 7 && toGoal < 20 && toGoal > 9 && Math.random() < 0.35 * this.aiSkillFor(p.team), post = (Math.random() < 0.62 ? Math.sign(CY - p.y) : -Math.sign(CY - p.y)) || 1;
           over && gk && Math.random() < over && (post = -Math.sign(gk.y - CY) || post), this.shoot(p, { x: 0, y: post * (0.35 + Math.random() * 0.55) * (team.dir > 0, 1) }, 0.55 + Math.random() * 0.45, {
-            loft: chip ? 2.6 : 0.32 + Math.random() * 0.3,
+            /* v174: and lifts some. Every effort used to be kept down (a peak under
+               half a metre), so not one goal went in above 1.6 m — no top corners,
+               and nothing for a keeper to tip over the bar. About three in ten now
+               rise towards the bar; the rest stay low as before. */
+            loft: chip ? 2.6 : Math.random() < HIGH_SHOT ? 0.75 + Math.random() * 0.35 : 0.32 + Math.random() * 0.3,
             curl: !chip && far && Math.random() < 0.4 ? 30 : 0,
             chip,
             ...over ? { sloppy: -0.45 * over } : {}
@@ -13023,18 +13027,20 @@
      * @returns {boolean} true if the keeper kept hold of it
      */
     keeperContact(gk, speed) {
-      let b = this.ball, inward = this.teams[gk.team].dir > 0 ? 1 : -1, hands = gk.ref.overall / 100 * this.preset.hands, holdable = 17 + hands * 13;
+      let b = this.ball, team = this.teams[gk.team], inward = team.dir > 0 ? 1 : -1, hands = gk.ref.overall / 100 * this.preset.hands, holdable = 17 + hands * 13;
       if (this.tally(gk, "saves"), speed < holdable && gk.diveT <= 0 && Math.random() < 0.36 + hands * 0.34)
         return this.cue("save"), !0;
       this.cue("save");
-      let side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1), out = speed * (0.34 + Math.random() * 0.2), tipRound = Math.random() < 0.55;
-      if (tipRound)
+      let side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1), out = speed * (0.34 + Math.random() * 0.2), lineX = team.dir > 0 ? 0 : PITCH.w, tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7, tipRound = !tipOver && Math.random() < 0.55;
+      if (tipOver)
+        b.vx = -inward * (2 + Math.random() * 1.5), b.vy *= 0.3, b.vz = 6 + Math.random() * 2, b.noTouch = 0.6;
+      else if (tipRound)
         b.vx = -inward * (5 + Math.random() * 5), b.vy = side * out * 1.1, b.vz = 2 + Math.random() * 3, b.noTouch = 0.6;
       else {
         let wide = Math.random() < 0.62, raw = { x: inward * (wide ? 0.45 : 0.9), y: side * (wide ? 1.05 : 0.5) }, aim = this.deflectionAim(gk), w = clamp2(this.preset.deflect * (0.55 + hands * 0.5), 0, 1), dx = raw.x * (1 - w) + aim.x * w, dy = raw.y * (1 - w) + aim.y * w, m = Math.hypot(dx, dy) || 1;
         b.vx = dx / m * out, b.vy = dy / m * out, b.vz = 1.5 + Math.random() * 2.5;
       }
-      return b.owner = null, b.lastTouch = gk, b.shotBy = null, b.noTouch = Math.max(b.noTouch || 0, 0.18), gk.touchLock = tipRound ? 0.8 : 0.35, this.parries = (this.parries || 0) + 1, !1;
+      return b.owner = null, b.lastTouch = gk, b.shotBy = null, b.noTouch = Math.max(b.noTouch || 0, 0.18), gk.touchLock = tipRound || tipOver ? 0.8 : 0.35, this.parries = (this.parries || 0) + 1, !1;
     }
   };
 
