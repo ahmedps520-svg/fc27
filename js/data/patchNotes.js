@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v176',
+    date: '2026-10-07',
+    tag: 'Fix',
+    title: 'Saves are called out loud again',
+    lede: 'Last update\'s new save lines had no spoken versions, so the voice went quiet on saves. It speaks again, and in Arabic it says the kind of save too.',
+    entries: [
+      {
+        head: 'Commentary',
+        summary: 'The spoken commentary calls every save again; in Arabic it now says whether it was held, tipped over or turned round the post.',
+        detail: 'v175 split saves into kinds for the written commentary, but the recorded voice and the Arabic desk only knew a save as one thing, so they said nothing. Where a voice has no line for the kind of save, it now uses its general save lines, and the Arabic desk has its own for each kind.',
+      },
+    ],
+  },
+  {
     version: 'v175',
     date: '2026-10-07',
     tag: 'Commentary',
