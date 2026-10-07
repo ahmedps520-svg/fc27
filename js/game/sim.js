@@ -160,15 +160,17 @@ export const BENCH_SIZE = 5;
 export const MAX_SUBS = 3;
 
 const HIGH_SHOT = 0.3;               // v174: share of CPU efforts struck to rise
+const FOUL_OPEN = 1.25;              // v181: fouls outside the box were 8.3 a match against ~12.7 real
 const GRAV = 16;                   // arcade gravity, m/s^2
 
 /* Behaviour knobs the balance harness can flip. Defaults are the game. */
 /* shotRate / tackleRate: v86 retune after the drive() fix (see HANDOFF, "Everyone turns").
+   v181: shotRate 0.5 -> 0.52 to hold goals with more fouls (FOUL_OPEN).
    v142: shotRate 0.7 -> 0.5 — passes now arrive (56% -> 70%), the ball reaches
    the final third more often, and shots and goals rose with it; this puts them
    back in the target band. laneWait: how close (m) a defender may stand to the
    line before the CPU holds the pass and looks again. */
-export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true, laneWait: 1.7 };
+export const TUNE = { drop: 2, squeeze: 0.93, counter: true, sweeper: true, runs: true, keeperDist: true, shotRate: 0.52, tackleRate: 0.6, boxCare: 0.35, support: true, advantage: true, boxRuns: true, laneWait: 1.7 };
 
 /* v143: how the weather changes the ball (see Match.surface). drag scales the
    rolling loss per frame (0.8 = a fifth less: a wet ball runs on), bounce the
@@ -2761,7 +2763,7 @@ export class Match {
       // v79: re-tuned against real foul counts (about one in four challenges from
       // the edge of his reach is a foul); a Rock at the Back is cleaner
       const chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * (p.tr?.rock ? 1 - 0.3 * p.tr.rock : 1)
-        * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1)       // v86: nobody dives in in his own box
+        * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : FOUL_OPEN)   // v86: nobody dives in in his own box; v181: out of it, more fouls
         * (slide ? 1.3 : 1);                                            // v90: a late slide is a clearer foul
       if (Math.random() < chance) {
         this.fouls[p.team] += 1;

@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v181 — more fouls in open play
+- `sim.js` tackle foul chance × `FOUL_OPEN` (1.25) outside the box (inside stays `TUNE.boxCare`); `TUNE.shotRate` 0.5 → 0.52 to hold goals. 200-match sweeps vs v180: fouls 8.15/8.39 → 9.52/9.54, yellows 1.77/1.68 → 1.99/2.00, reds 0.10 = , pens 0.15/0.12 → 0.14/0.10, goals 2.65/2.46 → 2.62/2.37, shots 14.9/14.8. (1.4 alone took goals to 2.47/2.23.) Goldens re-recorded; simfuzz clean.
+- `gameplay.test.mjs` throw-in floor 5 → 3.5 (12 short matches gave 4.33 while the sweeps held 5.1); `setpieces.test.mjs` TUNE default updated.
+- Evolutions: with the extra stoppages a right midfielder's goal involvement fell to 0.05 a match and `evo-audit` flagged Pace Merchant as RM (65 matches > 60). `pace` now fits ST/LW/RW only (as v145 did for CAMs); audit green.
+- Tried and dropped: putting poked balls out near the touchline (TOUCH_SAFE 10/18 m) — throw-ins 4.9 → 5.1–5.4, noise. Throw-ins (~5 vs ~26 real) are structural: play rarely reaches the touchline; restart-audit says clearances are 70% of them and passes going out only 0.7 of 82.
+
 ## v180 — more parries round the post
 - `sim.js keeperContact`: `tipRound` 0.55 → 0.75. 200-match sweeps: corners 3.27/3.22 → 3.76/3.88, goals 2.70/2.46 → 2.65/2.46. Goldens re-recorded; simfuzz clean.
 - Tried and dropped: punching crowded high crosses — keepers pick up only ~50 opposition balls in 40 matches (9 above 1 m), so it fired once in 40 matches.

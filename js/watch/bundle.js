@@ -10834,7 +10834,7 @@
     LW: "FWD",
     RW: "FWD",
     ST: "FWD"
-  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, HIGH_SHOT = 0.3, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.5, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, SURFACES = {
+  }, MENTALITY = { defensive: 0.72, balanced: 1, attacking: 1.32, allout: 1.55 }, PRESSING = { low: 0.7, normal: 1, high: 1.4 }, BENCH_SIZE = 5, MAX_SUBS = 3, HIGH_SHOT = 0.3, FOUL_OPEN = 1.25, GRAV = 16, TUNE = { drop: 2, squeeze: 0.93, counter: !0, sweeper: !0, runs: !0, keeperDist: !0, shotRate: 0.52, tackleRate: 0.6, boxCare: 0.35, support: !0, advantage: !0, boxRuns: !0, laneWait: 1.7 }, SURFACES = {
     clear: { drag: 1, bounce: 1, skid: 0.8 },
     overcast: { drag: 1, bounce: 1, skid: 0.8 },
     rain: { drag: 0.9, bounce: 0.75, skid: 0.86 },
@@ -12267,7 +12267,7 @@
           b.owner = p, b.lastTouch = p;
       else {
         p.stumble = 0.45 + frac * 0.7;
-        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1) * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : 1) * (slide ? 1.3 : 1);
+        let chance = (0.42 + 0.7 * this.aggressionOf(p)) * Math.pow(frac, 0.85) * ((_a = p.tr) != null && _a.rock ? 1 - 0.3 * p.tr.rock : 1) * (this.inPenaltyArea(owner, p.team) ? TUNE.boxCare : FOUL_OPEN) * (slide ? 1.3 : 1);
         if (Math.random() < chance) {
           this.fouls[p.team] += 1, this.cue("foul", p);
           let adv = TUNE.advantage && !this.inPenaltyArea(owner, p.team) && this.advantageFor(owner, p);

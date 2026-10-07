@@ -24,7 +24,7 @@ export const EVO_TRACKS = [
     // v98: attackers and wide players only — a defender could start this and never score the three goals.
     // v145: not a CAM either — he is rarely the scorer or the last pass in this game (0.01 goals, 0.05
     // assists a match), and three involvements took ~66 matches (tools/evo-audit.mjs). Engine Room is his.
-    fits: (p) => ['ST', 'LW', 'RW', 'LM', 'RM'].includes(p.position) && p.overall <= 82 && p.stats.pace <= 90,
+    fits: (p) => ['ST', 'LW', 'RW'].includes(p.position) && p.overall <= 82 && p.stats.pace <= 90,   // v181: forwards only — a wide midfielder scores or sets up ~0.05 a match, so 'involve 3' took 60+
     stages: [
       { need: S('wins', 2, 'Win 2 matches'), give: { ovr: 1, stats: { pace: 3 } } },
       { need: S('involve', 3, 'Score or assist 3 times with him'), give: { ovr: 1, stats: { pace: 2, dribbling: 2 }, trait: 'quick' } },
