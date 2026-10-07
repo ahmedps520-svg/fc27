@@ -54,8 +54,10 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
     keeper: match.teams[1].players.find((p) => p.role === 'GK')?.ref.name || 'the keeper',
   });
   const say = (speaker, text, prio, file) => { if (text) desk.say(speaker, text, prio, file); };
-  const co = (key, ctx, delay = 1800) => {
-    if (Math.random() > (CO_CHANCE[key] ?? 0.15)) return;
+  const co = (key0, ctx, delay = 1800) => {
+    // v179: the analyst's own lines for a finer key where he has them, its family's otherwise
+    const key = (pack ? pack.co : bank.co)?.[key0]?.length ? key0 : BASE_KEY[key0] || key0;
+    if (Math.random() > (CO_CHANCE[key] ?? CO_CHANCE[BASE_KEY[key]] ?? 0.15)) return;
     if (pack) { const l = packLine(pack, 'co', key, 'co'); if (l) later(() => say('co', l.text, 1, l.file), delay); return; }
     const text = lineFrom(bank.co, key, { ...ctxBase(), ...ctx }, 'co');
     if (text) later(() => say('co', text), delay);
@@ -83,13 +85,13 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
         // the feed keeps its own line with the name in it; the voice says the pack's
         const l = packLine(pack, 'pbp', key, 'pbp') || (base !== key ? packLine(pack, 'pbp', base, 'pbp') : null);
         if (l) say('pbp', l.text, prio, l.file);
-        if (key !== 'goal' && key !== 'ownGoal') co(base, ctx);
+        if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
         return fallback;
       }
       const c = { ...ctxBase(), ...ctx };
       const text = lang === 'ar' ? lineFrom(bank.pbp, key, c, 'pbp') || (base !== key ? lineFrom(bank.pbp, base, c, 'pbp') : '') : fallback;
       say('pbp', text, prio);
-      if (key !== 'goal' && key !== 'ownGoal') co(base, ctx);
+      if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
       return text;
     },
 
