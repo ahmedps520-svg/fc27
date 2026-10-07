@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v176 — spoken saves (v175 regression)
+- v175's `saveCatch`/`tipOver`/`tipRound` keys had no pack (voicePackUS) or AR pbp lines, so `director.line` said nothing for saves. `director.js` `BASE_KEY` maps them to `save` for the pack, the AR bank fallback and `co()` (CO_CHANCE has `save`). AR pbp banks for the three kinds added in `commentaryVoices.js`.
+- Rule: any new commentary key used by play.js must exist in every voice bank or have a `BASE_KEY` fallback.
+- Test: `tests/unit/save-voice.test.mjs`.
+
 ## v175 — saves commentated as they happened; pad-reach flake
 - `sim.js keeperContact` sets `this.saveKind` ('catch' | 'over' | 'round' | 'parry'); the parry's `save` cue now fires after the decision (no RNG change, sweep identical). `play.js commentCue` maps a save to `saveCatch` / `tipOver` / `tipRound` / `save`. New banks in `commentary.js`; "Tipped over" and "Fingertips … going in" moved out of the generic bank.
 - `tests/qa/pad-reach.mjs` (CI red on v174): the release-notes check presses A again if still on the title, and its failure message prints the save's `notesSeen`, the hash and what is on screen. Passed 5/5 locally.

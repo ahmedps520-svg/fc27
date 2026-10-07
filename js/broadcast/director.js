@@ -19,6 +19,9 @@ import { createDesk, banks, lineFrom, packLine } from './voice.js';
 import { PACK_US, VOICE_PACKS } from '../data/voicePackUS.js';
 import { derbyOf, weatherKey, formOf, goalKeys, fullTimeKeys, addedMinutes, broadcastMinute, clockLabel, offsideMargin, BOARD_AT } from './context.js';
 
+// v175 split the save by kind; the voice banks keep one family for it
+const BASE_KEY = { saveCatch: 'save', tipOver: 'save', tipRound: 'save' };
+
 const CO_CHANCE = { goal: 0.9, save: 0.55, post: 0.7, bigChance: 0.7, card: 0.55, red: 0.9, penaltyAwarded: 0.8, offside: 0.3, foul: 0.2, skill: 0.35, counter: 0.35, sub: 0.4, shotWide: 0.25, header: 0.2, volley: 0.5, bicycle: 0.9, ownGoal: 0.9, comeback: 0.6, lead: 0.5, extend: 0.5, halftime: 0.8, fulltime: 0.9, kickoff: 0.6 };
 
 export function createDirector({ match, host, pitch, clubs, settings = {}, lang = 'en', rtl = false, graphics = true, clock = true, final = false, form = new Map(), venue = '', atmo = {} }) {
@@ -74,16 +77,19 @@ export function createDirector({ match, host, pitch, clubs, settings = {}, lang 
     /** The play screen's own feed line, spoken by the play-by-play voice. */
     line(key, ctx = {}, fallback = '') {
       const prio = key === 'goal' || key === 'ownGoal' ? 2 : 1;
+      // v176: a finer key (the kind of save) falls back to its family where a bank has no lines for it
+      const base = BASE_KEY[key] || key;
       if (pack) {
         // the feed keeps its own line with the name in it; the voice says the pack's
-        const l = packLine(pack, 'pbp', key, 'pbp');
+        const l = packLine(pack, 'pbp', key, 'pbp') || (base !== key ? packLine(pack, 'pbp', base, 'pbp') : null);
         if (l) say('pbp', l.text, prio, l.file);
-        if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
+        if (key !== 'goal' && key !== 'ownGoal') co(base, ctx);
         return fallback;
       }
-      const text = lang === 'ar' ? lineFrom(bank.pbp, key, { ...ctxBase(), ...ctx }, 'pbp') : fallback;
+      const c = { ...ctxBase(), ...ctx };
+      const text = lang === 'ar' ? lineFrom(bank.pbp, key, c, 'pbp') || (base !== key ? lineFrom(bank.pbp, base, c, 'pbp') : '') : fallback;
       say('pbp', text, prio);
-      if (key !== 'goal' && key !== 'ownGoal') co(key, ctx);
+      if (key !== 'goal' && key !== 'ownGoal') co(base, ctx);
       return text;
     },
 
