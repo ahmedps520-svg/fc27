@@ -228,6 +228,10 @@ const AR_TEXT = {
   "Momentum": "مجريات اللعب",
   "on": "على المرمى",
   "Share the result card": "شارك بطاقة النتيجة",
+  "Keep these goals": "احفظ هذه الأهداف",
+  "Your goals": "أهدافك",
+  "Goal": "هدف",
+  "Remove": "إزالة",
   "Not enough of the match to draw.": "لم يُلعب ما يكفي من المباراة للرسم.",
 };
 export function tx(en) { return lang() === 'ar' ? AR_TEXT[en] ?? en : en; }
