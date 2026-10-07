@@ -332,6 +332,8 @@ export function updateCut(p, dt) {
 }
 export const cutEnv = (p) => (p._cut ? Math.sin(Math.PI * Math.min(1, p._cut.t / p._cut.dur)) : 0);
 
+const RISE_MS = 350;
+
 export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const { parts } = rig;
   /* The parts are placed in pitch coordinates, so the group itself only
@@ -343,7 +345,20 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const cs = Math.cos(spin); const sn = Math.sin(spin);
   rig.grp.rotation.set(0, 0, spin);
   rig.grp.position.set(p.x - (cs * p.x - sn * p.y), p.y - (sn * p.x + cs * p.y), rig.groundZ || 0);
-  if (p.diveT > 0) { poseDive(rig, p, fine); return; }
+  if (p.diveT > 0) { p._diveDir = p.diveDir || 1; p._rise = -1; poseDive(rig, p, fine); return; }
+  /* v173: up off the grass. A dive ends with him flat on the turf, and the next
+     frame had him standing — he now pushes himself up over a third of a
+     second (the fall's own get-up, laid along the way he dived). Render only:
+     the sim has him free to move as soon as the dive is over, as before. */
+  if (p._rise === -1) p._rise = performance.now();
+  if (p._rise > 0 && !p.inHands && !(p.downT > 0)) {
+    const u = (performance.now() - p._rise) / RISE_MS;
+    if (u < 1) {
+      poseDown(rig, { x: p.x, y: p.y, dirX: 0, dirY: p._diveDir || 1, downMax: 1, downT: 0.28 * (1 - u) });
+      return;
+    }
+    p._rise = 0;
+  }
   if (p.downT > 0) { poseDown(rig, p); return; }
   const sp = Math.hypot(p.vx, p.vy);
   /* v110: the scorer's own celebration (game/celebrations.js); the rest of
