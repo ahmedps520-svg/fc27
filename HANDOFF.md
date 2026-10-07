@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v174 — the CPU lifts some shots; keepers tip high ones over the bar
+- `sim.js` CPU open-play shot: `loft` 0.75–1.1 with probability `HIGH_SHOT` (0.3), else 0.32–0.62 as before (peak height was ~0.4 m). `keeperContact`: a parry of a ball above 2 m, met > 0.6 m off the line, is tipped over (70%): small backward vx, vy ×0.3, vz 6–8 → behind for a corner.
+- 200-match sweeps: goals 2.53/2.53 → 2.70/2.46 (noise ±0.15), shots 14.8/14.7, on target % ~42, corners 3.2. Goldens re-recorded; simfuzz clean.
+- `tools/shot-height-audit.mjs`: goal heights p75 0.53 → 0.68 m, p90 → 1.26 m, above 1.6 m 0 → 9 of 162; tip-overs 0 → 7 per 40 matches.
+- Checked and left: slide/header end poses already ease out (tacklePose env, headerPose cos); scanned models crossfade clips.
+
 ## v173 — keepers get up after a dive (render only)
 - `rig.js posePlayer`: when `diveT` runs out, `p._rise` stamps `performance.now()` and for `RISE_MS` (350) the figure is drawn with `poseDown`'s get-up (t 0.72→1), laid along `_diveDir`; skipped while `inHands` or `downT`. Sim untouched (sweep identical).
 - Strip: `tests/tmp/risestrip.mjs` (not committed; fakes `performance.now` from the strip clock).
