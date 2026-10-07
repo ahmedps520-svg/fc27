@@ -74,6 +74,7 @@ const profileCard = () => {
       <div class="ol-acct-btns">
         <button class="btn ghost sm" id="pairWatch">Pair a watch</button>
         <button class="btn ghost sm" id="signOut">Sign out</button>
+        <button class="btn ghost sm danger" id="deleteAcct">Delete account</button>
       </div>
     </div>`;
 };
@@ -483,6 +484,40 @@ export function mountOnline(root, { rerender }) {
     box.querySelector('#pairDone').addEventListener('click', close);
     box.addEventListener('click', (e) => { if (e.target === box) close(); });
     setTimeout(close, 3 * 60 * 1000);
+  });
+
+  /* v184: delete the account for good (App Store 5.1.1(v)). The password
+   * again, a plain statement of what goes, and progress on this device is
+   * left alone — it was never the server's to take. */
+  root.querySelector('#deleteAcct')?.addEventListener('click', () => {
+    const box = document.createElement('div');
+    box.className = 'pair-overlay';
+    box.innerHTML = `
+      <form class="pair-card glass del-card" id="delForm">
+        <span class="pair-kicker">Delete your account</span>
+        <p class="pair-note">This removes your online account for good: your name, your online record, your guild seat and your friends list. Progress saved on this device stays. It cannot be undone.</p>
+        <input type="password" id="delPass" placeholder="Your password" autocomplete="current-password" required>
+        <div class="del-btns">
+          <button type="button" class="btn ghost" id="delCancel">Cancel</button>
+          <button type="submit" class="btn primary danger" id="delGo">Delete account</button>
+        </div>
+      </form>`;
+    document.body.appendChild(box);
+    const close = () => box.remove();
+    box.querySelector('#delCancel').addEventListener('click', close);
+    box.addEventListener('click', (e) => { if (e.target === box) close(); });
+    box.querySelector('#delForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const go = box.querySelector('#delGo'); go.disabled = true;
+      try { await api.deleteAccount(box.querySelector('#delPass').value); }
+      catch (err) { go.disabled = false; toast(err.message, 'warn'); return; }
+      close();
+      net.disconnect();
+      api.signOut();
+      toast('Account deleted — progress stays on this device', 'info');
+      rerender();
+    });
+    box.querySelector('#delPass').focus();
   });
 
   root.querySelector('#signOut')?.addEventListener('click', () => {

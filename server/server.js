@@ -28,6 +28,8 @@ const PORT = Number(process.env.PORT) || Number(process.argv[2]) || 8412;
 // Set when the game is served from somewhere else (e.g. GitHub Pages) and only
 // the API and match hub live here. Comma-separated, or '*' to allow any origin.
 const ALLOWED = (process.env.ALLOW_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
+// v184: the iOS app serves the game from inside itself under this origin and talks to the API here
+const APP_ORIGINS = ['capacitor://localhost'];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -180,6 +182,19 @@ async function api(req, res, route) {
       profile: store.publicProfile(r.account),
       save: r.account.save,
     });
+  }
+
+  // v184: delete the account (App Store 5.1.1(v)); the password again, and the sign-in limits
+  if (route === '/api/account/delete' && req.method === 'POST') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (!guard.loginAllowed(req, acct.name)) return json(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+    const body = await readBody(req);
+    if (typeof body.pass !== 'string' || body.pass.length > 256) return json(res, 400, { error: 'Your password, please.' });
+    const r = store.deleteAccount(acct, body.pass);
+    if (r.error) { guard.loginFailed(req, acct.name); return json(res, 400, { error: r.error }); }
+    console.log(`[account] deleted ${acct.name}`);
+    return json(res, 200, { ok: true });
   }
 
   if (route === '/api/me') {
@@ -391,8 +406,8 @@ async function api(req, res, route) {
 /** Cross-origin headers, only when a front end elsewhere has been allowed. */
 function cors(req, res) {
   const origin = req.headers.origin;
-  if (!origin || !ALLOWED.length) return;
-  const ok = ALLOWED.includes('*') || ALLOWED.includes(origin);
+  if (!origin) return;
+  const ok = APP_ORIGINS.includes(origin) || ALLOWED.includes('*') || ALLOWED.includes(origin);
   if (!ok) return;
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
@@ -462,7 +477,7 @@ const SECURITY_HEADERS = {
  * were all a GET away. Now only the game's own files are: the pages at the
  * top level, and four directories. Anything else is a 404, not a 403, so a
  * probe learns nothing about what exists. */
-const PUBLIC_FILES = new Set(['index.html', 'notes.html', 'watch.html', 'landing.html', 'maintenance.html',
+const PUBLIC_FILES = new Set(['index.html', 'notes.html', 'privacy.html', 'watch.html', 'landing.html', 'maintenance.html',
   'model-preview.html', 'manifest.webmanifest', 'sw.js', 'events.json', 'LICENSE']);
 const PUBLIC_DIRS = ['js', 'styles', 'assets', 'icons'];
 function isPublic(rel) {

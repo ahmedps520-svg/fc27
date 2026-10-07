@@ -13,6 +13,7 @@ import * as crashGuard from './crash.js';
 import { persistent } from './storage.js';
 import { setBindings, setToggles, setPadTuning } from './game/input.js';
 import { applyLanguage, t } from './i18n.js';
+import { APP_STORE } from './platform.js';
 
 /* v87: code-split. The title screen and the menu ship with the boot; every
  * other screen is its own chunk, fetched the first time it is visited (and
@@ -74,7 +75,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v183';
+export const APP_VERSION = 'v184';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -523,7 +524,8 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
  * So: check for a new worker on load and every time the app comes back to the
  * foreground, tell a waiting one to take over, and reload once when it does.
  * ------------------------------------------------------------------ */
-if ('serviceWorker' in navigator) {
+// v184: not in the App Store build — the app ships its files, and updates come from the App Store
+if ('serviceWorker' in navigator && !APP_STORE) {
   window.addEventListener('load', async () => {
     try {
       // updateViaCache 'none' keeps the browser from answering the update

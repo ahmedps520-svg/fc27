@@ -18,6 +18,8 @@
  * never lying about being done.
  */
 
+import { APP_STORE } from './platform.js';
+
 const KEY = 'apexxi.build';
 
 /** The build this device last successfully launched, or null on a first run. */
@@ -42,6 +44,8 @@ export function rememberBuild(build) {
  *   out of a game that runs perfectly well offline.
  */
 export async function checkForUpdate() {
+  // v184: the App Store build is updated by the App Store, never by the server
+  if (APP_STORE) return { pending: false, build: null, first: false };
   try {
     const res = await fetch('api/version', { cache: 'no-store' });
     if (!res.ok) return { pending: false, build: null, first: false };

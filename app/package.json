@@ -1,0 +1,19 @@
+{
+  "name": "apexxi-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The App Store build of APEX XI: the web game in a Capacitor shell, with original names and no paid items.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build-www.mjs",
+    "sync": "node build-www.mjs && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

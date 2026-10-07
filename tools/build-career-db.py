@@ -162,6 +162,7 @@ open(OUT,'w').write(f'''/**
  * steers away from) and its own crest.
  */
 import {{ applyLooks }} from './clubLook.js';
+import {{ fictionalCareer }} from '../platform.js';
 
 export const CAREER_CLUBS = [
 {js_clubs},
@@ -180,6 +181,9 @@ export const CAREER_RATINGS = {{
 export const REAL_MANAGERS = [
 {js_mgrs},
 ];
+
+// v184: original clubs, leagues and people in the App Store build (platform.js); nothing on the web
+fictionalCareer(CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS);
 ''')
 sizes = {cid: len(s) for cid, s in squads.items()}
 print('clubs:', len(CLUBS), 'squad sizes:', sizes, 'pool left:', len(pool))

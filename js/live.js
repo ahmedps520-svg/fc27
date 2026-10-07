@@ -9,6 +9,7 @@
  * whole job of running a live event.
  */
 import { LIVE_DEFAULT } from './data/liveDefault.js';
+import { APP_STORE, personName } from './platform.js';
 import { DEFAULT_TIERS } from './data/season.js';
 
 let live = LIVE_DEFAULT;
@@ -51,7 +52,12 @@ export async function refresh() {
 }
 
 /** The one event that is on right now. Dated events win; otherwise the rotation. */
+/* v184: the event's featured player by the App Store build's name for him (platform.js) */
+const named = (ev) => (ev && ev.featured && APP_STORE ? { ...ev, featured: { ...ev.featured, player: personName(ev.featured.player) } } : ev);
 export function activeEvent(now = new Date()) {
+  return named(activeEventRaw(now));
+}
+function activeEventRaw(now) {
   const today = day(now);
   const dated = live.events.filter((e) => e.from || e.to);
   const hit = dated.find((e) => inWindow(e, today));

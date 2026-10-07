@@ -12,6 +12,8 @@
  * Deliberately independent of the rest of the app: no imports from modules
  * that could themselves be the thing that broke.
  */
+// v184: in the App Store build the page is inside the app and the server is elsewhere
+const CRASH_URL = globalThis.APEX_APP_STORE === true ? `${String(globalThis.APEX_SERVER || 'https://fc27.onrender.com').replace(/\/$/, '')}/api/crash` : 'api/crash';
 const SEEN_MAX = 3;                     // reports per page load; a loop must not spam
 let seen = 0;
 let card = null;
@@ -25,8 +27,8 @@ function report(message, stack, where) {
   seen += 1;
   try {
     const body = JSON.stringify({ version, message, stack, where, url: location.pathname });
-    if (navigator.sendBeacon) navigator.sendBeacon('api/crash', new Blob([body], { type: 'application/json' }));
-    else fetch('api/crash', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    if (navigator.sendBeacon) navigator.sendBeacon(CRASH_URL, new Blob([body], { type: 'application/json' }));
+    else fetch(CRASH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
   } catch { /* reporting must never throw */ }
 }
 

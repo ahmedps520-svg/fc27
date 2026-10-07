@@ -1,0 +1,140 @@
+# v184: build the App Store version and upload it to TestFlight.
+#
+# Run it by hand: Actions → "iOS → TestFlight" → Run workflow. It builds app/www
+# with the App Store flag (original names, no paid items — see app/build-www.mjs),
+# archives the Capacitor project in app/ios, signs it with Apple's cloud-managed
+# certificates through an App Store Connect API key, and uploads the build.
+# Each run's build number is the run number, so every upload is unique.
+#
+# Repository secrets (Settings → Secrets and variables → Actions) — added by
+# the owner, never pasted anywhere else:
+#   ASC_KEY_ID      the API key's Key ID
+#   ASC_ISSUER_ID   the Issuer ID shown above the keys list
+#   ASC_KEY_P8      the whole text of the downloaded AuthKey_XXXX.p8 file
+#   APPLE_TEAM_ID   the 10-character Team ID (developer.apple.com → Membership)
+# Optional repository variable:
+#   IOS_BUNDLE_ID   if the app record uses a bundle ID other than online.apexxi.game
+#
+# See app/README.md for the whole first-release checklist.
+name: iOS → TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version shown on the App Store (e.g. 1.0, 1.1)'
+        required: true
+        default: '1.0'
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'online.apexxi.game' }}
+      VERSION: ${{ inputs.version }}
+      BUILD: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the secrets are set
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then echo "::error::Repository secret $v is not set (see app/README.md)"; missing=1; fi
+          done
+          [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "::error::version must look like 1.0 or 1.0.1"; missing=1; }
+          exit $missing
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Pick the newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Build the App Store web files and sync them into the iOS project
+        working-directory: app
+        run: |
+          npm ci
+          node build-www.mjs
+          npx cap sync ios
+
+      - name: API key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild archive \
+            -project app/ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD" \
+            | tail -n 60
+          test -d "$RUNNER_TEMP/App.xcarchive" || { echo "::error::archive failed — see the log above"; exit 1; }
+
+      - name: Sign and upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "### Uploaded APEX XI $VERSION ($BUILD) to App Store Connect" >> "$GITHUB_STEP_SUMMARY"
+          echo "It shows in TestFlight once Apple has processed it, usually 10–30 minutes." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

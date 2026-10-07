@@ -1,3 +1,6 @@
+// v184: the App Store build renames every real person first (see platform.js)
+import './fictional.js';
+import { APP_STORE, personName, shortOf } from '../platform.js';
 import {
   FIRST_NAMES, LAST_NAMES, NATIONS, CLUB_BLUEPRINTS, LEAGUE_NAME, LEAGUES, POSITIONS, rarityFor,
   ICONS, ICON_TRAITS, STARS, STAR_TRAITS, SAUDI_ICONS,
@@ -252,6 +255,9 @@ const SBC_LEGENDS_2 = [
   ['David Villa', 'D. Villa', 'Spain', 'ST', 88, 28],
   ['Ruud van Nistelrooy', 'R. v. Nistelrooy', 'Netherlands', 'ST', 88, 28],
 ];
+
+// v184: the App Store build's legends are original people too (platform.js)
+for (const r of [...SBC_LEGENDS, ...SBC_LEGENDS_2]) { r[0] = personName(r[0], r[2]); r[1] = APP_STORE ? shortOf(r[0]) : r[1]; }
 
 /* The original ten. Every generation loop below runs over these and only
  * these: the league clubs added in v68 draw no random numbers of their own

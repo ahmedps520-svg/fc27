@@ -5,6 +5,7 @@ import { skillList } from '../game/skills.js';
 import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics, veil } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
+import { serverPath } from '../net/config.js';
 import { icon } from '../components/facts.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, loadVoice, playVoice } from '../audio.js';
@@ -99,6 +100,10 @@ export function render() {
       <div class="setting-row">
         <div><b>${tx("What's new")}</b><span>${tx("Every change, newest first.")}</span></div>
         <a href="notes.html" target="_blank" rel="noopener" class="btn ghost">Changelog</a>
+      </div>
+      <div class="setting-row">
+        <div><b>${tx("Privacy")}</b><span>${tx("What is stored, and how to delete it.")}</span></div>
+        <a href="privacy.html" target="_blank" rel="noopener" class="btn ghost">${tx("Privacy policy")}</a>
       </div>
       <div class="setting-row">
         <div><b>${tx("Version")}</b></div>
@@ -473,7 +478,7 @@ export function mount(root) {
    * bytes it is sending. A mismatch with the stored build is worth calling
    * out — it means the title screen has an update waiting. */
   const buildTag = root.querySelector('#buildTag');
-  fetch('api/version', { cache: 'no-store' })
+  fetch(serverPath('api/version'), { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : null))
     .then((v) => {
       if (!v?.build) { buildTag.textContent = 'offline'; return; }
