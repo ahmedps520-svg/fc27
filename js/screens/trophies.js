@@ -131,14 +131,21 @@ async function fillGallery(root) {
   const list = await listGoals();
   if (!list.length) { el.hidden = true; return; }
   el.hidden = false;
+  const clipOk = typeof MediaRecorder !== 'undefined' && typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function';
   el.innerHTML = `
     <header class="panel-head"><h2>${tx('Your goals')}</h2><span class="ph-sub">${list.length}</span></header>
     <ul class="gg-list">${list.map((g) => `
       <li><button class="gg-play" data-goal="${escG(g.id)}"><i aria-hidden="true">▶</i><b>${g.minute ?? ''}'</b><span>${escG(g.scorer || tx('Goal'))}</span><em>${escG((g.teams || []).join(' · '))} ${escG(g.score || '')}</em></button>
+      ${clipOk ? `<button class="gg-rec" data-goal-rec="${escG(g.id)}" aria-label="${tx('Save as a clip')}" title="${tx('Save as a clip')}">⬇</button>` : ''}
       <button class="gg-del" data-goal-del="${escG(g.id)}" aria-label="${tx('Remove')}">✕</button></li>`).join('')}</ul>`;
   el.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', async () => {
     const g = await getGoal(b.dataset.goal);
     if (g) navigate('play', { duration: 360, ...g.stage, gallery: g });
+  }));
+  // v183: record its replay as a video file (the full-time highlights recorder, one goal long)
+  el.querySelectorAll('[data-goal-rec]').forEach((b) => b.addEventListener('click', async () => {
+    const g = await getGoal(b.dataset.goalRec);
+    if (g) navigate('play', { duration: 360, ...g.stage, gallery: { ...g, record: true } });
   }));
   el.querySelectorAll('[data-goal-del]').forEach((b) => b.addEventListener('click', async () => {
     await deleteGoal(b.dataset.goalDel); fillGallery(root);

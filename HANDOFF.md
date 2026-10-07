@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v183 — a kept goal as a video
+- Trophy Room gallery rows get ⬇ (when MediaRecorder + canvas.captureStream exist): `navigate('play', { ...stage, gallery: { ...g, record: true } })`; play.js starts `recordClip()` instead of `playHighlights()`, names the file `apexxi-goal-<teams>-<minute>m-<scorer>.webm`, and on the last pass stops the recorder and returns 900 ms later (onstop is async).
+- Nightly CI now runs `tests/qa/gallery.mjs`. Browser check of the download: `tests/tmp/gg-rec.mjs` (not committed).
+- Loop paused here at the user's request (after v183).
+
 ## v182 — the goal gallery (backlog #16: goal-of-the-week gallery)
 - `js/goalGallery.js`: IndexedDB `apexxi-goals` / store `goals`; `keepGoals(entries)` (newest `MAX` 24), `listGoals`, `getGoal`, `deleteGoal`; `packFrames` rounds positions to 2 dp; `stageOf(params)` keeps only homeId/awayId/squads/venueId/atmo/atmoSeed/street/fives/field/clash/mode (never career/ultimate/weekend).
 - `play.js`: goal clips carry scorer/teams/score; full time shows "☆ Keep these goals" (not online); `params.gallery` skips pregame/kick-off/PA and hint counting, loads the clip into `goalClips` and `playHighlights()`, and `nextHighlight` navigates back to the Trophy Room when it ends.
