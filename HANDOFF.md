@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v180 — more parries round the post
+- `sim.js keeperContact`: `tipRound` 0.55 → 0.75. 200-match sweeps: corners 3.27/3.22 → 3.76/3.88, goals 2.70/2.46 → 2.65/2.46. Goldens re-recorded; simfuzz clean.
+- Tried and dropped: punching crowded high crosses — keepers pick up only ~50 opposition balls in 40 matches (9 above 1 m), so it fired once in 40 matches.
+- Checked: club colours in the crowd already exist (renderGL sectionCol, v78/v116).
+
 ## v179 — the analyst's save lines
 - `director.js co()` uses the finer key when the analyst's bank has it, else `BASE_KEY` (and its CO_CHANCE); `line()` now passes the finer key to `co()`.
 - `voicePackUS.js` co: `tipOver`, `tipRound`, `saveCatch` (3 each), rendered with Kokoro (`--only co-<key>`); `commentaryVoices.js CO` has the same three for the device voice.

@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v180',
+    date: '2026-10-07',
+    tag: 'Gameplay',
+    title: 'More corners',
+    lede: 'Keepers push more of their saves round the post, so matches have more corners, closer to real football, with the same number of goals.',
+    entries: [
+      {
+        head: 'Keepers',
+        summary: 'A parried shot now goes behind for a corner three times in four, up from about half.',
+        detail: 'Matches were short of corners: about 3.2 a game, against nearly 6 in real football for the same number of shots. Keepers now turn more of their parries round the post instead of back into play, which brings it to about 3.8 and gives both sides more set pieces. Goals per match are unchanged (checked over 800 computer-played matches).',
+      },
+    ],
+  },
+  {
     version: 'v179',
     date: '2026-10-07',
     tag: 'Commentary',
