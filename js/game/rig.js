@@ -7,7 +7,7 @@
  */
 import * as THREE from '../vendor/three.module.js';
 import { celebPose, armDirs } from './celebrations.js';
-import { kickFoot, kickEnv, KICK_PHASES, throwArm, tacklePose, headerPose } from './kick.js';
+import { kickFoot, kickEnv, KICK_PHASES, throwArm, tacklePose, headerPose, tipArm } from './kick.js';
 import { paintKit } from '../data/kitDesign.js';
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
@@ -610,10 +610,13 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     const swing = cheer ? Math.sin(celebT * 5 + side) * 0.25 : 0;
     // v145: a keeper's overarm throw (game/kick.js)
     const thr = p._throw && p._throw.side === (side < 0 ? -1 : 1) ? throwArm(p._throw) : null;
+    // v178: a tip over the bar flings his hand up over his head
+    const tip = !thr && p._tip && p._tip.side === (side < 0 ? -1 : 1) ? tipArm(p._tip) : null;
     // v154: a keeper with the ball in his hands holds it to his chest
     const hold = !thr && p._holdBall;
-    const shA = thr ? thr.sh : hold ? 0.75 : cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
-    const elA = thr ? thr.el : hold ? 2.1 : cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
+    let shA = thr ? thr.sh : hold ? 0.75 : cheer ? -2.35 + swing : s * (0.45 + 0.3 * Math.min(1, sp / 9)) * gait;   // v102: a sprint pumps the arms harder
+    let elA = thr ? thr.el : hold ? 2.1 : cheer ? -2.6 + swing * 0.6 : shA + 0.8 * gait + 0.22;
+    if (tip) { shA += (-3.0 - shA) * tip.up; elA += (-3.2 - elA) * tip.up; }
     // hung off the outside of the deltoid, not buried in the chest
     const lat = side * (CHEST_W * b.shoulders + 0.014) + bank;
     const out = side * (cheer ? 0.34 : CHEST_W * b.shoulders + 0.042) + bank;
@@ -814,7 +817,8 @@ export function poseDive(rig, p, fine) {
     [parts.armL, parts.foreL, parts.handL, parts.sleeveL, 0.16],
     [parts.armR, parts.foreR, parts.handR, parts.sleeveR, -0.16],
   ]) {
-    const up = hi * air;                                    // a high dive reaches up over the head
+    const tp = tipArm(p._tip);
+    const up = Math.max(hi * air, tp ? tp.up : 0);         // a high dive reaches up over the head; a tip flings the hands higher
     const e = at(0.5 * lay + reach * (0.5 - 0.15 * up), sz2 + off * 0.5 + 0.05 + 0.3 * up);
     const h = at(0.5 * lay + reach * (1 - 0.3 * up), sz2 + off + 0.1 + 0.6 * up);
     segment(u, sx2, sy2, sz2, e[0], e[1], e[2], 0.049);
