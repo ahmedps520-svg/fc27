@@ -25,6 +25,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Soak (60 matches, random modes and settings)
         run: node tests/qa/soak.mjs --matches 60 --seed ${{ github.run_number }}
+      - name: Goal gallery (score, keep, list in the Trophy Room, play back, return)
+        run: node tests/qa/gallery.mjs
       - name: Monkey (random clicks on every screen, desktop and phone)
         run: |
           node tests/qa/monkey.mjs --clicks 15 --seed ${{ github.run_number }}

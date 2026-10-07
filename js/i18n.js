@@ -232,6 +232,7 @@ const AR_TEXT = {
   "Your goals": "أهدافك",
   "Goal": "هدف",
   "Remove": "إزالة",
+  "Save as a clip": "احفظه كمقطع",
   "Not enough of the match to draw.": "لم يُلعب ما يكفي من المباراة للرسم.",
 };
 export function tx(en) { return lang() === 'ar' ? AR_TEXT[en] ?? en : en; }

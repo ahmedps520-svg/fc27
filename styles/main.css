@@ -5592,4 +5592,5 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .goal-gallery .gg-play b { grid-row: 1 / 3; font-family: var(--font-num); font-size: 20px; }
 .goal-gallery .gg-play span { font-weight: 700; }
 .goal-gallery .gg-play em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+.goal-gallery .gg-rec { width: 40px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--accent); cursor: pointer; font-size: 16px; }
 .goal-gallery .gg-del { width: 40px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text-dim); cursor: pointer; }

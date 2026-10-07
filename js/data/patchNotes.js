@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v183',
+    date: '2026-10-07',
+    tag: 'New',
+    title: 'Your goal as a video',
+    lede: 'Any goal in the Trophy Room can now be saved as a video file, ready to share.',
+    entries: [
+      {
+        head: 'Goal gallery',
+        summary: 'Tap ⬇ next to a kept goal to record its replay and download it as a video clip.',
+        detail: 'The replay plays with its broadcast angles while it is recorded on your device, then the file downloads (named after the teams, the minute and the scorer) and you are back in the Trophy Room. Nothing is uploaded anywhere. Shown on devices that can record the screen.',
+      },
+    ],
+  },
+  {
     version: 'v182',
     date: '2026-10-07',
     tag: 'New',

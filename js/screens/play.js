@@ -826,7 +826,9 @@ export function mount(root, params) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const [h, aw] = match.teams;
-        a.href = url; a.download = `apexxi-${h.short}-${h.score}-${aw.score}-${aw.short}.webm`;
+        a.href = url; a.download = gallery
+          ? `apexxi-goal-${(gallery.teams || []).join('-')}-${gallery.minute ?? ''}m-${String(gallery.scorer || 'goal').replace(/[^\w]+/g, '-')}.webm`
+          : `apexxi-${h.short}-${h.score}-${aw.score}-${aw.short}.webm`;
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         toast(`Clip saved · ${(blob.size / 1048576).toFixed(1)} MB`, 'good');
@@ -847,7 +849,8 @@ export function mount(root, params) {
     highlightIdx += 1;
     if (highlightIdx >= goalClips.length) {
       highlightIdx = -1; stopHighlightsBed();
-      if (gallery) { navigate('trophies'); return false; }
+      // v183: a recorded one hands over its file first (the recorder's stop is asynchronous)
+      if (gallery) { if (recorder) { stopClip(); setTimeout(() => navigate('trophies'), 900); } else navigate('trophies'); return false; }
       overlay.hidden = false; stopClip(); return false;
     }
     clip = goalClips[highlightIdx];
@@ -1570,7 +1573,7 @@ export function mount(root, params) {
       const c = { frames: gallery.frames, post: POST_FRAMES, goalX: gallery.goalX, minute: gallery.minute, angle: gallery.angle || 0, seq: 0 };
       c.passes = directReplay(c, { late: (gallery.minute || 0) >= 80 });
       goalClips.push(c);
-      playHighlights();
+      if (gallery.record && clipSupported()) recordClip(); else playHighlights();
     }
     return true;
   }
