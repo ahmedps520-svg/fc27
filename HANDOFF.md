@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v178 — the tip-over pose (render only)
+- `kick.js detectKicks`: a loose ball above 1.8 m whose vz jumps by > 5 m/s next to a keeper (≤ 2.8 m) sets `gk._tip = { t, side }` (side 0 mid-dive); checked before the header test. `tipArm(tp)` → `{ up }` over `TIP_DUR` 0.45 s.
+- `rig.js`: standing, the tip-side arm blends to overhead (sh −3.0, el −3.2) by `up`; in `poseDive`, `up = max(hi·air, tip.up)` lifts the hands.
+- Strip: `tests/tmp/tipstrip.mjs` (not committed). Test: `tests/unit/tip-pose.test.mjs`.
+
 ## v177 — commentary coverage
 - `voicePackUS.js` pbp: `keeperThrow`, `keeperLong`, `clock` (3 lines each), rendered with `tools/voice-pack.mjs --kokoro <scratchpad>/kokoro --only pbp-<key>` (Kokoro-82M, Apache-2.0) → `assets/voice/us/pbp-*.mp3` (9 clips, ~0.07 MB).
 - `tests/unit/commentary-coverage.test.mjs`: reads every key play.js can comment on (CUE_KEY, `comment('…')`, the save-kind map) and checks the feed, the Arabic desk and the pack (directly or via `BASE_KEY`), plus that every pack clip exists on disk.

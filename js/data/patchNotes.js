@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v178',
+    date: '2026-10-07',
+    tag: 'Feel',
+    title: 'Fingertips',
+    lede: 'When a keeper tips a shot over the bar, you now see it: his hand flicks up over his head, or both hands stretch high in a dive.',
+    entries: [
+      {
+        head: 'Keepers',
+        summary: 'Tip-overs have their own look: a hand flung up over the head standing, arms reaching high at full stretch in a dive.',
+        detail: 'Keepers have been tipping high shots over the bar since v174, but the figure did nothing to show it. The tip is read from the ball itself (a high ball near the keeper suddenly climbing), the same way kicks and headers are, so it also shows for an online opponent and in replays. Only how it looks has changed.',
+      },
+    ],
+  },
+  {
     version: 'v177',
     date: '2026-10-07',
     tag: 'Commentary',

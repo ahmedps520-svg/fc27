@@ -36,6 +36,7 @@ export function detectKicks(m, dt, state) {
   for (const t of m.teams) for (const p of t.players) {
     if (p._throw) { p._throw.t += dt; if (p._throw.t >= THROW_DUR) p._throw = null; }
     if (p._header) { p._header.t += dt; if (p._header.t >= HEADER_DUR) p._header = null; }
+    if (p._tip) { p._tip.t += dt; if (p._tip.t >= TIP_DUR) p._tip = null; }
     if (!p._kick) continue;
     p._kick.t += dt;
     if (p._kick.t >= KICK_DUR) p._kick = null;
@@ -49,6 +50,21 @@ export function detectKicks(m, dt, state) {
   const pvx = state.vx ?? b.vx; const pvy = state.vy ?? b.vy; const pvz = state.vz ?? b.vz;
   state.vx = b.vx; state.vy = b.vy; state.vz = b.vz;
   const dv = Math.hypot((b.vx || 0) - (pvx || 0), (b.vy || 0) - (pvy || 0), (b.vz || 0) - (pvz || 0));
+  /* v178: a tip over the bar — a high ball near a keeper suddenly climbing
+     (sim keeperContact gives it 6–8 m/s up). His hand went up to it. */
+  if (!b.owner && (b.z || 0) > 1.8 && (b.vz || 0) - (pvz || 0) > 5) {
+    let gk = null; let best = 2.8;
+    for (const t of m.teams) for (const p of t.players) {
+      if (p.role !== 'GK') continue;
+      const d = Math.hypot(p.x - b.x, p.y - b.y);
+      if (d < best) { best = d; gk = p; }
+    }
+    if (gk) {
+      const lat = (b.y - gk.y) * (gk.dirX >= 0 ? 1 : -1);
+      gk._tip = { t: 0, side: gk.diveT > 0 ? 0 : Math.sign(lat) || 1 };
+      return gk;
+    }
+  }
   if (!b.owner && (b.z || 0) > 1.3 && (b.z || 0) < 3 && dv > HEADER_DV) {
     let who = null; let best = 1.9;
     for (const t of m.teams) for (const p of t.players) {
@@ -84,6 +100,14 @@ export function detectKicks(m, dt, state) {
 }
 
 const ease = (s) => s * s * (3 - 2 * s);
+
+/** v178: a tip over the bar — seconds, and the arm: { up: 0..1 how far it is flung over the head }. */
+export const TIP_DUR = 0.45;
+export function tipArm(tp) {
+  if (!tp || tp.t >= TIP_DUR) return null;
+  const u = tp.t / TIP_DUR;
+  return { up: Math.sin(Math.PI * Math.min(1, u * 1.4)) };
+}
 
 /** v146: a header — seconds, and the change of velocity (m/s) at head height that reads as one. */
 export const HEADER_DUR = 0.45;
