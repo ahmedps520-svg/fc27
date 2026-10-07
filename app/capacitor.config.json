@@ -1,0 +1,11 @@
+{
+  "appId": "online.apexxi.game",
+  "appName": "APEX XI",
+  "webDir": "www",
+  "backgroundColor": "#05070e",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

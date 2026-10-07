@@ -16,7 +16,30 @@
  * get back to playing. `detail` is the full page: why it changed and what it
  * cost, written for someone who chose to click through.
  */
+import { APP_STORE } from '../platform.js';
+
+const APP_STORE_FIRST = 'v184';
+
 export const RELEASES = [
+  {
+    version: 'v184',
+    date: '2026-10-07',
+    tag: 'Accounts',
+    title: 'Your data, your call',
+    lede: 'You can now delete your online account from inside the game, and a plain privacy policy says what is stored.',
+    entries: [
+      {
+        head: 'Delete account',
+        summary: 'Online → Delete account removes your online account for good, after you enter your password.',
+        detail: 'Your name, password, cloud save, online record, friends and guild seat are removed from the server straight away, and the name is free for someone else. Progress saved on your device stays.',
+      },
+      {
+        head: 'Privacy policy',
+        summary: 'Settings → App → Privacy policy: what the game stores, why, and how to delete it.',
+        detail: 'Offline play stores nothing on our server. An online account stores only your chosen name, a hash of your password, your cloud save and your online record. There are no ads and no tracking.',
+      },
+    ],
+  },
   {
     version: 'v183',
     date: '2026-10-07',
@@ -4290,6 +4313,10 @@ export const RELEASES = [
     ],
   },
 ];
+
+/* v184: the App Store build begins its history at its own first release — the
+   notes before it name real players and clubs that build does not carry. */
+if (APP_STORE) { const first = RELEASES.findIndex((r) => r.version === APP_STORE_FIRST); if (first >= 0) RELEASES.splice(first + 1); }
 
 /** The build a first-time reader should be shown. */
 export const LATEST = RELEASES[0];

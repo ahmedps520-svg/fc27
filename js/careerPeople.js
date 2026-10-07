@@ -16,6 +16,7 @@
  */
 import { WORLD } from './data/generator.js';
 import { CAREER_RATINGS } from './data/careerDb.js';
+import { leagueName } from './platform.js';
 
 let IDX = null;
 /** The world's card for a name, first one wins. */
@@ -88,6 +89,8 @@ const REGION_OF = {
   Germany: 'german', Austria: 'german', Netherlands: 'german', Italy: 'italian',
 };
 const COUNTRY_NATION = { 'Premier League': 'England', 'La Liga': 'Spain', 'Serie A': 'Italy', Bundesliga: 'Germany', 'Ligue 1': 'France', 'Saudi Pro League': 'Saudi Arabia' };
+// v184: the App Store build's league names find the same nation
+for (const [lg, n] of Object.entries({ ...COUNTRY_NATION })) COUNTRY_NATION[leagueName(lg)] = n;
 export const nationForLeague = (league) => COUNTRY_NATION[String(league || '').replace(/ 2$/, '')] || 'England';
 
 /** A name nobody in the save has, from the right part of the world. */

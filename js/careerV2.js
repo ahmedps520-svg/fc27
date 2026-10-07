@@ -25,6 +25,7 @@
  */
 import { WORLD } from './data/generator.js';
 import { CAREER_CLUBS, CAREER_SQUADS } from './data/careerDb.js';
+import { leagueName, clubName } from './platform.js';
 import { applyLooks } from './data/clubLook.js';
 import { pend } from './progress.js';
 import { addTrophy } from './cabinet.js';
@@ -35,7 +36,7 @@ import { rateOf, ageOf, valueIn, cardByName } from './careerPeople.js';
  * ------------------------------------------------------------------ */
 /* Three a country: the world has ~400 real players who are on no top-tier
  * career squad, which is eighteen squads of fourteen and not a name more. */
-export const TIER2 = {
+const TIER2_REAL = {
   'Premier League': ['Leeds United', 'Sheffield United', 'Leicester City'],
   'La Liga': ['Real Zaragoza', 'Deportivo La Coruña', 'Málaga'],
   'Serie A': ['Sampdoria', 'Palermo', 'Bari'],
@@ -43,6 +44,9 @@ export const TIER2 = {
   'Ligue 1': ['Saint-Étienne', 'Bordeaux', 'Metz'],
   'Saudi Pro League': ['Al-Faisaly', 'Al-Batin', 'Al-Qadsiah'],
 };
+// v184: the App Store build names its own leagues and clubs (platform.js); the web keeps these
+const T2_COUNTRY = { 'Premier League': 'England', 'La Liga': 'Spain', 'Serie A': 'Italy', Bundesliga: 'Germany', 'Ligue 1': 'France', 'Saudi Pro League': 'Saudi Arabia' };
+export const TIER2 = Object.fromEntries(Object.entries(TIER2_REAL).map(([lg, names]) => [leagueName(lg), names.map((n) => clubName(n, T2_COUNTRY[lg]))]));
 const T2_COLORS = [['#ffffff', '#1d428a'], ['#6c1d45', '#99d6ea'], ['#ee2737', '#000000'], ['#d71920', '#ffffff'], ['#003090', '#fdbe11'], ['#00a650', '#fff200']];
 const shortOf = (name) => name.replace(/^\d+\.\s*/, '').replace(/[^A-Za-zÀ-ÿ ]/g, '').split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 3).toUpperCase().padEnd(3, 'X');
 

@@ -30,6 +30,7 @@ import { sfx } from '../audio.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
 import { t, tx } from '../i18n.js';
+import { personName, APP_STORE } from '../platform.js';
 import { trade, kindOf } from '../economy.js';
 import { facts, about, icon } from '../components/facts.js';
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -432,6 +433,8 @@ export function storeView() {
     <nav class="subtabs" id="sSubs">
       ${[['packs', t('uxi.packs')], ['locker', `${t('uxi.locker')}${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
          ['icons', t('uxi.icons')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`]]
+        // v184: the App Store build sells nothing for real money (yet): no ✦ shop tab
+        .filter(([id]) => !(APP_STORE && id === 'ultimate'))
         .map(([id, label]) =>
           `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -440,7 +443,7 @@ export function storeView() {
   if (storeTab === 'icons') return subs + iconExchangeView();
   if (storeTab === 'market') return subs + marketView();
   if (storeTab === 'binder') return subs + binderView();
-  if (storeTab === 'ultimate') return subs + ultimateShopView(s);
+  if (storeTab === 'ultimate' && !APP_STORE) return subs + ultimateShopView(s);
   const shelfEvent = eventShelf(s);
 
   /* Shelves, not one grid.
@@ -648,7 +651,7 @@ function challengesView() {
                   <ul class="sbc-reqs">${c.reqs.map((r) => `<li>${r.text}</li>`).join('')}</ul>
                 </div>
                 <div class="sbc-side">
-                  ${c.reward.card ? (() => { const legend = WORLD.sbcCards.map(getPlayer).find((p) => p && p.name === c.reward.card); return legend ? `<div class="sbc-legend">${playerCard(legend, { size: 'mini' })}</div>` : `<span class="sbc-card">★ ${c.reward.card}</span>`; })() : ''}
+                  ${c.reward.card ? (() => { const legend = WORLD.sbcCards.map(getPlayer).find((p) => p && p.name === personName(c.reward.card)); return legend ? `<div class="sbc-legend">${playerCard(legend, { size: 'mini' })}</div>` : `<span class="sbc-card">★ ${personName(c.reward.card)}</span>`; })() : ''}
                   <span class="sbc-reward">◈ ${c.reward.apex.toLocaleString()}</span>
                   ${c.reward.ultimate ? `<span class="sbc-reward ult">✦ ${c.reward.ultimate}</span>` : ''}
                   ${packArt(c.reward.pack, { size: 'xs' })}
@@ -1182,7 +1185,7 @@ export function mount(root) {
     root.querySelector('.ult-grid')?.addEventListener('click', (e) => {
       const b = e.target.closest('[data-buy-ult]');
       const bundle = b && BUNDLES.find((x) => x.id === b.dataset.buyUlt);
-      if (bundle) openCheckout(bundle);
+      if (bundle && !APP_STORE) openCheckout(bundle);
     });
     return;
   }
@@ -1361,7 +1364,7 @@ export function mount(root) {
         if (c.reward.pack) st.club.packs.push(c.reward.pack);
         // the legend: a card that exists nowhere else, straight into the collection
         if (c.reward.card) {
-          const legend = WORLD.sbcCards.map(getPlayer).find((p) => p.name === c.reward.card);
+          const legend = WORLD.sbcCards.map(getPlayer).find((p) => p.name === personName(c.reward.card));
           if (legend && !st.club.collection.includes(legend.id)) st.club.collection.push(legend.id);
         }
         if (!Array.isArray(st.club.challengesDone)) st.club.challengesDone = [];
@@ -1372,7 +1375,7 @@ export function mount(root) {
       sfx('coin');
       toast(`${c.name} complete — ◈${c.reward.apex.toLocaleString()}`
         + `${c.reward.ultimate ? ` · ✦${c.reward.ultimate}` : ''}${c.reward.pack ? ` · ${c.reward.pack} pack` : ''}`
-        + `${c.reward.card ? ` · ${c.reward.card}` : ''}`);
+        + `${c.reward.card ? ` · ${personName(c.reward.card)}` : ''}`);
       openChallenge = null;
       submission = [];
       refresh();

@@ -15,6 +15,16 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v184 — App Store build (iOS) + account deletion + privacy policy
+- **One flag, `globalThis.APEX_APP_STORE`**, set by the iOS shell's HTML before any module (app/build-www.mjs injects it, plus `APEX_SERVER`). Read once in `js/platform.js` (imports nothing). The web build never sets it and is byte-identical (sweeps identical, `tests/unit/appstore-names.test.mjs` checks the web names are untouched).
+- **Names (Apple 5.2):** `js/data/fictional.js` (imported first by generator.js) renames every real person in place from one table built over all real names in sorted order (`buildPeople`), so Career's name lookups still match; `careerDb.js`/`build-career-db.py` end with `fictionalCareer(...)`; careerV2 `TIER2` and careerPeople `COUNTRY_NATION` go through `leagueName`/`clubName`; challenge reward cards and live-event featured players through `personName` at the use site; patch notes trimmed to v184+; disclaimer `menu.disclaimer.app`. Check: `node tests/appstore/names-check.mjs --app` (zero overlap, all unique, every squad member and reward resolves).
+- **Paid items (3.1.1):** the ✦ Ultimate subtab and checkout are hidden in the app (squad.js). In-app purchase is a later update.
+- **App behaviour:** no service worker (app.js), no update gate (update.js `checkForUpdate`), API/WS/crash reports to `APP_SERVER` (net/config.js `SERVER_ORIGIN`, crash.js `CRASH_URL`). Server CORS always allows `capacitor://localhost` (`APP_ORIGINS`).
+- **Account deletion (5.1.1(v)):** `POST /api/account/delete {pass}` → `store.deleteAccount` (password re-check, leave guild, strip from friends lists, drop tokens, delete record — the save lives on the account so it goes too). Online screen: "Delete account" + password modal. Test: `tests/unit/account-delete.test.mjs`.
+- **privacy.html** (static, no script; in PUBLIC_FILES and the precache); Settings → App → Privacy policy. Keep it true when the game starts storing anything new.
+- **app/**: Capacitor 8 (SPM, no CocoaPods), `capacitor.config.json` appId `online.apexxi.game`, `ios/` checked in (icon 1024 from assets/brand/icon-source.png cropped, dark splash, `ITSAppUsesNonExemptEncryption` false, arm64). `www/` and `ios/App/App/public` are generated/ignored.
+- **`.github/workflows/ios.yml`** (manual, macos-15): build www → `cap sync ios` → archive + export with `destination=upload` using the App Store Connect API key (cloud signing, `-allowProvisioningUpdates`; the key needs Admin). Secrets the owner adds: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID; optional variable IOS_BUNDLE_ID. Never run here yet — the first run is the real test. The owner's checklist (bundle ID, app record, privacy label, age rating, screenshots, review account) is in `app/README.md`.
+
 ## v183 — a kept goal as a video
 - Trophy Room gallery rows get ⬇ (when MediaRecorder + canvas.captureStream exist): `navigate('play', { ...stage, gallery: { ...g, record: true } })`; play.js starts `recordClip()` instead of `playHighlights()`, names the file `apexxi-goal-<teams>-<minute>m-<scorer>.webm`, and on the last pass stops the recorder and returns 900 ms later (onstop is async).
 - Nightly CI now runs `tests/qa/gallery.mjs`. Browser check of the download: `tests/tmp/gg-rec.mjs` (not committed).

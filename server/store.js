@@ -303,6 +303,33 @@ function byToken(token) {
 }
 
 /**
+ * v184: delete an account for good (App Store guideline 5.1.1(v): an app that
+ * lets you make an account must let you delete it from inside the app).
+ *
+ * The password is asked again: a token alone (a phone left unlocked) is not
+ * enough to wipe someone's progress. Everything keyed to the account goes with
+ * it — its tokens, its guild seat, the friend links other players hold to it;
+ * the boards are built from accounts, so its rows go too.
+ */
+function deleteAccount(acct, pass) {
+  if (!acct) return { error: 'Signed out.' };
+  const given = hash(String(pass || ''), acct.salt);
+  const ok = given.length === acct.hash.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(acct.hash));
+  if (!ok) return { error: 'Wrong password.' };
+  if (acct.guild) leaveGuild(acct);
+  for (const other of Object.values(db.accounts)) {
+    if (other !== acct && other.friends?.length) other.friends = other.friends.filter((n) => key(n) !== key(acct.name));
+  }
+  if (tokenIndex) {
+    tokenIndex.delete(acct.token);
+    for (const e of acct.extra || []) tokenIndex.delete(e.token);
+  }
+  delete db.accounts[key(acct.name)];
+  flush();
+  return { ok: true };
+}
+
+/**
  * Look an account up by name, for administration.
  *
  * `byToken` is what the server uses, because a request proves who it is with a
@@ -584,7 +611,7 @@ module.exports = {
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
-  addFriend, removeFriend, friendsView,
+  addFriend, removeFriend, friendsView, deleteAccount,
   // operator tools only — see the note on accountByName
   accountByName,
 };

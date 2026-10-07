@@ -144,3 +144,5 @@ export const postSkill = (game, score) => call('/api/skills', { method: 'POST', 
 
 /** v129: tell the server a test-mode order went through (it emails the store). No card data. */
 export const reportPurchase = (body) => call('/api/purchase', { method: 'POST', body });
+/** v184: delete the account for good (the password again). */
+export const deleteAccount = (pass) => call('/api/account/delete', { method: 'POST', body: { pass } });

@@ -16,6 +16,7 @@
  * steers away from) and its own crest.
  */
 import { applyLooks } from './clubLook.js';
+import { fictionalCareer } from '../platform.js';
 
 export const CAREER_CLUBS = [
   { id:'mci', name:'Manchester City', short:'MCI', league:'Premier League', country:'England', colors:['#6cabdd','#1c2c5b'], shape:'circle' },
@@ -121,3 +122,6 @@ export const CAREER_RATINGS = {
 export const REAL_MANAGERS = [
   { name:'Pep Guardiola', nation:'Spain', age:54 },
 ];
+
+// v184: original clubs, leagues and people in the App Store build (platform.js); nothing on the web
+fictionalCareer(CAREER_CLUBS, CAREER_SQUADS, CAREER_RATINGS, REAL_MANAGERS);

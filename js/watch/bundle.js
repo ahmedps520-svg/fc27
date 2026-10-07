@@ -1,389 +1,198 @@
 (() => {
-  // js/data/pools.js
-  var FIRST_NAMES = [
-    "Kael",
-    "Dario",
-    "Emrik",
-    "Tobin",
-    "Rafe",
-    "Nilo",
-    "Casian",
-    "Odran",
-    "Silas",
-    "Mateus",
-    "Ivo",
-    "Renzo",
-    "Arlo",
-    "Zane",
-    "Fabien",
-    "Marek",
-    "Lukan",
-    "Teodor",
-    "Anselm",
-    "Bram",
-    "Corin",
-    "Dax",
-    "Elian",
-    "Ferro",
-    "Gustav",
-    "Halvar",
-    "Ikaro",
-    "Jorin",
-    "Kiran",
-    "Leonel",
-    "Milo",
-    "Nero",
-    "Osric",
-    "Pavel",
-    "Quillon",
-    "Rowan",
-    "Soren",
-    "Tamir",
-    "Ulric",
-    "Varro",
-    "Wendel",
-    "Xandro",
-    "Yannic",
-    "Zoran",
-    "Aldric",
-    "Benno",
-    "Cyrel",
-    "Dorian",
-    "Evrin",
-    "Florin",
-    "Gideon",
-    "Hektor",
-    "Ilias",
-    "Joric",
-    "Kasper",
-    "Lyron",
-    "Mattis",
-    "Nevin",
-    "Orin",
-    "Priam",
-    "Rune",
-    "Stellan",
-    "Tavian",
-    "Ansel",
-    "Brayon",
-    "Ciro",
-    "Delmar",
-    "Eryk",
-    "Fenn",
-    "Garrik"
-  ], LAST_NAMES = [
-    "Vance",
-    "Halloran",
-    "Voskuil",
-    "Marren",
-    "Delgadio",
-    "Brekker",
-    "Ostrand",
-    "Fenwick",
-    "Calloway",
-    "Rethen",
-    "Amory",
-    "Bexley",
-    "Corvain",
-    "Drayton",
-    "Esparro",
-    "Falkner",
-    "Grimald",
-    "Harkness",
-    "Ivarsen",
-    "Jansdal",
-    "Krauss",
-    "Lindqvist",
-    "Morrow",
-    "Norquist",
-    "Oakhart",
-    "Pellegrin",
-    "Quill",
-    "Ravnhorst",
-    "Stavros",
-    "Thorne",
-    "Ulrich",
-    "Vantol",
-    "Wexler",
-    "Yaros",
-    "Zabala",
-    "Ashcombe",
-    "Brannigan",
-    "Castellan",
-    "Dunmore",
-    "Ellwood",
-    "Fontaine",
-    "Garrow",
-    "Hensley",
-    "Iverlund",
-    "Jorgen",
-    "Kessler",
-    "Larrion",
-    "Mendova",
-    "Nystrom",
-    "Orvieto",
-    "Palladin",
-    "Rennick",
-    "Sable",
-    "Torvald",
-    "Ubiali",
-    "Verhagen",
-    "Wilder",
-    "Ystad",
-    "Zoric",
-    "Alvarine",
-    "Brimwood",
-    "Carrow",
-    "Dagsen",
-    "Everly",
-    "Fyodrin",
-    "Galvain",
-    "Hollis",
-    "Ivorin",
-    "Jarrow",
-    "Kolvane",
-    "Merrow",
-    "Nordahl",
-    "Ovaris",
-    "Prewitt",
-    "Rask",
-    "Sunderin",
-    "Tessaro",
-    "Valmont",
-    "Wraye",
-    "Zellick"
-  ], NATIONS = [
-    { name: "Valoria", colors: ["#e63946", "#1d3557"] },
-    { name: "Norlund", colors: ["#4cc9f0", "#f8f9fa"] },
-    { name: "Astravia", colors: ["#ffd166", "#073b4c"] },
-    { name: "Cotania", colors: ["#06d6a0", "#1b2a41"] },
-    { name: "Meridia", colors: ["#f77f00", "#003049"] },
-    { name: "Sunhaven", colors: ["#fcbf49", "#d62828"] },
-    { name: "Kaldoria", colors: ["#8ecae6", "#023047"] },
-    { name: "Tervia", colors: ["#b5179e", "#3a0ca3"] },
-    { name: "Bramoor", colors: ["#588157", "#dad7cd"] },
-    { name: "Zephyria", colors: ["#7209b7", "#4cc9f0"] },
-    { name: "Ostmark", colors: ["#e5e5e5", "#212529"] },
-    { name: "Cerravia", colors: ["#ef476f", "#ffd166"] },
-    { name: "Pyrhelia", colors: ["#ff6b35", "#2b2d42"] },
-    { name: "Duskmark", colors: ["#5f0f40", "#9a031e"] },
-    { name: "Ferrenza", colors: ["#2a9d8f", "#264653"] },
-    { name: "Halvane", colors: ["#a8dadc", "#457b9d"] }
-  ], CLUB_BLUEPRINTS = [
-    { name: "Ironvale FC", short: "IRV", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1889, ground: "The Forge", colors: ["#e0294a", "#1a1c22"] },
-    { name: "Solaris Athletic", short: "SOL", tier: 2, crest: "circle", pattern: "solid", device: "sun", founded: 1902, ground: "Helios Park", colors: ["#ffb703", "#12263f"] },
-    { name: "Duskmoor City", short: "DSK", tier: 3, crest: "hex", pattern: "halves", device: "crescent", founded: 1921, ground: "Blackmoor", colors: ["#9d4edd", "#10101a"] },
-    { name: "Verano Sporting", short: "VER", tier: 4, crest: "diamond", pattern: "solid", device: "leaf", founded: 1934, ground: "Estadio Verano", colors: ["#2ec4b6", "#0b132b"] },
-    { name: "Kestrel Park", short: "KES", tier: 5, crest: "chevron", pattern: "solid", device: "bird", founded: 1898, ground: "Kestrel Park", colors: ["#ff7f11", "#2f3640"] },
-    { name: "Thornbury Union", short: "THB", tier: 6, crest: "shield", pattern: "quarters", device: "thorn", founded: 1876, ground: "Bramble Lane", colors: ["#4f9d3a", "#d4af37"] },
-    { name: "Marisol CF", short: "MAR", tier: 7, crest: "circle", pattern: "hoops", device: "wave", founded: 1947, ground: "Puerto Marisol", colors: ["#ff5c8a", "#13315c"] },
-    { name: "Aurora Nord", short: "AUR", tier: 8, crest: "triangle", pattern: "solid", device: "star", founded: 1955, ground: "Nordlys Arena", colors: ["#41d3ff", "#2b2d6e"] },
-    { name: "Bastion Rovers", short: "BAS", tier: 9, crest: "hex", pattern: "stripes", device: "battlement", founded: 1883, ground: "The Rampart", colors: ["#6c8ea4", "#c9d6df"] },
-    { name: "Calderon Zenith", short: "CAL", tier: 10, crest: "diamond", pattern: "halves", device: "peak", founded: 1968, ground: "Cumbre Stadium", colors: ["#ff2e88", "#150d1f"] },
-    /* The Meridian League — the second division of the world, added in v68.
-     * Ten more clubs with their own kits and grounds; their squads are dealt
-     * from the real players who were unattached until then (see generator.js),
-     * so nobody's card changed, only where some of them play. */
-    { name: "Harbourlight FC", short: "HBL", tier: 1, crest: "shield", pattern: "hoops", device: "wave", founded: 1893, ground: "The Lantern", colors: ["#00b4d8", "#03203c"], league: "Meridian League" },
-    { name: "Redcliffe Athletic", short: "RDC", tier: 2, crest: "circle", pattern: "stripes", device: "keep", founded: 1908, ground: "Cliffside Park", colors: ["#d62828", "#f1f1f1"], league: "Meridian League" },
-    { name: "Ashgrove Wanderers", short: "ASH", tier: 3, crest: "hex", pattern: "solid", device: "leaf", founded: 1911, ground: "Grove Road", colors: ["#2a9d8f", "#1b1b1e"], league: "Meridian League" },
-    { name: "Saltmarsh Town", short: "SLT", tier: 4, crest: "diamond", pattern: "quarters", device: "bird", founded: 1926, ground: "Marsh Lane", colors: ["#e9c46a", "#264653"], league: "Meridian League" },
-    { name: "Vireo Sporting", short: "VIR", tier: 5, crest: "chevron", pattern: "halves", device: "star", founded: 1949, ground: "Estadio Vireo", colors: ["#8ac926", "#101820"], league: "Meridian League" },
-    { name: "Coldwater United", short: "CWU", tier: 6, crest: "shield", pattern: "solid", device: "crescent", founded: 1881, ground: "The Weir", colors: ["#a2d2ff", "#1d3557"], league: "Meridian League" },
-    { name: "Ember Vale", short: "EMB", tier: 7, crest: "triangle", pattern: "stripes", device: "sun", founded: 1932, ground: "Kiln Field", colors: ["#f77f00", "#3d0c02"], league: "Meridian League" },
-    { name: "Greywick Rangers", short: "GRW", tier: 8, crest: "circle", pattern: "quarters", device: "battlement", founded: 1874, ground: "Wick Green", colors: ["#adb5bd", "#212529"], league: "Meridian League" },
-    { name: "Lumen City", short: "LUM", tier: 9, crest: "hex", pattern: "hoops", device: "peak", founded: 1961, ground: "Lumen Dome", colors: ["#ffd166", "#5a189a"], league: "Meridian League" },
-    { name: "Serrano Nova", short: "SRN", tier: 10, crest: "diamond", pattern: "stripes", device: "thorn", founded: 1977, ground: "Campo Nova", colors: ["#ef476f", "#073b4c"], league: "Meridian League" },
-    /* The Vanguard League (third division) and the Foundation League (fourth),
-     * added in v70 to make the world 40 clubs across four divisions with
-     * promotion and relegation between them. Their squads are new cards on
-     * their own seeded stream (see generator.js), named from the third wave of
-     * real players; nothing that existed before v70 moves. `wave: 3` is how the
-     * generator tells them apart from the Meridian clubs, whose squads were
-     * dealt from the free pool. */
-    { name: "Halden Steel", short: "HAL", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1899, ground: "Steelworks Park", colors: ["#8d99ae", "#2b2d42"], league: "Vanguard League", wave: 3 },
-    { name: "Corvina Rovers", short: "COR", tier: 2, crest: "circle", pattern: "hoops", device: "bird", founded: 1912, ground: "Corvina Field", colors: ["#1b263b", "#e0e1dd"], league: "Vanguard League", wave: 3 },
-    { name: "Brightwater Town", short: "BWT", tier: 3, crest: "hex", pattern: "halves", device: "wave", founded: 1904, ground: "Riverside", colors: ["#48cae4", "#023e8a"], league: "Vanguard League", wave: 3 },
-    { name: "Oakhurst United", short: "OAK", tier: 4, crest: "diamond", pattern: "solid", device: "leaf", founded: 1887, ground: "The Acorn", colors: ["#6a994e", "#386641"], league: "Vanguard League", wave: 3 },
-    { name: "Tidemark FC", short: "TDM", tier: 5, crest: "chevron", pattern: "quarters", device: "crescent", founded: 1931, ground: "Harbour Ground", colors: ["#0077b6", "#caf0f8"], league: "Vanguard League", wave: 3 },
-    { name: "Pinecrest Athletic", short: "PIN", tier: 6, crest: "shield", pattern: "hoops", device: "peak", founded: 1920, ground: "Summit Road", colors: ["#2d6a4f", "#d8f3dc"], league: "Vanguard League", wave: 3 },
-    { name: "Ravenshaw City", short: "RVS", tier: 7, crest: "triangle", pattern: "stripes", device: "bird", founded: 1896, ground: "Shaw Lane", colors: ["#212529", "#ffd60a"], league: "Vanguard League", wave: 3 },
-    { name: "Sable Cross", short: "SBC", tier: 8, crest: "circle", pattern: "quarters", device: "star", founded: 1953, ground: "Cross Park", colors: ["#ff9f1c", "#011627"], league: "Vanguard League", wave: 3 },
-    { name: "Windmere Sporting", short: "WND", tier: 9, crest: "hex", pattern: "solid", device: "sun", founded: 1964, ground: "Estadio Windmere", colors: ["#c77dff", "#10002b"], league: "Vanguard League", wave: 3 },
-    { name: "Quarry Bank", short: "QRY", tier: 10, crest: "diamond", pattern: "halves", device: "battlement", founded: 1878, ground: "The Quarry", colors: ["#bc6c25", "#283618"], league: "Vanguard League", wave: 3 },
-    { name: "Larkspur FC", short: "LRK", tier: 1, crest: "circle", pattern: "stripes", device: "leaf", founded: 1909, ground: "Meadow Lane", colors: ["#7b2cbf", "#e0aaff"], league: "Foundation League", wave: 3 },
-    { name: "Ironbridge Town", short: "IRB", tier: 2, crest: "shield", pattern: "solid", device: "keep", founded: 1884, ground: "Bridge Street", colors: ["#9a031e", "#fb8b24"], league: "Foundation League", wave: 3 },
-    { name: "Stonefield Wanderers", short: "STF", tier: 3, crest: "hex", pattern: "hoops", device: "battlement", founded: 1891, ground: "Stonefield", colors: ["#adb5bd", "#343a40"], league: "Foundation League", wave: 3 },
-    { name: "Marlow Vale", short: "MLW", tier: 4, crest: "diamond", pattern: "quarters", device: "wave", founded: 1927, ground: "Vale Park", colors: ["#00afb9", "#f07167"], league: "Foundation League", wave: 3 },
-    { name: "Heathcote Rangers", short: "HTC", tier: 5, crest: "chevron", pattern: "stripes", device: "thorn", founded: 1902, ground: "Heath Road", colors: ["#e63946", "#f1faee"], league: "Foundation League", wave: 3 },
-    { name: "Fenwick Albion", short: "FEN", tier: 6, crest: "shield", pattern: "halves", device: "crescent", founded: 1919, ground: "Fen Lane", colors: ["#f4a261", "#264653"], league: "Foundation League", wave: 3 },
-    { name: "Dunmore Celtic", short: "DUN", tier: 7, crest: "circle", pattern: "hoops", device: "star", founded: 1888, ground: "Dunmore Park", colors: ["#40916c", "#ffffff"], league: "Foundation League", wave: 3 },
-    { name: "Silverlake City", short: "SLK", tier: 8, crest: "triangle", pattern: "solid", device: "sun", founded: 1958, ground: "Lakeside Arena", colors: ["#dee2e6", "#4361ee"], league: "Foundation League", wave: 3 },
-    { name: "Crossgate Athletic", short: "CRG", tier: 9, crest: "hex", pattern: "stripes", device: "peak", founded: 1936, ground: "Gate Ground", colors: ["#ffb703", "#023047"], league: "Foundation League", wave: 3 },
-    { name: "Ashby Colliery", short: "ASB", tier: 10, crest: "diamond", pattern: "solid", device: "keep", founded: 1871, ground: "Colliery Row", colors: ["#3d405b", "#f2cc8f"], league: "Foundation League", wave: 3 },
-    /* The Pioneer League (fifth) and the Grassroots League (sixth), v71:
-     * sixty clubs, six divisions. Generated on their own stream after the
-     * v70 cards, named from the fourth wave. `wave: 4`. */
-    { name: "Northbridge FC", short: "NTH", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1894, ground: "Bridge Park", colors: ["#1d4ed8", "#f8fafc"], league: "Pioneer League", wave: 4 },
-    { name: "Wexcombe Town", short: "WEX", tier: 2, crest: "circle", pattern: "hoops", device: "leaf", founded: 1903, ground: "Combe Lane", colors: ["#16a34a", "#052e16"], league: "Pioneer League", wave: 4 },
-    { name: "Estuary Athletic", short: "EST", tier: 3, crest: "hex", pattern: "halves", device: "wave", founded: 1911, ground: "The Mudflats", colors: ["#0ea5e9", "#0c1a2a"], league: "Pioneer League", wave: 4 },
-    { name: "Kingsmere United", short: "KGM", tier: 4, crest: "diamond", pattern: "solid", device: "crescent", founded: 1889, ground: "Mere Road", colors: ["#a21caf", "#fdf4ff"], league: "Pioneer League", wave: 4 },
-    { name: "Fallowfield Rovers", short: "FAL", tier: 5, crest: "chevron", pattern: "quarters", device: "bird", founded: 1922, ground: "Fallow Ground", colors: ["#ca8a04", "#1c1917"], league: "Pioneer League", wave: 4 },
-    { name: "Ironwood City", short: "IWD", tier: 6, crest: "shield", pattern: "hoops", device: "thorn", founded: 1898, ground: "Ironwood Park", colors: ["#57534e", "#f97316"], league: "Pioneer League", wave: 4 },
-    { name: "Seabrook Wanderers", short: "SEA", tier: 7, crest: "triangle", pattern: "stripes", device: "sun", founded: 1931, ground: "Brook Field", colors: ["#f43f5e", "#fff1f2"], league: "Pioneer League", wave: 4 },
-    { name: "Alder Heath", short: "ALD", tier: 8, crest: "circle", pattern: "quarters", device: "star", founded: 1957, ground: "Heath Park", colors: ["#65a30d", "#1a2e05"], league: "Pioneer League", wave: 4 },
-    { name: "Moorgate Sporting", short: "MGT", tier: 9, crest: "hex", pattern: "solid", device: "peak", founded: 1966, ground: "Estadio Moorgate", colors: ["#7c3aed", "#faf5ff"], league: "Pioneer League", wave: 4 },
-    { name: "Ashwell Colts", short: "AWC", tier: 10, crest: "diamond", pattern: "halves", device: "battlement", founded: 1880, ground: "The Paddock", colors: ["#b45309", "#fef3c7"], league: "Pioneer League", wave: 4 },
-    { name: "Riverton Albion", short: "RVT", tier: 1, crest: "circle", pattern: "stripes", device: "wave", founded: 1907, ground: "Riverton Ground", colors: ["#0369a1", "#e0f2fe"], league: "Grassroots League", wave: 4 },
-    { name: "Hollowmere FC", short: "HLM", tier: 2, crest: "shield", pattern: "solid", device: "crescent", founded: 1886, ground: "Hollow Lane", colors: ["#334155", "#cbd5e1"], league: "Grassroots League", wave: 4 },
-    { name: "Barrowgate Town", short: "BGT", tier: 3, crest: "hex", pattern: "hoops", device: "keep", founded: 1892, ground: "Barrow Park", colors: ["#dc2626", "#fef2f2"], league: "Grassroots League", wave: 4 },
-    { name: "Copperfield United", short: "CPF", tier: 4, crest: "diamond", pattern: "quarters", device: "sun", founded: 1929, ground: "Copper Row", colors: ["#d97706", "#292524"], league: "Grassroots League", wave: 4 },
-    { name: "Thistlewood Rangers", short: "THS", tier: 5, crest: "chevron", pattern: "stripes", device: "thorn", founded: 1904, ground: "Thistle Lane", colors: ["#7e22ce", "#fde68a"], league: "Grassroots League", wave: 4 },
-    { name: "Greenacre Albion", short: "GRA", tier: 6, crest: "shield", pattern: "halves", device: "leaf", founded: 1917, ground: "Acre Field", colors: ["#15803d", "#dcfce7"], league: "Grassroots League", wave: 4 },
-    { name: "Saltire Celtic", short: "SLC", tier: 7, crest: "circle", pattern: "hoops", device: "star", founded: 1890, ground: "Saltire Park", colors: ["#1e3a8a", "#ffffff"], league: "Grassroots League", wave: 4 },
-    { name: "Pebblebrook City", short: "PBB", tier: 8, crest: "triangle", pattern: "solid", device: "wave", founded: 1961, ground: "Brookside Arena", colors: ["#0f766e", "#ccfbf1"], league: "Grassroots League", wave: 4 },
-    { name: "Cinderford Athletic", short: "CIN", tier: 9, crest: "hex", pattern: "stripes", device: "peak", founded: 1938, ground: "Cinder Ground", colors: ["#f59e0b", "#1c1917"], league: "Grassroots League", wave: 4 },
-    { name: "Hawkridge Colliery", short: "HWK", tier: 10, crest: "diamond", pattern: "solid", device: "bird", founded: 1873, ground: "Hawk Row", colors: ["#1f2937", "#fbbf24"], league: "Grassroots League", wave: 4 },
-    /* v72: the hundred-club world. Forty more clubs — two into each of the
-     * first six divisions and the whole of the Highland (7th) and Lowland
-     * (8th) Leagues, so the divisions are 12, 12, 12, 12, 13, 13, 13, 13.
-     * `division` is explicit here (the league name alone no longer says it);
-     * `wave: 5`. Generated on their own stream, named from the fifth wave. */
-    { name: "Vantage City", short: "VAN", tier: 3, crest: "shield", pattern: "stripes", device: "peak", founded: 1901, ground: "Vantage Arena", colors: ["#0f172a", "#38bdf8"], league: "Apex Premier Division", division: 1, wave: 5 },
-    { name: "Corsair Athletic", short: "CSR", tier: 5, crest: "circle", pattern: "halves", device: "wave", founded: 1896, ground: "The Harbourside", colors: ["#7f1d1d", "#fde68a"], league: "Apex Premier Division", division: 1, wave: 5 },
-    { name: "Ridgeway Rovers", short: "RDG", tier: 4, crest: "hex", pattern: "hoops", device: "peak", founded: 1908, ground: "Ridgeway Park", colors: ["#065f46", "#a7f3d0"], league: "Meridian League", division: 2, wave: 5 },
-    { name: "Stellar FC", short: "STL", tier: 6, crest: "triangle", pattern: "solid", device: "star", founded: 1953, ground: "Stellar Dome", colors: ["#312e81", "#c7d2fe"], league: "Meridian League", division: 2, wave: 5 },
-    { name: "Brookhaven United", short: "BRH", tier: 3, crest: "shield", pattern: "quarters", device: "leaf", founded: 1897, ground: "Haven Road", colors: ["#1d4ed8", "#fef3c7"], league: "Vanguard League", division: 3, wave: 5 },
-    { name: "Pennywell Town", short: "PNW", tier: 7, crest: "diamond", pattern: "stripes", device: "keep", founded: 1885, ground: "Penny Lane", colors: ["#78350f", "#fde68a"], league: "Vanguard League", division: 3, wave: 5 },
-    { name: "Holloway Rangers", short: "HOL", tier: 4, crest: "circle", pattern: "stripes", device: "battlement", founded: 1890, ground: "Holloway Ground", colors: ["#4c1d95", "#f5f3ff"], league: "Foundation League", division: 4, wave: 5 },
-    { name: "Duneside FC", short: "DUN", tier: 8, crest: "chevron", pattern: "halves", device: "sun", founded: 1934, ground: "Dune Park", colors: ["#b45309", "#fff7ed"], league: "Foundation League", division: 4, wave: 5 },
-    { name: "Lakeshore City", short: "LKS", tier: 2, crest: "hex", pattern: "solid", device: "wave", founded: 1912, ground: "Lakeshore Stadium", colors: ["#0e7490", "#ecfeff"], league: "Pioneer League", division: 5, wave: 5 },
-    { name: "Ferncliffe Athletic", short: "FRN", tier: 6, crest: "shield", pattern: "hoops", device: "thorn", founded: 1899, ground: "Cliff Road", colors: ["#166534", "#dcfce7"], league: "Pioneer League", division: 5, wave: 5 },
-    { name: "Kingswood Wanderers", short: "KGW", tier: 9, crest: "diamond", pattern: "quarters", device: "keep", founded: 1888, ground: "Kings Field", colors: ["#1e3a8a", "#fbbf24"], league: "Pioneer League", division: 5, wave: 5 },
-    { name: "Norbury Town", short: "NRB", tier: 3, crest: "circle", pattern: "halves", device: "crescent", founded: 1905, ground: "Norbury Park", colors: ["#9f1239", "#fecdd3"], league: "Grassroots League", division: 6, wave: 5 },
-    { name: "Eastmoor Colts", short: "EMC", tier: 7, crest: "triangle", pattern: "stripes", device: "bird", founded: 1961, ground: "The Moor", colors: ["#0f766e", "#99f6e4"], league: "Grassroots League", division: 6, wave: 5 },
-    { name: "Redbrook FC", short: "RDB", tier: 10, crest: "hex", pattern: "solid", device: "wave", founded: 1922, ground: "Brook Lane", colors: ["#b91c1c", "#fee2e2"], league: "Grassroots League", division: 6, wave: 5 },
-    { name: "Ashford Vale", short: "ASV", tier: 1, crest: "shield", pattern: "stripes", device: "leaf", founded: 1894, ground: "Vale Ground", colors: ["#15803d", "#f0fdf4"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Bramford Albion", short: "BRF", tier: 2, crest: "circle", pattern: "hoops", device: "keep", founded: 1887, ground: "Bramford Road", colors: ["#1e40af", "#dbeafe"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Crestwood Town", short: "CRW", tier: 3, crest: "hex", pattern: "halves", device: "peak", founded: 1910, ground: "Crest Park", colors: ["#7c2d12", "#fed7aa"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Elmstead Rovers", short: "ELM", tier: 4, crest: "diamond", pattern: "solid", device: "thorn", founded: 1902, ground: "Elm Lane", colors: ["#3f6212", "#ecfccb"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Foxhollow United", short: "FOX", tier: 5, crest: "chevron", pattern: "quarters", device: "bird", founded: 1926, ground: "Hollow Field", colors: ["#c2410c", "#ffedd5"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Glenmere Athletic", short: "GLM", tier: 6, crest: "shield", pattern: "hoops", device: "wave", founded: 1898, ground: "Glen Road", colors: ["#0c4a6e", "#e0f2fe"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Harlow Green", short: "HRG", tier: 7, crest: "triangle", pattern: "stripes", device: "leaf", founded: 1931, ground: "Green Lane", colors: ["#166534", "#bbf7d0"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Ironhurst Colliery", short: "IRH", tier: 8, crest: "circle", pattern: "solid", device: "battlement", founded: 1876, ground: "Hurst Row", colors: ["#292524", "#f5f5f4"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Juniper Town", short: "JUN", tier: 9, crest: "hex", pattern: "halves", device: "sun", founded: 1948, ground: "Juniper Park", colors: ["#5b21b6", "#ede9fe"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Kettlewell FC", short: "KTW", tier: 10, crest: "diamond", pattern: "stripes", device: "crescent", founded: 1907, ground: "Kettle Ground", colors: ["#0369a1", "#f0f9ff"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Langford City", short: "LNG", tier: 11, crest: "shield", pattern: "quarters", device: "star", founded: 1919, ground: "Langford Road", colors: ["#be123c", "#ffe4e6"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Marlow Heath", short: "MLH", tier: 12, crest: "circle", pattern: "hoops", device: "peak", founded: 1883, ground: "Heath Lane", colors: ["#4d7c0f", "#f7fee7"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Nettleby Rangers", short: "NTL", tier: 13, crest: "hex", pattern: "solid", device: "keep", founded: 1895, ground: "Nettle Park", colors: ["#1f2937", "#fbbf24"], league: "Highland League", division: 7, wave: 5 },
-    { name: "Oakridge Albion", short: "OKR", tier: 1, crest: "shield", pattern: "stripes", device: "leaf", founded: 1900, ground: "Oakridge Ground", colors: ["#14532d", "#dcfce7"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Pemberton FC", short: "PMB", tier: 2, crest: "circle", pattern: "halves", device: "keep", founded: 1889, ground: "Pember Lane", colors: ["#7f1d1d", "#fecaca"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Quarry Vale", short: "QRV", tier: 3, crest: "hex", pattern: "hoops", device: "battlement", founded: 1912, ground: "The Vale", colors: ["#44403c", "#e7e5e4"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Rosemont United", short: "RSM", tier: 4, crest: "diamond", pattern: "solid", device: "sun", founded: 1933, ground: "Rosemont Park", colors: ["#be185d", "#fce7f3"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Silverdale Town", short: "SVD", tier: 5, crest: "chevron", pattern: "quarters", device: "wave", founded: 1904, ground: "Dale Road", colors: ["#075985", "#e0f2fe"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Thornfield FC", short: "THF", tier: 6, crest: "shield", pattern: "stripes", device: "thorn", founded: 1896, ground: "Thorn Park", colors: ["#3730a3", "#e0e7ff"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Underhill Rovers", short: "UDH", tier: 7, crest: "triangle", pattern: "hoops", device: "peak", founded: 1921, ground: "Underhill", colors: ["#9a3412", "#ffedd5"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Vale Royal", short: "VLR", tier: 8, crest: "circle", pattern: "solid", device: "crescent", founded: 1947, ground: "Royal Field", colors: ["#6d28d9", "#f5f3ff"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Westbrook City", short: "WBK", tier: 9, crest: "hex", pattern: "halves", device: "star", founded: 1929, ground: "Westbrook Lane", colors: ["#0d9488", "#ccfbf1"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Yewtree Athletic", short: "YEW", tier: 10, crest: "diamond", pattern: "stripes", device: "leaf", founded: 1886, ground: "Yew Lane", colors: ["#365314", "#ecfccb"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Zealand Park", short: "ZLP", tier: 11, crest: "shield", pattern: "hoops", device: "bird", founded: 1955, ground: "Zealand Ground", colors: ["#1e3a8a", "#dbeafe"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Amberley Colts", short: "AMB", tier: 12, crest: "circle", pattern: "quarters", device: "sun", founded: 1963, ground: "Amber Park", colors: ["#d97706", "#fffbeb"], league: "Lowland League", division: 8, wave: 5 },
-    { name: "Blackfen Wanderers", short: "BFN", tier: 13, crest: "hex", pattern: "stripes", device: "keep", founded: 1891, ground: "Fen Road", colors: ["#111827", "#f9fafb"], league: "Lowland League", division: 8, wave: 5 }
-  ], LEAGUE_NAME = "Apex Premier Division", LEAGUES = [LEAGUE_NAME, "Meridian League", "Vanguard League", "Foundation League", "Pioneer League", "Grassroots League", "Highland League", "Lowland League"], POSITIONS = {
-    GK: { group: "GK", weights: { pace: 0.05, shooting: 0.05, passing: 0.15, dribbling: 0.1, defending: 0.35, physical: 0.3 } },
-    CB: { group: "DEF", weights: { pace: 0.1, shooting: 0.02, passing: 0.13, dribbling: 0.05, defending: 0.45, physical: 0.25 } },
-    LB: { group: "DEF", weights: { pace: 0.22, shooting: 0.05, passing: 0.2, dribbling: 0.15, defending: 0.28, physical: 0.1 } },
-    RB: { group: "DEF", weights: { pace: 0.22, shooting: 0.05, passing: 0.2, dribbling: 0.15, defending: 0.28, physical: 0.1 } },
-    CDM: { group: "MID", weights: { pace: 0.08, shooting: 0.08, passing: 0.25, dribbling: 0.14, defending: 0.3, physical: 0.15 } },
-    CM: { group: "MID", weights: { pace: 0.12, shooting: 0.14, passing: 0.3, dribbling: 0.22, defending: 0.12, physical: 0.1 } },
-    CAM: { group: "MID", weights: { pace: 0.14, shooting: 0.2, passing: 0.28, dribbling: 0.28, defending: 0.04, physical: 0.06 } },
-    LM: { group: "MID", weights: { pace: 0.24, shooting: 0.14, passing: 0.22, dribbling: 0.26, defending: 0.08, physical: 0.06 } },
-    RM: { group: "MID", weights: { pace: 0.24, shooting: 0.14, passing: 0.22, dribbling: 0.26, defending: 0.08, physical: 0.06 } },
-    LW: { group: "FWD", weights: { pace: 0.28, shooting: 0.22, passing: 0.16, dribbling: 0.28, defending: 0.02, physical: 0.04 } },
-    RW: { group: "FWD", weights: { pace: 0.28, shooting: 0.22, passing: 0.16, dribbling: 0.28, defending: 0.02, physical: 0.04 } },
-    ST: { group: "FWD", weights: { pace: 0.22, shooting: 0.38, passing: 0.08, dribbling: 0.18, defending: 0.01, physical: 0.13 } }
-  };
-  var RARITY = {
-    bronze: { label: "Bronze", color: "#c88a4a", glow: "rgba(200,138,74,.45)" },
-    silver: { label: "Silver", color: "#b9c4d0", glow: "rgba(185,196,208,.45)" },
-    gold: { label: "Gold", color: "#f4c95d", glow: "rgba(244,201,93,.55)" },
-    special: { label: "Special", color: "#ff2e88", glow: "rgba(255,46,136,.65)" },
-    star: { label: "Star", color: "#a06bff", glow: "rgba(160,107,255,.7)" },
-    icon: { label: "Icon", color: "#7af7ff", glow: "rgba(122,247,255,.75)" }
-  };
-  function rarityFor(overall) {
-    return overall >= 88 ? "special" : overall >= 79 ? "gold" : overall >= 70 ? "silver" : "bronze";
+  // js/platform.js
+  var APP_STORE = typeof globalThis < "u" && globalThis.APEX_APP_STORE === !0, APP_SERVER = APP_STORE ? String(globalThis.APEX_SERVER || "https://fc27.onrender.com").replace(/\/$/, "") : "", hashOf = (str) => {
+    let h = 2166136261;
+    for (let c of String(str))
+      h ^= c.charCodeAt(0), h = Math.imul(h, 16777619) >>> 0;
+    return h >>> 0;
+  }, R = {
+    italian: [
+      ["Luca", "Matteo", "Lorenzo", "Riccardo", "Tommaso", "Gianluca", "Davide", "Federico", "Samuele", "Nicolò", "Alessio", "Stefano", "Emanuele", "Gabriele", "Pietro", "Fabio", "Michele", "Simone", "Andrea", "Giacomo", "Daniele", "Mattia", "Edoardo", "Filippo", "Marco", "Giulio", "Leonardo", "Raffaele", "Christian", "Manuel", "Cristiano", "Elia", "Diego", "Alberto", "Salvatore", "Vincenzo", "Antonio", "Paolo", "Enrico", "Massimo"],
+      ["Ferrante", "Bellotti", "Caruso", "Gallo", "Marchetti", "Pellegrino", "Santoro", "Vitale", "Colombo", "Rinaldi", "Mazzola", "Bernardi", "Lombardo", "Castelli", "Fontana", "Tedeschi", "Valentini", "Grimaldi", "Baldini", "Sorrentino", "Montanari", "Pagano", "Ricciardi", "Benedetti", "Cattaneo", "De Luca", "Ferraro", "Gentile", "Guerra", "Longo", "Martinelli", "Messina", "Monti", "Morelli", "Orlando", "Palumbo", "Parisi", "Piras", "Riva", "Ruggiero", "Sala", "Serra", "Silvestri", "Testa", "Villa", "Zanetti", "Fabbri", "Bassi", "Amato", "Cirillo", "D'Angelo", "Farina", "Galli", "Leone", "Marini", "Neri", "Pace", "Rizzi", "Sartori", "Volpe"]
+    ],
+    iberian: [
+      ["Hugo", "Mateo", "Íker", "Rodrigo", "Tiago", "Martín", "Álvaro", "Nuno", "Diego", "Pablo", "Gonçalo", "Adrián", "Sergio", "Raúl", "Javier", "Marcos", "Rubén", "Iván", "Miguel", "Bruno", "Duarte", "Rafael", "Unai", "Aitor", "Óscar", "Daniel", "Héctor", "Joel", "Alejandro", "Carlos", "Mario", "Jorge", "Fernando", "Ricardo", "Pedro", "André", "Vasco", "Gerard", "Asier", "Nacho"],
+      ["Serrano", "Ortega", "Pires", "Valverde", "Castaño", "Moreira", "Navarro", "Figueira", "Ibarra", "Quintana", "Escobar", "Lagos", "Barros", "Soldado", "Alba", "Garrido", "Ribeiro", "Tavares", "Fuentes", "Llorente", "Arrieta", "Medina", "Vela", "Cabrera", "Domínguez", "Esteban", "Ferreira", "Gallego", "Herrera", "Iglesias", "Jiménez", "Lozano", "Marín", "Nogueira", "Pacheco", "Ramos", "Salgado", "Teixeira", "Ugarte", "Vidal", "Zamora", "Aguado", "Bermejo", "Campos", "Delgado", "Estrada", "Guerrero", "Hidalgo", "León", "Mendes", "Montoya", "Peña", "Rojo", "Santos", "Toledo", "Varela", "Cordero", "Bravo", "Correia", "Pinto"]
+    ],
+    latin: [
+      ["Thiago", "Lautaro", "Matías", "Gabriel", "Enzo", "Kauã", "Bruno", "Facundo", "Joaquín", "Davi", "Nicolás", "Leandro", "Rodrigo", "Santiago", "Vinícius", "Emiliano", "Cristian", "Franco", "Gustavo", "Renan", "Agustín", "Maximiliano", "Felipe", "Caio", "Ezequiel", "Valentín", "Guilherme", "Ramiro", "Juan", "Ignacio", "Luciano", "Murilo", "Germán", "Julián", "Lucas", "Pedro", "Rafael", "Kevin", "Brian", "Alexis", "Tomás", "Benjamín", "Wesley", "Matheus", "Diego"],
+      ["Salvatierra", "Rocha", "Benítez", "Almeida", "Cardozo", "Pereyra", "Monteiro", "Acuña", "Barbosa", "Villalba", "Quiroga", "Torres", "Aguirre", "Esquivel", "Lima", "Faria", "Godoy", "Ojeda", "Sosa", "Medina", "Cabral", "Paz", "Miranda", "Arévalo", "Bustos", "Carvalho", "Duarte", "Escobar", "Figueroa", "Gaitán", "Ibáñez", "Ledesma", "Maidana", "Núñez", "Ortiz", "Pinheiro", "Quintero", "Ríos", "Sanabria", "Tapia", "Valdés", "Zapata", "Araújo", "Bentancur", "Coelho", "Domingues", "Espinoza", "Ferraz", "Gómez", "Herrera", "Leiva", "Moraes", "Nascimento", "Oliveira", "Prado", "Rezende", "Silveira", "Toledo", "Vargas", "Rojas", "Cáceres", "Montiel", "Paredes", "Insúa", "Fagundes", "Guedes"]
+    ],
+    english: [
+      ["Jack", "Harry", "Oliver", "Callum", "Reece", "Tyler", "Lewis", "Mason", "Owen", "Kieran", "Ethan", "Jordan", "Liam", "Connor", "Jamie", "Ryan", "Dominic", "Aaron", "Ben", "Sam", "Charlie", "Josh", "Alfie", "Toby", "Nathan", "Elliot", "Rory", "Declan", "George", "James", "Joe", "Luke", "Adam", "Dan", "Matt", "Chris", "Tom", "Will", "Max", "Finley"],
+      ["Ashworth", "Pennock", "Hartley", "Brierley", "Whitfield", "Oakes", "Rowntree", "Tanner", "Fenwick", "Aldridge", "Bradshaw", "Calloway", "Dalton", "Holloway", "Marsden", "Stanton", "Thornton", "Woodley", "Brookes", "Cranfield", "Hampton", "Langley", "Preston", "Shelton", "Atherton", "Barlow", "Chadwick", "Draper", "Ellison", "Fletcher", "Gibbons", "Hollis", "Ingram", "Jennings", "Kendall", "Lockwood", "Mercer", "Norris", "Osborne", "Pickering", "Radcliffe", "Sutcliffe", "Tindall", "Underwood", "Varley", "Webster", "Yates", "Buckley", "Crowther", "Denton", "Easton", "Farrow", "Garside", "Haworth", "Kershaw", "Lowe", "Moss", "Naylor", "Parr", "Ridley"]
+    ],
+    french: [
+      ["Théo", "Lucas", "Enzo", "Kylian", "Mathis", "Noah", "Rayan", "Axel", "Nolan", "Yanis", "Hugo", "Maxence", "Bastien", "Clément", "Florian", "Romain", "Quentin", "Jérémy", "Adrien", "Moussa", "Ibrahima", "Amadou", "Mamadou", "Cheikh", "Yves", "Arnaud", "Loïc", "Sacha", "Antoine", "Benjamin", "Corentin", "Damien", "Étienne", "Gaëtan", "Julien", "Kévin", "Mathieu", "Nicolas", "Olivier", "Thomas"],
+      ["Morel", "Dubreuil", "Lacaze", "Fournier", "Perrin", "Marchand", "Leblanc", "Tessier", "Duval", "Garnier", "Rocher", "Boucher", "Coulibaly", "Ferrand", "Laurent", "Michaud", "Renaud", "Vallet", "Bernier", "Chevalier", "Girard", "Lemaire", "Poirier", "Thibault", "Arnaud", "Barbier", "Carré", "Delorme", "Faure", "Gautier", "Hamel", "Joly", "Lambert", "Mallet", "Noël", "Picard", "Rivière", "Simon", "Vasseur", "Aubert", "Bonnet", "Collin", "Dumont", "Fontaine", "Guérin", "Huet", "Leroy", "Masson", "Ndiaye", "Traoré", "Sylla", "Keita", "Camara", "Diarra", "Konaté", "Sangaré", "Bamba", "Dembélé", "Fofana", "Cissoko"]
+    ],
+    german: [
+      ["Lukas", "Jonas", "Finn", "Leon", "Niklas", "Moritz", "Paul", "Felix", "Jannik", "Tim", "Daan", "Sem", "Lars", "Mikkel", "Emil", "Oskar", "Jesper", "Ruben", "Bram", "Jakob", "Maximilian", "Florian", "Tobias", "Sander", "Henrik", "Nils", "Fabian", "Joost", "Julian", "Kai", "Marvin", "Robin", "Sebastian", "Stefan", "Thijs", "Wout", "Anders", "Magnus", "Kasper", "Viktor"],
+      ["Brandt", "Kessler", "Vogt", "Hartmann", "Reuter", "Lindner", "Wagner", "Seidel", "Kraus", "Haber", "Bergmann", "Holmberg", "Steiner", "Waldner", "Feldmann", "Dahlgren", "Brugman", "Velder", "Kamphuis", "Roster", "Schell", "Langer", "Horstmann", "Mohr", "Albers", "Baumann", "Dietrich", "Engel", "Fischer", "Graf", "Hoffmann", "Jansen", "Keller", "Lorenz", "Möller", "Nowitzki", "Pohl", "Richter", "Schuster", "Thiel", "Ulrich", "Weber", "Ziegler", "de Vries", "Bakker", "Visser", "Smit", "Mulder", "van Dam", "Kuiper", "Lund", "Nyberg", "Strand", "Eklund", "Sørensen", "Holm", "Berg", "Krüger", "Winter", "Sommer"]
+    ],
+    arab: [
+      ["Faisal", "Salem", "Nawaf", "Abdulrahman", "Turki", "Hamad", "Yazeed", "Rakan", "Majed", "Ziyad", "Omar", "Khalid", "Saud", "Fahad", "Sultan", "Mansour", "Bandar", "Hattan", "Youssef", "Karim", "Achraf", "Hakim", "Amine", "Tarek", "Mostafa", "Nabil", "Walid", "Ziad", "Abdullah", "Ahmed", "Ali", "Hassan", "Ibrahim", "Mohammed", "Nasser", "Rayan", "Saleh", "Waleed", "Yasser", "Hamza"],
+      ["Al-Harbi", "Al-Qahtani", "Al-Otaibi", "Al-Shammari", "Al-Ghamdi", "Al-Zahrani", "Al-Mutairi", "Al-Dosari", "Al-Anazi", "Al-Shehri", "Al-Juhani", "Al-Rashidi", "Al-Subaie", "Al-Hamdan", "Al-Ruwaili", "Al-Fajri", "Al-Amri", "Al-Bishi", "Al-Dawsari", "Al-Enezi", "Al-Faraj", "Al-Hazmi", "Al-Jaber", "Al-Khaldi", "Al-Malki", "Al-Nemer", "Al-Obaid", "Al-Saadi", "Al-Tamimi", "Al-Yami", "Bensalah", "El Mansouri", "El Karimi", "Benali", "Haddad", "Mahrous", "Fathi", "Gharib", "Hamdi", "Kamal", "Lahlou", "Mekki", "Nasri", "Ouali", "Rahmani", "Saidi", "Tahiri", "Zaki", "Bouzid", "Chaouchi", "Darwish", "Fares", "Halabi", "Idrissi", "Jaziri", "Khoury", "Mansour", "Nassar", "Sabri", "Taha"]
+    ],
+    african: [
+      ["Chidi", "Kwame", "Emeka", "Kofi", "Tunde", "Yaw", "Obinna", "Seun", "Kelechi", "Kwabena", "Ifeanyi", "Sadio", "Bakary", "Lamine", "Ousmane", "Babajide", "Femi", "Nnamdi", "Kojo", "Moses", "Samuel", "Daniel", "Victor", "Joseph", "Thomas", "Emmanuel", "Isaac", "Ebuka", "Kwesi", "Tobi"],
+      ["Okafor", "Adeyemi", "Mensah", "Boateng", "Owusu", "Nwosu", "Okonkwo", "Asamoah", "Ofori", "Agyemang", "Danquah", "Eze", "Onuoha", "Koroma", "Ansah", "Appiah", "Babatunde", "Chukwu", "Darko", "Egwu", "Fofanah", "Gyamfi", "Ihekwe", "Kamara", "Lartey", "Mbah", "Nnadi", "Obi", "Oduya", "Quaye", "Sesay", "Tetteh", "Uche", "Wiredu", "Yeboah", "Zungu", "Acheampong", "Bello", "Ekong", "Ndlovu", "Mokoena", "Phiri", "Banda", "Okeke", "Ugwu", "Amadi", "Ogbu", "Afolabi"]
+    ],
+    slavic: [
+      ["Luka", "Ivan", "Marko", "Filip", "Jakub", "Mateusz", "Petar", "Nikola", "Dominik", "Tomáš", "Andrej", "Bartosz", "Stefan", "Mihai", "Dmytro", "Oleksandr", "Ante", "Josip", "Milan", "Vladimir", "Kamil", "Szymon", "Adam", "Ondřej", "Bogdan", "Darko", "Goran", "Igor", "Lukáš", "Patrik", "Radu", "Sava", "Viktor", "Yuriy", "Dimitris", "Giorgos"],
+      ["Kovač", "Petrović", "Milić", "Janković", "Novak", "Horvat", "Wiśniewski", "Kowalczyk", "Zając", "Pavlović", "Marić", "Radić", "Babić", "Král", "Dvořák", "Lisowski", "Sokolov", "Bogdan", "Vuković", "Stanić", "Andrić", "Božić", "Čolak", "Dragić", "Filipović", "Grbić", "Ilić", "Jurić", "Kalinić", "Lovrić", "Matić", "Nikolić", "Obradović", "Perić", "Ristić", "Simić", "Tomić", "Urban", "Vlašić", "Zelenko", "Bondar", "Kravets", "Melnyk", "Shevchuk", "Popescu", "Ionescu", "Nagy", "Szabó", "Papadopoulos", "Georgiou", "Hoxha", "Krasniqi", "Svoboda", "Černý", "Mazur", "Kaczmarek", "Wójcik", "Lewandowicz"]
+    ],
+    turkish: [
+      ["Emre", "Burak", "Mert", "Kerem", "Arda", "Cenk", "Ozan", "Yusuf", "Hakan", "Okay", "Kaan", "Barış", "Efe", "Tolga", "Serkan", "Umut", "Can", "Onur", "Selim", "Deniz", "Furkan", "Halil", "İsmail", "Orkun", "Salih"],
+      ["Yıldız", "Kaya", "Demirel", "Çelik", "Şahin", "Aydın", "Öztürk", "Arslan", "Doğan", "Kılıç", "Aslan", "Çetin", "Kara", "Koç", "Kurt", "Özdemir", "Acar", "Bulut", "Erdem", "Güler", "Polat", "Tekin", "Uçar", "Yavuz", "Akın", "Başaran", "Coşkun", "Ekinci"]
+    ],
+    asian: [
+      ["Haruto", "Ren", "Sota", "Yuto", "Kaito", "Riku", "Daiki", "Takumi", "Kenta", "Shota", "Min-jun", "Ji-ho", "Seung-woo", "Hyun-jin", "Tae-yang", "Jae-won", "Wei", "Hao", "Arjun", "Reza", "Mehdi", "Sardor", "Yuki", "Kenji"],
+      ["Takahashi", "Nakamura", "Yamada", "Matsuda", "Kawaguchi", "Hashimoto", "Morita", "Fujiwara", "Ishikawa", "Satoh", "Kim", "Park", "Choi", "Jung", "Kang", "Han", "Zhang", "Rahimi", "Karimi", "Ogawa", "Endo", "Inoue", "Kimura", "Saito", "Tanabe", "Ueda", "Yoon", "Lim", "Seo", "Hwang", "Liu", "Chen", "Hosseini", "Tashkentov"]
+    ]
+  }, REGION_OF = {
+    Italy: "italian",
+    "San Marino": "italian",
+    Spain: "iberian",
+    Portugal: "iberian",
+    Andorra: "iberian",
+    Brazil: "latin",
+    Argentina: "latin",
+    Uruguay: "latin",
+    Colombia: "latin",
+    Mexico: "latin",
+    Chile: "latin",
+    Ecuador: "latin",
+    Paraguay: "latin",
+    Peru: "latin",
+    Venezuela: "latin",
+    Bolivia: "latin",
+    "Costa Rica": "latin",
+    Panama: "latin",
+    Honduras: "latin",
+    England: "english",
+    USA: "english",
+    Scotland: "english",
+    Wales: "english",
+    Ireland: "english",
+    "Northern Ireland": "english",
+    Australia: "english",
+    Canada: "english",
+    "New Zealand": "english",
+    Jamaica: "english",
+    France: "french",
+    Belgium: "french",
+    Senegal: "french",
+    "Ivory Coast": "french",
+    Cameroon: "french",
+    Mali: "french",
+    Guinea: "french",
+    "DR Congo": "french",
+    Gabon: "french",
+    "Burkina Faso": "french",
+    Haiti: "french",
+    Luxembourg: "french",
+    Germany: "german",
+    Austria: "german",
+    Switzerland: "german",
+    Netherlands: "german",
+    Denmark: "german",
+    Sweden: "german",
+    Norway: "german",
+    Finland: "german",
+    Iceland: "german",
+    "Saudi Arabia": "arab",
+    Qatar: "arab",
+    "United Arab Emirates": "arab",
+    Egypt: "arab",
+    Morocco: "arab",
+    Algeria: "arab",
+    Tunisia: "arab",
+    Iraq: "arab",
+    Jordan: "arab",
+    Oman: "arab",
+    Kuwait: "arab",
+    Bahrain: "arab",
+    Syria: "arab",
+    Lebanon: "arab",
+    Libya: "arab",
+    Palestine: "arab",
+    Nigeria: "african",
+    Ghana: "african",
+    Kenya: "african",
+    "South Africa": "african",
+    Zambia: "african",
+    Gambia: "african",
+    "Sierra Leone": "african",
+    Angola: "african",
+    "Cape Verde": "african",
+    Togo: "african",
+    Benin: "african",
+    Zimbabwe: "african",
+    Croatia: "slavic",
+    Poland: "slavic",
+    Serbia: "slavic",
+    Ukraine: "slavic",
+    "Czech Republic": "slavic",
+    Slovakia: "slavic",
+    Slovenia: "slavic",
+    "Bosnia and Herzegovina": "slavic",
+    Montenegro: "slavic",
+    "North Macedonia": "slavic",
+    Bulgaria: "slavic",
+    Romania: "slavic",
+    Russia: "slavic",
+    Georgia: "slavic",
+    Hungary: "slavic",
+    Kosovo: "slavic",
+    Albania: "slavic",
+    Greece: "slavic",
+    Turkey: "turkish",
+    Azerbaijan: "turkish",
+    Japan: "asian",
+    "South Korea": "asian",
+    "Korea Republic": "asian",
+    China: "asian",
+    Iran: "asian",
+    India: "asian",
+    Uzbekistan: "asian"
+  }, regionOf = (nation) => REGION_OF[nation] || "english", people = /* @__PURE__ */ new Map(), used = /* @__PURE__ */ new Set(), real = /* @__PURE__ */ new Set();
+  function registerRealNames(names) {
+    for (let n of names) real.add(n);
   }
-  var ICONS = [
-    { name: "Lionel Messi", short: "L. Messi", position: "RW", nation: "Argentina", colors: ["#75aadb", "#ffffff"], trait: "flair", foot: "L" },
-    { name: "Cristiano Ronaldo", short: "C. Ronaldo", position: "ST", nation: "Portugal", colors: ["#da291c", "#046a38"], trait: "power", foot: "R" },
-    { name: "Neymar Jr", short: "Neymar Jr", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
-    { name: "Diego Maradona", short: "D. Maradona", position: "CAM", nation: "Argentina", colors: ["#75aadb", "#ffffff"], trait: "flair", foot: "L" },
-    { name: "Zinedine Zidane", short: "Z. Zidane", position: "CM", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "engine", foot: "R" },
-    { name: "Lothar Matthaus", short: "L. Matthaus", position: "CDM", nation: "Germany", colors: ["#000000", "#dd0000"], trait: "engine", foot: "R" },
-    { name: "Paolo Maldini", short: "P. Maldini", position: "CB", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "wall", foot: "R" },
-    { name: "Gianluigi Buffon", short: "G. Buffon", position: "GK", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "keeper", foot: "R" },
-    // `added` marks everything appended after the first eight. It exists purely
-    // so the generator can hand these ids out after the Stars below, leaving the
-    // original twenty named cards pointing at the same players they always did.
-    { name: "Roberto Carlos", short: "R. Carlos", position: "LB", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "fullback", foot: "L", added: !0 },
-    { name: "Cafu", short: "Cafu", position: "RB", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "fullback", foot: "R", added: !0 },
-    { name: "Ryan Giggs", short: "R. Giggs", position: "LM", nation: "Wales", colors: ["#c8102e", "#00b140"], trait: "flair", foot: "L", added: !0 },
-    { name: "David Beckham", short: "D. Beckham", position: "RM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "engine", foot: "R", added: !0 },
-    // A 4-3-3 asks for two centre-backs and two central midfielders, and 4-4-2
-    // for two strikers, so one Icon per position still could not field an Icon
-    // XI. These three are the duplicates that close it.
-    { name: "Franz Beckenbauer", short: "F. Beckenbauer", position: "CB", nation: "Germany", colors: ["#000000", "#dd0000"], trait: "wall", foot: "R", added: !0 },
-    { name: "Xavi Hernandez", short: "Xavi", position: "CM", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "engine", foot: "R", added: !0 },
-    { name: "Ronaldo Nazario", short: "R. Nazario", position: "ST", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "power", foot: "R", added: !0 }
-  ], STARS = [
-    { name: "Lamine Yamal", short: "L. Yamal", position: "RW", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "flair", foot: "L" },
-    { name: "Raphinha", short: "Raphinha", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
-    { name: "Vinicius Jr", short: "Vinicius Jr", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
-    { name: "Kylian Mbappe", short: "K. Mbappe", position: "ST", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "power", foot: "R" },
-    { name: "Erling Haaland", short: "E. Haaland", position: "ST", nation: "Norway", colors: ["#ba0c2f", "#00205b"], trait: "power", foot: "L" },
-    { name: "Jude Bellingham", short: "J. Bellingham", position: "CM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "engine", foot: "R" },
-    { name: "Kevin De Bruyne", short: "K. De Bruyne", position: "CAM", nation: "Belgium", colors: ["#000000", "#fdda24"], trait: "engine", foot: "R" },
-    { name: "Federico Valverde", short: "F. Valverde", position: "CM", nation: "Uruguay", colors: ["#0038a8", "#ffffff"], trait: "engine", foot: "R" },
-    { name: "Rodri", short: "Rodri", position: "CDM", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "wall", foot: "R" },
-    { name: "Virgil van Dijk", short: "V. van Dijk", position: "CB", nation: "Netherlands", colors: ["#ae1c28", "#21468b"], trait: "wall", foot: "R" },
-    { name: "Achraf Hakimi", short: "A. Hakimi", position: "RB", nation: "Morocco", colors: ["#c1272d", "#006233"], trait: "engine", foot: "R" },
-    { name: "Alisson", short: "Alisson", position: "GK", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "keeper", foot: "R" },
-    // appended after the originals — see the note on ICONS
-    { name: "Alphonso Davies", short: "A. Davies", position: "LB", nation: "Canada", colors: ["#ff0000", "#ffffff"], trait: "fullback", foot: "L", added: !0 },
-    { name: "Jeremy Doku", short: "J. Doku", position: "LM", nation: "Belgium", colors: ["#000000", "#fdda24"], trait: "flair", foot: "R", added: !0 },
-    { name: "Bukayo Saka", short: "B. Saka", position: "RM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "flair", foot: "L", added: !0 },
-    { name: "William Saliba", short: "W. Saliba", position: "CB", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "wall", foot: "R", added: !0 },
-    { name: "Declan Rice", short: "D. Rice", position: "CDM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "wall", foot: "R", added: !0 },
-    { name: "Mohamed Salah", short: "M. Salah", position: "RW", nation: "Egypt", colors: ["#c8102e", "#ffffff"], trait: "power", foot: "L", added: !0 },
-    { name: "Harry Kane", short: "H. Kane", position: "ST", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "power", foot: "R", added: !0 },
-    { name: "Gianluigi Donnarumma", short: "G. Donnarumma", position: "GK", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "keeper", foot: "R", added: !0 }
-  ], STAR_TRAITS = {
-    flair: { pace: 94, shooting: 86, passing: 84, dribbling: 94, defending: 38, physical: 72 },
-    power: { pace: 93, shooting: 93, passing: 76, dribbling: 87, defending: 40, physical: 88 },
-    engine: { pace: 84, shooting: 84, passing: 92, dribbling: 88, defending: 74, physical: 84 },
-    wall: { pace: 78, shooting: 56, passing: 80, dribbling: 68, defending: 92, physical: 91 },
-    keeper: { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
-    fullback: { pace: 93, shooting: 72, passing: 86, dribbling: 86, defending: 88, physical: 84 }
-  }, SA = ["#006c35", "#ffffff"], SAUDI_ICONS = [
-    { name: "Mohamed Al-Deayea", short: "M. Al-Deayea", position: "GK", nation: "Saudi Arabia", colors: SA, trait: "keeper", foot: "R", overall: 95 },
-    { name: "Mohammed Al-Khilaiwi", short: "M. Al-Khilaiwi", position: "RB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "R", overall: 91 },
-    { name: "Osama Hawsawi", short: "O. Hawsawi", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 92 },
-    { name: "Saleh Al-Nuaimah", short: "S. Al-Nuaimah", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 91 },
-    { name: "Hussein Abdulghani", short: "H. Abdulghani", position: "LB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "L", overall: 92 },
-    { name: "Mohammed Noor", short: "M. Noor", position: "CM", nation: "Saudi Arabia", colors: SA, trait: "engine", foot: "R", overall: 94 },
-    { name: "Nawaf Al-Temyat", short: "N. Al-Temyat", position: "CAM", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 94 },
-    { name: "Saeed Al-Owairan", short: "S. Al-Owairan", position: "LW", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 95 },
-    { name: "Majed Abdullah", short: "M. Abdullah", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 97 },
-    { name: "Sami Al-Jaber", short: "S. Al-Jaber", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 96 },
-    { name: "Yasser Al-Qahtani", short: "Y. Al-Qahtani", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 94 }
-  ], ICON_TRAITS = {
-    flair: { pace: 99, shooting: 92, passing: 91, dribbling: 99, defending: 42, physical: 78 },
-    power: { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },
-    engine: { pace: 88, shooting: 88, passing: 99, dribbling: 94, defending: 78, physical: 88 },
-    wall: { pace: 84, shooting: 62, passing: 84, dribbling: 74, defending: 99, physical: 97 },
-    keeper: { pace: 68, shooting: 42, passing: 88, dribbling: 62, defending: 99, physical: 95 },
-    fullback: { pace: 99, shooting: 84, passing: 93, dribbling: 92, defending: 92, physical: 90 }
+  function invent(name2, nation) {
+    let [firsts, lasts] = R[regionOf(nation)], size = firsts.length * lasts.length, k = hashOf(name2) % size;
+    for (let tries = 0; tries < size; tries++, k = (k + 7919) % size) {
+      let full = "".concat(firsts[k % firsts.length], " ").concat(lasts[Math.floor(k / firsts.length) % lasts.length]);
+      if (!used.has(full) && !real.has(full)) return full;
+    }
+    let [f2, l2] = R.english;
+    for (let i = 0; i < f2.length * l2.length; i++) {
+      let full = "".concat(f2[(k + i) % f2.length], " ").concat(l2[Math.floor((k + i) / f2.length) % l2.length]);
+      if (!used.has(full) && !real.has(full)) return full;
+    }
+    return "".concat(firsts[0], " ").concat(lasts[0], " ").concat(used.size);
+  }
+  function buildPeople(pairs) {
+    let seen = /* @__PURE__ */ new Map();
+    for (let [n, nat] of pairs) n && !seen.has(n) && seen.set(n, nat);
+    for (let n of [...seen.keys()].sort()) {
+      if (people.has(n)) continue;
+      let f = invent(n, seen.get(n));
+      people.set(n, f), used.add(f);
+    }
+  }
+  function personName(name2, nation) {
+    if (!APP_STORE || !name2) return name2;
+    if (!people.has(name2)) {
+      let f = invent(name2, nation);
+      people.set(name2, f), used.add(f);
+    }
+    return people.get(name2);
+  }
+  var shortOf = (full) => {
+    let parts = String(full).split(" ");
+    return parts.length > 1 ? "".concat(parts[0][0], ". ").concat(parts.slice(1).join(" ")) : full;
   };
 
   // js/data/realPlayers.js
@@ -9278,6 +9087,403 @@
     Zambia: ["#198a00", "#ef7d00"]
   };
 
+  // js/data/pools.js
+  var FIRST_NAMES = [
+    "Kael",
+    "Dario",
+    "Emrik",
+    "Tobin",
+    "Rafe",
+    "Nilo",
+    "Casian",
+    "Odran",
+    "Silas",
+    "Mateus",
+    "Ivo",
+    "Renzo",
+    "Arlo",
+    "Zane",
+    "Fabien",
+    "Marek",
+    "Lukan",
+    "Teodor",
+    "Anselm",
+    "Bram",
+    "Corin",
+    "Dax",
+    "Elian",
+    "Ferro",
+    "Gustav",
+    "Halvar",
+    "Ikaro",
+    "Jorin",
+    "Kiran",
+    "Leonel",
+    "Milo",
+    "Nero",
+    "Osric",
+    "Pavel",
+    "Quillon",
+    "Rowan",
+    "Soren",
+    "Tamir",
+    "Ulric",
+    "Varro",
+    "Wendel",
+    "Xandro",
+    "Yannic",
+    "Zoran",
+    "Aldric",
+    "Benno",
+    "Cyrel",
+    "Dorian",
+    "Evrin",
+    "Florin",
+    "Gideon",
+    "Hektor",
+    "Ilias",
+    "Joric",
+    "Kasper",
+    "Lyron",
+    "Mattis",
+    "Nevin",
+    "Orin",
+    "Priam",
+    "Rune",
+    "Stellan",
+    "Tavian",
+    "Ansel",
+    "Brayon",
+    "Ciro",
+    "Delmar",
+    "Eryk",
+    "Fenn",
+    "Garrik"
+  ], LAST_NAMES = [
+    "Vance",
+    "Halloran",
+    "Voskuil",
+    "Marren",
+    "Delgadio",
+    "Brekker",
+    "Ostrand",
+    "Fenwick",
+    "Calloway",
+    "Rethen",
+    "Amory",
+    "Bexley",
+    "Corvain",
+    "Drayton",
+    "Esparro",
+    "Falkner",
+    "Grimald",
+    "Harkness",
+    "Ivarsen",
+    "Jansdal",
+    "Krauss",
+    "Lindqvist",
+    "Morrow",
+    "Norquist",
+    "Oakhart",
+    "Pellegrin",
+    "Quill",
+    "Ravnhorst",
+    "Stavros",
+    "Thorne",
+    "Ulrich",
+    "Vantol",
+    "Wexler",
+    "Yaros",
+    "Zabala",
+    "Ashcombe",
+    "Brannigan",
+    "Castellan",
+    "Dunmore",
+    "Ellwood",
+    "Fontaine",
+    "Garrow",
+    "Hensley",
+    "Iverlund",
+    "Jorgen",
+    "Kessler",
+    "Larrion",
+    "Mendova",
+    "Nystrom",
+    "Orvieto",
+    "Palladin",
+    "Rennick",
+    "Sable",
+    "Torvald",
+    "Ubiali",
+    "Verhagen",
+    "Wilder",
+    "Ystad",
+    "Zoric",
+    "Alvarine",
+    "Brimwood",
+    "Carrow",
+    "Dagsen",
+    "Everly",
+    "Fyodrin",
+    "Galvain",
+    "Hollis",
+    "Ivorin",
+    "Jarrow",
+    "Kolvane",
+    "Merrow",
+    "Nordahl",
+    "Ovaris",
+    "Prewitt",
+    "Rask",
+    "Sunderin",
+    "Tessaro",
+    "Valmont",
+    "Wraye",
+    "Zellick"
+  ], NATIONS = [
+    { name: "Valoria", colors: ["#e63946", "#1d3557"] },
+    { name: "Norlund", colors: ["#4cc9f0", "#f8f9fa"] },
+    { name: "Astravia", colors: ["#ffd166", "#073b4c"] },
+    { name: "Cotania", colors: ["#06d6a0", "#1b2a41"] },
+    { name: "Meridia", colors: ["#f77f00", "#003049"] },
+    { name: "Sunhaven", colors: ["#fcbf49", "#d62828"] },
+    { name: "Kaldoria", colors: ["#8ecae6", "#023047"] },
+    { name: "Tervia", colors: ["#b5179e", "#3a0ca3"] },
+    { name: "Bramoor", colors: ["#588157", "#dad7cd"] },
+    { name: "Zephyria", colors: ["#7209b7", "#4cc9f0"] },
+    { name: "Ostmark", colors: ["#e5e5e5", "#212529"] },
+    { name: "Cerravia", colors: ["#ef476f", "#ffd166"] },
+    { name: "Pyrhelia", colors: ["#ff6b35", "#2b2d42"] },
+    { name: "Duskmark", colors: ["#5f0f40", "#9a031e"] },
+    { name: "Ferrenza", colors: ["#2a9d8f", "#264653"] },
+    { name: "Halvane", colors: ["#a8dadc", "#457b9d"] }
+  ], CLUB_BLUEPRINTS = [
+    { name: "Ironvale FC", short: "IRV", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1889, ground: "The Forge", colors: ["#e0294a", "#1a1c22"] },
+    { name: "Solaris Athletic", short: "SOL", tier: 2, crest: "circle", pattern: "solid", device: "sun", founded: 1902, ground: "Helios Park", colors: ["#ffb703", "#12263f"] },
+    { name: "Duskmoor City", short: "DSK", tier: 3, crest: "hex", pattern: "halves", device: "crescent", founded: 1921, ground: "Blackmoor", colors: ["#9d4edd", "#10101a"] },
+    { name: "Verano Sporting", short: "VER", tier: 4, crest: "diamond", pattern: "solid", device: "leaf", founded: 1934, ground: "Estadio Verano", colors: ["#2ec4b6", "#0b132b"] },
+    { name: "Kestrel Park", short: "KES", tier: 5, crest: "chevron", pattern: "solid", device: "bird", founded: 1898, ground: "Kestrel Park", colors: ["#ff7f11", "#2f3640"] },
+    { name: "Thornbury Union", short: "THB", tier: 6, crest: "shield", pattern: "quarters", device: "thorn", founded: 1876, ground: "Bramble Lane", colors: ["#4f9d3a", "#d4af37"] },
+    { name: "Marisol CF", short: "MAR", tier: 7, crest: "circle", pattern: "hoops", device: "wave", founded: 1947, ground: "Puerto Marisol", colors: ["#ff5c8a", "#13315c"] },
+    { name: "Aurora Nord", short: "AUR", tier: 8, crest: "triangle", pattern: "solid", device: "star", founded: 1955, ground: "Nordlys Arena", colors: ["#41d3ff", "#2b2d6e"] },
+    { name: "Bastion Rovers", short: "BAS", tier: 9, crest: "hex", pattern: "stripes", device: "battlement", founded: 1883, ground: "The Rampart", colors: ["#6c8ea4", "#c9d6df"] },
+    { name: "Calderon Zenith", short: "CAL", tier: 10, crest: "diamond", pattern: "halves", device: "peak", founded: 1968, ground: "Cumbre Stadium", colors: ["#ff2e88", "#150d1f"] },
+    /* The Meridian League — the second division of the world, added in v68.
+     * Ten more clubs with their own kits and grounds; their squads are dealt
+     * from the real players who were unattached until then (see generator.js),
+     * so nobody's card changed, only where some of them play. */
+    { name: "Harbourlight FC", short: "HBL", tier: 1, crest: "shield", pattern: "hoops", device: "wave", founded: 1893, ground: "The Lantern", colors: ["#00b4d8", "#03203c"], league: "Meridian League" },
+    { name: "Redcliffe Athletic", short: "RDC", tier: 2, crest: "circle", pattern: "stripes", device: "keep", founded: 1908, ground: "Cliffside Park", colors: ["#d62828", "#f1f1f1"], league: "Meridian League" },
+    { name: "Ashgrove Wanderers", short: "ASH", tier: 3, crest: "hex", pattern: "solid", device: "leaf", founded: 1911, ground: "Grove Road", colors: ["#2a9d8f", "#1b1b1e"], league: "Meridian League" },
+    { name: "Saltmarsh Town", short: "SLT", tier: 4, crest: "diamond", pattern: "quarters", device: "bird", founded: 1926, ground: "Marsh Lane", colors: ["#e9c46a", "#264653"], league: "Meridian League" },
+    { name: "Vireo Sporting", short: "VIR", tier: 5, crest: "chevron", pattern: "halves", device: "star", founded: 1949, ground: "Estadio Vireo", colors: ["#8ac926", "#101820"], league: "Meridian League" },
+    { name: "Coldwater United", short: "CWU", tier: 6, crest: "shield", pattern: "solid", device: "crescent", founded: 1881, ground: "The Weir", colors: ["#a2d2ff", "#1d3557"], league: "Meridian League" },
+    { name: "Ember Vale", short: "EMB", tier: 7, crest: "triangle", pattern: "stripes", device: "sun", founded: 1932, ground: "Kiln Field", colors: ["#f77f00", "#3d0c02"], league: "Meridian League" },
+    { name: "Greywick Rangers", short: "GRW", tier: 8, crest: "circle", pattern: "quarters", device: "battlement", founded: 1874, ground: "Wick Green", colors: ["#adb5bd", "#212529"], league: "Meridian League" },
+    { name: "Lumen City", short: "LUM", tier: 9, crest: "hex", pattern: "hoops", device: "peak", founded: 1961, ground: "Lumen Dome", colors: ["#ffd166", "#5a189a"], league: "Meridian League" },
+    { name: "Serrano Nova", short: "SRN", tier: 10, crest: "diamond", pattern: "stripes", device: "thorn", founded: 1977, ground: "Campo Nova", colors: ["#ef476f", "#073b4c"], league: "Meridian League" },
+    /* The Vanguard League (third division) and the Foundation League (fourth),
+     * added in v70 to make the world 40 clubs across four divisions with
+     * promotion and relegation between them. Their squads are new cards on
+     * their own seeded stream (see generator.js), named from the third wave of
+     * real players; nothing that existed before v70 moves. `wave: 3` is how the
+     * generator tells them apart from the Meridian clubs, whose squads were
+     * dealt from the free pool. */
+    { name: "Halden Steel", short: "HAL", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1899, ground: "Steelworks Park", colors: ["#8d99ae", "#2b2d42"], league: "Vanguard League", wave: 3 },
+    { name: "Corvina Rovers", short: "COR", tier: 2, crest: "circle", pattern: "hoops", device: "bird", founded: 1912, ground: "Corvina Field", colors: ["#1b263b", "#e0e1dd"], league: "Vanguard League", wave: 3 },
+    { name: "Brightwater Town", short: "BWT", tier: 3, crest: "hex", pattern: "halves", device: "wave", founded: 1904, ground: "Riverside", colors: ["#48cae4", "#023e8a"], league: "Vanguard League", wave: 3 },
+    { name: "Oakhurst United", short: "OAK", tier: 4, crest: "diamond", pattern: "solid", device: "leaf", founded: 1887, ground: "The Acorn", colors: ["#6a994e", "#386641"], league: "Vanguard League", wave: 3 },
+    { name: "Tidemark FC", short: "TDM", tier: 5, crest: "chevron", pattern: "quarters", device: "crescent", founded: 1931, ground: "Harbour Ground", colors: ["#0077b6", "#caf0f8"], league: "Vanguard League", wave: 3 },
+    { name: "Pinecrest Athletic", short: "PIN", tier: 6, crest: "shield", pattern: "hoops", device: "peak", founded: 1920, ground: "Summit Road", colors: ["#2d6a4f", "#d8f3dc"], league: "Vanguard League", wave: 3 },
+    { name: "Ravenshaw City", short: "RVS", tier: 7, crest: "triangle", pattern: "stripes", device: "bird", founded: 1896, ground: "Shaw Lane", colors: ["#212529", "#ffd60a"], league: "Vanguard League", wave: 3 },
+    { name: "Sable Cross", short: "SBC", tier: 8, crest: "circle", pattern: "quarters", device: "star", founded: 1953, ground: "Cross Park", colors: ["#ff9f1c", "#011627"], league: "Vanguard League", wave: 3 },
+    { name: "Windmere Sporting", short: "WND", tier: 9, crest: "hex", pattern: "solid", device: "sun", founded: 1964, ground: "Estadio Windmere", colors: ["#c77dff", "#10002b"], league: "Vanguard League", wave: 3 },
+    { name: "Quarry Bank", short: "QRY", tier: 10, crest: "diamond", pattern: "halves", device: "battlement", founded: 1878, ground: "The Quarry", colors: ["#bc6c25", "#283618"], league: "Vanguard League", wave: 3 },
+    { name: "Larkspur FC", short: "LRK", tier: 1, crest: "circle", pattern: "stripes", device: "leaf", founded: 1909, ground: "Meadow Lane", colors: ["#7b2cbf", "#e0aaff"], league: "Foundation League", wave: 3 },
+    { name: "Ironbridge Town", short: "IRB", tier: 2, crest: "shield", pattern: "solid", device: "keep", founded: 1884, ground: "Bridge Street", colors: ["#9a031e", "#fb8b24"], league: "Foundation League", wave: 3 },
+    { name: "Stonefield Wanderers", short: "STF", tier: 3, crest: "hex", pattern: "hoops", device: "battlement", founded: 1891, ground: "Stonefield", colors: ["#adb5bd", "#343a40"], league: "Foundation League", wave: 3 },
+    { name: "Marlow Vale", short: "MLW", tier: 4, crest: "diamond", pattern: "quarters", device: "wave", founded: 1927, ground: "Vale Park", colors: ["#00afb9", "#f07167"], league: "Foundation League", wave: 3 },
+    { name: "Heathcote Rangers", short: "HTC", tier: 5, crest: "chevron", pattern: "stripes", device: "thorn", founded: 1902, ground: "Heath Road", colors: ["#e63946", "#f1faee"], league: "Foundation League", wave: 3 },
+    { name: "Fenwick Albion", short: "FEN", tier: 6, crest: "shield", pattern: "halves", device: "crescent", founded: 1919, ground: "Fen Lane", colors: ["#f4a261", "#264653"], league: "Foundation League", wave: 3 },
+    { name: "Dunmore Celtic", short: "DUN", tier: 7, crest: "circle", pattern: "hoops", device: "star", founded: 1888, ground: "Dunmore Park", colors: ["#40916c", "#ffffff"], league: "Foundation League", wave: 3 },
+    { name: "Silverlake City", short: "SLK", tier: 8, crest: "triangle", pattern: "solid", device: "sun", founded: 1958, ground: "Lakeside Arena", colors: ["#dee2e6", "#4361ee"], league: "Foundation League", wave: 3 },
+    { name: "Crossgate Athletic", short: "CRG", tier: 9, crest: "hex", pattern: "stripes", device: "peak", founded: 1936, ground: "Gate Ground", colors: ["#ffb703", "#023047"], league: "Foundation League", wave: 3 },
+    { name: "Ashby Colliery", short: "ASB", tier: 10, crest: "diamond", pattern: "solid", device: "keep", founded: 1871, ground: "Colliery Row", colors: ["#3d405b", "#f2cc8f"], league: "Foundation League", wave: 3 },
+    /* The Pioneer League (fifth) and the Grassroots League (sixth), v71:
+     * sixty clubs, six divisions. Generated on their own stream after the
+     * v70 cards, named from the fourth wave. `wave: 4`. */
+    { name: "Northbridge FC", short: "NTH", tier: 1, crest: "shield", pattern: "stripes", device: "keep", founded: 1894, ground: "Bridge Park", colors: ["#1d4ed8", "#f8fafc"], league: "Pioneer League", wave: 4 },
+    { name: "Wexcombe Town", short: "WEX", tier: 2, crest: "circle", pattern: "hoops", device: "leaf", founded: 1903, ground: "Combe Lane", colors: ["#16a34a", "#052e16"], league: "Pioneer League", wave: 4 },
+    { name: "Estuary Athletic", short: "EST", tier: 3, crest: "hex", pattern: "halves", device: "wave", founded: 1911, ground: "The Mudflats", colors: ["#0ea5e9", "#0c1a2a"], league: "Pioneer League", wave: 4 },
+    { name: "Kingsmere United", short: "KGM", tier: 4, crest: "diamond", pattern: "solid", device: "crescent", founded: 1889, ground: "Mere Road", colors: ["#a21caf", "#fdf4ff"], league: "Pioneer League", wave: 4 },
+    { name: "Fallowfield Rovers", short: "FAL", tier: 5, crest: "chevron", pattern: "quarters", device: "bird", founded: 1922, ground: "Fallow Ground", colors: ["#ca8a04", "#1c1917"], league: "Pioneer League", wave: 4 },
+    { name: "Ironwood City", short: "IWD", tier: 6, crest: "shield", pattern: "hoops", device: "thorn", founded: 1898, ground: "Ironwood Park", colors: ["#57534e", "#f97316"], league: "Pioneer League", wave: 4 },
+    { name: "Seabrook Wanderers", short: "SEA", tier: 7, crest: "triangle", pattern: "stripes", device: "sun", founded: 1931, ground: "Brook Field", colors: ["#f43f5e", "#fff1f2"], league: "Pioneer League", wave: 4 },
+    { name: "Alder Heath", short: "ALD", tier: 8, crest: "circle", pattern: "quarters", device: "star", founded: 1957, ground: "Heath Park", colors: ["#65a30d", "#1a2e05"], league: "Pioneer League", wave: 4 },
+    { name: "Moorgate Sporting", short: "MGT", tier: 9, crest: "hex", pattern: "solid", device: "peak", founded: 1966, ground: "Estadio Moorgate", colors: ["#7c3aed", "#faf5ff"], league: "Pioneer League", wave: 4 },
+    { name: "Ashwell Colts", short: "AWC", tier: 10, crest: "diamond", pattern: "halves", device: "battlement", founded: 1880, ground: "The Paddock", colors: ["#b45309", "#fef3c7"], league: "Pioneer League", wave: 4 },
+    { name: "Riverton Albion", short: "RVT", tier: 1, crest: "circle", pattern: "stripes", device: "wave", founded: 1907, ground: "Riverton Ground", colors: ["#0369a1", "#e0f2fe"], league: "Grassroots League", wave: 4 },
+    { name: "Hollowmere FC", short: "HLM", tier: 2, crest: "shield", pattern: "solid", device: "crescent", founded: 1886, ground: "Hollow Lane", colors: ["#334155", "#cbd5e1"], league: "Grassroots League", wave: 4 },
+    { name: "Barrowgate Town", short: "BGT", tier: 3, crest: "hex", pattern: "hoops", device: "keep", founded: 1892, ground: "Barrow Park", colors: ["#dc2626", "#fef2f2"], league: "Grassroots League", wave: 4 },
+    { name: "Copperfield United", short: "CPF", tier: 4, crest: "diamond", pattern: "quarters", device: "sun", founded: 1929, ground: "Copper Row", colors: ["#d97706", "#292524"], league: "Grassroots League", wave: 4 },
+    { name: "Thistlewood Rangers", short: "THS", tier: 5, crest: "chevron", pattern: "stripes", device: "thorn", founded: 1904, ground: "Thistle Lane", colors: ["#7e22ce", "#fde68a"], league: "Grassroots League", wave: 4 },
+    { name: "Greenacre Albion", short: "GRA", tier: 6, crest: "shield", pattern: "halves", device: "leaf", founded: 1917, ground: "Acre Field", colors: ["#15803d", "#dcfce7"], league: "Grassroots League", wave: 4 },
+    { name: "Saltire Celtic", short: "SLC", tier: 7, crest: "circle", pattern: "hoops", device: "star", founded: 1890, ground: "Saltire Park", colors: ["#1e3a8a", "#ffffff"], league: "Grassroots League", wave: 4 },
+    { name: "Pebblebrook City", short: "PBB", tier: 8, crest: "triangle", pattern: "solid", device: "wave", founded: 1961, ground: "Brookside Arena", colors: ["#0f766e", "#ccfbf1"], league: "Grassroots League", wave: 4 },
+    { name: "Cinderford Athletic", short: "CIN", tier: 9, crest: "hex", pattern: "stripes", device: "peak", founded: 1938, ground: "Cinder Ground", colors: ["#f59e0b", "#1c1917"], league: "Grassroots League", wave: 4 },
+    { name: "Hawkridge Colliery", short: "HWK", tier: 10, crest: "diamond", pattern: "solid", device: "bird", founded: 1873, ground: "Hawk Row", colors: ["#1f2937", "#fbbf24"], league: "Grassroots League", wave: 4 },
+    /* v72: the hundred-club world. Forty more clubs — two into each of the
+     * first six divisions and the whole of the Highland (7th) and Lowland
+     * (8th) Leagues, so the divisions are 12, 12, 12, 12, 13, 13, 13, 13.
+     * `division` is explicit here (the league name alone no longer says it);
+     * `wave: 5`. Generated on their own stream, named from the fifth wave. */
+    { name: "Vantage City", short: "VAN", tier: 3, crest: "shield", pattern: "stripes", device: "peak", founded: 1901, ground: "Vantage Arena", colors: ["#0f172a", "#38bdf8"], league: "Apex Premier Division", division: 1, wave: 5 },
+    { name: "Corsair Athletic", short: "CSR", tier: 5, crest: "circle", pattern: "halves", device: "wave", founded: 1896, ground: "The Harbourside", colors: ["#7f1d1d", "#fde68a"], league: "Apex Premier Division", division: 1, wave: 5 },
+    { name: "Ridgeway Rovers", short: "RDG", tier: 4, crest: "hex", pattern: "hoops", device: "peak", founded: 1908, ground: "Ridgeway Park", colors: ["#065f46", "#a7f3d0"], league: "Meridian League", division: 2, wave: 5 },
+    { name: "Stellar FC", short: "STL", tier: 6, crest: "triangle", pattern: "solid", device: "star", founded: 1953, ground: "Stellar Dome", colors: ["#312e81", "#c7d2fe"], league: "Meridian League", division: 2, wave: 5 },
+    { name: "Brookhaven United", short: "BRH", tier: 3, crest: "shield", pattern: "quarters", device: "leaf", founded: 1897, ground: "Haven Road", colors: ["#1d4ed8", "#fef3c7"], league: "Vanguard League", division: 3, wave: 5 },
+    { name: "Pennywell Town", short: "PNW", tier: 7, crest: "diamond", pattern: "stripes", device: "keep", founded: 1885, ground: "Penny Lane", colors: ["#78350f", "#fde68a"], league: "Vanguard League", division: 3, wave: 5 },
+    { name: "Holloway Rangers", short: "HOL", tier: 4, crest: "circle", pattern: "stripes", device: "battlement", founded: 1890, ground: "Holloway Ground", colors: ["#4c1d95", "#f5f3ff"], league: "Foundation League", division: 4, wave: 5 },
+    { name: "Duneside FC", short: "DUN", tier: 8, crest: "chevron", pattern: "halves", device: "sun", founded: 1934, ground: "Dune Park", colors: ["#b45309", "#fff7ed"], league: "Foundation League", division: 4, wave: 5 },
+    { name: "Lakeshore City", short: "LKS", tier: 2, crest: "hex", pattern: "solid", device: "wave", founded: 1912, ground: "Lakeshore Stadium", colors: ["#0e7490", "#ecfeff"], league: "Pioneer League", division: 5, wave: 5 },
+    { name: "Ferncliffe Athletic", short: "FRN", tier: 6, crest: "shield", pattern: "hoops", device: "thorn", founded: 1899, ground: "Cliff Road", colors: ["#166534", "#dcfce7"], league: "Pioneer League", division: 5, wave: 5 },
+    { name: "Kingswood Wanderers", short: "KGW", tier: 9, crest: "diamond", pattern: "quarters", device: "keep", founded: 1888, ground: "Kings Field", colors: ["#1e3a8a", "#fbbf24"], league: "Pioneer League", division: 5, wave: 5 },
+    { name: "Norbury Town", short: "NRB", tier: 3, crest: "circle", pattern: "halves", device: "crescent", founded: 1905, ground: "Norbury Park", colors: ["#9f1239", "#fecdd3"], league: "Grassroots League", division: 6, wave: 5 },
+    { name: "Eastmoor Colts", short: "EMC", tier: 7, crest: "triangle", pattern: "stripes", device: "bird", founded: 1961, ground: "The Moor", colors: ["#0f766e", "#99f6e4"], league: "Grassroots League", division: 6, wave: 5 },
+    { name: "Redbrook FC", short: "RDB", tier: 10, crest: "hex", pattern: "solid", device: "wave", founded: 1922, ground: "Brook Lane", colors: ["#b91c1c", "#fee2e2"], league: "Grassroots League", division: 6, wave: 5 },
+    { name: "Ashford Vale", short: "ASV", tier: 1, crest: "shield", pattern: "stripes", device: "leaf", founded: 1894, ground: "Vale Ground", colors: ["#15803d", "#f0fdf4"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Bramford Albion", short: "BRF", tier: 2, crest: "circle", pattern: "hoops", device: "keep", founded: 1887, ground: "Bramford Road", colors: ["#1e40af", "#dbeafe"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Crestwood Town", short: "CRW", tier: 3, crest: "hex", pattern: "halves", device: "peak", founded: 1910, ground: "Crest Park", colors: ["#7c2d12", "#fed7aa"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Elmstead Rovers", short: "ELM", tier: 4, crest: "diamond", pattern: "solid", device: "thorn", founded: 1902, ground: "Elm Lane", colors: ["#3f6212", "#ecfccb"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Foxhollow United", short: "FOX", tier: 5, crest: "chevron", pattern: "quarters", device: "bird", founded: 1926, ground: "Hollow Field", colors: ["#c2410c", "#ffedd5"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Glenmere Athletic", short: "GLM", tier: 6, crest: "shield", pattern: "hoops", device: "wave", founded: 1898, ground: "Glen Road", colors: ["#0c4a6e", "#e0f2fe"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Harlow Green", short: "HRG", tier: 7, crest: "triangle", pattern: "stripes", device: "leaf", founded: 1931, ground: "Green Lane", colors: ["#166534", "#bbf7d0"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Ironhurst Colliery", short: "IRH", tier: 8, crest: "circle", pattern: "solid", device: "battlement", founded: 1876, ground: "Hurst Row", colors: ["#292524", "#f5f5f4"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Juniper Town", short: "JUN", tier: 9, crest: "hex", pattern: "halves", device: "sun", founded: 1948, ground: "Juniper Park", colors: ["#5b21b6", "#ede9fe"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Kettlewell FC", short: "KTW", tier: 10, crest: "diamond", pattern: "stripes", device: "crescent", founded: 1907, ground: "Kettle Ground", colors: ["#0369a1", "#f0f9ff"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Langford City", short: "LNG", tier: 11, crest: "shield", pattern: "quarters", device: "star", founded: 1919, ground: "Langford Road", colors: ["#be123c", "#ffe4e6"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Marlow Heath", short: "MLH", tier: 12, crest: "circle", pattern: "hoops", device: "peak", founded: 1883, ground: "Heath Lane", colors: ["#4d7c0f", "#f7fee7"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Nettleby Rangers", short: "NTL", tier: 13, crest: "hex", pattern: "solid", device: "keep", founded: 1895, ground: "Nettle Park", colors: ["#1f2937", "#fbbf24"], league: "Highland League", division: 7, wave: 5 },
+    { name: "Oakridge Albion", short: "OKR", tier: 1, crest: "shield", pattern: "stripes", device: "leaf", founded: 1900, ground: "Oakridge Ground", colors: ["#14532d", "#dcfce7"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Pemberton FC", short: "PMB", tier: 2, crest: "circle", pattern: "halves", device: "keep", founded: 1889, ground: "Pember Lane", colors: ["#7f1d1d", "#fecaca"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Quarry Vale", short: "QRV", tier: 3, crest: "hex", pattern: "hoops", device: "battlement", founded: 1912, ground: "The Vale", colors: ["#44403c", "#e7e5e4"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Rosemont United", short: "RSM", tier: 4, crest: "diamond", pattern: "solid", device: "sun", founded: 1933, ground: "Rosemont Park", colors: ["#be185d", "#fce7f3"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Silverdale Town", short: "SVD", tier: 5, crest: "chevron", pattern: "quarters", device: "wave", founded: 1904, ground: "Dale Road", colors: ["#075985", "#e0f2fe"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Thornfield FC", short: "THF", tier: 6, crest: "shield", pattern: "stripes", device: "thorn", founded: 1896, ground: "Thorn Park", colors: ["#3730a3", "#e0e7ff"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Underhill Rovers", short: "UDH", tier: 7, crest: "triangle", pattern: "hoops", device: "peak", founded: 1921, ground: "Underhill", colors: ["#9a3412", "#ffedd5"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Vale Royal", short: "VLR", tier: 8, crest: "circle", pattern: "solid", device: "crescent", founded: 1947, ground: "Royal Field", colors: ["#6d28d9", "#f5f3ff"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Westbrook City", short: "WBK", tier: 9, crest: "hex", pattern: "halves", device: "star", founded: 1929, ground: "Westbrook Lane", colors: ["#0d9488", "#ccfbf1"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Yewtree Athletic", short: "YEW", tier: 10, crest: "diamond", pattern: "stripes", device: "leaf", founded: 1886, ground: "Yew Lane", colors: ["#365314", "#ecfccb"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Zealand Park", short: "ZLP", tier: 11, crest: "shield", pattern: "hoops", device: "bird", founded: 1955, ground: "Zealand Ground", colors: ["#1e3a8a", "#dbeafe"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Amberley Colts", short: "AMB", tier: 12, crest: "circle", pattern: "quarters", device: "sun", founded: 1963, ground: "Amber Park", colors: ["#d97706", "#fffbeb"], league: "Lowland League", division: 8, wave: 5 },
+    { name: "Blackfen Wanderers", short: "BFN", tier: 13, crest: "hex", pattern: "stripes", device: "keep", founded: 1891, ground: "Fen Road", colors: ["#111827", "#f9fafb"], league: "Lowland League", division: 8, wave: 5 }
+  ], LEAGUE_NAME = "Apex Premier Division", LEAGUES = [LEAGUE_NAME, "Meridian League", "Vanguard League", "Foundation League", "Pioneer League", "Grassroots League", "Highland League", "Lowland League"], POSITIONS = {
+    GK: { group: "GK", weights: { pace: 0.05, shooting: 0.05, passing: 0.15, dribbling: 0.1, defending: 0.35, physical: 0.3 } },
+    CB: { group: "DEF", weights: { pace: 0.1, shooting: 0.02, passing: 0.13, dribbling: 0.05, defending: 0.45, physical: 0.25 } },
+    LB: { group: "DEF", weights: { pace: 0.22, shooting: 0.05, passing: 0.2, dribbling: 0.15, defending: 0.28, physical: 0.1 } },
+    RB: { group: "DEF", weights: { pace: 0.22, shooting: 0.05, passing: 0.2, dribbling: 0.15, defending: 0.28, physical: 0.1 } },
+    CDM: { group: "MID", weights: { pace: 0.08, shooting: 0.08, passing: 0.25, dribbling: 0.14, defending: 0.3, physical: 0.15 } },
+    CM: { group: "MID", weights: { pace: 0.12, shooting: 0.14, passing: 0.3, dribbling: 0.22, defending: 0.12, physical: 0.1 } },
+    CAM: { group: "MID", weights: { pace: 0.14, shooting: 0.2, passing: 0.28, dribbling: 0.28, defending: 0.04, physical: 0.06 } },
+    LM: { group: "MID", weights: { pace: 0.24, shooting: 0.14, passing: 0.22, dribbling: 0.26, defending: 0.08, physical: 0.06 } },
+    RM: { group: "MID", weights: { pace: 0.24, shooting: 0.14, passing: 0.22, dribbling: 0.26, defending: 0.08, physical: 0.06 } },
+    LW: { group: "FWD", weights: { pace: 0.28, shooting: 0.22, passing: 0.16, dribbling: 0.28, defending: 0.02, physical: 0.04 } },
+    RW: { group: "FWD", weights: { pace: 0.28, shooting: 0.22, passing: 0.16, dribbling: 0.28, defending: 0.02, physical: 0.04 } },
+    ST: { group: "FWD", weights: { pace: 0.22, shooting: 0.38, passing: 0.08, dribbling: 0.18, defending: 0.01, physical: 0.13 } }
+  };
+  var RARITY = {
+    bronze: { label: "Bronze", color: "#c88a4a", glow: "rgba(200,138,74,.45)" },
+    silver: { label: "Silver", color: "#b9c4d0", glow: "rgba(185,196,208,.45)" },
+    gold: { label: "Gold", color: "#f4c95d", glow: "rgba(244,201,93,.55)" },
+    special: { label: "Special", color: "#ff2e88", glow: "rgba(255,46,136,.65)" },
+    star: { label: "Star", color: "#a06bff", glow: "rgba(160,107,255,.7)" },
+    icon: { label: "Icon", color: "#7af7ff", glow: "rgba(122,247,255,.75)" }
+  };
+  function rarityFor(overall) {
+    return overall >= 88 ? "special" : overall >= 79 ? "gold" : overall >= 70 ? "silver" : "bronze";
+  }
+  var ICONS = [
+    { name: "Lionel Messi", short: "L. Messi", position: "RW", nation: "Argentina", colors: ["#75aadb", "#ffffff"], trait: "flair", foot: "L" },
+    { name: "Cristiano Ronaldo", short: "C. Ronaldo", position: "ST", nation: "Portugal", colors: ["#da291c", "#046a38"], trait: "power", foot: "R" },
+    { name: "Neymar Jr", short: "Neymar Jr", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
+    { name: "Diego Maradona", short: "D. Maradona", position: "CAM", nation: "Argentina", colors: ["#75aadb", "#ffffff"], trait: "flair", foot: "L" },
+    { name: "Zinedine Zidane", short: "Z. Zidane", position: "CM", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "engine", foot: "R" },
+    { name: "Lothar Matthaus", short: "L. Matthaus", position: "CDM", nation: "Germany", colors: ["#000000", "#dd0000"], trait: "engine", foot: "R" },
+    { name: "Paolo Maldini", short: "P. Maldini", position: "CB", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "wall", foot: "R" },
+    { name: "Gianluigi Buffon", short: "G. Buffon", position: "GK", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "keeper", foot: "R" },
+    // `added` marks everything appended after the first eight. It exists purely
+    // so the generator can hand these ids out after the Stars below, leaving the
+    // original twenty named cards pointing at the same players they always did.
+    { name: "Roberto Carlos", short: "R. Carlos", position: "LB", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "fullback", foot: "L", added: !0 },
+    { name: "Cafu", short: "Cafu", position: "RB", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "fullback", foot: "R", added: !0 },
+    { name: "Ryan Giggs", short: "R. Giggs", position: "LM", nation: "Wales", colors: ["#c8102e", "#00b140"], trait: "flair", foot: "L", added: !0 },
+    { name: "David Beckham", short: "D. Beckham", position: "RM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "engine", foot: "R", added: !0 },
+    // A 4-3-3 asks for two centre-backs and two central midfielders, and 4-4-2
+    // for two strikers, so one Icon per position still could not field an Icon
+    // XI. These three are the duplicates that close it.
+    { name: "Franz Beckenbauer", short: "F. Beckenbauer", position: "CB", nation: "Germany", colors: ["#000000", "#dd0000"], trait: "wall", foot: "R", added: !0 },
+    { name: "Xavi Hernandez", short: "Xavi", position: "CM", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "engine", foot: "R", added: !0 },
+    { name: "Ronaldo Nazario", short: "R. Nazario", position: "ST", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "power", foot: "R", added: !0 }
+  ], STARS = [
+    { name: "Lamine Yamal", short: "L. Yamal", position: "RW", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "flair", foot: "L" },
+    { name: "Raphinha", short: "Raphinha", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
+    { name: "Vinicius Jr", short: "Vinicius Jr", position: "LW", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "flair", foot: "R" },
+    { name: "Kylian Mbappe", short: "K. Mbappe", position: "ST", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "power", foot: "R" },
+    { name: "Erling Haaland", short: "E. Haaland", position: "ST", nation: "Norway", colors: ["#ba0c2f", "#00205b"], trait: "power", foot: "L" },
+    { name: "Jude Bellingham", short: "J. Bellingham", position: "CM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "engine", foot: "R" },
+    { name: "Kevin De Bruyne", short: "K. De Bruyne", position: "CAM", nation: "Belgium", colors: ["#000000", "#fdda24"], trait: "engine", foot: "R" },
+    { name: "Federico Valverde", short: "F. Valverde", position: "CM", nation: "Uruguay", colors: ["#0038a8", "#ffffff"], trait: "engine", foot: "R" },
+    { name: "Rodri", short: "Rodri", position: "CDM", nation: "Spain", colors: ["#c60b1e", "#ffc400"], trait: "wall", foot: "R" },
+    { name: "Virgil van Dijk", short: "V. van Dijk", position: "CB", nation: "Netherlands", colors: ["#ae1c28", "#21468b"], trait: "wall", foot: "R" },
+    { name: "Achraf Hakimi", short: "A. Hakimi", position: "RB", nation: "Morocco", colors: ["#c1272d", "#006233"], trait: "engine", foot: "R" },
+    { name: "Alisson", short: "Alisson", position: "GK", nation: "Brazil", colors: ["#009c3b", "#ffdf00"], trait: "keeper", foot: "R" },
+    // appended after the originals — see the note on ICONS
+    { name: "Alphonso Davies", short: "A. Davies", position: "LB", nation: "Canada", colors: ["#ff0000", "#ffffff"], trait: "fullback", foot: "L", added: !0 },
+    { name: "Jeremy Doku", short: "J. Doku", position: "LM", nation: "Belgium", colors: ["#000000", "#fdda24"], trait: "flair", foot: "R", added: !0 },
+    { name: "Bukayo Saka", short: "B. Saka", position: "RM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "flair", foot: "L", added: !0 },
+    { name: "William Saliba", short: "W. Saliba", position: "CB", nation: "France", colors: ["#0055a4", "#ef4135"], trait: "wall", foot: "R", added: !0 },
+    { name: "Declan Rice", short: "D. Rice", position: "CDM", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "wall", foot: "R", added: !0 },
+    { name: "Mohamed Salah", short: "M. Salah", position: "RW", nation: "Egypt", colors: ["#c8102e", "#ffffff"], trait: "power", foot: "L", added: !0 },
+    { name: "Harry Kane", short: "H. Kane", position: "ST", nation: "England", colors: ["#ffffff", "#ce1124"], trait: "power", foot: "R", added: !0 },
+    { name: "Gianluigi Donnarumma", short: "G. Donnarumma", position: "GK", nation: "Italy", colors: ["#0064aa", "#ffffff"], trait: "keeper", foot: "R", added: !0 }
+  ], STAR_TRAITS = {
+    flair: { pace: 94, shooting: 86, passing: 84, dribbling: 94, defending: 38, physical: 72 },
+    power: { pace: 93, shooting: 93, passing: 76, dribbling: 87, defending: 40, physical: 88 },
+    engine: { pace: 84, shooting: 84, passing: 92, dribbling: 88, defending: 74, physical: 84 },
+    wall: { pace: 78, shooting: 56, passing: 80, dribbling: 68, defending: 92, physical: 91 },
+    keeper: { pace: 62, shooting: 38, passing: 82, dribbling: 56, defending: 92, physical: 90 },
+    fullback: { pace: 93, shooting: 72, passing: 86, dribbling: 86, defending: 88, physical: 84 }
+  }, SA = ["#006c35", "#ffffff"], SAUDI_ICONS = [
+    { name: "Mohamed Al-Deayea", short: "M. Al-Deayea", position: "GK", nation: "Saudi Arabia", colors: SA, trait: "keeper", foot: "R", overall: 95 },
+    { name: "Mohammed Al-Khilaiwi", short: "M. Al-Khilaiwi", position: "RB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "R", overall: 91 },
+    { name: "Osama Hawsawi", short: "O. Hawsawi", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 92 },
+    { name: "Saleh Al-Nuaimah", short: "S. Al-Nuaimah", position: "CB", nation: "Saudi Arabia", colors: SA, trait: "wall", foot: "R", overall: 91 },
+    { name: "Hussein Abdulghani", short: "H. Abdulghani", position: "LB", nation: "Saudi Arabia", colors: SA, trait: "fullback", foot: "L", overall: 92 },
+    { name: "Mohammed Noor", short: "M. Noor", position: "CM", nation: "Saudi Arabia", colors: SA, trait: "engine", foot: "R", overall: 94 },
+    { name: "Nawaf Al-Temyat", short: "N. Al-Temyat", position: "CAM", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 94 },
+    { name: "Saeed Al-Owairan", short: "S. Al-Owairan", position: "LW", nation: "Saudi Arabia", colors: SA, trait: "flair", foot: "R", overall: 95 },
+    { name: "Majed Abdullah", short: "M. Abdullah", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 97 },
+    { name: "Sami Al-Jaber", short: "S. Al-Jaber", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 96 },
+    { name: "Yasser Al-Qahtani", short: "Y. Al-Qahtani", position: "ST", nation: "Saudi Arabia", colors: SA, trait: "power", foot: "R", overall: 94 }
+  ], ICON_TRAITS = {
+    flair: { pace: 99, shooting: 92, passing: 91, dribbling: 99, defending: 42, physical: 78 },
+    power: { pace: 94, shooting: 99, passing: 82, dribbling: 92, defending: 45, physical: 93 },
+    engine: { pace: 88, shooting: 88, passing: 99, dribbling: 94, defending: 78, physical: 88 },
+    wall: { pace: 84, shooting: 62, passing: 84, dribbling: 74, defending: 99, physical: 97 },
+    keeper: { pace: 68, shooting: 42, passing: 88, dribbling: 62, defending: 99, physical: 95 },
+    fullback: { pace: 99, shooting: 84, passing: 93, dribbling: 92, defending: 92, physical: 90 }
+  };
+
+  // js/data/fictional.js
+  if (APP_STORE) {
+    let lists = [REAL_PLAYERS, REAL_PLAYERS_EXTRA, REAL_PLAYERS_WAVE3, REAL_PLAYERS_WAVE4, REAL_PLAYERS_WAVE5, REAL_PLAYERS_WAVE6, REAL_PLAYERS_WAVE7], cards = [...ICONS, ...STARS, ...SAUDI_ICONS], pairs = [...lists.flatMap((l) => l.map((r) => [r[0], r[2]])), ...cards.map((d2) => [d2.name, d2.nation])];
+    registerRealNames(pairs.map((p) => p[0])), buildPeople(pairs);
+    for (let l of lists) for (let r of l)
+      r[0] = personName(r[0], r[2]), r[1] = shortOf(r[0]);
+    for (let d2 of cards)
+      d2.name = personName(d2.name, d2.nation), d2.short = shortOf(d2.name);
+  }
+
   // js/data/generator.js
   function mulberry32(seed) {
     return function() {
@@ -9450,7 +9656,10 @@
     ["Fernando Torres", "F. Torres", "Spain", "ST", 88, 25],
     ["David Villa", "D. Villa", "Spain", "ST", 88, 28],
     ["Ruud van Nistelrooy", "R. v. Nistelrooy", "Netherlands", "ST", 88, 28]
-  ], CORE = CLUB_BLUEPRINTS.filter((bp) => !bp.league);
+  ];
+  for (let r of [...SBC_LEGENDS, ...SBC_LEGENDS_2])
+    r[0] = personName(r[0], r[2]), r[1] = APP_STORE ? shortOf(r[0]) : r[1];
+  var CORE = CLUB_BLUEPRINTS.filter((bp) => !bp.league);
   function buildWorld() {
     var _a, _b, _c;
     idCounter = 0;
@@ -9511,12 +9720,12 @@
       let p = makePlayer(rand, pos, rand.int(88, 93), null);
       p.overall = clamp(p.overall + 2, 88, 99), p.rarity = rarityFor(p.overall), p.value = marketValue(p.overall, p.age), players.push(p), freeAgents.push(p.id);
     });
-    let icons = [], stars = [], named = [
+    let icons = [], stars = [], named2 = [
       ...ICONS.map((def) => ({ def, tier: "icon" })),
       ...STARS.map((def) => ({ def, tier: "star" }))
     ];
     for (let wave2 of [!1, !0])
-      for (let { def, tier } of named) {
+      for (let { def, tier } of named2) {
         if (!!def.added !== wave2) continue;
         let p = tier === "icon" ? namedCard(def, ICON_TRAITS[def.trait], 99, "icon", 25e7, ++idCounter) : namedCard(def, STAR_TRAITS[def.trait], 92, "star", 12e7, ++idCounter);
         players.push(p), freeAgents.push(p.id), (tier === "icon" ? icons : stars).push(p.id);
@@ -10841,15 +11050,15 @@
     snow: { drag: 1.45, bounce: 0.6, skid: 0.68 }
   }, WIND_PUSH = 0.1, clamp2 = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), strongSide = (p) => p.ref.foot === "L" ? -1 : 1;
   function pickXI(clubId) {
-    let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used2) => pool.filter((p) => list.includes(p.position) && !used2.has(p)).slice(0, n), used = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used.add(p)), arr), xi = [
-      ...add(take(["GK"], 1, used)),
-      ...add(take(["CB", "LB", "RB"], 4, used)),
-      ...add(take(["CDM", "CM", "CAM", "LM", "RM"], 4, used)),
-      ...add(take(["ST", "LW", "RW"], 2, used))
+    let pool = rosterOf(clubId).slice().sort((a, b) => b.overall - a.overall), take = (list, n, used3) => pool.filter((p) => list.includes(p.position) && !used3.has(p)).slice(0, n), used2 = /* @__PURE__ */ new Set(), add = (arr) => (arr.forEach((p) => used2.add(p)), arr), xi = [
+      ...add(take(["GK"], 1, used2)),
+      ...add(take(["CB", "LB", "RB"], 4, used2)),
+      ...add(take(["CDM", "CM", "CAM", "LM", "RM"], 4, used2)),
+      ...add(take(["ST", "LW", "RW"], 2, used2))
     ];
     for (let p of pool) {
       if (xi.length >= 11) break;
-      used.has(p) || (xi.push(p), used.add(p));
+      used2.has(p) || (xi.push(p), used2.add(p));
     }
     return FIELD.players < 11 ? smallFrom(xi, FIELD.players) : xi.slice(0, 11);
   }
@@ -10984,8 +11193,8 @@
       ];
       let last2 = FIELD.players - 1;
       if ((_b = opts.seats) != null && _b.length) {
-        let used = [0, 0];
-        this.controllers = opts.seats.map((st) => ({ team: st.team, activeIdx: Math.max(1, last2 - used[st.team]++), charge: 0, passCharge: 0 }));
+        let used2 = [0, 0];
+        this.controllers = opts.seats.map((st) => ({ team: st.team, activeIdx: Math.max(1, last2 - used2[st.team]++), charge: 0, passCharge: 0 }));
         for (let t of [0, 1]) opts.seats.some((st) => st.team === t) && (this.teams[t].isHuman = !0);
       } else this.human === null ? this.controllers = [] : this.mode === "versus" ? (this.controllers = [
         { team: 0, activeIdx: last2, charge: 0, passCharge: 0 },
@@ -11362,9 +11571,9 @@
      */
     driveHuman(p, dx, dy, dt, factor = 1) {
       if (p.slide > 0 || p.downT > 0) return;
-      let m = Math.min(1, Math.hypot(dx, dy)), tired = 0.9 + p.stamina * 0.1, speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.6 : 1), L3 = Math.hypot(dx, dy) || 1, push2 = Math.max(0.35, Math.min(1, (m - 0.08) / 0.42)), tx = m > 1e-3 ? dx / L3 * speed * push2 : 0, ty = m > 1e-3 ? dy / L3 * speed * push2 : 0, R = this.responsiveness, cur = Math.hypot(p.vx, p.vy), frac = factor > 1.05 ? Math.min(1, cur / (p.maxSpeed * factor)) : 0;
+      let m = Math.min(1, Math.hypot(dx, dy)), tired = 0.9 + p.stamina * 0.1, speed = p.maxSpeed * factor * tired * (p.stumble > 0 ? 0.6 : 1), L3 = Math.hypot(dx, dy) || 1, push2 = Math.max(0.35, Math.min(1, (m - 0.08) / 0.42)), tx = m > 1e-3 ? dx / L3 * speed * push2 : 0, ty = m > 1e-3 ? dy / L3 * speed * push2 : 0, R2 = this.responsiveness, cur = Math.hypot(p.vx, p.vy), frac = factor > 1.05 ? Math.min(1, cur / (p.maxSpeed * factor)) : 0;
       p.humanMom = (p.humanMom || 0) + (frac - (p.humanMom || 0)) * (1 - Math.exp(-(frac > (p.humanMom || 0) ? 2.5 : 4) * dt));
-      let base = 16 + 18 * R, rate = m > 1e-3 ? base * (1 - p.humanMom * p.humanMom * (0.7 - 0.35 * R)) : base * 1.2, k = 1 - Math.exp(-rate * dt);
+      let base = 16 + 18 * R2, rate = m > 1e-3 ? base * (1 - p.humanMom * p.humanMom * (0.7 - 0.35 * R2)) : base * 1.2, k = 1 - Math.exp(-rate * dt);
       p.vx += (tx - p.vx) * k, p.vy += (ty - p.vy) * k, p.planted = !1;
     }
     drive(p, dx, dy, dt, factor = 1) {
@@ -11446,11 +11655,11 @@
     protectKeeper() {
       let o = this.ball.owner;
       if (!o || o.role !== "GK") return;
-      let R = 7.5;
+      let R2 = 7.5;
       for (let p of this.teams[1 - o.team].players) {
         let dx = p.x - o.x, dy = p.y - o.y, d2 = Math.hypot(dx, dy) || 0.01;
-        if (d2 >= R) continue;
-        let push2 = R - d2;
+        if (d2 >= R2) continue;
+        let push2 = R2 - d2;
         p.x += dx / d2 * push2, p.y += dy / d2 * push2, p.vx *= 0.2, p.vy *= 0.2, p.x = clamp2(p.x, 0.5, PITCH.w - 0.5), p.y = clamp2(p.y, 0.5, PITCH.h - 0.5);
       }
     }
@@ -11533,16 +11742,16 @@
       var _a, _b, _c;
       let shape2 = shapesFor()[name2];
       if (!shape2 || shape2.length !== this.teams[teamIdx].players.length) return;
-      let team = this.teams[teamIdx], used = /* @__PURE__ */ new Set(), take = (role) => {
+      let team = this.teams[teamIdx], used2 = /* @__PURE__ */ new Set(), take = (role) => {
         let best = null, bestScore = -1;
         for (let p of team.players) {
-          if (used.has(p)) continue;
+          if (used2.has(p)) continue;
           let nat = ROLE_OF[p.ref.position] || "MID";
           if (nat === "GK" != (role === "GK")) continue;
           let s = (nat === role ? 300 : 0) + p.ref.overall;
           s > bestScore && (bestScore = s, best = p);
         }
-        return best || (best = team.players.find((p) => !used.has(p))), used.add(best), best;
+        return best || (best = team.players.find((p) => !used2.has(p))), used2.add(best), best;
       };
       for (let slot of shape2) {
         let p = take(slot.role);
@@ -11734,7 +11943,7 @@
      * into play instead of sailing through.
      */
     hitFrame() {
-      let b = this.ball, R = 0.11 + 0.11, px = Number.isFinite(b.px) ? b.px : b.x, py0 = Number.isFinite(b.py) ? b.py : b.y, pz = Number.isFinite(b.pz) ? b.pz : b.z, ex = b.x, ey = b.y, ez = b.z, jump = Math.hypot(ex - px, ey - py0), sx = jump > 4 ? ex : px, sy = jump > 4 ? ey : py0, sz = jump > 4 ? ez : pz;
+      let b = this.ball, R2 = 0.11 + 0.11, px = Number.isFinite(b.px) ? b.px : b.x, py0 = Number.isFinite(b.py) ? b.py : b.y, pz = Number.isFinite(b.pz) ? b.pz : b.z, ex = b.x, ey = b.y, ez = b.z, jump = Math.hypot(ex - px, ey - py0), sx = jump > 4 ? ex : px, sy = jump > 4 ? ey : py0, sz = jump > 4 ? ez : pz;
       for (let gx of [0, PITCH.w]) {
         if (Math.abs(b.x - gx) > 2.6 && Math.abs(sx - gx) > 2.6) continue;
         let inw = gx === 0 ? -1 : 1;
@@ -11746,10 +11955,10 @@
         for (let py of [CY - GOAL_HALF, CY + GOAL_HALF]) {
           let hx, hy, hz;
           if (L22 < 1e-8) {
-            if (Math.hypot(ex - gx, ey - py) > R) continue;
+            if (Math.hypot(ex - gx, ey - py) > R2) continue;
             hx = ex, hy = ey, hz = ez;
           } else {
-            let fx = sx - gx, fy = sy - py, bq = 2 * (fx * dx + fy * dy), cq = fx * fx + fy * fy - R * R, t;
+            let fx = sx - gx, fy = sy - py, bq = 2 * (fx * dx + fy * dy), cq = fx * fx + fy * fy - R2 * R2, t;
             if (cq <= 0) t = 0;
             else {
               let disc = bq * bq - 4 * L22 * cq;
@@ -11762,12 +11971,12 @@
           d2 < 1e-4 ? (nx = -inw, ny = 0) : (nx /= d2, ny /= d2);
           let vn = b.vx * nx + b.vy * ny;
           if (!(vn > 0))
-            return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R + 0.01), b.y = py + ny * (R + 0.01), b.z = Math.max(0, hz), b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+            return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R2 + 0.01), b.y = py + ny * (R2 + 0.01), b.z = Math.max(0, hz), b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
         }
-        if ((sx - gx) * inw < R && (ex - gx) * inw > -R) {
+        if ((sx - gx) * inw < R2 && (ex - gx) * inw > -R2) {
           let tx = Math.abs(ex - sx) > 1e-6 ? clamp2((gx - sx) / (ex - sx), 0, 1) : 1, cy = sy + (ey - sy) * tx, cz = sz + (ez - sz) * tx;
           if (Math.abs(cy - CY) < GOAL_HALF + 0.2 && Math.abs(cz - GOAL_HEIGHT) < 0.22 && b.vz > -40)
-            return b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.x = gx - inw * (R + 0.02), b.y = cy, b.z = GOAL_HEIGHT - 0.24, b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+            return b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.x = gx - inw * (R2 + 0.02), b.y = cy, b.z = GOAL_HEIGHT - 0.24, b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
         }
       }
       return !1;
@@ -12626,7 +12835,7 @@
     }
     shapeTarget(p) {
       var _a, _b, _c, _d;
-      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), shortOf = team.down ? team.down * 2.2 * SCALE : 0, squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = (((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16) * SCALE, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop - shortOf + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
+      let team = this.teams[p.team], b = this.ball, weHave = b.owner && b.owner.team === p.team, shift = (b.x - PITCH.w / 2) / (PITCH.w / 2) * team.dir * 13 * SCALE * (weHave ? 1.3 : 0.85) * this.mentalityOf(p.team), drop = weHave ? 0 : TUNE.drop * (2 - this.mentalityOf(p.team)), shortOf2 = team.down ? team.down * 2.2 * SCALE : 0, squeeze = weHave ? 1 : TUNE.squeeze, tac = team.tactics || {}, lineShift = (((_b = (_a = DEF_STYLES[tac.defStyle]) == null ? void 0 : _a.line) != null ? _b : 0) + (((_c = tac.line) != null ? _c : 0.5) - 0.5) * 16) * SCALE, k = p.role === "DEF" ? 1 : p.role === "MID" ? 0.6 : 0.3, width = weHave ? 0.84 + ((_d = tac.width) != null ? _d : 0.5) * 0.5 : squeeze, x = p.sx * PITCH.w + team.dir * (shift - drop - shortOf2 + lineShift * k), y = CY + (p.sy * PITCH.h - CY) * width + (b.y - CY) * 0.42, role = ROLES[p.tRole];
       if (role) {
         let adj = weHave ? role.has : role.not;
         x += team.dir * adj.fwd;
@@ -14049,8 +14258,8 @@
     }
     if (club != null && club.national) return nationalStadium(club.name, club.rating || 75, club.colors);
     if (!club) return STADIUM_BY_ID.forge;
-    let host = { id: club.id, name: club.name, country: club.country || null }, named = club.ground && BY_NAME[club.ground];
-    if (named) return { ...named, host };
+    let host = { id: club.id, name: club.name, country: club.country || null }, named2 = club.ground && BY_NAME[club.ground];
+    if (named2) return { ...named2, host };
     let level2 = Number.isFinite(club.level) ? club.level : 0.7, pool = STADIUMS.filter((s) => !s.showpiece && Math.abs(s.size - level2) < 0.22), base = (pool.length ? pool : STADIUMS.filter((s) => !s.showpiece))[hashStr(club.id || club.name) % (pool.length || STADIUMS.length)];
     return {
       ...base,
@@ -14404,7 +14613,7 @@
       size = fit();
     };
     window.addEventListener("resize", onResize);
-    let dragId = null, origin = { x: 0, y: 0 }, R = 26;
+    let dragId = null, origin = { x: 0, y: 0 }, R2 = 26;
     canvas.addEventListener("pointerdown", (e) => {
       var _a;
       dragId = e.pointerId, origin = { x: e.clientX, y: e.clientY };
@@ -14415,7 +14624,7 @@
       e.preventDefault();
     }), canvas.addEventListener("pointermove", (e) => {
       if (e.pointerId !== dragId) return;
-      let dx = Math.max(-1, Math.min(1, (e.clientX - origin.x) / R)), dy = Math.max(-1, Math.min(1, (e.clientY - origin.y) / R));
+      let dx = Math.max(-1, Math.min(1, (e.clientX - origin.x) / R2)), dy = Math.max(-1, Math.min(1, (e.clientY - origin.y) / R2));
       input.setTouchVec(dx, dy);
     });
     let release = (e) => {
@@ -14749,7 +14958,11 @@
       return null;
     }
   }
+  var named = (ev) => ev && ev.featured && APP_STORE ? { ...ev, featured: { ...ev.featured, player: personName(ev.featured.player) } } : ev;
   function activeEvent(now = /* @__PURE__ */ new Date()) {
+    return named(activeEventRaw(now));
+  }
+  function activeEventRaw(now) {
     let today3 = day(now), hit = live.events.filter((e) => e.from || e.to).find((e) => inWindow(e, today3));
     if (hit) return hit;
     let rotation = live.events.filter((e) => !e.from && !e.to);

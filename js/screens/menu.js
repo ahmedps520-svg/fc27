@@ -1,5 +1,6 @@
 import { navigate, toast } from '../app.js';
 import { notesPending, showNotes, markNotesSeen } from './notes.js';
+import { APP_STORE } from '../platform.js';
 import { maybeStartTutorial, tutorialSeen } from '../tutorial.js';
 import { claimableCount, dailyStatus } from '../progress.js';
 import { activeEvent } from '../live.js';
@@ -162,7 +163,7 @@ export function render() {
         <span class="mp-name" id="mpName">${tr.name}</span>
         <button class="mp-b" id="mpNext" aria-label="Next track">⏭</button>
       </div>
-    <p class="disclaimer">${t('menu.disclaimer')}</p>
+    <p class="disclaimer">${t(APP_STORE ? 'menu.disclaimer.app' : 'menu.disclaimer')}</p>
     </section>`;
 }
 

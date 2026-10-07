@@ -13,10 +13,16 @@
  * The server must then be started with that page's origin allowed, e.g.
  * `ALLOW_ORIGIN=https://you.github.io node server/server.js`.
  */
-export const SERVER_ORIGIN = '';
+import { APP_STORE, APP_SERVER } from '../platform.js';
+
+// v184: the App Store build is served from inside the app, so the server is always elsewhere
+export const SERVER_ORIGIN = APP_STORE ? APP_SERVER : '';
 
 /** Absolute URL for an API path. */
 export const apiURL = (path) => `${SERVER_ORIGIN}${path}`;
+
+/** A page-relative server path ('api/version') — the same path on the web, absolute in the app. */
+export const serverPath = (rel) => (SERVER_ORIGIN ? `${SERVER_ORIGIN}/${rel}` : rel);
 
 /** WebSocket URL for the match hub, matching the page's security level. */
 export function socketURL() {
