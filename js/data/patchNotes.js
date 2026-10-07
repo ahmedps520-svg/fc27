@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v177',
+    date: '2026-10-07',
+    tag: 'Commentary',
+    title: 'Nothing left unsaid',
+    lede: 'The recorded commentator now has lines for the keeper\'s throws and long kicks and for the match clock, the last three moments the voice went quiet on.',
+    entries: [
+      {
+        head: 'Commentary',
+        summary: 'Nine new recorded lines: the keeper throwing it out, the keeper going long, and the clock ticking on.',
+        detail: 'A check of every moment the commentary can call found three the recorded voice had no lines for. They are recorded now with the same generated voice as the rest of the pack. A new automatic check makes sure every moment the match can call has a written line, an Arabic line and a recorded line, so a new kind of moment can never leave the commentator silent again.',
+      },
+    ],
+  },
+  {
     version: 'v176',
     date: '2026-10-07',
     tag: 'Fix',

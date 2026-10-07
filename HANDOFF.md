@@ -15,6 +15,10 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v177 — commentary coverage
+- `voicePackUS.js` pbp: `keeperThrow`, `keeperLong`, `clock` (3 lines each), rendered with `tools/voice-pack.mjs --kokoro <scratchpad>/kokoro --only pbp-<key>` (Kokoro-82M, Apache-2.0) → `assets/voice/us/pbp-*.mp3` (9 clips, ~0.07 MB).
+- `tests/unit/commentary-coverage.test.mjs`: reads every key play.js can comment on (CUE_KEY, `comment('…')`, the save-kind map) and checks the feed, the Arabic desk and the pack (directly or via `BASE_KEY`), plus that every pack clip exists on disk.
+
 ## v176 — spoken saves (v175 regression)
 - v175's `saveCatch`/`tipOver`/`tipRound` keys had no pack (voicePackUS) or AR pbp lines, so `director.line` said nothing for saves. `director.js` `BASE_KEY` maps them to `save` for the pack, the AR bank fallback and `co()` (CO_CHANCE has `save`). AR pbp banks for the three kinds added in `commentaryVoices.js`.
 - Rule: any new commentary key used by play.js must exist in every voice bank or have a `BASE_KEY` fallback.
