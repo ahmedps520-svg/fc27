@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v175 — saves commentated as they happened; pad-reach flake
+- `sim.js keeperContact` sets `this.saveKind` ('catch' | 'over' | 'round' | 'parry'); the parry's `save` cue now fires after the decision (no RNG change, sweep identical). `play.js commentCue` maps a save to `saveCatch` / `tipOver` / `tipRound` / `save`. New banks in `commentary.js`; "Tipped over" and "Fingertips … going in" moved out of the generic bank.
+- `tests/qa/pad-reach.mjs` (CI red on v174): the release-notes check presses A again if still on the title, and its failure message prints the save's `notesSeen`, the hash and what is on screen. Passed 5/5 locally.
+- Test: `tests/unit/save-kinds.test.mjs`.
+
 ## v174 — the CPU lifts some shots; keepers tip high ones over the bar
 - `sim.js` CPU open-play shot: `loft` 0.75–1.1 with probability `HIGH_SHOT` (0.3), else 0.32–0.62 as before (peak height was ~0.4 m). `keeperContact`: a parry of a ball above 2 m, met > 0.6 m off the line, is tipped over (70%): small backward vx, vy ×0.3, vz 6–8 → behind for a corner.
 - 200-match sweeps: goals 2.53/2.53 → 2.70/2.46 (noise ±0.15), shots 14.8/14.7, on target % ~42, corners 3.2. Goldens re-recorded; simfuzz clean.

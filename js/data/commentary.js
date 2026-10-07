@@ -34,8 +34,20 @@ const L = {
   save: [
     'Saved! {keeper} gets down well.', 'Good hands from {keeper}.', '{keeper} turns it away!',
     'Kept out by {keeper}.', 'What a stop from {keeper}!', '{keeper} palms it clear.', 'Strong save. {keeper} was equal to it.',
-    '{keeper} stands tall and blocks it.', 'Tipped over by {keeper}!', '{keeper} gathers at the second attempt.',
-    'The keeper reads it. {keeper} makes it look routine.', 'Fingertips from {keeper} — that was going in.',
+    '{keeper} stands tall and blocks it.', '{keeper} pushes it out.', 'Beaten away by {keeper}.',
+  ],
+  // v175: the save as it happened
+  saveCatch: [
+    'Held! {keeper} takes it cleanly.', '{keeper} gathers comfortably.', 'Straight into the arms of {keeper}.',
+    'The keeper reads it. {keeper} makes it look routine.', 'Safe hands. {keeper} holds on.', '{keeper} smothers it.',
+  ],
+  tipOver: [
+    'Tipped over by {keeper}!', 'Fingertips from {keeper} — that was going in!', '{keeper} flies and turns it over the bar!',
+    'Over the top! {keeper} gets a hand to it.', 'Brilliant from {keeper} — up and over for a corner.',
+  ],
+  tipRound: [
+    '{keeper} turns it round the post!', 'Pushed round the upright by {keeper}.', 'Corner. {keeper} gets down and steers it wide.',
+    '{keeper} at full stretch — round the post it goes.', 'Fingertips! {keeper} diverts it behind.',
   ],
   post: [
     'Off the post!', 'The woodwork! {team} so close.', 'Crossbar! It rattles the frame.', 'Against the upright and away.',

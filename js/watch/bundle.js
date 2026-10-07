@@ -13029,10 +13029,9 @@
     keeperContact(gk, speed) {
       let b = this.ball, team = this.teams[gk.team], inward = team.dir > 0 ? 1 : -1, hands = gk.ref.overall / 100 * this.preset.hands, holdable = 17 + hands * 13;
       if (this.tally(gk, "saves"), speed < holdable && gk.diveT <= 0 && Math.random() < 0.36 + hands * 0.34)
-        return this.cue("save"), !0;
-      this.cue("save");
+        return this.saveKind = "catch", this.cue("save"), !0;
       let side = Math.sign(b.y - CY) || (Math.random() < 0.5 ? -1 : 1), out = speed * (0.34 + Math.random() * 0.2), lineX = team.dir > 0 ? 0 : PITCH.w, tipOver = b.z > 2 && Math.abs(b.x - lineX) > 0.6 && Math.random() < 0.7, tipRound = !tipOver && Math.random() < 0.55;
-      if (tipOver)
+      if (this.saveKind = tipOver ? "over" : tipRound ? "round" : "parry", this.cue("save"), tipOver)
         b.vx = -inward * (2 + Math.random() * 1.5), b.vy *= 0.3, b.vz = 6 + Math.random() * 2, b.noTouch = 0.6;
       else if (tipRound)
         b.vx = -inward * (5 + Math.random() * 5), b.vy = side * out * 1.1, b.vz = 2 + Math.random() * 3, b.noTouch = 0.6;
@@ -14134,10 +14133,31 @@
       "{keeper} palms it clear.",
       "Strong save. {keeper} was equal to it.",
       "{keeper} stands tall and blocks it.",
-      "Tipped over by {keeper}!",
-      "{keeper} gathers at the second attempt.",
+      "{keeper} pushes it out.",
+      "Beaten away by {keeper}."
+    ],
+    // v175: the save as it happened
+    saveCatch: [
+      "Held! {keeper} takes it cleanly.",
+      "{keeper} gathers comfortably.",
+      "Straight into the arms of {keeper}.",
       "The keeper reads it. {keeper} makes it look routine.",
-      "Fingertips from {keeper} — that was going in."
+      "Safe hands. {keeper} holds on.",
+      "{keeper} smothers it."
+    ],
+    tipOver: [
+      "Tipped over by {keeper}!",
+      "Fingertips from {keeper} — that was going in!",
+      "{keeper} flies and turns it over the bar!",
+      "Over the top! {keeper} gets a hand to it.",
+      "Brilliant from {keeper} — up and over for a corner."
+    ],
+    tipRound: [
+      "{keeper} turns it round the post!",
+      "Pushed round the upright by {keeper}.",
+      "Corner. {keeper} gets down and steers it wide.",
+      "{keeper} at full stretch — round the post it goes.",
+      "Fingertips! {keeper} diverts it behind."
     ],
     post: [
       "Off the post!",
