@@ -18,6 +18,20 @@
  */
 export const RELEASES = [
   {
+    version: 'v173',
+    date: '2026-10-07',
+    tag: 'Feel',
+    title: 'Keepers get up',
+    lede: 'After a dive the keeper pushes himself up off the grass, instead of flicking from lying flat to standing in a single frame.',
+    entries: [
+      {
+        head: 'Keepers',
+        summary: 'A diving keeper now gets back to his feet over a third of a second.',
+        detail: 'A dive ended with the keeper lying full length on the turf, and the very next frame had him upright. He now gets up the way a fallen player does: a push off the grass and up, laid along the way he dived. It is only how it looks: he can move again at exactly the same moment as before, so nothing about how matches play has changed.',
+      },
+    ],
+  },
+  {
     version: 'v172',
     date: '2026-10-06',
     tag: 'Fix',
