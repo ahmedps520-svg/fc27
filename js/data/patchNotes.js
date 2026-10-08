@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v185',
+    date: '2026-10-08',
+    tag: 'Fix',
+    title: 'Scrolling and sideways play on iPhone',
+    lede: 'Menus scroll again in the iPhone app, the app plays sideways the way the match is framed, and menus stay clear of the notch.',
+    entries: [
+      {
+        head: 'iPhone app',
+        summary: 'Every menu scrolls again, and the app now always runs in landscape.',
+        detail: 'Upright, the match camera showed a thin strip of pitch under the sky with the touch controls over half the screen, which looked like a camera far too high up. The match, the touch controls and the menus are all laid out for a phone held sideways, which is how the installed web version already runs.',
+      },
+      {
+        head: 'Menus',
+        summary: 'On a phone held sideways, the top bar and every screen keep clear of the notch or Dynamic Island.',
+        detail: 'In landscape the cut-out sits at the left or right edge, and the start of each row could run under it. Elsewhere nothing moves.',
+      },
+    ],
+  },
+  {
     version: 'v184',
     date: '2026-10-07',
     tag: 'Accounts',

@@ -5600,3 +5600,12 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .goal-gallery .gg-play em { font-style: normal; font-size: 12px; color: var(--text-dim); }
 .goal-gallery .gg-rec { width: 40px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--accent); cursor: pointer; font-size: 16px; }
 .goal-gallery .gg-del { width: 40px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text-dim); cursor: pointer; }
+
+/* v185: a phone held sideways puts the notch or Dynamic Island at the left or
+   right edge, and the menus ran under it. Last in the file so it wins over the
+   padding shorthands above; where there is no notch env() is 0 and nothing moves. */
+.topbar { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+.screen { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+@media (max-width: 640px) {
+  .screen { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+}
