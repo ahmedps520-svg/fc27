@@ -15,6 +15,13 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v185 — iPhone app: scrolling, landscape only, notch-safe menus
+- First TestFlight build (from the cleaned-key workflow, app/ci/asc-key.sh) installed on the owner's iPhone. Two reports: no scrolling at all, and "the camera is way too high up".
+- **Scrolling:** `app/capacitor.config.json` had `ios.scrollEnabled: false`, which sets the WKWebView's own scroll view off, and every menu scrolls the document. Removed (Capacitor's default is on). Matches still cannot scroll: `body.in-game` is overflow hidden and the match surface is touch-action none.
+- **Camera:** the app allowed portrait. In portrait the renderer's vertical field is `hfov × 1.45` (69.6° for Broadcast, against 39° in landscape), so the pitch is a thin strip under the sky with the touch pad over the lower half. Checked with shots at 852×393 and 393×852: the settled landscape Broadcast pose (z ≈ 16, ~17° down) matches the web and is fine. Info.plist now lists only LandscapeRight/LandscapeLeft for iPhone and iPad, with `UIRequiresFullScreen` (iPad needs it once portrait is dropped). This matches `manifest.webmanifest`'s `orientation: landscape`. The camera code is unchanged.
+- **Notch:** in landscape the cut-out is at the left or right. `.topbar`/`.screen` now pad `max(16/18/12px, env(safe-area-inset-left/right))` at the end of main.css. That's 0 change without a notch, and the layout scan is clean.
+- The camera probe I used is `tests/tmp/camprobe.mjs` (not committed).
+
 ## v184 — App Store build (iOS) + account deletion + privacy policy
 - **One flag, `globalThis.APEX_APP_STORE`**, set by the iOS shell's HTML before any module (app/build-www.mjs injects it, plus `APEX_SERVER`). Read once in `js/platform.js` (imports nothing). The web build never sets it and is byte-identical (sweeps identical, `tests/unit/appstore-names.test.mjs` checks the web names are untouched).
 - **Names (Apple 5.2):** `js/data/fictional.js` (imported first by generator.js) renames every real person in place from one table built over all real names in sorted order (`buildPeople`), so Career's name lookups still match; `careerDb.js`/`build-career-db.py` end with `fictionalCareer(...)`; careerV2 `TIER2` and careerPeople `COUNTRY_NATION` go through `leagueName`/`clubName`; challenge reward cards and live-event featured players through `personName` at the use site; patch notes trimmed to v184+; disclaimer `menu.disclaimer.app`. Check: `node tests/appstore/names-check.mjs --app` (zero overlap, all unique, every squad member and reward resolves).
