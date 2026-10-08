@@ -128,6 +128,21 @@ export function personName(name, nation) {
   if (!people.has(name)) { const f = invent(name, nation); people.set(name, f); used.add(f); }
   return people.get(name);
 }
+
+/**
+ * v186: the name a card had before the App Store rename — for rules that
+ * decide which cards exist, never for display. The two builds play each
+ * other online, a squad travels as card ids, and a rule that read the shown
+ * name (the National Day pack's) let the app own cards the web could not
+ * build, so the web side dropped that squad and the two machines played
+ * different teams. Identity on the web.
+ */
+let original = null;
+export function originalName(name) {
+  if (!APP_STORE) return name;
+  if (!original) { original = new Map(); for (const [real, f] of people) original.set(f, real); }
+  return original.get(name) ?? name;
+}
 export const shortOf = (full) => {
   const parts = String(full).split(' ');
   return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;

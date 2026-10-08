@@ -89,3 +89,31 @@ test('a guest sees bookings and advantage (v114)', async () => {
   host.advantage = null; s = encodeSnapshot(host); view.apply(s, s, 0);
   assert.equal(guest.advantage, null);
 });
+
+/* v186: after a guest has not drawn the stream for a while (its own goal
+   replay), it must land on the live picture, not play the missed seconds
+   back in fast motion. */
+test('a guest that fell seconds behind the stream jumps to the live edge', async () => {
+  const { encodeSnapshot, SnapshotView } = await import('../../js/net/netplay.js');
+  const { Match, setField } = await import('../../js/game/sim.js');
+  const { WORLD } = await import('../../js/data/generator.js');
+  setField('full');
+  const host = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0 });
+  const guest = new Match(WORLD.clubs[0].id, WORLD.clubs[1].id, { duration: 600, human: 0 });
+  const view = new SnapshotView(guest);
+  for (let i = 0; i < 3; i++) view.accept(encodeSnapshot(host));
+  view.buf.forEach((sn, i) => { sn.rx = i * 33; });   // a 30 Hz stream
+  // the stream carried on while the guest was busy: the newest packet is 6 s on
+  host.ball.x = 77;
+  view.accept(encodeSnapshot(host));
+  const newest = view.buf[view.buf.length - 1];
+  newest.rx = 6066;
+  view.clock = 0;
+  view.update(1 / 60);
+  view.update(1 / 60);
+  assert.ok(newest.rx - view.clock <= view.delay + 40, `clock at the live edge (${Math.round(newest.rx - view.clock)} ms behind)`);
+  assert.ok(guest.ball.x > 76, `the guest shows the latest picture, not the missed seconds (${guest.ball.x})`);
+  // and resync() does the same on demand
+  view.clock = newest.rx - 9000; view.resync();
+  assert.ok(Math.abs(newest.rx - view.delay - view.clock) < 1);
+});

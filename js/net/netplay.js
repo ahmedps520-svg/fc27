@@ -248,6 +248,18 @@ export class SnapshotView {
 
   get stale() { return performance.now() - this.lastPacket > 3000; }
 
+  /**
+   * v186: back to the live edge in one step. After this client has not been
+   * drawing the stream — its own goal replay, say — the clock is seconds
+   * behind, and easing it forward played the missed seconds back in fast
+   * motion: everyone skating across the pitch at once.
+   */
+  resync() {
+    if (!this.buf.length) return;
+    this.clock = this.buf[this.buf.length - 1].rx - this.delay;
+    while (this.buf.length > 2 && this.buf[1].rx <= this.clock) this.buf.shift();
+  }
+
   update(dt) {
     if (!this.started) return;
     this.clock += dt * 1000;
@@ -270,7 +282,9 @@ export class SnapshotView {
     // ease the clock back rather than jumping, which would look like a stutter.
     const newest = this.buf[this.buf.length - 1];
     const lag = newest.rx - this.clock;
-    if (lag > this.delay * 3) this.clock += (lag - this.delay) * 0.1;
+    // v186: a second or more behind is a gap, not drift — jump to the live edge
+    if (lag > 1000) this.resync();
+    else if (lag > this.delay * 3) this.clock += (lag - this.delay) * 0.1;
     else if (lag < this.delay * 0.25) this.clock -= (this.delay * 0.5 - lag) * 0.05;
 
     while (this.buf.length > 2 && this.buf[1].rx < this.clock - 1000) this.buf.shift();

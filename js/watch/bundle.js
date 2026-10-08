@@ -190,6 +190,16 @@
     }
     return people.get(name2);
   }
+  var original = null;
+  function originalName(name2) {
+    var _a;
+    if (!APP_STORE) return name2;
+    if (!original) {
+      original = /* @__PURE__ */ new Map();
+      for (let [real2, f] of people) original.set(f, real2);
+    }
+    return (_a = original.get(name2)) != null ? _a : name2;
+  }
   var shortOf = (full) => {
     let parts = String(full).split(" ");
     return parts.length > 1 ? "".concat(parts[0][0], ". ").concat(parts.slice(1).join(" ")) : full;
@@ -10023,7 +10033,7 @@
       name: "National Day",
       blurb: "The Green Falcons, lifted for the Kingdom's day.",
       colors: ["#0f7a41", "#ffffff"],
-      eligible: (p) => p.nation === "Saudi Arabia" && p.overall >= 68 && p.rarity !== "icon" && !/ Jr$| Nassr$| Shabab$/.test(p.name),
+      eligible: (p) => p.nation === "Saudi Arabia" && p.overall >= 68 && p.rarity !== "icon" && !/ Jr$| Nassr$| Shabab$/.test(originalName(p.name)),
       boost: 10,
       stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 }
     }

@@ -15,6 +15,21 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v186 — online after a goal; cross-play identity
+- Report from the owner (iPhone app vs web, online): "the iPhone controls disappear, the game glitches". Reproduced with `tests/tmp/crossplay.mjs` (not committed): a web client and an App Store-mode client (`APEX_APP_STORE`/`APEX_SERVER` set by addInitScript, touch, 852×393) in one lobby through the real server, with a goal forced on the host (`m.scoreGoal(1, 0, …)`). The pad visibility, root classes and phases of both sides are sampled every second. Run it with `--iphone-host` and `--gl` too.
+- **Cause 1 (the main one):** the host stops streaming during its own goal replay (`!replay` on the send), and the 30 Hz send often skipped the frame where the celebration ended. So the guest sat on a frozen celebration for the host's whole replay, then started its own replay after the host was back in play. That replay was 23–40 s with two or three angles, the pad hidden, and then a fast-forward through the buffered snapshots. Fixes in play.js:
+  - `startReplay` force-sends one snapshot on the host (also to spectators over P2P), so both replay together.
+  - Online `clip.passes` is a single `{angle: 0, speed: 1}`, the same on both machines; the director read the tape, and the two tapes differ. The online hold is 1 s.
+  - The guest's `snap` handler ends its replay when a packet arrives more than 600 ms into it, because the host is back in play.
+  - `endReplay` calls `view.resync()`.
+- **Cause 2:** the tape took one frame per drawn frame, while everything reading it assumes 60/s. `recordTape(dt)` now records at a fixed 60 Hz, filling a long frame by lerping from the last picture. The clip is now the same 3.5 s on any device.
+- **Cause 3:** `SnapshotView.update` eased a seconds-old clock forward at 10%/frame, which looked like everyone skating. Now there's `resync()`, and a jump when more than 1 s behind. There's a unit test in netplay-actions.
+- **Cause 4 (cross-play identity):** `promos.js` National Day `eligible` read `p.name` (`/ Jr$| Nassr$| Shabab$/`). In the app the names are renamed, so 14 extra cards were eligible. A web client receiving a squad with one of them got `xi.length < 11`, swapped in a stock team, and the two sides simulated different elevens. Fixes:
+  - It now reads `originalName(p.name)` (platform.js: the inverse of the rename; identity on the web; never for display).
+  - `online.js` `cardOrBase` falls back to the base card for an unknown variant id instead of dropping the squad. This also covers an older app build against a newer web build.
+  - `tests/unit/appstore-names.test.mjs` asserts the whole world, apart from names, and every promo set are identical between the builds.
+- Note for later: the app is a frozen copy and the web moves on every merge. Anything that changes the snapshot or the lobby protocol now has to stay compatible with the last App Store build, or be paired by version.
+
 ## v185 — iPhone app: scrolling, landscape only, notch-safe menus
 - First TestFlight build (from the cleaned-key workflow, app/ci/asc-key.sh) installed on the owner's iPhone. Two reports: no scrolling at all, and "the camera is way too high up".
 - **Scrolling:** `app/capacitor.config.json` had `ios.scrollEnabled: false`, which sets the WKWebView's own scroll view off, and every menu scrolls the document. Removed (Capacitor's default is on). Matches still cannot scroll: `body.in-game` is overflow hidden and the match surface is touch-action none.
