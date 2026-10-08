@@ -22,6 +22,30 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v186',
+    date: '2026-10-08',
+    tag: 'Online',
+    title: 'Online after a goal, fixed',
+    lede: 'After a goal online, both players now see the replay together and get their controls back at the same moment, and the iPhone app and the web always field the same two teams.',
+    entries: [
+      {
+        head: 'Goal replays online',
+        summary: 'One short replay, in step on both screens. The touch controls come back the moment play restarts.',
+        detail: 'The second player could sit on a frozen celebration while the first watched the replay, then start their own replay of up to forty seconds while the other side was already playing, with no controls. When it ended, the picture jumped to wherever the match had got to. Now both screens replay together, an online replay is a single angle at full speed, and a screen that falls behind lands on the live picture instead of fast-forwarding through it.',
+      },
+      {
+        head: 'Cross-play',
+        summary: 'The iPhone app and the web always build the same eleven for both sides.',
+        detail: 'A few National Day cards could exist on one version and not the other, and a squad holding one was replaced by a stock team on the other screen, so the two players were watching different matches. Both versions now deal exactly the same cards, and a card one side cannot build is played as the footballer it is a version of.',
+      },
+      {
+        head: 'Replays',
+        summary: 'A replay covers the same few seconds of play on every device.',
+        detail: 'Replays were recorded one picture per frame drawn, so a phone running slower showed a longer stretch of play and a 120 Hz screen a shorter one. They are now recorded at a fixed rate.',
+      },
+    ],
+  },
+  {
     version: 'v185',
     date: '2026-10-08',
     tag: 'Fix',

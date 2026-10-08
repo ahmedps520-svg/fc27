@@ -582,9 +582,15 @@ export function mount(root) {
  * ------------------------------------------------------------------ */
 // Registered once, at module level, rather than by whichever screen happens to
 // be mounted — an opponent can be found after you have wandered off the tab.
+/* v186: a card the other machine has and this one cannot build — a promo
+   from a newer build, the App Store build against the web — is played as the
+   footballer it is a version of. Dropping the whole squad instead put a
+   different eleven on each screen, and every snapshot moved the wrong men. */
+const cardOrBase = (id) => getPlayer(id) || (typeof id === 'string' && id.includes(':') ? getPlayer(id.split(':').pop()) : undefined);
+
 net.on('match', (m) => {
   const squadOf = (ids, name, short, crest, kit = null) => {
-    const xi = (ids || []).map(getPlayer).filter(Boolean);
+    const xi = (ids || []).map(cardOrBase).filter(Boolean);
     return xi.length === 11
       ? { xi, name, short, colors: crest.colors, crest, kit: kit ? kitOf(kit, crest.colors) : null }
       : null;
@@ -647,7 +653,7 @@ net.on('invited', (m) => {
  * The two squads travel with the message the way an opponent's does. */
 net.on('spectating', (m) => {
   const squadOf = (ids, name, colors) => {
-    const xi = (ids || []).map(getPlayer).filter(Boolean);
+    const xi = (ids || []).map(cardOrBase).filter(Boolean);
     const short = (name || '???').slice(0, 3).toUpperCase();
     return xi.length === 11 ? { xi, name, short, colors, crest: { shape: 'shield', pattern: 'halves', device: 'star', colors } } : null;
   };

@@ -22,6 +22,7 @@
  * may field only one of them (`baseOf`).
  */
 import { WORLD, setVariantResolver } from './generator.js';
+import { originalName } from '../platform.js';
 import { RARITY } from './pools.js';
 
 const WEEK = 604_800_000;
@@ -47,7 +48,7 @@ export const campaignNow = (now = Date.now()) => CAMPAIGNS[weekNow(now) % CAMPAI
  */
 export const EVENT_CAMPAIGNS = [
   { id: 'nationalday', name: 'National Day', blurb: 'The Green Falcons, lifted for the Kingdom\'s day.', colors: ['#0f7a41', '#ffffff'],
-    eligible: (p) => p.nation === 'Saudi Arabia' && p.overall >= 68 && p.rarity !== 'icon' && !/ Jr$| Nassr$| Shabab$/.test(p.name), boost: 10, stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 } },
+    eligible: (p) => p.nation === 'Saudi Arabia' && p.overall >= 68 && p.rarity !== 'icon' && !/ Jr$| Nassr$| Shabab$/.test(originalName(p.name)), boost: 10, stats: { pace: 7, dribbling: 8, shooting: 8, passing: 7, physical: 7, defending: 7 } },
 ];
 const campaignById = (id) => CAMPAIGNS.find((x) => x.id === id) || EVENT_CAMPAIGNS.find((x) => x.id === id);
 /** v150: the campaign a promo card (`pr:<campaign>:<id>`) belongs to, or null — for its reveal. */

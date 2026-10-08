@@ -29,3 +29,13 @@ test('the App Store build still holds together', () => {
   assert.deepEqual(app.rewardsMissing, [], 'every challenge legend resolves');
   assert.equal(new Set(app.clubs).size, app.clubs.length, 'every club has its own name');
 });
+
+/* v186: the two builds play each other online, and a squad travels as card
+   ids. Everything but the names must be the same world, and a rule about
+   which cards exist must not read the shown name — the National Day pack's
+   did, and the app could field cards the web could not build. */
+test('cross-play: the App Store build deals the same cards as the web', () => {
+  assert.equal(app.world, web.world, 'same ids, ratings, positions, clubs, nations and rarities');
+  for (const id of Object.keys(web.promoIds)) assert.deepEqual(app.promoIds[id], web.promoIds[id], `${id} promo cards match`);
+  assert.ok(web.promoIds.nationalday.length > 40, 'the National Day set is not empty');
+});

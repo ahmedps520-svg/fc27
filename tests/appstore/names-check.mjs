@@ -9,6 +9,10 @@ const { TIER2 } = await import('../../js/careerV2.js');
 const { CHALLENGES } = await import('../../js/data/challenges.js');
 const { personName } = await import('../../js/platform.js');
 const { RELEASES } = await import('../../js/data/patchNotes.js');
+// v186: which promo cards exist must not depend on the shown name — the two builds play each other
+const { EVENT_CAMPAIGNS, CAMPAIGNS } = await import('../../js/data/promos.js');
+const promoIds = Object.fromEntries([...EVENT_CAMPAIGNS, ...CAMPAIGNS].map((c) => [c.id, WORLD.players.filter((p) => c.eligible(p)).map((p) => p.id)]));
+const world = WORLD.players.map((p) => [p.id, p.overall, p.position, p.clubId, p.nation, p.rarity].join('|')).join(';');
 const full = new Set();
 for (const p of WORLD.players) full.add(p.name);
 for (const rows of Object.values(db.CAREER_SQUADS)) for (const r of rows) full.add(r[0]);
@@ -23,4 +27,5 @@ console.log(JSON.stringify({
   people: [...full], clubs, leagues,
   unique: new Set(WORLD.players.map((p) => p.name)).size === WORLD.players.length,
   careerMissing, rewardsMissing, notes: RELEASES.map((r) => r.version),
+  promoIds, world,
 }));

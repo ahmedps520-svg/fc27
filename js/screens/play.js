@@ -666,15 +666,38 @@ export function mount(root, params) {
     return 0.85;                                 // tail: get to the hold
   };
 
-  const recordFrame = () => {
-    const snap = {
-      b: [match.ball.x, match.ball.y, match.ball.z || 0],
-      p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]),
-    };
+  const snapNow = () => ({
+    b: [match.ball.x, match.ball.y, match.ball.z || 0],
+    p: allPlayers().map((p) => [p.x, p.y, p.dirX, p.dirY, p.vx, p.vy, p.diveT || 0]),
+  });
+  const recordFrame = (snap = snapNow()) => {
     tape.push(snap);
     if (tape.length > TAPE_MAX) tape.shift();
     // once a goal is captured, keep feeding the clip until it has its tail
     if (clip && clip.post < POST_FRAMES) { clip.frames.push(snap); clip.post += 1; }
+  };
+
+  /* v186: the tape is 60 frames a second whatever the screen does. It used to
+     take one frame per drawn frame, and everything that reads it (the 3.5 s
+     build-up, playback at `dt * 60`) assumes 60: a 30 fps phone's replay
+     covered seven seconds of play and a 120 Hz screen's half as much. Online
+     it was worse — host and guest cut different clips from the same goal,
+     the director picked a different number of angles from them, and one
+     screen sat in a replay for up to seventeen seconds after the other was
+     back in play. A slow frame is filled in between the last two pictures. */
+  let tapeAcc = 0; let tapeLast = null;
+  const lerpSnap = (a, b, f) => ({
+    b: b.b.map((v, i) => a.b[i] + (v - a.b[i]) * f),
+    p: b.p.map((q, i) => { const r = a.p[i]; return r ? q.map((v, k) => (k === 6 ? v : r[k] + (v - r[k]) * f)) : q; }),
+  });
+  const recordTape = (dt) => {
+    tapeAcc = Math.min(tapeAcc + dt, 4 / 60);
+    const k = Math.floor(tapeAcc * 60 + 1e-6);
+    if (!k) return;
+    tapeAcc -= k / 60;
+    const cur = snapNow();
+    for (let j = 1; j <= k; j++) recordFrame(tapeLast && j < k ? lerpSnap(tapeLast, cur, j / k) : cur);
+    tapeLast = cur;
   };
 
   const applyFrame = (snap) => {
@@ -732,7 +755,10 @@ export function mount(root, params) {
     };
     /* The director picks the passes: the build-up first, then one or two
        slowed angles chosen by the kind of goal (see directReplay). */
-    clip.passes = directReplay(clip, { late: match.minute() >= 80 });
+    /* v186: online, one angle at full speed and the same on both machines —
+       the director reads the tape, and two tapes of one goal are never quite
+       the same, so it could give the host two angles and the guest three */
+    clip.passes = online ? [{ angle: 0, speed: 1 }] : directReplay(clip, { late: match.minute() >= 80 });
     goalClips.push(clip);
   };
 
@@ -872,8 +898,19 @@ export function mount(root, params) {
       speed: (clip.passes?.[0]?.speed) ?? 1,
       cam: makeCamera(),
       hold: 0,
+      t0: performance.now(),
     };
     clip = null;
+    /* v186: the host stops streaming while its replay plays, and the 30 Hz
+       send used to fall silent before the picture that ends the celebration
+       went out — so the guest sat on a frozen celebration for the host's whole
+       replay, then started its own while the host was already playing on. One
+       picture now goes out as the tape starts, and both replays run together. */
+    if (online?.host && highlightIdx < 0 && !ended) {
+      const snap = encodeSnapshot(match);
+      sendMatch(snap);
+      if (spectators > 0 && p2pActive()) net.send(snap);
+    }
     replayTag.hidden = false;
     root.querySelector('#gmRoot')?.classList.add('gm-replay-on');   // v156: the pad steps aside (the tag skips it)
     rtAngle.textContent = replay.passes.length > 1 ? `· ANGLE 1/${replay.passes.length}` : '';
@@ -889,6 +926,7 @@ export function mount(root, params) {
     replay = null;
     replayTag.hidden = true;
     root.querySelector('#gmRoot')?.classList.remove('gm-replay-on');
+    view?.resync();   // v186: a guest picks up the live picture, not the second it left
     director?.wipe();
     gl?.setReplay(false);
     if (highlightIdx >= 0) nextHighlight();
@@ -968,6 +1006,11 @@ export function mount(root, params) {
     } else {
       netOffs.push(net.on('snap', (m) => {
         view.accept(m);
+        /* v186: the host sends nothing while its own replay plays, so a picture
+           arriving well into ours means the host is back in play — and so are
+           we, with the controls, rather than watching the rest of the tape
+           while the other side attacks an empty pitch */
+        if (replay && highlightIdx < 0 && performance.now() - replay.t0 > 600) endReplay();
         // sounds are made by the host's simulation and ride along with the world
         for (const [name, arg] of m.cu || []) sfx(name, arg);
         /* The pause protocol, guest side: obey the snapshot. `pq` = banner up,
@@ -2073,7 +2116,7 @@ export function mount(root, params) {
           collideCamera(replay.cam, camBounds);
           replay.hold += dt;
           const lastPass = replay.pass >= replay.passes.length - 1;
-          if (replay.hold >= (lastPass ? HOLD_SECONDS : 0.45)) {
+          if (replay.hold >= (lastPass ? (online ? 1 : HOLD_SECONDS) : 0.45)) {
             if (lastPass) endReplay();
             else {
               // the next angle: same tape, a new camera
@@ -2162,8 +2205,8 @@ export function mount(root, params) {
       if (match.phase === 'play' || match.phase === 'goal') {
         // capture before recording, so the build-up ends on the strike itself
         if (match.phase === 'goal' && lastPhase !== 'goal') captureGoal();
-        recordFrame();
-      }
+        recordTape(dt);
+      } else { tapeAcc = 0; tapeLast = null; }
       if (match.phase === 'end') {
         // v82: the whistle goes out with a last picture, so every guest sees the end the host saw
         if (online?.host) sendMatch(encodeSnapshot(match));
