@@ -130,6 +130,8 @@ try {
   await step('App Review notes', async () => {
     const attributes = { demoAccountRequired: L.review.demoAccountRequired, notes: L.review.notes };
     const cur = await maybe(`/v1/appStoreVersions/${ver.id}/appStoreReviewDetail`);
+    // Apple refuses any change here until the contact is filled in, so leave notes that are already right alone
+    if (cur?.data && cur.data.attributes.notes === attributes.notes && cur.data.attributes.demoAccountRequired === attributes.demoAccountRequired) return 'already set';
     if (cur?.data) await api('PATCH', `/v1/appStoreReviewDetails/${cur.data.id}`, { data: { type: 'appStoreReviewDetails', id: cur.data.id, attributes } });
     else await api('POST', '/v1/appStoreReviewDetails', { data: { type: 'appStoreReviewDetails', attributes, relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } });
     return 'no sign-in needed; notes added';
