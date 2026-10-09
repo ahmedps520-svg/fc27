@@ -43,17 +43,17 @@ async function boot(browser, dev, server, notesVersion) {
   const ctx = await browser.newContext({ viewport: { width: dev.css[0], height: dev.css[1] }, deviceScaleFactor: dev.dpr, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`  [${dev.id}] pageerror ${e.message}`));
-  await page.addInitScript(({ origin, notes }) => {
+  await page.addInitScript(({ origin, notes, q }) => {
     window.APEX_APP_STORE = true; window.APEX_SERVER = origin;
     window.APEX_IOS = { version: '1.0', build: '0', commit: '' };
     if (!localStorage.getItem('apexxi.save.v1')) {
       localStorage.setItem('apexxi.save.v1', JSON.stringify({
         meta: { reset: 'econ-2curr-1' },
         flags: { notesSeen: notes, onboarded: true, hintMatches: 9 },
-        settings: { quality: 'cinema', reduceMotion: true, tutorialDone: true, music: false, sfx: false, commentary: false },
+        settings: { quality: q, reduceMotion: true, tutorialDone: true, music: false, sfx: false, commentary: false },
       }));
     }
-  }, { origin: server.url, notes: notesVersion });
+  }, { origin: server.url, notes: notesVersion, q: process.env.SHOT_QUALITY || 'cinema' });
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn', { timeout: 30000 });
   await page.click('#startBtn');
@@ -129,9 +129,9 @@ const SCENE = {
       const big = WORLD.clubs.slice().sort((a, b) => (b.stadium?.capacity || 0) - (a.stadium?.capacity || 0))[0] || WORLD.clubs[0];
       app.navigate('play', { homeId: big.id, awayId: WORLD.clubs.find((c) => c.id !== big.id).id, duration: 900, skill: 1, mode: 'single', atmo: { time: 'night', weather: 'clear' } });
     });
-    await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexCam, null, { timeout: 600000 });
-    await page.waitForFunction(() => window.__apexMatch?.phase === 'play', null, { timeout: 900000 });
-    await page.waitForFunction(() => window.__apexCam.mode === 'play' && window.__apexCam.modeTime > 5, null, { timeout: 900000 });
+    await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexCam, null, { timeout: 2400000 });
+    await page.waitForFunction(() => window.__apexMatch?.phase === 'play', null, { timeout: 2400000 });
+    await page.waitForFunction(() => window.__apexCam.mode === 'play' && window.__apexCam.modeTime > 5, null, { timeout: 2400000 });
     await page.evaluate(() => { for (const id of ['gmHints']) { const el = document.getElementById(id); if (el) el.hidden = true; } });
   },
 };
