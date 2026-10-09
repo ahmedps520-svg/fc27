@@ -93,7 +93,7 @@ try {
       if (a.description?.trim()) ok(`Description (${a.description.length} characters)`); else bad('Description is empty', page);
       if (a.keywords?.trim()) ok('Keywords'); else bad('Keywords are empty', page);
       if (a.supportUrl?.trim()) ok(`Support URL: ${a.supportUrl}`); else bad('Support URL is empty', page);
-      const sets = (await get(`/v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets?fields[appScreenshotSets]=screenshotDisplayType&include=appScreenshots&limit=50`));
+      const sets = (await get(`/v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets?fields[appScreenshotSets]=screenshotDisplayType,appScreenshots&include=appScreenshots&limit=50`));
       const count = {};
       for (const s of sets.data) count[s.attributes.screenshotDisplayType] = s.relationships?.appScreenshots?.data?.length || 0;
       const iphone = Object.entries(count).filter(([t, n]) => t.startsWith('APP_IPHONE') && n > 0);
