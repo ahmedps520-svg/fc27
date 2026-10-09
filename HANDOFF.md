@@ -15,6 +15,19 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v187 — the app shows its build; the full-time card scrolls on a sideways phone
+- **App build in Settings:**
+  - `app/build-www.mjs` stamps `window.APEX_IOS = {version, build, commit}` from `APEX_IOS_VERSION`/`APEX_IOS_BUILD`/`APEX_IOS_COMMIT`. `ios.yml` passes `inputs.version`, `github.run_number` and `github.sha`, the same numbers Xcode gets. A local build stamps `dev (local)` with the git HEAD, and bad values throw.
+  - `platform.APP_BUILD` reads it.
+  - Settings → App, in the app: "App build 1.0 (N)", and "Build" showing the 7-character commit. The Build row used to show the web server's build hash, which is not what is installed. No Force update in the app, and no `api/version` fetch.
+  - The web is unchanged.
+- **Full-time card** (reported: stuck on "Opponent left — win awarded" on the iPhone, unable to reach Back to Ultimate XI):
+  - `.gm-overlay` was a centred grid with no overflow inside `#gmRoot` (`touch-action: none`). At 393 px tall the card ran to 668 px.
+  - Now `.gm-overlay:not(.is-pause)`: `align-items: start; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain`, and the panel uses `margin-block: auto`, which centres it when it fits and starts it at the top when it doesn't.
+  - Under 560 px tall, `.gm-btns` is sticky at the bottom with its own backing, so the way out is always on screen.
+  - Checked with `tests/tmp/oppleft.mjs` (not committed): web host, App Store-mode guest at 852×393; the host leaves. Buttons on screen without scrolling, and a raw CDP touch drag scrolls 235 px. CDP's `synthesizeScrollGesture` does not drive an inner scroller here, so don't trust it.
+  - The pause menu already had its own scrolling panel.
+
 ## v186 — online after a goal; cross-play identity
 - Report from the owner (iPhone app vs web, online): "the iPhone controls disappear, the game glitches". Reproduced with `tests/tmp/crossplay.mjs` (not committed): a web client and an App Store-mode client (`APEX_APP_STORE`/`APEX_SERVER` set by addInitScript, touch, 852×393) in one lobby through the real server, with a goal forced on the host (`m.scoreGoal(1, 0, …)`). The pad visibility, root classes and phases of both sides are sampled every second. Run it with `--iphone-host` and `--gl` too.
 - **Cause 1 (the main one):** the host stops streaming during its own goal replay (`!replay` on the send), and the 30 Hz send often skipped the frame where the celebration ended. So the guest sat on a frozen celebration for the host's whole replay, then started its own replay after the host was back in play. That replay was 23–40 s with two or three angles, the pad hidden, and then a fast-forward through the buffered snapshots. Fixes in play.js:

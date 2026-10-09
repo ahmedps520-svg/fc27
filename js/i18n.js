@@ -124,6 +124,8 @@ const AR_TEXT = {
   "Privacy policy": "سياسة الخصوصية",
   "Version": "الإصدار",
   "Build": "البناء",
+  "App build": "إصدار التطبيق",
+  "As TestFlight and the App Store show it.": "كما يظهر في TestFlight وApp Store.",
   "Quote it in a bug report.": "اذكره في بلاغ العطل.",
   "Force update": "فرض التحديث",
   "Reload the latest build.": "أعد تحميل أحدث بناء.",

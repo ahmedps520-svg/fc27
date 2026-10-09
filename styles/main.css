@@ -5609,3 +5609,20 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 @media (max-width: 640px) {
   .screen { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
 }
+
+/* v187: the full-time card scrolls. On a phone held sideways it is taller than
+   the screen, and it sat centred in a box that could not scroll inside a match
+   surface that blocks touch scrolling — "Back to Ultimate XI" was below the
+   bottom edge with no way down to it. The card now starts at the top when it
+   does not fit (auto margins centre it when it does), the overlay scrolls with
+   a thumb, and on a short screen the buttons ride along the bottom edge so the
+   way out is always in view. The pause menu keeps its own layout. */
+.gm-overlay:not(.is-pause) { align-items: start; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.gm-overlay:not(.is-pause) > .gm-panel { margin-block: auto; }
+@media (max-height: 560px) {
+  .gm-overlay:not(.is-pause) .gm-btns {
+    position: sticky; bottom: -18px; z-index: 1;
+    margin: 12px -22px -22px; padding: 12px 22px calc(14px + env(safe-area-inset-bottom));
+    background: rgba(6, 9, 18, .96); border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius);
+  }
+}
