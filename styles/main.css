@@ -5626,3 +5626,15 @@ body.pad-active [data-pad][data-pad-glyph]::after {
     background: rgba(6, 9, 18, .96); border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius);
   }
 }
+
+/* v188: the pack reveal on a phone held sideways. The Nation / Position / Club
+   plinths fade out once the card arrives but kept their space, so the card
+   landed below the bottom edge of a 430 px screen and had to be scrolled to.
+   Faded, they leave the flow; and the card is sized to the height there is. */
+@media (max-height: 560px) and (orientation: landscape) {
+  .plinths.done { position: absolute; top: 0; left: 0; right: 0; margin: 0; }
+  .pack-stage { gap: 10px; }
+  /* the stat radar is on the card everywhere else; here it is what pushed the
+     rest off the screen */
+  .walkout .pc-radar-wrap { display: none; }
+}

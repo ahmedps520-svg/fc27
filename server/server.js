@@ -477,7 +477,7 @@ const SECURITY_HEADERS = {
  * were all a GET away. Now only the game's own files are: the pages at the
  * top level, and four directories. Anything else is a 404, not a 403, so a
  * probe learns nothing about what exists. */
-const PUBLIC_FILES = new Set(['index.html', 'notes.html', 'privacy.html', 'watch.html', 'landing.html', 'maintenance.html',
+const PUBLIC_FILES = new Set(['index.html', 'notes.html', 'privacy.html', 'support.html', 'watch.html', 'landing.html', 'maintenance.html',
   'model-preview.html', 'manifest.webmanifest', 'sw.js', 'events.json', 'LICENSE']);
 const PUBLIC_DIRS = ['js', 'styles', 'assets', 'icons'];
 function isPublic(rel) {
