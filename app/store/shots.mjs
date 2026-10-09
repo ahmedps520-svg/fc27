@@ -20,8 +20,10 @@ import { startServer } from '../../tests/smoke/server.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const ONLY = arg('--only', '');
-const SCENES = arg('--scenes', 'match,squad,pack,career,menu').split(',');
+const ORDER = ['match', 'squad', 'pack', 'career', 'menu'];   // the store order; a scene's file number comes from here
+const SCENES = arg('--scenes', ORDER.join(',')).split(',');
 const RAW = path.join(HERE, '.raw');
+const COMPOSE_ONLY = process.argv.includes('--compose-only');   // rebuild the store images from the last captures
 
 export const DEVICES = [
   { id: 'iphone', css: [932, 430], dpr: 3, type: 'APP_IPHONE_67' },
@@ -160,7 +162,7 @@ export async function compose(browser, dev, scene, rawFile, outFile) {
   <div class="head"><h1>${head}</h1><p>${sub}</p></div>
   <div class="shot"><img src="${img}"></div></body></html>`);
   await page.waitForTimeout(300);
-  await page.screenshot({ path: outFile, type: 'jpeg', quality: 92 });
+  await page.screenshot({ path: outFile, type: 'jpeg', quality: 92, timeout: 120000 });
   await page.close();
 }
 
@@ -173,22 +175,25 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (ONLY && dev.id !== ONLY) continue;
     const outDir = path.join(HERE, 'screenshots', dev.id);
     fs.mkdirSync(outDir, { recursive: true });
-    let n = 0;
     for (const scene of SCENES) {
-      n += 1;
+      const n = ORDER.indexOf(scene) + 1;
       const t0 = Date.now();
-      const { ctx, page } = await boot(browser, dev, server, notesVersion);
+      const raw = path.join(RAW, `${dev.id}-${scene}.png`);
+      const out = path.join(outDir, `${String(n).padStart(2, '0')}-${scene}.jpg`);
       try {
-        await SCENE[scene](page, dev);
-        const raw = path.join(RAW, `${dev.id}-${scene}.png`);
-        await page.screenshot({ path: raw, timeout: 600000 });
-        const out = path.join(outDir, `${String(n).padStart(2, '0')}-${scene}.jpg`);
+        if (!COMPOSE_ONLY) {
+          const { ctx, page } = await boot(browser, dev, server, notesVersion);
+          try {
+            await SCENE[scene](page, dev);
+            await page.screenshot({ path: raw, timeout: 600000 });
+          } finally { await ctx.close(); }   // before composing: a match still drawing starves the shared GPU
+        }
+        if (!fs.existsSync(raw)) throw new Error(`no capture at ${path.relative(process.cwd(), raw)}`);
         await compose(browser, dev, scene, raw, out);
         console.log(`${dev.id} ${scene}: ${path.relative(process.cwd(), out)} (${Math.round((Date.now() - t0) / 1000)} s)`);
       } catch (e) {
         console.log(`${dev.id} ${scene}: FAILED ${e.message.split('\n')[0]}`);
       }
-      await ctx.close();
     }
   }
   await browser.close(); await server.close?.();
