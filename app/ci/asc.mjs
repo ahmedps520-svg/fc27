@@ -136,6 +136,7 @@ try {
   }
   if (ver) {
     ok(`App Store version ${VERSION}: ${stateOf(ver).replace(/_/g, ' ').toLowerCase()}, release ${String(ver.attributes.releaseType || 'AFTER_APPROVAL').replace(/_/g, ' ').toLowerCase()}`);
+    if (ver.attributes.copyright?.trim()) ok(`Copyright: ${ver.attributes.copyright}`); else bad('Copyright is empty', `App Store tab → iOS App ${VERSION} → Copyright (e.g. "2026 your name")`);
     if (SUBMIT) {
       await api('PATCH', `/v1/appStoreVersions/${ver.id}/relationships/build`, { data: { type: 'builds', id: build.id } });
       ok(`Build ${BUILD} attached to version ${VERSION}`);
@@ -198,8 +199,9 @@ try {
   else bad('Content rights question is not answered', 'App Information → Content Rights');
 
   /* price and availability */
-  const price = await maybe(`/v1/apps/${app.id}/appPriceSchedule`);
-  if (price?.data) ok('Price schedule set'); else bad('No price set', 'Pricing and Availability → Price: Free');
+  // a schedule can exist with no price in it; Apple only counts a manual price
+  const price = await maybe(`/v1/apps/${app.id}/appPriceSchedule?include=manualPrices`).catch(() => null);
+  if (price?.included?.some((x) => x.type === 'appPrices')) ok('Price set'); else bad('No price set', 'Pricing and Availability → Price: Free (0.00)');
   const avail = await maybe(`/v1/apps/${app.id}/appAvailabilityV2`).catch(() => null);
   if (avail?.data) ok('Availability set'); else note('Could not read country availability (check Pricing and Availability → App Availability)');
   note('App Privacy (the data labels) cannot be read through the API — Apple will refuse the submission below if it is not published');
