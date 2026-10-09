@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v188',
+    date: '2026-10-09',
+    tag: 'Fix',
+    title: 'Pack reveals on a sideways phone',
+    lede: 'A pack reveal on a phone held sideways now shows the whole card and its button, and the game has a support page.',
+    entries: [
+      {
+        head: 'Pack reveal',
+        summary: 'On a phone held sideways the card you pulled fits on the screen, with Add to collection below it.',
+        detail: 'The Nation, Position and Club boxes kept their space after fading out, so the card landed below the bottom edge. They now step aside once the card arrives, and on a short screen the card leaves out its stat chart (the six stats are still on it, as bars).',
+      },
+      {
+        head: 'Support',
+        summary: 'A support page with contact details and answers about accounts, online play, purchases and deleting your data.',
+        detail: 'At fc27.onrender.com/support.html.',
+      },
+    ],
+  },
+  {
     version: 'v187',
     date: '2026-10-09',
     tag: 'App',

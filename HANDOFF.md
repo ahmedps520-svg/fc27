@@ -15,6 +15,21 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v188 — App Store listing and screenshots; pack reveal fits a sideways phone; support page
+- **Submitting from CI** (the owner asked to submit build 5; this session never holds the key):
+  - `app/ci/asc-api.mjs`: JWT from the cleaned key, retrying requests, Apple's errors kept whole.
+  - `app/ci/asc.mjs` + "iOS → App Store review" (inputs: version, build, submit): attaches the build, checks the listing, submits, and quotes Apple if it refuses.
+  - `app/ci/asc-listing.mjs` + "iOS → App Store listing": applies `app/store/listing.json`, covering version-page text, copyright, release type, subtitle, privacy URL, category GAMES › SPORTS/SIMULATION, age-rating answers (all none/no, lootBox true), content rights `USES_THIRD_PARTY_CONTENT` (Mixamo figures), Free price (the USA $0 point), all territories, and review notes. It replaces both screenshot sets.
+  - Run 1 of review attached build 5 to 1.0; Apple's refusal listed every gap. App Privacy and the review contact (name, phone, email) can only be filled by the owner on the website.
+  - Job logs: built-in `gh` can't follow the log redirect; `mcp__github__get_job_logs` with return_content works.
+  - The first check wrongly said the price was set: an empty schedule exists, and only a manual price counts.
+- **Screenshots:** `app/store/shots.mjs` boots the App Store build (flag via addInitScript) on the real server at 932×430@3x (iPhone 6.7", APP_IPHONE_67, 2796×1290) and 1366×1024@2x (iPad 12.9", APP_IPAD_PRO_3GEN_129, 2732×2048).
+  - Each scene is played to and captured: match, squad, pack, career, menu. `compose()` then sets each capture under a headline at exactly that size, as JPEG, into `app/store/screenshots/<device>/NN-scene.jpg`.
+  - The match takes about 22 minutes on SwiftShader for the iPhone. `--compose-only` rebuilds the images from `app/store/.raw/` (ignored). File numbers come from ORDER, not from `--scenes`.
+  - The owner asked for ChatGPT images. That isn't available here, and App Review (2.3.3) wants the app in use, so these are real captures.
+- **Pack reveal** (found while shooting): at max-height 560 in landscape, `.plinths.done` leaves the flow and `.walkout .pc-radar-wrap` is hidden. The card and Add to collection now fit 430 px; they used to land below the edge.
+- **support.html** (static; in PUBLIC_FILES and the precache) is the listing's support URL.
+
 ## v187 — the app shows its build; the full-time card scrolls on a sideways phone
 - **App build in Settings:**
   - `app/build-www.mjs` stamps `window.APEX_IOS = {version, build, commit}` from `APEX_IOS_VERSION`/`APEX_IOS_BUILD`/`APEX_IOS_COMMIT`. `ios.yml` passes `inputs.version`, `github.run_number` and `github.sha`, the same numbers Xcode gets. A local build stamps `dev (local)` with the git HEAD, and bad values throw.

@@ -1,0 +1,50 @@
+{
+  "_note": "The App Store listing for the iOS app, applied by app/ci/asc-listing.mjs (Actions -> iOS -> App Store listing). Edit here and re-run it.",
+  "locale": "en-GB",
+  "subtitle": "Build your XI. Play online.",
+  "promotionalText": "Build your Ultimate XI, manage a club for seasons, and take your team online. Every mode except online plays offline.",
+  "description": "APEX XI is a football game you play your way: collect cards and build a squad, manage a club over many seasons, or take your team online against real players.\n\nULTIMATE XI\nOpen packs, collect players and build your eleven. Chemistry, evolutions, squad challenges and weekly campaigns give every card a reason to exist. Climb the divisions, or test your squad in Quickfire Fives and Squad Clash.\n\nPLAY THE MATCH\nFull 3D matches with eight camera angles, tackles, fouls, set pieces, penalties, red cards and goal replays. Touch controls are built for a phone held sideways, and game controllers work too. Keep your best goals and watch them again in the Trophy Room.\n\nCAREER\nManage a club across seasons: transfers, contracts, an academy, team talks and touchline shouts that change a match. Or start as a young player and build a career of your own.\n\nONLINE\nHead-to-head matches, the Weekend Showdown, co-op seasons with a friend and 2v2 parties. Players talk with preset phrases and emotes only, with no open chat.\n\nMORE TO PLAY\nStreet football, small-sided games, a stadium builder and seasonal events.\n\nPLAY ANYWHERE\nEvery mode except online plays offline. Your progress stays on your device, and an optional free account keeps a copy in the cloud.\n\nAll players, managers, clubs and competitions in APEX XI are fictional.\n\nPacks are opened with coins earned by playing. There are no real-money purchases in this version.",
+  "keywords": "football,soccer,manager,career,squad,cards,packs,online,multiplayer,league,club,tactics,goal",
+  "supportUrl": "https://fc27.onrender.com/support.html",
+  "marketingUrl": "https://fc27.onrender.com",
+  "privacyPolicyUrl": "https://fc27.onrender.com/privacy.html",
+  "copyright": "2026 APEX XI",
+  "category": {
+    "primary": "GAMES",
+    "primarySub1": "GAMES_SPORTS",
+    "primarySub2": "GAMES_SIMULATION"
+  },
+  "contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT",
+  "_contentRights": "Yes: the player figures and animations are from Mixamo, licensed for use in games; three.js (MIT) draws them.",
+  "price": "FREE",
+  "releaseType": "AFTER_APPROVAL",
+  "ageRating": {
+    "_note": "All none/no except loot boxes (packs give random cards). Players only send preset emotes; no web browsing, ads or user posts.",
+    "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+    "contests": "NONE",
+    "gamblingSimulated": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "horrorOrFearThemes": "NONE",
+    "matureOrSuggestiveThemes": "NONE",
+    "medicalOrTreatmentInformation": "NONE",
+    "profanityOrCrudeHumor": "NONE",
+    "sexualContentGraphicAndNudity": "NONE",
+    "sexualContentOrNudity": "NONE",
+    "violenceCartoonOrFantasy": "NONE",
+    "violenceRealistic": "NONE",
+    "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    "gambling": false,
+    "unrestrictedWebAccess": false,
+    "lootBox": true,
+    "messagingAndChat": false,
+    "userGeneratedContent": false,
+    "advertising": false,
+    "parentalControls": false,
+    "ageAssurance": false,
+    "healthOrWellnessTopics": false
+  },
+  "review": {
+    "demoAccountRequired": false,
+    "notes": "Every mode can be played offline without an account. Online play (the Online tab) needs a free account, which can be created inside the app with any player name and a password; no email is needed. An online match needs a second player, on another device or the website (https://fc27.onrender.com). Account deletion: Online -> Delete account. There are no in-app purchases in this version: packs are opened with coins earned by playing."
+  }
+}
