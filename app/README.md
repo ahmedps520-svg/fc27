@@ -83,6 +83,18 @@ In App Store Connect, on the app's page:
 - **Export compliance:** already answered in the app (`ITSAppUsesNonExemptEncryption = NO`,
   because the app uses only standard HTTPS).
 
+## Submitting for review
+
+Once the items above are filled in: GitHub → Actions → **iOS → App Store
+review** → Run workflow, with the version (`1.0`) and the build number TestFlight
+shows in brackets (`5`). It attaches that build to the version, checks every
+item App Review needs and submits. The run's summary lists each item ✓ or ✗
+with where to fix it, and quotes Apple if it refuses. Untick "submit" to only
+check.
+
+The app runs on iPhone and iPad, so App Review wants a 13" iPad screenshot set
+as well as the iPhone 6.9" one.
+
 ## Updating the app
 
 Changes to the game reach the website as soon as they merge, but the app only
