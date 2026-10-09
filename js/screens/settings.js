@@ -6,6 +6,7 @@ import { WORLD } from '../data/generator.js';
 import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics, veil } from '../app.js';
 import { installUpdate, knownBuild } from '../update.js';
 import { serverPath } from '../net/config.js';
+import { APP_STORE, APP_BUILD } from '../platform.js';
 import { icon } from '../components/facts.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, loadVoice, playVoice } from '../audio.js';
@@ -109,6 +110,17 @@ export function render() {
         <div><b>${tx("Version")}</b></div>
         <span class="tag">${APP_VERSION}</span>
       </div>
+      ${APP_STORE ? `
+      <!-- v187: the App Store build is what is installed, not what the server
+           is serving, and only TestFlight or the App Store can update it -->
+      <div class="setting-row">
+        <div><b>${tx("App build")}</b><span>${tx("As TestFlight and the App Store show it.")}</span></div>
+        <span class="tag mono" id="appBuildTag">${APP_BUILD ? `${APP_BUILD.version} (${APP_BUILD.build})` : 'unknown'}</span>
+      </div>
+      <div class="setting-row">
+        <div><b>${tx("Build")}</b><span>${tx("Quote it in a bug report.")}</span></div>
+        <span class="tag mono" id="buildTag">${APP_BUILD?.commit ? APP_BUILD.commit.slice(0, 7) : 'unknown'}</span>
+      </div>` : `
       <div class="setting-row">
         <div><b>${tx("Build")}</b><span>${tx("Quote it in a bug report.")}</span></div>
         <span class="tag mono" id="buildTag">checking…</span>
@@ -116,7 +128,7 @@ export function render() {
       <div class="setting-row">
         <div><b>${tx("Force update")}</b><span>${tx("Reload the latest build.")}</span></div>
         <button class="btn ghost" id="forceUpdate">Update now</button>
-      </div>
+      </div>`}
       <!-- Diagnostic, not a feature. The mouse wheel has now had three separate
            causes and none of them reproduced on a test machine, so this reports
            what the wheel actually did on the machine that has the problem:
@@ -478,7 +490,7 @@ export function mount(root) {
    * bytes it is sending. A mismatch with the stored build is worth calling
    * out — it means the title screen has an update waiting. */
   const buildTag = root.querySelector('#buildTag');
-  fetch(serverPath('api/version'), { cache: 'no-store' })
+  if (!APP_STORE) fetch(serverPath('api/version'), { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : null))
     .then((v) => {
       if (!v?.build) { buildTag.textContent = 'offline'; return; }
@@ -732,7 +744,7 @@ export function mount(root) {
     tick();
   });
 
-  root.querySelector('#forceUpdate').addEventListener('click', async (e) => {
+  root.querySelector('#forceUpdate')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
     let build = 'unknown';

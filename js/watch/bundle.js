@@ -1,6 +1,6 @@
 (() => {
   // js/platform.js
-  var APP_STORE = typeof globalThis < "u" && globalThis.APEX_APP_STORE === !0, APP_SERVER = APP_STORE ? String(globalThis.APEX_SERVER || "https://fc27.onrender.com").replace(/\/$/, "") : "", hashOf = (str) => {
+  var APP_STORE = typeof globalThis < "u" && globalThis.APEX_APP_STORE === !0, APP_BUILD = APP_STORE && globalThis.APEX_IOS && typeof globalThis.APEX_IOS == "object" ? { version: String(globalThis.APEX_IOS.version || "?"), build: String(globalThis.APEX_IOS.build || "?"), commit: String(globalThis.APEX_IOS.commit || "") } : null, APP_SERVER = APP_STORE ? String(globalThis.APEX_SERVER || "https://fc27.onrender.com").replace(/\/$/, "") : "", hashOf = (str) => {
     let h = 2166136261;
     for (let c of String(str))
       h ^= c.charCodeAt(0), h = Math.imul(h, 16777619) >>> 0;

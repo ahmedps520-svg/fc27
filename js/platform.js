@@ -18,6 +18,15 @@
  */
 export const APP_STORE = typeof globalThis !== 'undefined' && globalThis.APEX_APP_STORE === true;
 
+/**
+ * v187: which App Store build this is — the version and build number TestFlight
+ * shows, and the commit it was built from — stamped into the page by
+ * app/build-www.mjs. Null on the web.
+ */
+export const APP_BUILD = APP_STORE && globalThis.APEX_IOS && typeof globalThis.APEX_IOS === 'object'
+  ? { version: String(globalThis.APEX_IOS.version || '?'), build: String(globalThis.APEX_IOS.build || '?'), commit: String(globalThis.APEX_IOS.commit || '') }
+  : null;
+
 /** Where the app finds the online server (the shell may name another with `APEX_SERVER`). */
 export const APP_SERVER = APP_STORE ? String(globalThis.APEX_SERVER || 'https://fc27.onrender.com').replace(/\/$/, '') : '';
 

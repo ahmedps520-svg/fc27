@@ -93,6 +93,11 @@ jobs:
 
       - name: Build the App Store web files and sync them into the iOS project
         working-directory: app
+        env:
+          # v187: the same version and build number Xcode gets below, shown in Settings
+          APEX_IOS_VERSION: ${{ inputs.version }}
+          APEX_IOS_BUILD: ${{ github.run_number }}
+          APEX_IOS_COMMIT: ${{ github.sha }}
         run: |
           npm ci
           node build-www.mjs

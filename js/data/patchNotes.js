@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v187',
+    date: '2026-10-09',
+    tag: 'App',
+    title: 'Full time on a phone, and which build is this',
+    lede: 'The full-time card scrolls on a phone held sideways, with its buttons always in view, and the iPhone app shows its build number in Settings.',
+    entries: [
+      {
+        head: 'Full time',
+        summary: 'On a phone held sideways, the full-time card scrolls and its buttons stay pinned to the bottom of the screen.',
+        detail: 'The card is taller than a sideways phone screen and could not be scrolled. After an online opponent left ("Opponent left — win awarded"), Back to Ultimate XI was below the bottom edge and there was no way to reach it.',
+      },
+      {
+        head: 'App build',
+        summary: 'Settings → App: App build, for example 1.0 (5), and Build, the code it was made from.',
+        detail: 'The Build row in the app used to show the build the website was serving, not the one installed on the phone. The app no longer offers Force update either: TestFlight and the App Store update it.',
+      },
+    ],
+  },
+  {
     version: 'v186',
     date: '2026-10-08',
     tag: 'Online',

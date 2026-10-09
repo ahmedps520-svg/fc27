@@ -9,10 +9,15 @@
  *
  *   node build-www.mjs                        # server: https://fc27.onrender.com
  *   APEX_SERVER=https://example.com node build-www.mjs
+ *
+ * v187: it also stamps which build this is — APEX_IOS_VERSION and
+ * APEX_IOS_BUILD, the same numbers the workflow hands Xcode, and the commit —
+ * so Settings can say exactly which TestFlight build is installed.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -26,6 +31,16 @@ const DIRS = ['js', 'styles', 'assets', 'icons'];
 const SKIP = (rel) => rel.startsWith('assets/email') || /(^|\/)README[^/]*\.md$/.test(rel) || rel.endsWith('.DS_Store');
 
 if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(SERVER)) throw new Error(`APEX_SERVER must be an https origin, got ${SERVER}`);
+
+let commit = process.env.APEX_IOS_COMMIT || '';
+if (!commit) { try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { commit = ''; } }
+const STAMP = {
+  version: process.env.APEX_IOS_VERSION || 'dev',
+  build: process.env.APEX_IOS_BUILD || 'local',
+  commit: /^[0-9a-f]{7,40}$/.test(commit) ? commit : '',
+};
+if (!/^(\d+(\.\d+){0,2}|dev)$/.test(STAMP.version)) throw new Error(`APEX_IOS_VERSION must look like 1.0 or 1.0.1, got ${STAMP.version}`);
+if (!/^(\d+|local)$/.test(STAMP.build)) throw new Error(`APEX_IOS_BUILD must be a number, got ${STAMP.build}`);
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
@@ -41,7 +56,7 @@ function copyDir(rel) {
 for (const d of DIRS) copyDir(d);
 for (const f of FILES) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 
-const FLAG = `<script>window.APEX_APP_STORE = true; window.APEX_SERVER = ${JSON.stringify(SERVER)};</script>`;
+const FLAG = `<script>window.APEX_APP_STORE = true; window.APEX_SERVER = ${JSON.stringify(SERVER)}; window.APEX_IOS = ${JSON.stringify(STAMP)};</script>`;
 for (const page of PAGES) {
   let html = fs.readFileSync(path.join(ROOT, page), 'utf8');
   // before the first script (the import map in index.html), so it is set before any module loads
@@ -52,4 +67,4 @@ for (const page of PAGES) {
 
 let bytes = 0; let n = 0;
 (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else { bytes += fs.statSync(p).size; n++; } } })(OUT);
-console.log(`www: ${n} files, ${(bytes / 1048576).toFixed(1)} MB, server ${SERVER}`);
+console.log(`www: ${n} files, ${(bytes / 1048576).toFixed(1)} MB, server ${SERVER}, build ${STAMP.version} (${STAMP.build}) ${STAMP.commit.slice(0, 7)}`);
