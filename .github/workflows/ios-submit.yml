@@ -1,0 +1,72 @@
+# v188: send a TestFlight build to App Review.
+#
+# Actions → "iOS → App Store review" → Run workflow, with the version (1.0) and
+# the build number TestFlight shows in brackets. It attaches that build to the
+# App Store version, checks everything App Review needs (text, screenshots,
+# privacy policy, category, age rating, review contact, price) and submits.
+# The job summary lists each item ✓ or ✗ with where to fix it in App Store
+# Connect, and Apple's own answer if it refuses. Untick "submit" to only check.
+#
+# Uses the same repository secrets as "iOS → TestFlight" (see app/README.md).
+name: iOS → App Store review
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App Store version (e.g. 1.0)'
+        required: true
+        default: '1.0'
+      build:
+        description: 'Build number, as TestFlight shows it in brackets (e.g. 5)'
+        required: true
+      submit:
+        description: 'Submit for review (untick to only check what is missing)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ios-review
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'online.apexxi.game' }}
+      VERSION: ${{ inputs.version }}
+      BUILD: ${{ inputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: API key (cleaned and checked)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          clean() { printf '%s' "$1" | tr -d ' \t\r\n"'"'"; }
+          KEY_ID="$(clean "$ASC_KEY_ID")"; ISSUER_ID="$(clean "$ASC_ISSUER_ID")"
+          bad=0
+          [[ "$KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error title=ASC_KEY_ID::should be the 10-character Key ID"; bad=1; }
+          [[ "$ISSUER_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "::error title=ASC_ISSUER_ID::should be the Issuer ID"; bad=1; }
+          [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "::error::version must look like 1.0 or 1.0.1"; bad=1; }
+          [[ "$BUILD" =~ ^[0-9]+$ ]] || { echo "::error::build must be the build number, e.g. 5"; bad=1; }
+          [ $bad = 0 ] || exit 1
+          echo "::add-mask::$KEY_ID"; echo "::add-mask::$ISSUER_ID"
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${KEY_ID}.p8"
+          bash app/ci/asc-key.sh "$KEY_PATH"
+          { echo "KEY_ID=$KEY_ID"; echo "ISSUER_ID=$ISSUER_ID"; echo "KEY_PATH=$KEY_PATH"; } >> "$GITHUB_ENV"
+
+      - name: Check and submit
+        run: node app/ci/asc.mjs --bundle "$BUNDLE_ID" --version "$VERSION" --build "$BUILD" ${{ inputs.submit && '--submit' || '' }}
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
