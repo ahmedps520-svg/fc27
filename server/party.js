@@ -88,6 +88,14 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
         if (!p || p.matchId) { peer.sock.send({ t: 'partyFail', error: p ? 'That match has started.' : 'No party with that code.' }); return true; }
         const mode = MODES[p.mode];
         if (p.members.length >= mode.max) { peer.sock.send({ t: 'partyFail', error: 'That party is full.' }); return true; }
+        // v189: everyone in a party plays the host's match, so everyone speaks its protocol (js/net/protocol.js)
+        const lead = p.host;
+        if (lead && (lead.net || 1) !== (peer.net || 1)) {
+          peer.sock.send({ t: 'partyFail', error: (peer.net || 1) < (lead.net || 1)
+            ? 'Your game is out of date for this party. Update APEX XI (on iPhone, from the App Store) to join.'
+            : 'The party host\'s game is out of date. They need to update APEX XI before you can join.' });
+          return true;
+        }
         if (peer.party) leave(peer);
         // balance the sides as people arrive (co-op has only the one)
         const c0 = sideCount(p, 0); const c1 = sideCount(p, 1);

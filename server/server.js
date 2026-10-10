@@ -627,6 +627,19 @@ function tellSpectators(host) {
 const { createPartyHub } = require('./party.js');
 const partyHub = createPartyHub({ store, guard, forget: (p) => { if (p.name && peers.get(p.name) === p) peers.delete(p.name); } });
 
+/* v189: the match protocol the current website speaks (js/net/protocol.js), and
+ * what a client is told when it is too far behind or ahead of someone. A
+ * client that does not say (App Store build 5, older pages) speaks 1. */
+const NET_PROTOCOL = (() => {
+  try { return Number((fs.readFileSync(path.join(ROOT, 'js/net/protocol.js'), 'utf8').match(/NET_PROTOCOL\s*=\s*(\d+)/) || [])[1]) || 1; } catch { return 1; }
+})();
+const netOf = (m) => (Number.isInteger(m?.net) && m.net > 0 && m.net < 1000 ? m.net : 1);
+function versionGap(me, them) {
+  return me.net < them.net
+    ? 'Your game is out of date for this player. Update APEX XI (on iPhone, from the App Store) to play them.'
+    : 'This player\'s game is out of date. They need to update APEX XI before you can play them.';
+}
+
 const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
 function pair(a, b, kind) {
@@ -721,8 +734,9 @@ ws.attach(server, '/ws', (sock) => {
       }
       peer.acct = acct;
       peer.name = acct.name;
+      peer.net = netOf(m);
       peers.set(acct.name, peer);
-      sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size });
+      sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size, net: NET_PROTOCOL });
       return;
     }
     if (peer.adopted) return handle(peer.adopted, m);
@@ -776,6 +790,7 @@ ws.attach(server, '/ws', (sock) => {
           sock.send({ t: 'joinFail', error: 'No lobby with that code.' });
           return;
         }
+        if ((host.net || 1) !== (peer.net || 1)) { sock.send({ t: 'joinFail', error: versionGap(peer, host), update: (peer.net || 1) < (host.net || 1) }); return; }
         leaveQueue(peer);
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
@@ -872,6 +887,7 @@ ws.attach(server, '/ws', (sock) => {
         let host = null;
         for (const p of peers.values()) if (p.isHost && p.matchId === id && p.opponent) { host = p; break; }
         if (!host) { sock.send({ t: 'spectateFail', error: 'That match is over.' }); break; }
+        if ((host.net || 1) !== (peer.net || 1)) { sock.send({ t: 'spectateFail', error: versionGap(peer, host) }); break; }
         unspectate(peer);
         host.spectators = host.spectators || new Set();
         if (host.spectators.size >= 8) { sock.send({ t: 'spectateFail', error: 'That match is full of spectators.' }); break; }

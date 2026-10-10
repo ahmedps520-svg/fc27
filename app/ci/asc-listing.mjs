@@ -52,6 +52,9 @@ try {
     const locs = (await get(`/v1/appStoreVersions/${ver.id}/appStoreVersionLocalizations?limit=50`)).data;
     loc = locs.find((l) => l.attributes.locale === L.locale);
     const attributes = { description: L.description, keywords: L.keywords, supportUrl: L.supportUrl, marketingUrl: L.marketingUrl, promotionalText: L.promotionalText };
+    // an update says what changed; Apple refuses the field on an app's first version
+    if (L.whatsNew?.[VERSION]) attributes.whatsNew = L.whatsNew[VERSION];
+    else if (VERSION !== '1.0') throw new Error(`listing.json has no whatsNew for ${VERSION}`);
     if (loc) loc = (await api('PATCH', `/v1/appStoreVersionLocalizations/${loc.id}`, { data: { type: 'appStoreVersionLocalizations', id: loc.id, attributes } })).data;
     else loc = (await api('POST', '/v1/appStoreVersionLocalizations', { data: { type: 'appStoreVersionLocalizations', attributes: { locale: L.locale, ...attributes }, relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } })).data;
     return `description, keywords, promotional text, ${L.supportUrl}`;
