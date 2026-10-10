@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v189',
+    date: '2026-10-10',
+    tag: 'Online',
+    title: 'Same version, same match',
+    lede: 'Online, you are only ever matched with players on the same version of the game, and on a phone held sideways the match keeps clear of the notch.',
+    entries: [
+      {
+        head: 'Online versions',
+        summary: 'Players on different versions of APEX XI are never put in one match. If yours is behind, the Online tab says an update is out.',
+        detail: 'The website updates straight away and the iPhone app when you install an update, and the two play each other. When a future update changes how a match is played over the network, an older copy and a newer one are kept apart, and joining a lobby or party says which side needs to update. Until then you are matched with players on your version.',
+      },
+      {
+        head: 'Notch and Dynamic Island',
+        summary: 'On a phone held sideways, the pause menu, the broadcast boards, the manager\'s shout wheel and the alerts keep clear of the cut-out.',
+        detail: 'They sat 10 to 16 px from the screen edge, under the notch or Dynamic Island. Where there is no cut-out nothing moves.',
+      },
+    ],
+  },
+  {
     version: 'v188',
     date: '2026-10-09',
     tag: 'Fix',

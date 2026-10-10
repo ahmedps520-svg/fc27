@@ -15,6 +15,19 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v189 — iOS 1.1: match-protocol handshake, notch-safe match UI, landscape pop-over scan
+- **1.0 (build 5) was submitted to App Review on 2026-10-10.** The owner filled in the review contact and App Privacy (User ID and Gameplay Content linked; Crash Data not linked; no tracking) on the website. 1.1 can't be submitted until 1.0 is approved or rejected.
+- **Protocol handshake:**
+  - `js/net/protocol.js` `NET_PROTOCOL = 1`. The client sends it in the socket `auth`; a client that sends nothing (build 5, older pages) is 1. The server reads the number from that file and sends it back in `ready.net`.
+  - `matchmaking.gapOf` returns Infinity across protocols. `join`, `spectate` and `partyJoin` refuse with a message saying who is behind (`joinFail.update` is true when the joiner is).
+  - The Online tab shows "A new version of APEX XI is out" when the server's protocol is above the client's.
+  - **Bump it only when an older client could not play a newer one correctly**: snapshot or input format, replay/pause handshakes, lobby squad. Each bump splits the pool until the App Store update lands.
+  - Test: `tests/unit/net-protocol.test.mjs` (real server: refusals, build 5 still pairs with current, the matchmaker never bridges).
+- **Notch:** end of main.css. `max(old, env(safe-area-inset-*))` on `.mgr-walk`, `.bc-mom/.bc-board/.bc-subs`, `.gm-alerts`, `.tedit-hint`, `.mgr-hud`, `.pg-skip`, `.bc-card/.bc-stat`, `.gm-hints`, `.gr-hint/.gr-cam`, the pause nav and panel (with the ≤720 px values matched), and the pack and full-time overlays. env() is 0 without a cut-out, so nothing moves there.
+- **`tests/visual/overlay-scan.mjs`** (added to nightly): App Store build at 667×375, 844×390 and 932×430. It opens what's new, the welcome, the pack before and after the rip, each pause section, full time, delete account and pair a watch, and fails on a control that is off screen with no scrollable ancestor (touch-action none counts as not scrollable). All clean after v187/v188.
+- **Listing:** `listing.json whatsNew["1.1"]`. asc-listing sends whatsNew for any version but 1.0 and stops if it's missing.
+- **1.1 build:** "iOS → TestFlight" with version 1.1 (build = run number). To submit after 1.0 clears: "iOS → App Store review" (version 1.1, the new build), then "iOS → App Store listing" (version 1.1) for whatsNew. The listing run needs the version to exist, and the review run creates it.
+
 ## v188 — App Store listing and screenshots; pack reveal fits a sideways phone; support page
 - **Submitting from CI** (the owner asked to submit build 5; this session never holds the key):
   - `app/ci/asc-api.mjs`: JWT from the cleaned key, retrying requests, Apple's errors kept whole.

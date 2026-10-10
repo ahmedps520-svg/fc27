@@ -29,6 +29,8 @@ function allowedSpan(waitedSec, table) {
 
 /** The measure two peers are compared on, and how far apart they may be. */
 function gapOf(a, b) {
+  // v189: two clients that speak different match protocols never meet (js/net/protocol.js)
+  if ((a.net || 1) !== (b.net || 1)) return Infinity;
   if (a.wl || b.wl) {
     if (!a.wl || !b.wl || a.wl.id !== b.wl.id) return Infinity;      // never across queues or weekends
     return Math.abs((a.wl.wins | 0) - (b.wl.wins | 0));

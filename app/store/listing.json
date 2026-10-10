@@ -46,5 +46,9 @@
   "review": {
     "demoAccountRequired": false,
     "notes": "Every mode can be played offline without an account. Online play (the Online tab) needs a free account, which can be created inside the app with any player name and a password; no email is needed. An online match needs a second player, on another device or the website (https://fc27.onrender.com). Account deletion: Online -> Delete account. There are no in-app purchases in this version: packs are opened with coins earned by playing."
+  },
+  "whatsNew": {
+    "_note": "Shown on the App Store for each update (never on 1.0, where Apple does not allow it). Keyed by version.",
+    "1.1": "• Pack reveals fit a phone held sideways: the card you pulled and its button are always on screen.\n• The pause menu, the match boards and pop-ups keep clear of the notch and Dynamic Island.\n• Online: you are only ever matched with players on the same version of the game, and the Online tab tells you when an update is out.\n• A support page, and smaller fixes."
   }
 }

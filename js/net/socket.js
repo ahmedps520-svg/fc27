@@ -7,9 +7,11 @@
  */
 import { authToken } from './api.js';
 import { socketURL } from './config.js';
+import { NET_PROTOCOL } from './protocol.js';
 
 let sock = null;
 let ready = false;
+let serverNet = 1;                 // v189: the match protocol the server's own website speaks
 let retry = 0;
 let retryTimer = null;
 let wanted = false;
@@ -86,13 +88,13 @@ export function connect() {
 
   sock.onopen = () => {
     retry = 0;
-    sock.send(JSON.stringify({ t: 'auth', token }));
+    sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL }));   // v189: see protocol.js
   };
 
   sock.onmessage = (e) => {
     let msg;
     try { msg = JSON.parse(e.data); } catch { return; }
-    if (msg.t === 'ready') ready = true;
+    if (msg.t === 'ready') { ready = true; serverNet = msg.net | 0 || 1; }
     if (msg.t === 'authFail') { ready = false; wanted = false; }
     // through the same stale-guard as the direct channel: when both routes are
     // live the relayed copy arrives later, and must not rewind the newer one
@@ -134,3 +136,6 @@ export function ping() {
     setTimeout(() => { off(); resolve(null); }, 3000);
   });
 }
+
+/** v189: the match protocol the server's current website speaks — above ours means an update is out. */
+export const serverProtocol = () => serverNet;

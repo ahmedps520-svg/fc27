@@ -19,6 +19,8 @@ import { navigate, toast, refreshCoins } from '../app.js';
 import { sfx } from '../audio.js';
 import { clubIdentity } from './squad.js';
 import { t } from '../i18n.js';
+import { NET_PROTOCOL } from '../net/protocol.js';
+import { APP_STORE } from '../platform.js';
 
 export const TITLE = 'Account';
 
@@ -253,6 +255,15 @@ export function mountOnline(root, { rerender }) {
   const pip = async () => {
     if (!connEl?.isConnected) return;
     if (!net.isReady()) { connEl.textContent = 'connecting…'; connEl.className = 'ol-conn'; return; }
+    /* v189: the server's website speaks a newer match protocol than this copy,
+       so this copy is only ever paired with others on the same old version.
+       Say so, rather than leave someone in a queue that never fills. */
+    if (net.serverProtocol() > NET_PROTOCOL && !root.querySelector('#olUpdate')) {
+      const box = document.createElement('div');
+      box.id = 'olUpdate'; box.className = 'ol-update glass';
+      box.innerHTML = `<b>${t('online.update.title')}</b><span>${t(APP_STORE ? 'online.update.app' : 'online.update.web')}</span>`;
+      root.querySelector('.ol-me')?.before(box);
+    }
     const rtt = await net.ping();
     if (!connEl.isConnected) return;
     connEl.textContent = rtt == null ? 'online' : `online · ${rtt}ms`;
