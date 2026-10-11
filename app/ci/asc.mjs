@@ -27,6 +27,7 @@ if (!/^\d+$/.test(BUILD)) { console.error(`--build must be the build number, e.g
 const R = reporter();
 const { lines, problems } = R;
 const ok = R.ok; const bad = R.bad; const note = R.note; const summary = R.summary;
+let blocker = false;   // a gap worth not submitting over, unlike the rest (Apple's answer decides those)
 
 try {
   /* the app */
@@ -111,8 +112,12 @@ try {
     else {
       const missing = ['contactFirstName', 'contactLastName', 'contactPhone', 'contactEmail'].filter((k) => !r[k]);
       if (missing.length) bad(`App Review contact is missing ${missing.join(', ')}`, where); else ok('App Review contact details');
-      if (r.demoAccountRequired && !(r.demoAccountName && r.demoAccountPassword)) bad('"Sign-in required" is ticked but the demo account name or password is empty', where);
-      else ok(r.demoAccountRequired ? 'Demo account for the reviewer' : 'No sign-in required for review (all modes play offline)');
+      // Online needs an account, and the notes send the reviewer to Sign-In Information for it (v190):
+      // submitting without one invites another 2.1, so this one stops the submission
+      const signIn = `${where} → tick "Sign-in required", then the demo account's user name and password`;
+      if (!r.demoAccountRequired) { bad(r.demoAccountName ? 'The demo account is filled in, but "Sign-in required" is not ticked' : 'No demo account for the reviewer', signIn); blocker = true; }
+      else if (!(r.demoAccountName && r.demoAccountPassword)) { bad('"Sign-in required" is ticked but the demo account name or password is empty', signIn); blocker = true; }
+      else ok(`Demo account for the reviewer: ${r.demoAccountName}`);
     }
   }
 
@@ -147,17 +152,38 @@ try {
     summary(`App Store review check: ${VERSION} (${BUILD}) — ${problems.length ? `${problems.length} to fix` : 'ready'}`);
     process.exit(problems.length ? 1 : 0);
   }
+  if (blocker) {
+    note('Not submitted: fill in the demo account above, then run this again');
+    summary(`App Store review: ${VERSION} (${BUILD}) — not submitted, the demo account is missing`);
+    process.exit(1);
+  }
   if (problems.length) note(`${problems.length} gap(s) found above — submitting anyway, so Apple's own answer is on record`);
   const open = (await get(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES&limit=10`)).data;
   const live = open.find((s) => ['WAITING_FOR_REVIEW', 'IN_REVIEW'].includes(s.attributes.state));
   if (live) { note(`A submission is already ${live.attributes.state.replace(/_/g, ' ').toLowerCase()}`); summary(`App Store review: ${VERSION} (${BUILD})`); process.exit(0); }
   let sub = open.find((s) => ['READY_FOR_REVIEW', 'UNRESOLVED_ISSUES'].includes(s.attributes.state));
   if (!sub) sub = (await api('POST', '/v1/reviewSubmissions', { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' }, relationships: { app: { data: { type: 'apps', id: app.id } } } } })).data;
-  try {
-    await api('POST', '/v1/reviewSubmissionItems', { data: { type: 'reviewSubmissionItems', relationships: { reviewSubmission: { data: { type: 'reviewSubmissions', id: sub.id } }, appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } });
-  } catch (e) {
-    // already in this submission is fine; anything else is the real answer
-    if (!(e instanceof ApiError && e.status === 409 && /already/i.test(JSON.stringify(e.errors)))) throw e;
+  const items = (await get(`/v1/reviewSubmissions/${sub.id}/items?include=appStoreVersion&limit=50`)).data;
+  // the version it holds, or (if Apple leaves the relationship out) the rejected item of an unresolved submission
+  const mine = items.find((i) => i.relationships?.appStoreVersion?.data?.id === ver.id)
+    || (sub.attributes.state === 'UNRESOLVED_ISSUES' ? items.find((i) => i.attributes?.state === 'REJECTED') : null);
+  if (mine && sub.attributes.state === 'UNRESOLVED_ISSUES') {
+    // after a rejection the version is still in the submission; marking it resolved is
+    // the website's "Resubmit to App Review" (Apple refuses to add it a second time)
+    try {
+      await api('PATCH', `/v1/reviewSubmissionItems/${mine.id}`, { data: { type: 'reviewSubmissionItems', id: mine.id, attributes: { resolved: true } } });
+      ok(`Marked the rejected ${VERSION} as resolved`);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      note(`Apple would not mark it resolved (${describe(e).split('\n').pop().trim()}) — submitting anyway`);
+    }
+  } else if (!mine) {
+    try {
+      await api('POST', '/v1/reviewSubmissionItems', { data: { type: 'reviewSubmissionItems', relationships: { reviewSubmission: { data: { type: 'reviewSubmissions', id: sub.id } }, appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } });
+    } catch (e) {
+      // already in this submission is fine; anything else is the real answer
+      if (!(e instanceof ApiError && e.status === 409 && /already/i.test(JSON.stringify(e.errors)))) throw e;
+    }
   }
   const done = (await api('PATCH', `/v1/reviewSubmissions/${sub.id}`, { data: { type: 'reviewSubmissions', id: sub.id, attributes: { submitted: true } } })).data;
   ok(`Submitted for review: ${String(done.attributes.state || 'WAITING_FOR_REVIEW').replace(/_/g, ' ').toLowerCase()}`);
