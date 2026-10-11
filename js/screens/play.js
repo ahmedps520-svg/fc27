@@ -39,6 +39,7 @@ import { activeTheme } from '../seasonal.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // v118: a cup's name is the player's own text
 /** v120: home's share of a stat, 0–100, for the full-time split bars (level when neither has any). */
 const split = (a, b) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : 50);
+import { openPlayerSheet } from '../components/playerSheet.js';
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
@@ -3088,6 +3089,7 @@ export function mount(root, params) {
         ${graphicsPrompt()}
         ${drawnKickOff && mode !== 'career' ? `
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
+        ${online && !spectating && online.oppName ? `<button class="btn ghost sm gm-report" data-o="reportOpp">Report or block ${esc(online.oppName)}</button>` : ''}
         <div class="gm-btns">
           ${mode === 'career'
             ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
@@ -3115,6 +3117,8 @@ export function mount(root, params) {
     }
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
+      // v190: report or block the player you just played (components/playerSheet.js)
+      if (o === 'reportOpp') { openPlayerSheet(online?.oppName, { matchId: online?.matchId ?? null }); return; }
       if (o === 'gfxLower' || o === 'gfxKeep') {
         if (o === 'gfxLower') {
           // one step down on both axes: the light figures, and detail left to

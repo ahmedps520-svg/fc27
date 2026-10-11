@@ -5663,3 +5663,12 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 }
 .pack-overlay { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 .gm-overlay:not(.is-pause) { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+
+/* v190: report and block */
+.ps-card { width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; }
+.ps-name { font-size: 20px; }
+.ps-btns, .ps-reasons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ps-reasons .btn { flex: 1 1 45%; }
+.ps-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.ps-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.ol-row .ol-name { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-align: start; text-decoration: underline dotted rgba(255, 255, 255, .3); text-underline-offset: 3px; }

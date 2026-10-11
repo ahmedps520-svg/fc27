@@ -42,7 +42,7 @@ function gapOf(a, b) {
  * Pick pairings from `waiting` (already sorted longest-wait first). Returns
  * an array of [a, b] pairs; the caller removes them from the queue.
  */
-function findPairs(waiting, now = Date.now()) {
+function findPairs(waiting, now = Date.now(), blocked = () => false) {
   const pairs = [];
   const taken = new Set();
   for (const a of waiting) {
@@ -53,6 +53,7 @@ function findPairs(waiting, now = Date.now()) {
     let bestGap = Infinity;
     for (const b of waiting) {
       if (b === a || taken.has(b)) continue;
+      if (blocked(a, b)) continue;                 // v190: never someone either of them has blocked
       const gap = gapOf(a, b);
       if (!Number.isFinite(gap)) continue;
       const bSpan = allowedSpan((now - b.queuedAt) / 1000, b.wl ? WIDEN_WL : WIDEN);

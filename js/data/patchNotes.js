@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v190',
+    date: '2026-10-11',
+    tag: 'Online',
+    title: 'Report and block',
+    lede: 'You can report or block any player, and names that other players see are checked for offensive words.',
+    entries: [
+      {
+        head: 'Report or block a player',
+        summary: 'Tap a player\'s name on the leaderboard or in your friends list, tap ⋯ on an invite, or tap Report or block at the end of an online match.',
+        detail: 'A report picks a reason (offensive name, abusive behaviour, cheating, something else) and goes to our team. A blocked player is never matched with you and cannot invite you, join your lobby, add you as a friend or send you emotes, and they are not told. Online → Blocked players lists them, with Unblock.',
+      },
+      {
+        head: 'Names',
+        summary: 'Player, guild and club names that other players see are checked for offensive words.',
+        detail: 'A name that fails is refused when it is chosen; an Ultimate XI club name that fails is shown to opponents as Rival. Real names that happen to contain a short word, such as Hassan or Nazih, are not affected.',
+      },
+    ],
+  },
+  {
     version: 'v189',
     date: '2026-10-10',
     tag: 'Online',

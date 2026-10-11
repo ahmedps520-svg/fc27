@@ -21,6 +21,7 @@ import { clubIdentity } from './squad.js';
 import { t } from '../i18n.js';
 import { NET_PROTOCOL } from '../net/protocol.js';
 import { APP_STORE } from '../platform.js';
+import { openPlayerSheet, openBlockedList } from '../components/playerSheet.js';
 
 export const TITLE = 'Account';
 
@@ -76,6 +77,7 @@ const profileCard = () => {
       <div class="ol-acct-btns">
         <button class="btn ghost sm" id="pairWatch">Pair a watch</button>
         <button class="btn ghost sm" id="signOut">Sign out</button>
+        <button class="btn ghost sm" id="blockedBtn">Blocked players</button>
         <button class="btn ghost sm danger" id="deleteAcct">Delete account</button>
       </div>
     </div>`;
@@ -234,6 +236,13 @@ export function mountOnline(root, { rerender }) {
   const subEl = root.querySelector('#olsSub');
   const connEl = root.querySelector('#olConn');
   const codeOut = root.querySelector('#olCodeOut');
+  const escName = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  /* v190: any other player's name opens Report / Block (components/playerSheet.js) */
+  root.addEventListener('click', (e) => {
+    const p = e.target.closest('[data-player]');
+    if (p) { e.preventDefault(); e.stopPropagation(); openPlayerSheet(p.dataset.player, { onChange: () => loadFriends?.() }); }
+  }, true);
+  root.querySelector('#blockedBtn')?.addEventListener('click', () => openBlockedList());
 
   const lineup = () => getState().club.lineup.filter(Boolean);
   const payload = () => ({
@@ -279,7 +288,7 @@ export function mountOnline(root, { rerender }) {
     boardEl.innerHTML = rows.length
       ? rows.map((r) => `
           <div class="ol-row ${r.name === api.getName() ? 'me' : ''}">
-            <i>${r.rank}</i><b>${r.name}</b>
+            <i>${r.rank}</i>${r.name === api.getName() ? `<b>${escName(r.name)}</b>` : `<b><button class="ol-name" data-player="${escName(r.name)}" title="Report or block">${escName(r.name)}</button></b>`}
             <span>${r.played} pl</span>
             <span>${r.wins}W ${r.draws}D ${r.losses}L</span>
             <span class="ol-gd">${r.gd > 0 ? '+' : ''}${r.gd}</span>
@@ -378,6 +387,7 @@ export function mountOnline(root, { rerender }) {
           <i></i><b>${esc(r.name)}</b>${r.guild ? `<small>[${esc(r.guild)}]</small>` : ''}<span>${r.points} pts</span>
           ${r.online && hosting ? `<button class="btn primary sm" data-invite="${esc(r.name)}">${t('social.invite')}</button>` : ''}
           ${r.inMatch ? `<button class="btn ghost sm" data-watch="${r.inMatch}">${t('social.watch')}</button>` : ''}
+          <button class="icon-btn sm" data-player="${esc(r.name)}" title="Report or block" aria-label="Report or block ${esc(r.name)}">⋯</button>
           <button class="icon-btn sm" data-remove="${esc(r.name)}" title="Remove">✕</button>
         </div>`).join('') : '<p class="ol-empty">Add friends by their player name. Invites to your lobby and a Watch button appear when they are online.</p>'}</div>`;
   };
@@ -646,10 +656,13 @@ net.on('invited', (m) => {
   sfx('confirm');
   const box = document.createElement('div');
   box.className = 'toast invite-toast';
-  box.innerHTML = `<b>${m.from}</b> invited you to a match <button class="btn primary sm" id="invGo">Join</button><button class="btn ghost sm" id="invNo">Later</button>`;
+  const from = String(m.from || '').replace(/[^\w.-]/g, '');
+  box.innerHTML = `<b>${from}</b> invited you to a match <button class="btn primary sm" id="invGo">Join</button><button class="btn ghost sm" id="invNo">Later</button><button class="btn ghost sm" id="invBlock" title="Report or block">⋯</button>`;
   document.body.appendChild(box);
   const close = () => box.remove();
   box.querySelector('#invNo').addEventListener('click', close);
+  // v190: an unwanted invite can be reported or blocked straight from here
+  box.querySelector('#invBlock').addEventListener('click', () => { close(); openPlayerSheet(from); });
   box.querySelector('#invGo').addEventListener('click', () => {
     close();
     const lineup = getState().club.lineup.filter(Boolean);

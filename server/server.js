@@ -368,6 +368,63 @@ async function api(req, res, route) {
     if (r.error) return json(res, 400, r);
     return json(res, 200, { rows: store.friendsView(acct, live) });
   }
+  /* ---- v190: block and report ----
+   * Blocking is silent and one-sided (store.blockPlayer). A report is a fixed
+   * reason, never free text, about a named player; it lands in the data
+   * directory's reports.jsonl and in the support inbox (shop.sendMail), where
+   * tools/moderate.mjs removes an account that has to go. */
+  if (route === '/api/block') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (req.method === 'GET') return json(res, 200, { blocked: (acct.blocked || []).slice() });
+    const body = await readBody(req);
+    if (typeof body.name !== 'string' || body.name.length > 32) return json(res, 400, { error: 'Who?' });
+    const r = body.action === 'unblock' ? store.unblockPlayer(acct, body.name) : store.blockPlayer(acct, body.name);
+    if (r.error) return json(res, 400, r);
+    return json(res, 200, r);
+  }
+  if (route === '/api/report' && req.method === 'POST') {
+    const acct = authOf(req);
+    if (!acct) return json(res, 401, { error: 'Signed out.' });
+    if (!guard.allow(`report:${acct.name}`, 10, 1 / 360)) return json(res, 429, { error: 'You have sent a lot of reports. Try again later.' });
+    const body = await readBody(req);
+    const reason = REPORT_REASONS[body.reason] ? body.reason : null;
+    if (!reason || typeof body.name !== 'string' || body.name.length > 32) return json(res, 400, { error: 'That report is not valid.' });
+    /* The answer is the same whether or not the name exists, so this cannot
+     * be used to find out which names do (the reason accountByName is kept
+     * off HTTP). A report about nobody is simply not filed. */
+    const about = store.nameOf(body.name);
+    if (!about || about === acct.name) return json(res, 200, { ok: true });
+    const target = { name: about };
+    const line = { at: new Date().toISOString(), from: acct.name, about: target.name, reason, matchId: Number.isInteger(body.matchId) ? body.matchId : null };
+    try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.appendFileSync(path.join(DATA_DIR, 'reports.jsonl'), `${JSON.stringify(line)}\n`); } catch (e) { console.warn('[report] could not write:', e.message); }
+    console.log(`[report] ${acct.name} reported ${target.name}: ${reason}`);
+    shop.sendMail({
+      subject: `APEX XI report: ${target.name} (${REPORT_REASONS[reason]})`,
+      text: `${acct.name} reported ${target.name}\nReason: ${REPORT_REASONS[reason]}\n${line.matchId != null ? `Match: ${line.matchId}\n` : ''}Time: ${line.at}\n\nTo remove the account: ADMIN_KEY=… node tools/moderate.mjs remove ${target.name}`,
+      html: `<p><b>${acct.name}</b> reported <b>${target.name}</b></p><p>Reason: ${REPORT_REASONS[reason]}<br>${line.matchId != null ? `Match: ${line.matchId}<br>` : ''}Time: ${line.at}</p><p>To remove the account: <code>ADMIN_KEY=… node tools/moderate.mjs remove ${target.name}</code></p>`,
+      ref: `report-${Date.now()}`,
+    }, { dataDir: DATA_DIR }).catch((e) => console.warn('[report] mail failed:', e.message));
+    return json(res, 200, { ok: true });
+  }
+  /* v190: the operator's answer to a report. Off unless ADMIN_KEY is set in
+   * the service's environment, and then only with that key — it removes an
+   * account and bars its name (store.removeAccount). tools/moderate.mjs calls
+   * it. A 404 without the key, so a probe learns nothing. */
+  if (route === '/api/admin/remove' && req.method === 'POST') {
+    const want = process.env.ADMIN_KEY || '';
+    const got = String(req.headers['x-admin-key'] || '');
+    const ok = want.length >= 16 && got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+    if (!ok) { if (want) guard.loginFailed(req, 'admin'); return json(res, 404, { error: 'No such endpoint.' }); }
+    const body = await readBody(req);
+    const name = typeof body.name === 'string' ? body.name : '';
+    const live = peers.get(store.nameOf(name) || '');
+    const r = store.removeAccount(name);
+    if (r.error) return json(res, 400, r);
+    if (live?.sock?.open) { live.sock.send({ t: 'kicked' }); live.sock.close(); }
+    console.log(`[admin] removed ${name}`);
+    return json(res, 200, { ok: true });
+  }
   if (route === '/api/live') {
     const rows = [];
     for (const p of peers.values()) if (p.isHost && p.opponent && p.matchId) rows.push({ matchId: p.matchId, host: p.name, guest: p.opponent.name, spectators: p.spectators ? p.spectators.size : 0 });
@@ -640,6 +697,9 @@ function versionGap(me, them) {
     : 'This player\'s game is out of date. They need to update APEX XI before you can play them.';
 }
 
+// v190: the only things a report can say — never free text from one player about another
+const REPORT_REASONS = { name: 'Offensive name', cheating: 'Cheating', abuse: 'Abusive behaviour', other: 'Something else' };
+
 const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
 function pair(a, b, kind) {
@@ -668,7 +728,7 @@ function pair(a, b, kind) {
 
 function tryMatchmake() {
   const waiting = queue.filter((p) => p.sock.open && !p.opponent).sort((x, y) => x.queuedAt - y.queuedAt);
-  for (const [a, b] of mm.findPairs(waiting)) {
+  for (const [a, b] of mm.findPairs(waiting, Date.now(), (x, y) => store.blocks(x.acct, y.acct))) {
     queue = queue.filter((p) => p !== a && p !== b);
     pair(a, b, a.wl ? 'weekend' : 'division');
   }
@@ -791,6 +851,8 @@ ws.attach(server, '/ws', (sock) => {
           return;
         }
         if ((host.net || 1) !== (peer.net || 1)) { sock.send({ t: 'joinFail', error: versionGap(peer, host), update: (peer.net || 1) < (host.net || 1) }); return; }
+        // v190: blocked either way round looks exactly like a code that does not exist
+        if (store.blocks(host.acct, peer.acct)) { sock.send({ t: 'joinFail', error: 'No lobby with that code.' }); return; }
         leaveQueue(peer);
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
@@ -876,7 +938,7 @@ ws.attach(server, '/ws', (sock) => {
       case 'invite': {
         if (!peer.room) break;
         const to = peers.get(String(m.to || ''));
-        if (!to || !to.sock.open) { sock.send({ t: 'inviteFail', error: 'That player is not online.' }); break; }
+        if (!to || !to.sock.open || store.blocks(peer.acct, to.acct)) { sock.send({ t: 'inviteFail', error: 'That player is not online.' }); break; }
         if (!(peer.acct.friends || []).includes(to.name) && !(to.acct?.friends || []).includes(peer.name)) { sock.send({ t: 'inviteFail', error: 'Invites go to friends.' }); break; }
         to.sock.send({ t: 'invited', from: peer.name, code: peer.room });
         sock.send({ t: 'inviteSent', to: to.name });
@@ -888,6 +950,7 @@ ws.attach(server, '/ws', (sock) => {
         for (const p of peers.values()) if (p.isHost && p.matchId === id && p.opponent) { host = p; break; }
         if (!host) { sock.send({ t: 'spectateFail', error: 'That match is over.' }); break; }
         if ((host.net || 1) !== (peer.net || 1)) { sock.send({ t: 'spectateFail', error: versionGap(peer, host) }); break; }
+        if (store.blocks(peer.acct, host.acct) || store.blocks(peer.acct, host.opponent?.acct)) { sock.send({ t: 'spectateFail', error: 'That match is over.' }); break; }
         unspectate(peer);
         host.spectators = host.spectators || new Set();
         if (host.spectators.size >= 8) { sock.send({ t: 'spectateFail', error: 'That match is full of spectators.' }); break; }
@@ -906,9 +969,10 @@ ws.attach(server, '/ws', (sock) => {
         if (!EMOTE_IDS.has(id)) break;
         if (!guard.allow(`emote:${peer.name}`, 6, 0.5)) break;      // six in the bank, one every two seconds
         const out = { t: 'emote', id, from: peer.name };
-        if (peer.opponent && peer.opponent.matchId === peer.matchId) peer.opponent.sock.send(out);
+        // v190: nothing reaches someone who has blocked the sender, or whom the sender blocked
+        if (peer.opponent && peer.opponent.matchId === peer.matchId && !store.blocks(peer.acct, peer.opponent.acct)) peer.opponent.sock.send(out);
         const host = peer.isHost ? peer : peer.opponent;
-        for (const sp of host?.spectators || []) if (sp.sock.open) sp.sock.send(out);
+        for (const sp of host?.spectators || []) if (sp.sock.open && !store.blocks(peer.acct, sp.acct)) sp.sock.send(out);
         break;
       }
 

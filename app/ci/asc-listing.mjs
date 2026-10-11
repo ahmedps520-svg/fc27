@@ -52,9 +52,12 @@ try {
     const locs = (await get(`/v1/appStoreVersions/${ver.id}/appStoreVersionLocalizations?limit=50`)).data;
     loc = locs.find((l) => l.attributes.locale === L.locale);
     const attributes = { description: L.description, keywords: L.keywords, supportUrl: L.supportUrl, marketingUrl: L.marketingUrl, promotionalText: L.promotionalText };
-    // an update says what changed; Apple refuses the field on an app's first version
-    if (L.whatsNew?.[VERSION]) attributes.whatsNew = L.whatsNew[VERSION];
-    else if (VERSION !== '1.0') throw new Error(`listing.json has no whatsNew for ${VERSION}`);
+    // an update says what changed; Apple refuses the field on the app's first release, whatever its number
+    const released = vs.some((v) => ['READY_FOR_SALE', 'READY_FOR_DISTRIBUTION', 'REPLACED_WITH_NEW_VERSION', 'REMOVED_FROM_SALE', 'DEVELOPER_REMOVED_FROM_SALE'].includes(stateOf(v)));
+    if (released) {
+      if (!L.whatsNew?.[VERSION]) throw new Error(`listing.json has no whatsNew for ${VERSION}`);
+      attributes.whatsNew = L.whatsNew[VERSION];
+    }
     if (loc) loc = (await api('PATCH', `/v1/appStoreVersionLocalizations/${loc.id}`, { data: { type: 'appStoreVersionLocalizations', id: loc.id, attributes } })).data;
     else loc = (await api('POST', '/v1/appStoreVersionLocalizations', { data: { type: 'appStoreVersionLocalizations', attributes: { locale: L.locale, ...attributes }, relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } })).data;
     return `description, keywords, promotional text, ${L.supportUrl}`;
@@ -131,13 +134,14 @@ try {
 
   /* notes for App Review (the contact name, phone and email are left to you) */
   await step('App Review notes', async () => {
-    const attributes = { demoAccountRequired: L.review.demoAccountRequired, notes: L.review.notes };
+    // only the notes: the contact and the sign-in box (with the demo accounts) are the owner's, set on the website
+    const attributes = { notes: L.review.notes };
     const cur = await maybe(`/v1/appStoreVersions/${ver.id}/appStoreReviewDetail`);
     // Apple refuses any change here until the contact is filled in, so leave notes that are already right alone
-    if (cur?.data && cur.data.attributes.notes === attributes.notes && cur.data.attributes.demoAccountRequired === attributes.demoAccountRequired) return 'already set';
+    if (cur?.data && cur.data.attributes.notes === attributes.notes) return 'already set';
     if (cur?.data) await api('PATCH', `/v1/appStoreReviewDetails/${cur.data.id}`, { data: { type: 'appStoreReviewDetails', id: cur.data.id, attributes } });
     else await api('POST', '/v1/appStoreReviewDetails', { data: { type: 'appStoreReviewDetails', attributes, relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: ver.id } } } } });
-    return 'no sign-in needed; notes added';
+    return 'notes set';
   });
 
   /* screenshots */

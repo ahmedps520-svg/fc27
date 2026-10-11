@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { isOffensive } = require('./names.js');
 
 // APEX_DATA_DIR: where accounts live. Tests point this at a scratch folder so
 // a run can never touch the real server/data.
@@ -215,10 +216,12 @@ async function load() {
 
 function register(name, pass) {
   if (typeof name !== 'string' || typeof pass !== 'string') return { error: 'Name and password, please.' };
-  if (RESERVED.has(key(name))) return { error: 'That name is taken.' };
+  if (RESERVED.has(key(name)) || (db.banned || []).includes(key(name))) return { error: 'That name is taken.' };
   if (!NAME_RE.test(name || '')) {
     return { error: 'Names are 3–16 characters: letters, numbers, . _ -' };
   }
+  // v190: other players see this name (names.js)
+  if (isOffensive(name)) return { error: 'Please choose a different name.' };
   /* Eight for new accounts. Existing six-character passwords keep working —
    * locking players out of accounts they already have would be a worse
    * outcome than the marginal weakness of the ones already issued. */
@@ -419,6 +422,7 @@ function createGuild(acct, name) {
   if (acct.guild && db.guilds[acct.guild]) return { error: 'You are already in a guild. Leave it first.' };
   name = String(name || '').trim();
   if (!GUILD_NAME_RE.test(name)) return { error: 'A guild name is 3–20 letters, numbers or spaces.' };
+  if (isOffensive(name)) return { error: 'Please choose a different guild name.' };
   if (Object.values(db.guilds).some((g) => g.name.toLowerCase() === name.toLowerCase())) return { error: 'That guild name is taken.' };
   let code = guildCode();
   while (db.guilds[code]) code = guildCode();
@@ -499,12 +503,68 @@ function addFriend(acct, name) {
   const other = acctOf(name);
   if (!other) return { error: 'No player with that name.' };
   if (other === acct) return { error: 'That is you.' };
+  if (blocks(acct, other)) return { error: 'No player with that name.' };   // v190: silent, either way round
   acct.friends = acct.friends || [];
   if (acct.friends.length >= 50) return { error: 'Fifty friends is the limit.' };
   if (!acct.friends.includes(other.name)) acct.friends.push(other.name);
   flush();
   return { ok: true };
 }
+/* ---- v190: blocking ----
+ * Blocking is one-sided and silent: the blocked player is not told, and the
+ * two are simply never put together again — no match, lobby, party,
+ * invite, friendship or emote either way (server.js asks `blocks`). */
+const BLOCK_MAX = 200;
+function blockPlayer(acct, name) {
+  const other = acctOf(name);
+  // an unknown name is a quiet no-op, so blocking cannot be used to test which names exist
+  if (!other) return { ok: true, blocked: (acct.blocked || []).slice() };
+  if (other === acct) return { error: 'That is you.' };
+  acct.blocked = acct.blocked || [];
+  if (acct.blocked.length >= BLOCK_MAX) return { error: `${BLOCK_MAX} blocked players is the limit.` };
+  if (!acct.blocked.some((n) => key(n) === key(other.name))) acct.blocked.push(other.name);
+  acct.friends = (acct.friends || []).filter((n) => key(n) !== key(other.name));
+  other.friends = (other.friends || []).filter((n) => key(n) !== key(acct.name));
+  flush();
+  return { ok: true, blocked: acct.blocked.slice() };
+}
+function unblockPlayer(acct, name) {
+  acct.blocked = (acct.blocked || []).filter((n) => key(n) !== key(name));
+  flush();
+  return { ok: true, blocked: acct.blocked.slice() };
+}
+/** Either of the two has blocked the other. Takes accounts or names. */
+function blocks(a, b) {
+  const A = typeof a === 'string' ? acctOf(a) : a; const B = typeof b === 'string' ? acctOf(b) : b;
+  if (!A || !B) return false;
+  return (A.blocked || []).some((n) => key(n) === key(B.name)) || (B.blocked || []).some((n) => key(n) === key(A.name));
+}
+
+/** v190: the stored spelling of a name, or null — for server-side use only; never echo the difference. */
+const nameOf = (name) => acctOf(name)?.name || null;
+
+/**
+ * v190: an operator's answer to a report — the account goes, exactly as if
+ * its owner had deleted it, and the name cannot be taken again. Like
+ * accountByName this is deliberately not reachable over HTTP; it is for
+ * tools/moderate.mjs.
+ */
+function removeAccount(name) {
+  const acct = acctOf(name);
+  if (!acct) return { error: 'No such account.' };
+  if (acct.guild) leaveGuild(acct);
+  for (const other of Object.values(db.accounts)) {
+    if (other === acct) continue;
+    if (other.friends?.length) other.friends = other.friends.filter((n) => key(n) !== key(acct.name));
+  }
+  if (tokenIndex) { tokenIndex.delete(acct.token); for (const e of acct.extra || []) tokenIndex.delete(e.token); }
+  delete db.accounts[key(acct.name)];
+  db.banned = db.banned || [];
+  if (!db.banned.includes(key(acct.name))) db.banned.push(key(acct.name));
+  flush();
+  return { ok: true };
+}
+
 function removeFriend(acct, name) {
   acct.friends = (acct.friends || []).filter((n) => n.toLowerCase() !== String(name || '').toLowerCase());
   flush();
@@ -612,6 +672,7 @@ module.exports = {
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
   addFriend, removeFriend, friendsView, deleteAccount,
+  blockPlayer, unblockPlayer, blocks, removeAccount, nameOf,
   // operator tools only — see the note on accountByName
   accountByName,
 };

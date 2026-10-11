@@ -15,6 +15,22 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v190 — report and block, name filter (App Review 2.1 "Information Needed" on 1.0)
+- **Apple's request (2026-10-11):** for a new developer account, Apple asked for a device screen recording (launch, sign-up, login, deletion, player-content reporting and blocking, paid content), plus purpose and audience, setup steps with demo logins, external services, regional differences, and third-party material. The answers live in `app/store/listing.json` `review.notes`, applied by the listing workflow. The contact and the Sign-In box (demo accounts) are the owner's, so asc-listing now only sets the notes.
+- **Plan:** submit 1.1 (with report/block) as the first release. asc.mjs renames the single editable version (1.0, now rejected) to 1.1 and attaches the new build. asc-listing only sends whatsNew once a version has been released.
+- **server/names.js `isOffensive`:**
+  - ANYWHERE words are matched in the joined, de-leeted form; WHOLE words only as tokens, so Hassan, Nazih and Dickson pass. IMPERSONATION catches admin/apexxi…, and an ALLOW list covers places like Scunthorpe.
+  - It's used at register, guild create, `guard.cleanClub` (an offending club name is shown as "Rival") and party `cleanPro`.
+- **Block** (store `blockPlayer`/`unblockPlayer`/`blocks`):
+  - One-sided and silent; blocking unfriends both ways.
+  - Matchmaking `findPairs(…, blocked)` skips blocked pairs. A blocked player's join looks like a bad code; invites, spectating and party joins are refused, and emotes aren't relayed.
+  - Blocking an unknown name is a no-op, so it can't be used as a name oracle.
+- **Report:** `POST /api/report`, reason one of `REPORT_REASONS`. It appends to `DATA_DIR/reports.jsonl` and emails support (shop.sendMail; without RESEND_API_KEY it goes to the outbox). The answer is the same for unknown names, via `store.nameOf`; accountByName stays off HTTP.
+- **Moderation:** `POST /api/admin/remove` returns 404 unless the service has `ADMIN_KEY` (16+ chars) and the request sends `x-admin-key`. It calls store.removeAccount (barred via `db.banned`) and kicks the player's socket. `tools/moderate.mjs` wraps it. The server holds the db in memory, so moderation must go through it, not the database.
+- **UI** (`js/components/playerSheet.js`): name buttons on the leaderboard, ⋯ on friends and invites, "Report or block <opp>" on the online full-time card, and Online → Blocked players with Unblock.
+- **Tests:** `tests/unit/safety.test.mjs` (filter, block effects, matchmaking, reports file, admin 404/remove/bar). The UI was checked with `tests/tmp/safety-ui.mjs` (not committed).
+- support.html and privacy.html describe reporting, blocking and the 24-hour review. **The owner has to actually read support@apexxi.online and act within a day.**
+
 ## v189 — iOS 1.1: match-protocol handshake, notch-safe match UI, landscape pop-over scan
 - **1.0 (build 5) was submitted to App Review on 2026-10-10.** The owner filled in the review contact and App Privacy (User ID and Gameplay Content linked; Crash Data not linked; no tracking) on the website. 1.1 can't be submitted until 1.0 is approved or rejected.
 - **Protocol handshake:**
