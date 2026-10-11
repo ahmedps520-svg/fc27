@@ -146,3 +146,9 @@ export const postSkill = (game, score) => call('/api/skills', { method: 'POST', 
 export const reportPurchase = (body) => call('/api/purchase', { method: 'POST', body });
 /** v184: delete the account for good (the password again). */
 export const deleteAccount = (pass) => call('/api/account/delete', { method: 'POST', body: { pass } });
+
+/* v190: blocking and reporting (server.js /api/block, /api/report). A report
+   is one of a fixed set of reasons, never free text. */
+export const blockedList = () => call('/api/block').then((r) => r.blocked || []);
+export const blockPlayer = (name, action = 'block') => call('/api/block', { method: 'POST', body: { name, action } });
+export const reportPlayer = (name, reason, matchId = null) => call('/api/report', { method: 'POST', body: { name, reason, matchId } });

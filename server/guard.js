@@ -278,6 +278,7 @@ const MAX_RELAY_BYTES = 24 * 1024;
 const SQUAD_MAX = 24;
 
 /** A club identity from the wire: strings only, short, and no surprises. */
+const { isOffensive } = require('./names.js');
 function cleanClub(club) {
   if (!club || typeof club !== 'object') return null;
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
@@ -285,7 +286,8 @@ function cleanClub(club) {
     ? club.colors.slice(0, 2).map((c) => (typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c) ? c : '#22c55e'))
     : ['#22c55e', '#0b1220'];
   return {
-    name: str(club.name, 24) || 'Rival',
+    // v190: an opponent sees this name (names.js)
+    name: (isOffensive(str(club.name, 24)) ? '' : str(club.name, 24)) || 'Rival',
     short: str(club.short, 4) || 'RIV',
     colors: colours,
     shape: str(club.shape, 12),

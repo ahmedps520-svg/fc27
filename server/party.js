@@ -32,10 +32,12 @@ const makeCode = () => Array.from({ length: 5 }, () => CODE[Math.floor(Math.rand
 const MAX_SETUP = 48 * 1024;
 const POS = new Set(['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST']);
 /** A Player Career pro as it may travel: a name, a position, six numbers. Anything else is dropped. */
+const { isOffensive } = require('./names.js');
 function cleanPro(p) {
   if (!p || typeof p !== 'object') return null;
   const name = String(p.name || '').replace(/[^\p{L}\p{N} .'-]/gu, '').trim().slice(0, 24);
   if (name.length < 2 || !POS.has(p.position)) return null;
+  if (isOffensive(name)) return null;       // v190: names.js
   const st = {};
   for (const k of ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical']) { const v = Math.round(Number(p.stats?.[k])); if (!(v >= 1 && v <= 99)) return null; st[k] = v; }
   const overall = Math.max(40, Math.min(99, Math.round(Number(p.overall)) || 60));
