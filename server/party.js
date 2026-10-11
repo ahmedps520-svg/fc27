@@ -87,7 +87,9 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
       }
       case 'partyJoin': {
         const p = parties.get(String(m.code || '').toUpperCase().trim());
-        if (!p || p.matchId) { peer.sock.send({ t: 'partyFail', error: p ? 'That match has started.' : 'No party with that code.' }); return true; }
+        // v190: a party with someone who blocked you, or whom you blocked, looks like a wrong code
+        if (!p || p.members.some((x) => store.blocks?.(x.acct, peer.acct))) { peer.sock.send({ t: 'partyFail', error: 'No party with that code.' }); return true; }
+        if (p.matchId) { peer.sock.send({ t: 'partyFail', error: 'That match has started.' }); return true; }
         const mode = MODES[p.mode];
         if (p.members.length >= mode.max) { peer.sock.send({ t: 'partyFail', error: 'That party is full.' }); return true; }
         // v189: everyone in a party plays the host's match, so everyone speaks its protocol (js/net/protocol.js)

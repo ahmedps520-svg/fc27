@@ -17,13 +17,14 @@ Everything below is on the local machine only.
 
 ## v190 — report and block, name filter (App Review 2.1 "Information Needed" on 1.0)
 - **Apple's request (2026-10-11):** for a new developer account, Apple asked for a device screen recording (launch, sign-up, login, deletion, player-content reporting and blocking, paid content), plus purpose and audience, setup steps with demo logins, external services, regional differences, and third-party material. The answers live in `app/store/listing.json` `review.notes`, applied by the listing workflow. The contact and the Sign-In box (demo accounts) are the owner's, so asc-listing now only sets the notes.
+- **Demo accounts for App Review:** AppReview1 and AppReview2 exist on production with one shared password, which only the owner has (it goes in App Store Connect → App Review Information → Sign-In Information). The notes say AppReview2 has the same password, so no password is ever written in this public repo. Ask reviewers to make a fresh account for the deletion test.
 - **Plan:** submit 1.1 (with report/block) as the first release. asc.mjs renames the single editable version (1.0, now rejected) to 1.1 and attaches the new build. asc-listing only sends whatsNew once a version has been released.
 - **server/names.js `isOffensive`:**
   - ANYWHERE words are matched in the joined, de-leeted form; WHOLE words only as tokens, so Hassan, Nazih and Dickson pass. IMPERSONATION catches admin/apexxi…, and an ALLOW list covers places like Scunthorpe.
   - It's used at register, guild create, `guard.cleanClub` (an offending club name is shown as "Rival") and party `cleanPro`.
 - **Block** (store `blockPlayer`/`unblockPlayer`/`blocks`):
   - One-sided and silent; blocking unfriends both ways.
-  - Matchmaking `findPairs(…, blocked)` skips blocked pairs. A blocked player's join looks like a bad code; invites, spectating and party joins are refused, and emotes aren't relayed.
+  - Matchmaking `findPairs(…, blocked)` skips blocked pairs. A blocked player's join looks like a bad code; invites, spectating and party joins are refused (a party with a blocker in it looks like a bad code), and emotes aren't relayed.
   - Blocking an unknown name is a no-op, so it can't be used as a name oracle.
 - **Report:** `POST /api/report`, reason one of `REPORT_REASONS`. It appends to `DATA_DIR/reports.jsonl` and emails support (shop.sendMail; without RESEND_API_KEY it goes to the outbox). The answer is the same for unknown names, via `store.nameOf`; accountByName stays off HTTP.
 - **Moderation:** `POST /api/admin/remove` returns 404 unless the service has `ADMIN_KEY` (16+ chars) and the request sends `x-admin-key`. It calls store.removeAccount (barred via `db.banned`) and kicks the player's socket. `tools/moderate.mjs` wraps it. The server holds the db in memory, so moderation must go through it, not the database.
