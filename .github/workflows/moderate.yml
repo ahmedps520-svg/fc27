@@ -1,0 +1,38 @@
+# v190: act on a player report from your phone.
+#
+# Actions → "Moderation → remove a player" → Run workflow, with the player's
+# name from the report email. The account is deleted, the player is signed
+# out, and the name can never be registered again (tools/moderate.mjs).
+#
+# Needs the ADMIN_KEY secret here with the same value as ADMIN_KEY in
+# Render → the service → Environment (16+ characters). Without it the server
+# hides the endpoint and this fails with "ADMIN_KEY is not set".
+name: Moderation → remove a player
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Player name to remove (it cannot be registered again)'
+        required: true
+
+concurrency:
+  group: moderation
+  cancel-in-progress: false
+
+jobs:
+  remove:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Remove the account
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          NAME: ${{ inputs.name }}
+        run: node tools/moderate.mjs remove "$NAME"
