@@ -81,6 +81,17 @@ test('names are filtered, players can be blocked and reported, and removed by th
     const { code } = await a.wait('hosting');
     b.send({ t: 'join', code, club: 'c2', squad: squad(20), divIdx: 0 });
     assert.equal((await b.wait('joinFail')).error, 'No lobby with that code.');
+    // the same for A's party; C joins it
+    a.send({ t: 'cancel' }); await a.wait('idle');
+    a.send({ t: 'partyHost', mode: 'duo' });
+    const party = await a.wait('party');
+    b.send({ t: 'partyJoin', code: party.code });
+    assert.equal((await b.wait('partyFail')).error, 'No party with that code.');
+    c.send({ t: 'partyJoin', code: party.code });
+    assert.equal((await c.wait('party')).members.length, 2);
+    c.send({ t: 'partyLeave' }); await c.wait('partyEnded');
+    a.send({ t: 'partyLeave' }); await a.wait('partyEnded');
+    a.send({ t: 'host', club: 'c1', squad: squad(1), divIdx: 0 }); await a.wait('hosting');
     // and A and B are never matched from the queue, however long they wait
     a.send({ t: 'cancel' }); await a.wait('idle');
     a.send({ t: 'queue', club: 'c1', squad: squad(1), divIdx: 0 });
