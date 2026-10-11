@@ -115,7 +115,12 @@ try {
       // Online needs an account, and the notes send the reviewer to Sign-In Information for it (v190):
       // submitting without one invites another 2.1, so this one stops the submission
       const signIn = `${where} → tick "Sign-in required", then the demo account's user name and password`;
-      if (!r.demoAccountRequired) { bad(r.demoAccountName ? 'The demo account is filled in, but "Sign-in required" is not ticked' : 'No demo account for the reviewer', signIn); blocker = true; }
+      const filled = !!(r.demoAccountName && r.demoAccountPassword);
+      if (!r.demoAccountRequired && filled && SUBMIT) {
+        // the account is there and only the box was missed: tick it, nothing else
+        await api('PATCH', `/v1/appStoreReviewDetails/${rd.data.id}`, { data: { type: 'appStoreReviewDetails', id: rd.data.id, attributes: { demoAccountRequired: true } } });
+        ok(`Demo account for the reviewer: ${r.demoAccountName} (ticked "Sign-in required")`);
+      } else if (!r.demoAccountRequired) { bad(filled ? 'The demo account is filled in, but "Sign-in required" is not ticked' : 'No demo account for the reviewer', signIn); blocker = true; }
       else if (!(r.demoAccountName && r.demoAccountPassword)) { bad('"Sign-in required" is ticked but the demo account name or password is empty', signIn); blocker = true; }
       else ok(`Demo account for the reviewer: ${r.demoAccountName}`);
     }
