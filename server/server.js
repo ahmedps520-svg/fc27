@@ -401,8 +401,8 @@ async function api(req, res, route) {
     console.log(`[report] ${acct.name} reported ${target.name}: ${reason}`);
     shop.sendMail({
       subject: `APEX XI report: ${target.name} (${REPORT_REASONS[reason]})`,
-      text: `${acct.name} reported ${target.name}\nReason: ${REPORT_REASONS[reason]}\n${line.matchId != null ? `Match: ${line.matchId}\n` : ''}Time: ${line.at}\n\nTo remove the account: ADMIN_KEY=… node tools/moderate.mjs remove ${target.name}`,
-      html: `<p><b>${acct.name}</b> reported <b>${target.name}</b></p><p>Reason: ${REPORT_REASONS[reason]}<br>${line.matchId != null ? `Match: ${line.matchId}<br>` : ''}Time: ${line.at}</p><p>To remove the account: <code>ADMIN_KEY=… node tools/moderate.mjs remove ${target.name}</code></p>`,
+      text: `${acct.name} reported ${target.name}\nReason: ${REPORT_REASONS[reason]}\n${line.matchId != null ? `Match: ${line.matchId}\n` : ''}Time: ${line.at}\n\nTo remove the account: GitHub → Actions → "Moderation → remove a player" → ${target.name} (or ADMIN_KEY=… node tools/moderate.mjs remove ${target.name})`,
+      html: `<p><b>${acct.name}</b> reported <b>${target.name}</b></p><p>Reason: ${REPORT_REASONS[reason]}<br>${line.matchId != null ? `Match: ${line.matchId}<br>` : ''}Time: ${line.at}</p><p>To remove the account: GitHub → Actions → <b>Moderation → remove a player</b> → <code>${target.name}</code>, or <code>ADMIN_KEY=… node tools/moderate.mjs remove ${target.name}</code></p>`,
       ref: `report-${Date.now()}`,
     }, { dataDir: DATA_DIR }).catch((e) => console.warn('[report] mail failed:', e.message));
     return json(res, 200, { ok: true });

@@ -7,6 +7,8 @@
  *
  *   ADMIN_KEY=… node tools/moderate.mjs remove <name> [--server https://fc27.onrender.com]
  *
+ * or from a phone: GitHub → Actions → "Moderation → remove a player" (.github/workflows/moderate.yml).
+ *
  * It goes through the running server (POST /api/admin/remove) rather than the
  * database, because the server holds every account in memory and writes its
  * whole copy back: an edit made behind its back is overwritten within
