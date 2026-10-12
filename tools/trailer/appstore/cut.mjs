@@ -59,8 +59,8 @@ const EDIT = [
   { shot: 'E1-snow', from: 0, len: 20 },                     // 12.0 weather
   { shot: 'E2-rain', from: 0, len: 20 },
   { shot: 'E3-dusk', from: 0, len: 20 },
-  { ui: 'career', still: true, from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 14.0 Career
-  { ui: 'online', still: true, from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 16.0 Online
+  { ui: 'career', still: true, from: 0, len: 60, z: [1.08, 1.2], c: [0.5, 0.36], lift: true },  // 14.0 Career
+  { ui: 'online', still: true, from: 0, len: 60, z: [1.2, 1.36], c: [0.5, 0.5], lift: true },  // 16.0 Online
   { shot: 'G1-crane', from: 0, len: 60 },                    // 18.0 breakdown: the stadium
   { shot: 'G2-carry', from: 0, len: 15 },                    // 20.0 the build: a run
   { shot: 'G3-cross', from: 0, len: 15 },                    //      the cross
@@ -108,7 +108,7 @@ function segment(fmt, s, i, dir) {
     const [z0, z1] = s.z; const [cx, cy] = s.c; const L = Math.max(1, s.len - 1);
     const z = `${z0}+(${z1 - z0})*n/${L}`;
     // the push in: scale each frame up by its zoom (eval=frame), then a fixed crop about (cx, cy) — frame-exact, unlike zoompan
-    const vf = `scale=w='2*trunc(${W}*(${z})/2)':h='2*trunc(${Hh}*(${z})/2)':eval=frame:flags=lanczos,crop=${W}:${Hh}:x='min(max(0,${cx}*iw-${W}/2),iw-${W})':y='min(max(0,${cy}*ih-${Hh}/2),ih-${Hh})',eq=contrast=1.06:saturation=1.14:brightness=0.03:gamma=1.08,vignette=PI/7,format=yuv420p`;
+    const vf = `scale=w='2*trunc(${W}*(${z})/2)':h='2*trunc(${Hh}*(${z})/2)':eval=frame:flags=lanczos,crop=${W}:${Hh}:x='min(max(0,${cx}*iw-${W}/2),iw-${W})':y='min(max(0,${cy}*ih-${Hh}/2),ih-${Hh})',eq=contrast=1.06:saturation=1.14:brightness=0.03:gamma=${s.lift ? 1.22 : 1.08},vignette=PI/7,format=yuv420p`;
     // squad, Career and Online are one frame each (capture.mjs): held, with the push in for motion
     const input = s.still ? ['-loop', '1', '-framerate', String(FPS), '-i', join(WORK, 'ui', fmt, s.ui, 'f0000.jpg')] : ['-framerate', String(FPS), '-start_number', String(s.from), '-i', src];
     ff([...input, '-vf', vf, ...enc], `ui ${s.ui}`);

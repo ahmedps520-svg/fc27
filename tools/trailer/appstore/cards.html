@@ -35,7 +35,7 @@
   @keyframes wave { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(3.4); border-width: .1vh; } }
   .name { margin-top: 3.4vh; font: 700 italic 8.6vh/1 Oswald; color: #fff; letter-spacing: .04em; opacity: 0; animation: rise .45s .3s cubic-bezier(.2,.9,.2,1) forwards; transform: translateY(2vh); }
   .name b { color: var(--g); text-shadow: 0 0 2vh rgba(57,255,106,.7); }
-  .tag { margin-top: 2vh; font: 600 2.9vh/1 Inter, sans-serif; color: rgba(255,255,255,.88); letter-spacing: .42em; opacity: 0; animation: rise .45s .48s cubic-bezier(.2,.9,.2,1) forwards; transform: translateY(1.5vh); }
+  .tag { white-space: nowrap; margin-top: 2vh; font: 600 2.9vh/1 Inter, sans-serif; color: rgba(255,255,255,.88); letter-spacing: .42em; opacity: 0; animation: rise .45s .48s cubic-bezier(.2,.9,.2,1) forwards; transform: translateY(1.5vh); }
   @keyframes rise { to { opacity: 1; transform: none; } }
   @keyframes fade { to { opacity: 1; } }
 
@@ -80,7 +80,7 @@
   .end .chips { margin-top: 2.6vh; display: flex; gap: 1.2vh; flex-wrap: nowrap; animation: rise .5s .38s cubic-bezier(.2,.9,.2,1) both; transform: translateY(1.5vh); }
   .end .chips span { font: 600 2.4vh/1 Inter, sans-serif; letter-spacing: .22em; color: #dfffe8; padding: 1.1vh 1.5vh; border: .18vh solid rgba(57,255,106,.55); border-radius: 99vh; background: rgba(57,255,106,.08); }
   /* a tall frame (the iPad) stacks the icon over the words */
-  @media (max-aspect-ratio: 3/2) { .end .box { flex-direction: column; text-align: center; gap: 3.6vh; } .end .chips { justify-content: center; } .end .icon { width: 30vh; height: 30vh; border-radius: 6.8vh; } .end h1 { font-size: 11vh; } .end p { font-size: 5vh; } }
+  @media (max-aspect-ratio: 3/2) { .end .box { flex-direction: column; text-align: center; gap: 3.6vh; } .end .chips { justify-content: center; } .end .icon { width: 30vh; height: 30vh; border-radius: 6.8vh; } .end h1 { font-size: 11vh; } .end p { font-size: 5vh; } .end .beam.b2 { bottom: 4vh; } }
 </style></head>
 <body>
 <div id="stage" class="full"></div>
@@ -121,7 +121,7 @@ if (card === 'slam') {
   }).join('');
   S.innerHTML = `<div class="full end"><div class="full glow1"></div><div class="full hex"></div><div class="full lights">${lights}</div>
     <div class="beam" style="left:-30vh;top:16vh;transform:rotate(-36deg)"></div>
-    <div class="beam" style="right:-40vh;bottom:14vh;transform:rotate(-36deg);animation-delay:.12s"></div>
+    <div class="beam b2" style="right:-40vh;bottom:14vh;transform:rotate(-36deg);animation-delay:.12s"></div>
     <div class="box"><div class="icon"><img src="../../../assets/brand/icon-source.png"></div>
       <div class="txt"><h1>APEX <b>XI</b><small>FOOTBALL</small></h1><p>BUILD YOUR XI. <b>PLAY ONLINE.</b></p>
         <div class="chips"><span>ULTIMATE XI</span><span>CAREER</span><span>ONLINE</span><span>STREET</span></div></div></div></div>`;
