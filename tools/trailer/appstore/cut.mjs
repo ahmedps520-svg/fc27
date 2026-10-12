@@ -28,8 +28,14 @@ const FORMATS = arg('--formats', 'iphone,ipad,wide').split(',');
 const FPS = 30;
 const TOTAL = 894;                              // 29.8 s
 const SIZE = { iphone: [1920, 886], ipad: [1600, 1200], wide: [1920, 1080] };
-// the 1920×1080 footage into each frame: a centre crop, then the frame size
-const FIT = { iphone: 'crop=1920:886:0:97', ipad: 'crop=1440:1080:240:0,scale=1600:1200:flags=lanczos', wide: 'null' };
+// the footage into each frame: High renders at 0.8 of the window, so film.mjs's 1920×1080 is 1536×864 —
+// cropped to the frame's shape first, then scaled up once (lanczos) with a little sharpening
+const SHARP = 'unsharp=5:5:0.5:5:5:0';
+const FIT = {
+  iphone: `crop=1536:709:0:77,scale=1920:886:flags=lanczos,${SHARP}`,
+  ipad: `crop=1152:864:192:0,scale=1600:1200:flags=lanczos,${SHARP}`,
+  wide: `scale=1920:1080:flags=lanczos,${SHARP}`,
+};
 
 function ff(args, what) {
   const r = spawnSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args], { stdio: ['ignore', 'inherit', 'inherit'] });
@@ -47,8 +53,8 @@ const EDIT = [
   { shot: 'C2-ball', from: 0, len: 30 },                     //      a ball into the box
   { shot: 'C3-header', from: 0, len: 30 },                   //      a header goes in
   { shot: 'C4-save', from: 0, len: 30 },                     //      a save
-  { ui: 'pack', from: 6, len: 24, z: [1.55, 1.7], c: [0.5, 0.28] },   // 8.0  the pack, ripped
-  { ui: 'pack', from: 92, len: 66, z: [1.2, 1.32], c: [0.5, 0.45] },  //      the plinths, the card (9.5)
+  { ui: 'pack', from: 6, len: 24, z: [1.18, 1.3], c: [0.5, 0.45] },   // 8.0  the pack, ripped
+  { ui: 'pack', from: 92, len: 66, z: [1.0, 1.09], c: [0.5, 0.5] },  //      the plinths, the card (9.5)
   { ui: 'squad', still: true, from: 0, len: 30, z: [1.02, 1.12], c: [0.5, 0.55] }, //      the eleven
   { shot: 'E1-snow', from: 0, len: 20 },                     // 12.0 weather
   { shot: 'E2-rain', from: 0, len: 20 },
@@ -70,9 +76,9 @@ const OVER = { slam: 60, 'cap-play': 123, 'cap-pack': 243, 'cap-weather': 362, '
 const FLASHES = [[660, 7], [840, 5]];         // white, at the second impact and the end card
 
 /* ------------------------------ the look ------------------------------ */
-// footage: a filmic curve (lifted, cool shadows, warm highlights), more colour, the floodlights blooming,
-// the edges of the frame softened like a long lens, a vignette
-const GRADE = "eq=contrast=1.07:saturation=1.16:brightness=-0.012,curves=r='0/0.015 0.5/0.5 1/1':g='0/0.025 0.5/0.505 1/0.985':b='0/0.06 0.5/0.49 1/0.93'";
+// footage: a touch more contrast and colour, the mids a little lower, the highlights warm (never lift the
+// blues: it turns the grass mint), then the floodlights blooming, the edges softened like a long lens, a vignette
+const GRADE = "eq=contrast=1.08:saturation=1.12:brightness=-0.015:gamma=0.96,curves=b='0/0 0.5/0.5 1/0.95'";
 function maskFile(fmt) {
   // a soft ellipse: black (sharp) in the middle, white (blurred) toward the edges — written as a PGM
   const [W, Hh] = SIZE[fmt]; const file = join(WORK, `edge-${fmt}.pgm`);
@@ -95,13 +101,14 @@ function segment(fmt, s, i, dir) {
     const shake = s.shake ? `,crop=iw-44:ih-44:x='22+22*sin(n*2.3)*exp(-n/3.5)':y='22+22*cos(n*3.1)*exp(-n/3.5)',scale=${W}:${Hh}:flags=lanczos` : '';
     const fc = `[0:v]setpts=PTS-STARTPTS,${FIT[fmt]}${shake},${GRADE},format=gbrp,split=3[a][b][c];`
       + `[b]curves=all='0/0 0.62/0 1/1',gblur=sigma=${Math.round(W / 90)}[bl];[a][bl]blend=all_mode=screen:all_opacity=0.32[g];`
-      + `[c]gblur=sigma=${(W / 420).toFixed(1)}[soft];[1:v]format=gbrp,scale=${W}:${Hh}[m];[g][soft][m]maskedmerge,vignette=PI/5.2,format=yuv420p[v]`;
+      + `[c]gblur=sigma=${(W / 420).toFixed(1)}[soft];[1:v]format=gbrp,scale=${W}:${Hh}[m];[g][soft][m]maskedmerge,vignette=PI/4.8,format=yuv420p[v]`;
     ff(['-framerate', String(FPS), '-start_number', String(s.from), '-i', src, '-loop', '1', '-i', maskFile(fmt), '-filter_complex', fc, '-map', '[v]', ...enc], s.shot);
   } else if (s.ui) {
     const src = join(WORK, 'ui', fmt, s.ui, 'f%04d.jpg');
     const [z0, z1] = s.z; const [cx, cy] = s.c; const L = Math.max(1, s.len - 1);
-    const z = `${z0}+(${z1 - z0})*on/${L}`;
-    const vf = `zoompan=z='${z}':x='max(0,min(iw-iw/zoom,${cx}*iw-iw/zoom/2))':y='max(0,min(ih-ih/zoom,${cy}*ih-ih/zoom/2))':d=1:s=${W}x${Hh}:fps=${FPS},eq=contrast=1.04:saturation=1.08,vignette=PI/6,format=yuv420p`;
+    const z = `${z0}+(${z1 - z0})*n/${L}`;
+    // the push in: scale each frame up by its zoom (eval=frame), then a fixed crop about (cx, cy) — frame-exact, unlike zoompan
+    const vf = `scale=w='2*trunc(${W}*(${z})/2)':h='2*trunc(${Hh}*(${z})/2)':eval=frame:flags=lanczos,crop=${W}:${Hh}:x='min(max(0,${cx}*iw-${W}/2),iw-${W})':y='min(max(0,${cy}*ih-${Hh}/2),ih-${Hh})',eq=contrast=1.04:saturation=1.08,vignette=PI/6,format=yuv420p`;
     // squad, Career and Online are one frame each (capture.mjs): held, with the push in for motion
     const input = s.still ? ['-loop', '1', '-framerate', String(FPS), '-i', join(WORK, 'ui', fmt, s.ui, 'f0000.jpg')] : ['-framerate', String(FPS), '-start_number', String(s.from), '-i', src];
     ff([...input, '-vf', vf, ...enc], `ui ${s.ui}`);
@@ -149,6 +156,12 @@ function sound() {
 }
 
 /* ------------------------------ per format ------------------------------ */
+// --segs 0,7,9: build just those segments of the first format, as a check, and stop
+if (arg('--segs')) {
+  const fmt = FORMATS[0]; const dir = join(WORK, 'segs-test', fmt); mkdirSync(dir, { recursive: true });
+  for (const i of arg('--segs').split(',').map(Number)) console.log('✔', segment(fmt, EDIT[i], i, dir));
+  process.exit(0);
+}
 const audio = sound();
 console.log('✔ sound');
 if (process.argv.includes('--sound-only')) process.exit(0);
