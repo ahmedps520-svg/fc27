@@ -67,7 +67,7 @@ await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
 await page.evaluate(async ({ home, away, time, weather }) => {
   (await import('/js/app.js')).navigate('play', { homeId: home, awayId: away, duration: 600, skill: 1, mode: 'single', atmo: { time, weather } });
 }, { home: G[0].data.home, away: G[0].data.away, time: G[0].time || 'night', weather: G[0].weather || 'clear' });
-await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase === 'play', null, { timeout: 1200000 });
+await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase === 'play', null, { timeout: +arg('--load-timeout', 3600000) });   // a stadium on the software renderer, shared with other jobs, can take a while
 await page.addStyleTag({ content: '.gm-hud,.gm-left,#gmFeed,#gmHints,.gm-touch,.bc-layer,.gm-alerts,#gmBooking,#gmAdv,.goal-card,.bc-sub,.gm-sub,.gm-caption,#gmCaption{visibility:hidden!important}' });
 
 // hand the match to the tape, and the camera to the shot

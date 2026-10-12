@@ -121,17 +121,19 @@ async function boot(browser, F, server, notes) {
 }
 const go = (page, name, params = {}) => page.evaluate(async ({ n, p }) => { (await import('/js/app.js')).navigate(n, p); }, { n: name, p: params });
 
-/** Record `frames` frames of the page on the virtual clock; `at` runs page code at given frames. */
-async function record(page, dir, frames, at = {}) {
+/** Record `frames` frames of the page on the virtual clock; `at` runs page code at given frames;
+ *  only the frames `keep` wants are photographed (the clock still runs through the rest). */
+async function record(page, dir, frames, at = {}, keep = () => true) {
   rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true });
   await page.evaluate(() => window.__vclock.start());
   const t0 = Date.now();
   for (let f = 0; f < frames; f++) {
     if (at[f]) await page.evaluate(at[f]);
     await page.evaluate(() => window.__vclock.step(1000 / 30));
+    if (!keep(f)) continue;
     await page.screenshot({ path: join(dir, `f${String(f).padStart(4, '0')}.jpg`), type: 'jpeg', quality: 93, timeout: 120000 });
   }
-  console.log(`  ✔ ${dir}: ${frames} frames, ${((Date.now() - t0) / frames / 1000).toFixed(2)} s a frame`);
+  console.log(`  ✔ ${dir}: ${frames} frames, ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 }
 
 const TAKES = {
@@ -176,7 +178,8 @@ const TAKES = {
     console.log(`  pack: ${ok ? `a special on seed ${seed - 1}` : 'no special found, filming what came'}`);
     await page.waitForTimeout(600);
     // in hand for half a second, then the rip; the show runs about 3.4 s and the card holds
-    await record(page, dir, 170, { 14: () => document.getElementById('packRip')?.click() });
+    // the cut (cut.mjs) uses 6–29 (the rip) and 92–157 (the plinths and the card)
+    await record(page, dir, 158, { 14: () => document.getElementById('packRip')?.click() }, (f) => (f >= 6 && f < 30) || f >= 92);
   },
   async squad(page, dir) {
     await page.evaluate(() => { const ov = document.getElementById('packOverlay'); if (ov) { ov.hidden = true; ov.innerHTML = ''; } });
@@ -185,7 +188,7 @@ const TAKES = {
     await page.click('[data-utab="club"]'); await page.waitForTimeout(1500);
     await page.evaluate(() => document.getElementById('pitch')?.scrollIntoView({ block: 'center' }));
     await page.waitForTimeout(1200);
-    await record(page, dir, 60);
+    await record(page, dir, 1);
   },
   async career(page, dir) {
     await page.evaluate(async () => {
@@ -195,7 +198,7 @@ const TAKES = {
     });
     await go(page, 'career');
     await page.waitForTimeout(3000);
-    await record(page, dir, 60);
+    await record(page, dir, 1);
   },
   /* online: a fresh account on the local server, then a private lobby with its code showing */
   async online(page, dir) {
@@ -210,7 +213,7 @@ const TAKES = {
     await page.waitForTimeout(1500);
     await page.click('#olHost').catch(() => {});
     await page.waitForTimeout(2500);
-    await record(page, dir, 60);
+    await record(page, dir, 1);
   },
 };
 

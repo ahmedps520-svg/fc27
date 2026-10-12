@@ -49,12 +49,12 @@ const EDIT = [
   { shot: 'C4-save', from: 0, len: 30 },                     //      a save
   { ui: 'pack', from: 6, len: 24, z: [1.55, 1.7], c: [0.5, 0.28] },   // 8.0  the pack, ripped
   { ui: 'pack', from: 92, len: 66, z: [1.2, 1.32], c: [0.5, 0.45] },  //      the plinths, the card (9.5)
-  { ui: 'squad', from: 0, len: 30, z: [1.02, 1.12], c: [0.5, 0.55] }, //      the eleven
+  { ui: 'squad', still: true, from: 0, len: 30, z: [1.02, 1.12], c: [0.5, 0.55] }, //      the eleven
   { shot: 'E1-snow', from: 0, len: 20 },                     // 12.0 weather
   { shot: 'E2-rain', from: 0, len: 20 },
   { shot: 'E3-dusk', from: 0, len: 20 },
-  { ui: 'career', from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 14.0 Career
-  { ui: 'online', from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 16.0 Online
+  { ui: 'career', still: true, from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 14.0 Career
+  { ui: 'online', still: true, from: 0, len: 60, z: [1.0, 1.1], c: [0.5, 0.45] },  // 16.0 Online
   { shot: 'G1-crane', from: 0, len: 60 },                    // 18.0 breakdown: the stadium
   { shot: 'G2-carry', from: 0, len: 15 },                    // 20.0 the build: a run
   { shot: 'G3-cross', from: 0, len: 15 },                    //      the cross
@@ -102,7 +102,9 @@ function segment(fmt, s, i, dir) {
     const [z0, z1] = s.z; const [cx, cy] = s.c; const L = Math.max(1, s.len - 1);
     const z = `${z0}+(${z1 - z0})*on/${L}`;
     const vf = `zoompan=z='${z}':x='max(0,min(iw-iw/zoom,${cx}*iw-iw/zoom/2))':y='max(0,min(ih-ih/zoom,${cy}*ih-ih/zoom/2))':d=1:s=${W}x${Hh}:fps=${FPS},eq=contrast=1.04:saturation=1.08,vignette=PI/6,format=yuv420p`;
-    ff(['-framerate', String(FPS), '-start_number', String(s.from), '-i', src, '-vf', vf, ...enc], `ui ${s.ui}`);
+    // squad, Career and Online are one frame each (capture.mjs): held, with the push in for motion
+    const input = s.still ? ['-loop', '1', '-framerate', String(FPS), '-i', join(WORK, 'ui', fmt, s.ui, 'f0000.jpg')] : ['-framerate', String(FPS), '-start_number', String(s.from), '-i', src];
+    ff([...input, '-vf', vf, ...enc], `ui ${s.ui}`);
   } else {
     ff(['-framerate', String(FPS), '-i', join(WORK, 'cards', fmt, s.card, 'f%04d.png'), '-vf', `scale=${W}:${Hh},format=yuv420p`, ...enc], s.card);
   }
