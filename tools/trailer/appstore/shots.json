@@ -1,0 +1,30 @@
+[
+ {"name":"A1-coldopen","scene":"tests/tmp/as/scenes/007-longshot-m0.json","cam":"astight","from":158,"to":173,"slow":3,"time":"night","weather":"clear"},
+ {"name":"A2-flight","scene":"tests/tmp/as/scenes/007-longshot-m0.json","cam":"asgoal","from":175,"to":197,"time":"night","weather":"clear"},
+ {"name":"B1-net","scene":"tests/tmp/as/scenes/007-longshot-m0.json","cam":"vnet3","from":194,"to":225,"slow":2,"time":"night","weather":"clear"},
+ {"name":"C1-carry","scene":"tests/tmp/as/scenes/100-longshot-m10.json","cam":"astight","from":140,"to":172,"time":"night","weather":"clear"},
+ {"name":"C2-ball","scene":"tests/tmp/as/scenes/305-header-m30.json","cam":"follow","from":150,"to":182,"time":"night","weather":"clear"},
+ {"name":"C3-header","scene":"tests/tmp/as/scenes/305-header-m30.json","cam":"asgoal","from":178,"to":210,"time":"night","weather":"clear"},
+ {"name":"C4-save","scene":"tests/tmp/as/scenes/211-save-m20.json","cam":"asgoal","from":238,"to":270,"time":"night","weather":"clear"},
+ {"name":"G1-crane","scene":"tests/tmp/as/scenes/007-longshot-m0.json","cam":"crane","from":40,"to":102,"time":"night","weather":"clear"},
+ {"name":"G2-carry","scene":"tests/tmp/as/scenes/212-header-m20.json","cam":"astight","from":130,"to":147,"time":"night","weather":"clear"},
+ {"name":"G3-cross","scene":"tests/tmp/as/scenes/212-header-m20.json","cam":"follow","from":146,"to":163,"time":"night","weather":"clear"},
+ {"name":"G4-header","scene":"tests/tmp/as/scenes/212-header-m20.json","cam":"asgoal","from":179,"to":190,"slow":2,"time":"night","weather":"clear"},
+ {"name":"G5-net","scene":"tests/tmp/as/scenes/212-header-m20.json","cam":"vnet3","from":186,"to":198,"time":"night","weather":"clear"},
+ {"name":"G6-celebrate","scene":"tests/tmp/as/scenes/212-header-m20.json","cam":"asorbit","from":196,"to":258,"time":"night","weather":"clear"},
+ {"name":"H4-night","scene":"tests/tmp/as/scenes/099-goal-m10.json","cam":"asgoal","from":181,"to":198,"time":"night","weather":"clear"},
+ {"name":"H8-nightceleb","scene":"tests/tmp/as/scenes/308-longshot-m30.json","cam":"asorbit","from":205,"to":222,"time":"night","weather":"clear"},
+
+ {"name":"E3-dusk","scene":"tests/tmp/as/scenes/052-longshot-m5.json","cam":"follow","from":165,"to":187,"time":"dusk","weather":"clear"},
+ {"name":"H2-duskceleb","scene":"tests/tmp/as/scenes/166-longshot-m15.json","cam":"asorbit","from":205,"to":222,"time":"dusk","weather":"clear"},
+ {"name":"H7-dusknet","scene":"tests/tmp/as/scenes/059-longshot-m5.json","cam":"asgoal","from":181,"to":198,"time":"dusk","weather":"clear"},
+
+ {"name":"E1-snow","scene":"tests/tmp/as/scenes/038-longshot-m3.json","cam":"broadcast","from":160,"to":182,"time":"day","weather":"snow"},
+ {"name":"H3-snownet","scene":"tests/tmp/as/scenes/254-longshot-m23.json","cam":"asgoal","from":181,"to":198,"time":"day","weather":"snow"},
+
+ {"name":"E2-rain","scene":"tests/tmp/as/scenes/298-goal-m29.json","cam":"follow","from":165,"to":187,"time":"night","weather":"rain"},
+ {"name":"H5-rain","scene":"tests/tmp/as/scenes/405-goal-m39.json","cam":"follow","from":181,"to":198,"time":"night","weather":"rain"},
+
+ {"name":"H1-day","scene":"tests/tmp/as/scenes/279-longshot-m26.json","cam":"asgoal","from":131,"to":148,"time":"day","weather":"clear"},
+ {"name":"H6-dayceleb","scene":"tests/tmp/as/scenes/174-header-m16.json","cam":"asorbit","from":200,"to":217,"time":"day","weather":"clear"}
+]
