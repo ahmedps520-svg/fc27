@@ -25,7 +25,7 @@ export const TITLES = [
   { name: 'cap-weather', card: 'cap', kicker: 'DAY · NIGHT · RAIN · SNOW', text: 'WHATEVER THE *WEATHER*', frames: 57, out: 1640 },
   { name: 'cap-career', card: 'cap', kicker: 'CAREER', text: 'TAKE A CLUB TO *GLORY*', frames: 57, out: 1640 },
   { name: 'cap-online', card: 'cap', kicker: 'ONLINE', text: 'CHALLENGE YOUR *FRIENDS*', frames: 57, out: 1640 },
-  { name: 'cap-lights', card: 'cap', kicker: 'UNDER THE LIGHTS', text: '', frames: 54, out: 1560 },
+  { name: 'cap-lights', card: 'cap', kicker: 'MATCH NIGHT', text: 'UNDER THE *LIGHTS*', frames: 54, out: 1560 },
   { name: 'w-ultimate', card: 'word', text: 'ULTIMATE XI', frames: 30 },
   { name: 'w-career', card: 'word', text: 'CAREER', frames: 30 },
   { name: 'w-online', card: 'word', text: 'ONLINE', frames: 30 },

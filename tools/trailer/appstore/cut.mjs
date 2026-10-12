@@ -108,7 +108,7 @@ function segment(fmt, s, i, dir) {
     const [z0, z1] = s.z; const [cx, cy] = s.c; const L = Math.max(1, s.len - 1);
     const z = `${z0}+(${z1 - z0})*n/${L}`;
     // the push in: scale each frame up by its zoom (eval=frame), then a fixed crop about (cx, cy) — frame-exact, unlike zoompan
-    const vf = `scale=w='2*trunc(${W}*(${z})/2)':h='2*trunc(${Hh}*(${z})/2)':eval=frame:flags=lanczos,crop=${W}:${Hh}:x='min(max(0,${cx}*iw-${W}/2),iw-${W})':y='min(max(0,${cy}*ih-${Hh}/2),ih-${Hh})',eq=contrast=1.04:saturation=1.08,vignette=PI/6,format=yuv420p`;
+    const vf = `scale=w='2*trunc(${W}*(${z})/2)':h='2*trunc(${Hh}*(${z})/2)':eval=frame:flags=lanczos,crop=${W}:${Hh}:x='min(max(0,${cx}*iw-${W}/2),iw-${W})':y='min(max(0,${cy}*ih-${Hh}/2),ih-${Hh})',eq=contrast=1.06:saturation=1.14:brightness=0.03:gamma=1.08,vignette=PI/7,format=yuv420p`;
     // squad, Career and Online are one frame each (capture.mjs): held, with the push in for motion
     const input = s.still ? ['-loop', '1', '-framerate', String(FPS), '-i', join(WORK, 'ui', fmt, s.ui, 'f0000.jpg')] : ['-framerate', String(FPS), '-start_number', String(s.from), '-i', src];
     ff([...input, '-vf', vf, ...enc], `ui ${s.ui}`);
@@ -167,25 +167,29 @@ console.log('✔ sound');
 if (process.argv.includes('--sound-only')) process.exit(0);
 for (const fmt of FORMATS) {
   const [W, Hh] = SIZE[fmt];
-  const dir = join(WORK, 'segs', fmt); rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true });
-  const segs = EDIT.map((s, i) => segment(fmt, s, i, dir));
+  // --reuse: keep the segments already cut (just the type, the flashes and the encode again)
+  const dir = join(WORK, 'segs', fmt); const reuse = process.argv.includes('--reuse') && existsSync(join(dir, 'joined.mp4'));
+  if (!reuse) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }); }
+  const segs = reuse ? [] : EDIT.map((s, i) => segment(fmt, s, i, dir));
   const sum = EDIT.reduce((a, s) => a + s.len, 0);
   if (sum !== TOTAL) throw new Error(`the edit is ${sum} frames, not ${TOTAL}`);
-  const list = join(dir, 'list.txt'); writeFileSync(list, segs.map((s) => `file '${resolve(s)}'`).join('\n'));
   const joined = join(dir, 'joined.mp4');
-  ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined], 'join');
+  if (!reuse) {
+    const list = join(dir, 'list.txt'); writeFileSync(list, segs.map((s) => `file '${resolve(s)}'`).join('\n'));
+    ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined], 'join');
+  }
   // the type over the picture, the flashes, a little grain; then the delivery encode
   const inputs = ['-i', joined]; const fc = []; let last = '[0:v]'; let k = 1;
   for (const [name, at] of Object.entries(OVER)) {
     inputs.push('-framerate', String(FPS), '-i', join(WORK, 'cards', fmt, name, 'f%04d.png'));
     const len = TITLES.find((t) => t.name === name).frames;
     fc.push(`[${k}:v]format=rgba,setpts=PTS-STARTPTS+${at}/${FPS}/TB[t${k}]`);
-    fc.push(`${last}[t${k}]overlay=0:0:eof_action=pass:enable='between(n,${at},${at + len - 1})'[o${k}]`);
+    fc.push(`${last}[t${k}]overlay=0:0:eof_action=pass[o${k}]`);
     last = `[o${k}]`; k++;
   }
   FLASHES.forEach(([at, len], j) => {
     fc.push(`color=c=white:s=${W}x${Hh}:r=${FPS}:d=${(len / FPS).toFixed(3)},format=rgba,fade=t=out:st=0:d=${(len / FPS).toFixed(3)}:alpha=1,setpts=PTS-STARTPTS+${at}/${FPS}/TB[f${j}]`);
-    fc.push(`${last}[f${j}]overlay=0:0:eof_action=pass:enable='between(n,${at},${at + len - 1})'[fl${j}]`);
+    fc.push(`${last}[f${j}]overlay=0:0:eof_action=pass[fl${j}]`);
     last = `[fl${j}]`;
   });
   fc.push(`${last}noise=alls=5:allf=t,format=yuv420p[v]`);

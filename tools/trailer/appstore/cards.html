@@ -40,7 +40,7 @@
   @keyframes fade { to { opacity: 1; } }
 
   /* ---- captions over footage: lower left, a kicker, a headline wiped in word by word ---- */
-  .scrim-l { background: radial-gradient(120vh 58vh at 0% 100%, rgba(0,0,0,.78), rgba(0,0,0,.32) 55%, transparent 82%); opacity: 0; animation: fade .25s forwards; }
+  .scrim-l { background: radial-gradient(100vh 40vh at 0% 100%, rgba(0,0,0,.72), rgba(0,0,0,.28) 55%, transparent 80%); opacity: 0; animation: fade .25s forwards; }
   .cap { position: absolute; left: 7vh; bottom: 9vh; }
   .cap .k { display: flex; align-items: center; gap: 1.6vh; font: 700 3vh/1 Inter, sans-serif; letter-spacing: .34em; color: #6dff8f; text-shadow: 0 0 1.4vh rgba(57,255,106,.55); opacity: 0; animation: rise .35s cubic-bezier(.2,.9,.2,1) forwards; transform: translateX(-2vh); }
   .cap .k::before { content: ''; width: 4.5vh; height: .45vh; background: var(--g); box-shadow: 0 0 1.4vh var(--g); }
@@ -67,20 +67,20 @@
   @keyframes tw { 50% { opacity: .9; } }
   .end .beam { position: absolute; height: 1.1vh; width: 160vh; background: linear-gradient(90deg, transparent, var(--g) 30%, #c9ffd8 50%, var(--g) 70%, transparent); filter: drop-shadow(0 0 1.6vh var(--g)); opacity: 0; transform-origin: center; animation: beam .7s cubic-bezier(.2,.9,.2,1) forwards; }
   @keyframes beam { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: .85; clip-path: inset(0 0 0 0); } }
-  .end .box { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 5vh; }
-  .end .icon { width: 30vh; height: 30vh; border-radius: 6.8vh; overflow: hidden; box-shadow: 0 0 0 .25vh rgba(255,255,255,.14), 0 3vh 8vh rgba(0,0,0,.7), 0 0 7vh rgba(57,255,106,.35); animation: icon .5s cubic-bezier(.15,.9,.25,1.15) both; }
+  .end .box { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6.5vh; }
+  .end .icon { width: 40vh; height: 40vh; border-radius: 9vh; overflow: hidden; box-shadow: 0 0 0 .25vh rgba(255,255,255,.14), 0 3vh 8vh rgba(0,0,0,.7), 0 0 7vh rgba(57,255,106,.35); animation: icon .5s cubic-bezier(.15,.9,.25,1.15) both; }
   .end .icon img { width: 100%; height: 100%; display: block; transform: scale(1.03); }
   @keyframes icon { from { transform: scale(.6) rotate(-6deg); opacity: 0; filter: blur(1vh); } to { transform: none; opacity: 1; filter: none; } }
-  .end .txt { animation: rise .5s .18s cubic-bezier(.2,.9,.2,1) both; transform: translateY(2vh); }
-  .end h1 { margin: 0; font: 700 italic 10vh/1 Oswald; color: #fff; letter-spacing: .02em; }
+  .end .txt { animation: rise .5s .18s cubic-bezier(.2,.9,.2,1) both; transform: translateY(2vh); white-space: nowrap; }
+  .end h1 { margin: 0; font: 700 italic 13.5vh/1 Oswald; color: #fff; letter-spacing: .02em; }
   .end h1 b { color: var(--g); text-shadow: 0 0 2.4vh rgba(57,255,106,.7); }
-  .end h1 small { display: block; margin-top: .9vh; font: 600 3vh/1 Inter, sans-serif; letter-spacing: .5em; color: rgba(255,255,255,.75); font-style: normal; }
-  .end p { margin: 2.6vh 0 0; font: 700 italic 4.6vh/1 Oswald; color: #fff; letter-spacing: .02em; }
+  .end h1 small { display: block; margin-top: 1.2vh; font: 600 3.6vh/1 Inter, sans-serif; letter-spacing: .5em; color: rgba(255,255,255,.75); font-style: normal; }
+  .end p { margin: 3vh 0 0; font: 700 italic 6vh/1 Oswald; color: #fff; letter-spacing: .02em; }
   .end p b { color: var(--g); }
-  .end .chips { margin-top: 2.6vh; display: flex; gap: 1.2vh; flex-wrap: wrap; animation: rise .5s .38s cubic-bezier(.2,.9,.2,1) both; transform: translateY(1.5vh); }
-  .end .chips span { font: 600 1.9vh/1 Inter, sans-serif; letter-spacing: .22em; color: #dfffe8; padding: 1.1vh 1.5vh; border: .18vh solid rgba(57,255,106,.55); border-radius: 99vh; background: rgba(57,255,106,.08); }
+  .end .chips { margin-top: 2.6vh; display: flex; gap: 1.2vh; flex-wrap: nowrap; animation: rise .5s .38s cubic-bezier(.2,.9,.2,1) both; transform: translateY(1.5vh); }
+  .end .chips span { font: 600 2.4vh/1 Inter, sans-serif; letter-spacing: .22em; color: #dfffe8; padding: 1.1vh 1.5vh; border: .18vh solid rgba(57,255,106,.55); border-radius: 99vh; background: rgba(57,255,106,.08); }
   /* a tall frame (the iPad) stacks the icon over the words */
-  @media (max-aspect-ratio: 3/2) { .end .box { flex-direction: column; text-align: center; gap: 3.6vh; } .end .chips { justify-content: center; } .end .icon { width: 26vh; height: 26vh; border-radius: 5.9vh; } }
+  @media (max-aspect-ratio: 3/2) { .end .box { flex-direction: column; text-align: center; gap: 3.6vh; } .end .chips { justify-content: center; } .end .icon { width: 30vh; height: 30vh; border-radius: 6.8vh; } .end h1 { font-size: 11vh; } .end p { font-size: 5vh; } }
 </style></head>
 <body>
 <div id="stage" class="full"></div>
