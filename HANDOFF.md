@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v192 — kits in parties and for spectators (owner's pick #9)
+- **#9 was mostly done in v116** (1v1 queue/room/join send `kit`, `guard.cleanKit`, `opp.kit`); the v115 "not done" note was stale. What was left: parties and spectators.
+- **Parties** (`server/party.js`): `peer.partyKit = guard.cleanKit(m.kit)` at `partyHost`/`partyJoin`; at `partyStart`, `p.kits = [first side-0 member with a kit, first side-1 member with a kit]` (side 1 is `null` in co-op, the CPU's), sent in `partyMatch` and `partyRejoin`. The client (`js/net/party.js`) sends `clubIdentity().kit`; `launch` passes `kits`, and `play.js` sets `match.teams[i].kit = kitOf(k, colors)` after the match is built — render only, so every machine's sim stays identical. Clients before v192 send none and ignore the field.
+- **Spectators**: the `spectating` card carries `host.kit`/`guest.kit`; `online.js` dresses both squads with them.
+- Tests: `tests/unit/kits-online.test.mjs` (2v2 sides, a broken kit dropped, co-op CPU side null, spectating); the QA bot checks the spectator's view of the guest's kit and the co-op side wearing the host's on both machines.
+
 ## v191 — iPhone haptics and reminders (owner's picks #2 and #4 of the ideas list); #10 checked
 - **Native plugins** (`app/package.json`, exact): `@capacitor/haptics` 8.0.2 and `@capacitor/local-notifications` 8.3.1; `npx cap sync ios` wrote them into `app/ios/App/CapApp-SPM/Package.swift` (CI runs the same sync). They reach the page as `window.Capacitor.Plugins.Haptics` / `.LocalNotifications`; the web has neither. **They ship with the next TestFlight build (1.2)**; 1.1 in review is unaffected.
 - **`js/native.js`**:
@@ -1671,9 +1677,8 @@ socks ×0.8 of it, no pattern, no away kit of its own; the other side got a
 - each pattern marks 8–60% of the shirt;
 - a match squad's kit reaches `team.kit`.
 
-**Not done:**
-- Online matches don't send your kit (the lobby carries name + ids only),
-  so the opponent sees your badge colours.
+**Not done:** (both since done)
+- ~~Online matches don't send your kit~~ — v116 (1v1), v192 (parties, spectators).
 - Career clubs keep their real colours.
 
 ### v114 — polish: online cards and advantage, the alerts moved

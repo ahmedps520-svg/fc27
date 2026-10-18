@@ -80,6 +80,7 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
         let code = makeCode(); while (parties.has(code)) code = makeCode();
         const p = { code, mode, host: peer, members: [peer], matchId: null, setup: null, reported: false };
         peer.partyPro = cleanPro(m.pro);
+        peer.partyKit = guard.cleanKit?.(m.kit) || null;   // v192
         parties.set(code, p);
         peer.party = p; peer.partySide = 0;
         peer.sock.send(view(p));
@@ -106,6 +107,7 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
         peer.partySide = mode.sides[1] === 0 || (c0 <= c1 && c0 < mode.sides[0]) ? 0 : 1;
         p.members.push(peer); peer.party = p;
         peer.partyPro = cleanPro(m.pro);
+        peer.partyKit = guard.cleanKit?.(m.kit) || null;   // v192
         tell(p, view(p));
         return true;
       }
@@ -129,7 +131,11 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
         p.setup = m.setup;
         p.seats = seats;
         p.reported = false;
-        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup });
+        // v192: each side wears its first person's designed kit (the host's on side 0); the CPU's side, or a side
+        // nobody designed for, keeps its club's. Clients older than v192 ignore the field.
+        const kitOfSide = (team) => p.members.find((x) => x.partySide === team && x.partyKit)?.partyKit || null;
+        p.kits = [kitOfSide(0), MODES[p.mode].sides[1] ? kitOfSide(1) : null];
+        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup, kits: p.kits });
         log(`[party ${p.code}] match ${p.matchId}: ${seats.map((s) => `${s.name}@${s.team}`).join(', ')}`);
         return true;
       }
@@ -194,7 +200,7 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
     if (!p?.matchId || !existing.dropped) return false;
     clearTimeout(existing.partyTimer);
     existing.sock = sock; existing.dropped = false;
-    sock.send({ t: 'partyRejoin', matchId: p.matchId, mode: p.mode, host: false, seat: existing.partySeat, seats: p.seats, setup: p.setup });
+    sock.send({ t: 'partyRejoin', matchId: p.matchId, mode: p.mode, host: false, seat: existing.partySeat, seats: p.seats, setup: p.setup, kits: p.kits || [null, null] });
     if (p.host.sock.open) p.host.sock.send({ t: 'evt', k: 'resumed', seat: existing.partySeat, name: existing.name });
     tell(p, view(p));
     log(`[party ${p.code}] ${existing.name} reconnected to seat ${existing.partySeat}`);

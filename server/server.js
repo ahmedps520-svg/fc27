@@ -957,7 +957,8 @@ ws.attach(server, '/ws', (sock) => {
         host.spectators.add(peer);
         tellSpectators(host);
         peer.watching = host;
-        sock.send({ t: 'spectating', matchId: id, host: { name: host.name, club: host.club, squad: host.squad }, guest: { name: host.opponent.name, club: host.opponent.club, squad: host.opponent.squad } });
+        // v192: the two kits too, so a spectator sees what the players see
+        sock.send({ t: 'spectating', matchId: id, host: { name: host.name, club: host.club, squad: host.squad, kit: host.kit || null }, guest: { name: host.opponent.name, club: host.opponent.club, squad: host.opponent.squad, kit: host.opponent.kit || null } });
         console.log(`[match ${id}] ${peer.name} is watching`);
         break;
       }

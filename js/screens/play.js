@@ -42,6 +42,7 @@ const split = (a, b) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : 50);
 import { openPlayerSheet } from '../components/playerSheet.js';
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
 import { haptic } from '../native.js';
+import { kitOf } from '../data/kitDesign.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
@@ -435,6 +436,9 @@ export function mount(root, params) {
   // v82: pro five-a-side — every person is locked to their own pro
   if (online?.party?.locks) for (const [seat, id] of Object.entries(online.party.locks)) { const c = match.controllers[+seat]; if (c) { c.lockId = id; match.locked = true; } }
   if (match.locked) match.lockSeats();
+  /* v192: a party match wears its people's kits (the server picks each side's first designer); only the
+     picture changes, so every machine's sim is still identical */
+  if (Array.isArray(params.kits)) params.kits.forEach((k, i) => { if (k && match.teams[i]) match.teams[i].kit = kitOf(k, match.teams[i].colors); });
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
   /* The camera rig (game/camera.js): presets, springs, set-piece angles, the

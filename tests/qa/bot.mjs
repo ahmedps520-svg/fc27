@@ -330,6 +330,10 @@ try {
     const snaps = await C.page.evaluate(() => window.__qaSnaps);
     assert.equal(await C.page.evaluate(() => document.getElementById('gmEmoteBtn')?.hidden), true, 'spectators have no emote bar');
     step(`spectator joined: ${snaps} snapshots received, Spectating badge up`);
+    // v192: the spectator dresses both sides as the players designed them
+    const seenKit = await C.page.evaluate(() => window.__apexMatch.teams[1].kit?.home);
+    assert.ok(seenKit && seenKit.pattern === 'hoops' && seenKit.shirt === '#ffd21f', `the spectator sees the guest's kit (${JSON.stringify(seenKit)})`);
+    step('the spectator sees the designed kits');
     await click(A.page, '#gmEmoteBtn');
     await click(A.page, '[data-emote="gg"]');
     await B.page.waitForFunction(() => /Good game/.test(document.body.textContent || ''), null, { timeout: 8000 });
@@ -358,6 +362,8 @@ try {
       return { ctx, page, name };
     };
     const A = await mk('ptA'); const B = await mk('ptB');
+    // v192: the host has designed a kit; the friends' side wears it on both machines
+    await A.page.evaluate(async () => { const st = await import('/js/state.js'); st.update((s) => { s.club.identity = { ...(s.club.identity || {}), kit: { home: { shirt: '#7a1fd6', trim: '#ffffff', shorts: '#151515', socks: '#7a1fd6', pattern: 'sash' } } }; }); });
     await click(A.page, '[data-pmode="coop2"]');
     await A.page.waitForSelector('.pty-code', { timeout: 10000 });
     const code = await A.page.evaluate(() => document.querySelector('.pty-code').textContent.trim());
@@ -373,6 +379,11 @@ try {
     await A.page.waitForFunction(() => (window.__apexMatch?.t || 0) > 2, null, { timeout: 60000 });
     const seats = await A.page.evaluate(() => window.__apexMatch.controllers.map((c) => c.team));
     assert.deepEqual(seats, [0, 0], 'two seats on one team');
+    for (const X of [A, B]) {
+      const k = await X.page.evaluate(() => window.__apexMatch.teams[0].kit?.home);
+      assert.ok(k && k.shirt === '#7a1fd6' && k.pattern === 'sash', `the party side wears the host's kit (${JSON.stringify(k)})`);
+    }
+    step('the party side wears the host\'s designed kit, on both machines');
     // the guest's stick reaches the host: hold right on B, watch B's seat move on A
     await B.page.evaluate(async () => { const i = window.__apexMatch; void i; });
     await B.page.keyboard.down('KeyD');
