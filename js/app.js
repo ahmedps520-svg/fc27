@@ -40,6 +40,7 @@ const LAZY = {
   trophies: () => import('./screens/trophies.js'),
   weekend: () => import('./screens/weekend.js'),
   pens: () => import('./screens/pens.js'),          // v194: the online penalty duel
+  draft: () => import('./screens/draft.js'),        // v196: the Ultimate XI Draft
 };
 const loading = new Map();
 /** Fetch a screen's chunk (once). Resolves to the module. */
@@ -77,7 +78,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v195';
+export const APP_VERSION = 'v196';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');

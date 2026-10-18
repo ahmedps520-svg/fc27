@@ -5725,3 +5725,60 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .gw-rewards ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .gw-rewards li { display: flex; justify-content: space-between; gap: 10px; }
 .gw-top span b { margin-inline-start: 2px; }
+
+/* v196: the Draft */
+.draft-screen { display: flex; flex-direction: column; gap: 14px; }
+.draft-screen > .btn.ghost { align-self: flex-start; }
+.draft-entry { display: flex; flex-direction: column; gap: 12px; }
+.draft-entry p { margin: 0; }
+.draft-rewards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.draft-rewards li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 9px; background: color-mix(in srgb, var(--text) 5%, transparent); font-size: 13px; }
+.draft-rewards li:last-child { background: color-mix(in srgb, var(--gold, #f4c95d) 14%, transparent); }
+.draft-step { margin: 0 0 10px; font-size: 18px; }
+.draft-step small { color: var(--muted); font-weight: 600; font-size: 12px; margin-inline-start: 6px; }
+.draft-shapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.draft-shape-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text); font: inherit; cursor: pointer; }
+.draft-shape-btn:hover, .draft-shape-btn:focus-visible { border-color: var(--accent); }
+.draft-shape { width: 100%; max-width: 120px; }
+.draft-shape rect { fill: #0c2a1e; stroke: rgba(120, 255, 190, .2); stroke-width: 1.5; }
+.draft-shape circle { fill: var(--accent); }
+.draft-layout { display: grid; gap: 14px; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; }
+.draft-layout .facts { margin-bottom: 10px; }
+.draft-pitch { max-width: 420px; margin: 0 auto; }
+.draft-pitch .slot { cursor: default; width: 64px; }
+.draft-pitch .slot:hover { transform: translate(-50%, -50%); border-color: inherit; }
+.slot.draft-now { border: 2px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), 0 0 22px var(--accent-soft); animation: draftPulse 1.4s ease-in-out infinite; }
+@keyframes draftPulse { 50% { box-shadow: 0 0 0 7px transparent, 0 0 26px var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .slot.draft-now { animation: none; } }
+.draft-offer { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.draft-card { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 14px; display: flex; justify-content: center; color: var(--text); font: inherit; text-align: start; }
+.draft-card .pcard { width: 100%; }
+.draft-card:hover .pcard, .draft-card:focus-visible .pcard { outline: 2px solid var(--accent); outline-offset: 2px; }
+.draft-card .pcard { pointer-events: none; }
+.draft-bracket { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.draft-bracket li { display: grid; grid-template-columns: 96px 14px 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); font-size: 13px; }
+.draft-bracket li > span { color: var(--muted); font-size: 11px; }
+.draft-bracket li .db-kit { width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, var(--c1) 50%, var(--c2) 50%); }
+.draft-bracket li em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--muted); }
+.draft-bracket li.next { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.draft-bracket li.won em { color: var(--good); }
+.draft-bracket li.lost { opacity: .75; }
+.draft-bracket li.lost em { color: var(--bad); }
+.draft-done.champ { border-color: color-mix(in srgb, var(--gold, #f4c95d) 55%, transparent); }
+.draft-pay { font-size: 20px; font-weight: 800; margin: 6px 0 12px; }
+.draft-layout .panel > .btn { margin-inline-end: 8px; margin-top: 4px; }
+@media (max-width: 900px) {
+  .draft-layout { grid-template-columns: minmax(0, 1fr); }
+  /* the choice first on a phone, the pitch it fills underneath */
+  .draft-layout > .panel:nth-child(2) { order: -1; }
+  .draft-pitch { max-width: 320px; }
+}
+@media (max-width: 520px) {
+  .draft-offer { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .draft-offer .pcard { zoom: .8; }
+  .draft-bracket li { grid-template-columns: 78px 12px 1fr auto; padding: 8px; }
+  /* compact slots: the back line and the keeper otherwise overlap on a narrow pitch */
+  .draft-pitch .slot { width: 54px; padding: 4px 3px; }
+  .draft-pitch .slot-crest { display: none; }
+  .draft-pitch .slot-ovr { font-size: 15px; }
+}
