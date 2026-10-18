@@ -14,6 +14,7 @@ import { navigate, toast } from '../app.js';
 import * as api from './api.js';
 import { sfx } from '../audio.js';
 import { partySquads } from './partySquads.js';
+import { clubIdentity } from '../screens/squad.js';
 
 export const MODES = {
   coop2: { name: 'Co-op season', blurb: 'Two friends, one team, against the CPU. Ten-match seasons, recorded for you both.', max: 2, field: 'full', duration: 180 },
@@ -35,8 +36,10 @@ export function myPro() {
   return { name: p.name, position: person.pos, overall: Math.round(person.base || 60), stats: person.stats };
 }
 
-export function host(mode) { net.send({ t: 'partyHost', mode, pro: myPro() }); }
-export function join(code) { net.send({ t: 'partyJoin', code, pro: myPro() }); }
+// v192: your designed kit travels with you (checked by the server, guard.cleanKit); your side wears it
+const myKit = () => { try { return clubIdentity().kit || null; } catch { return null; } };
+export function host(mode) { net.send({ t: 'partyHost', mode, pro: myPro(), kit: myKit() }); }
+export function join(code) { net.send({ t: 'partyJoin', code, pro: myPro(), kit: myKit() }); }
 export function side(s) { net.send({ t: 'partySide', side: s }); }
 export function leave() { net.send({ t: 'partyLeave' }); state = null; emit(); }
 /** Host: pick the clubs and go. */
@@ -58,7 +61,7 @@ function launch(m) {
   sfx('confirm');
   navigate('play', {
     homeId: m.setup.home, awayId: m.setup.away, duration: m.setup.duration || 180, mode: 'single',
-    field: m.setup.field || 'full', homeSquad: sq.home, awaySquad: sq.away,
+    field: m.setup.field || 'full', homeSquad: sq.home, awaySquad: sq.away, kits: m.kits || null,
     online: {
       matchId: m.matchId, host: m.host, seat: m.seat, team: mySeat.team, kind: 'party',
       oppName: m.seats.filter((st) => st.seat !== m.seat).map((st) => st.name).join(', '), myName: api.getName(),

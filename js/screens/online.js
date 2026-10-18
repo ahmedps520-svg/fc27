@@ -676,13 +676,14 @@ net.on('invited', (m) => {
  * requests and the result all switched off (see `spectating` in play.js).
  * The two squads travel with the message the way an opponent's does. */
 net.on('spectating', (m) => {
-  const squadOf = (ids, name, colors) => {
+  const squadOf = (ids, name, colors, kit) => {
     const xi = (ids || []).map(cardOrBase).filter(Boolean);
     const short = (name || '???').slice(0, 3).toUpperCase();
-    return xi.length === 11 ? { xi, name, short, colors, crest: { shape: 'shield', pattern: 'halves', device: 'star', colors } } : null;
+    return xi.length === 11 ? { xi, name, short, colors, crest: { shape: 'shield', pattern: 'halves', device: 'star', colors }, kit: kit ? kitOf(kit, colors) : null } : null;
   };
-  const home = squadOf(m.host.squad, m.host.name, ['#2f80ed', '#0b1020']);
-  const away = squadOf(m.guest.squad, m.guest.name, ['#ff2e88', '#160b16']);
+  // v192: the kits the two players designed, as they see them
+  const home = squadOf(m.host.squad, m.host.name, ['#2f80ed', '#0b1020'], m.host.kit);
+  const away = squadOf(m.guest.squad, m.guest.name, ['#ff2e88', '#160b16'], m.guest.kit);
   sfx('confirm');
   navigate('play', {
     homeId: WORLD.clubs[0].id,

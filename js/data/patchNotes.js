@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v192',
+    date: '2026-10-18',
+    tag: 'Online',
+    title: 'Your kit, everywhere online',
+    lede: 'The kit you design now shows in parties too, and anyone watching a match sees both players\' kits.',
+    entries: [
+      {
+        head: 'Parties',
+        summary: 'In co-op, 2 v 2 and five-a-side, each side wears the kit of the first person on it who has designed one. The host\'s side wears the host\'s.',
+        detail: 'Against the CPU in a co-op season, the CPU keeps its club colours. A side where nobody has designed a kit wears its club\'s as before.',
+      },
+      {
+        head: 'Watching',
+        summary: 'Spectators see both players\' designed kits instead of a stock blue and pink.',
+        detail: 'Kits are only colours and a pattern name, checked by the server; nothing else travels with them.',
+      },
+    ],
+  },
+  {
     version: 'v191',
     date: '2026-10-18',
     tag: 'iPhone',
