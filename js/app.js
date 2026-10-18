@@ -14,6 +14,7 @@ import { persistent } from './storage.js';
 import { setBindings, setToggles, setPadTuning } from './game/input.js';
 import { applyLanguage, t } from './i18n.js';
 import { APP_STORE } from './platform.js';
+import { initNative } from './native.js';
 
 /* v87: code-split. The title screen and the menu ship with the boot; every
  * other screen is its own chunk, fetched the first time it is visited (and
@@ -75,7 +76,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v190';
+export const APP_VERSION = 'v191';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -464,6 +465,7 @@ if (!persistent()) {
   });
 }
 navigate('splash');   // every state mutation persists through update(), so no unload hook needed
+initNative(navigate);   // v191: the iPhone app's reminders (native.js); nothing on the web
 /* Warm the 3D renderer once the front end is idle. It is no longer part of
  * boot (see play.js), which is what makes the menu fast on a slow line; this
  * fetches it a few seconds later so the first Kick Off does not pay for it

@@ -1,0 +1,143 @@
+<!doctype html>
+<!--
+  The App Store trailer's type (tools/trailer/appstore): the logo slam, the
+  captions over the footage, the words of the last montage and the end card,
+  in the App Store icon's look (assets/brand/icon-source.png): a white
+  slanted A, an XI outlined in neon green, black, stadium light.
+  cards.mjs opens this at each video's size with ?card=…&text=…&kicker=…,
+  pauses every animation and steps it frame by frame, so the motion is exact
+  at 30 fps. Everything but the end card renders on a transparent page and is
+  laid over the footage. Sizes are in vh, so one design fits 1920×886,
+  1600×1200 and 1920×1080.
+-->
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: Oswald; src: url('../fonts/Oswald.woff2') format('woff2'); font-weight: 200 700; }
+  @font-face { font-family: Inter; src: url('../fonts/Inter.woff2') format('woff2'); font-weight: 100 900; }
+  :root { --g: #39ff6a; --g2: #23c55e; --ink: #020403; }
+  html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; background: transparent; font-family: Oswald, 'Arial Narrow', sans-serif; }
+  .full { position: absolute; inset: 0; }
+  .neon { filter: drop-shadow(0 0 .5vh var(--g)) drop-shadow(0 0 1.8vh rgba(57,255,106,.65)); }
+
+  /* ---- the mark: a white A, a neon XI ---- */
+  .mark { display: block; overflow: visible; }
+  .mark .a { fill: #f4f7f5; }
+  .mark .xi { fill: none; stroke: var(--g); stroke-width: 2.6; stroke-linejoin: miter; }
+
+  /* ---- the slam ---- */
+  .flash { background: #fff; animation: flash .26s ease-out forwards; }
+  @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+  .scrim-c { background: radial-gradient(85vh 52vh at 50% 48%, rgba(0,0,0,.74), rgba(0,0,0,.4) 55%, rgba(0,0,0,.2) 100%); opacity: 0; animation: fade .2s .02s forwards; }
+  .slam { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); text-align: center; }
+  .slam .mark { width: 60vh; margin: 0 auto; animation: slam .34s cubic-bezier(.12,.9,.25,1) forwards; transform: scale(2.4); opacity: 0; filter: blur(2vh); }
+  @keyframes slam { 55% { opacity: 1; } to { transform: none; opacity: 1; filter: none; } }
+  .wave { position: absolute; left: 50%; top: 45%; width: 30vh; height: 30vh; margin: -15vh 0 0 -15vh; border-radius: 50%; border: .7vh solid var(--g); opacity: 0; animation: wave .8s .22s cubic-bezier(.1,.7,.3,1) forwards; }
+  @keyframes wave { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(3.4); border-width: .1vh; } }
+  .name { margin-top: 3.4vh; font: 700 italic 8.6vh/1 Oswald; color: #fff; letter-spacing: .04em; opacity: 0; animation: rise .45s .3s cubic-bezier(.2,.9,.2,1) forwards; transform: translateY(2vh); }
+  .name b { color: var(--g); text-shadow: 0 0 2vh rgba(57,255,106,.7); }
+  .tag { white-space: nowrap; margin-top: 2vh; font: 600 2.9vh/1 Inter, sans-serif; color: rgba(255,255,255,.88); letter-spacing: .42em; opacity: 0; animation: rise .45s .48s cubic-bezier(.2,.9,.2,1) forwards; transform: translateY(1.5vh); }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @keyframes fade { to { opacity: 1; } }
+
+  /* ---- captions over footage: lower left, a kicker, a headline wiped in word by word ---- */
+  .scrim-l { background: radial-gradient(100vh 40vh at 0% 100%, rgba(0,0,0,.72), rgba(0,0,0,.28) 55%, transparent 80%); opacity: 0; animation: fade .25s forwards; }
+  .cap { position: absolute; left: 7vh; bottom: 9vh; }
+  .cap .k { display: flex; align-items: center; gap: 1.6vh; font: 700 3vh/1 Inter, sans-serif; letter-spacing: .34em; color: #6dff8f; text-shadow: 0 0 1.4vh rgba(57,255,106,.55); opacity: 0; animation: rise .35s cubic-bezier(.2,.9,.2,1) forwards; transform: translateX(-2vh); }
+  .cap .k::before { content: ''; width: 4.5vh; height: .45vh; background: var(--g); box-shadow: 0 0 1.4vh var(--g); }
+  .cap .t { margin-top: 1.6vh; font: 700 italic 10.5vh/.95 Oswald; color: #fff; letter-spacing: -.01em; text-transform: uppercase; text-shadow: 0 .6vh 3vh rgba(0,0,0,.55); }
+  .cap .t .w { display: inline-block; clip-path: inset(0 100% 0 0); transform: translateX(-3vh) skewX(-8deg); animation: wipe .42s cubic-bezier(.2,.9,.2,1) forwards; margin-right: .22em; }
+  .cap .t .w.g { color: var(--g); text-shadow: 0 0 2.4vh rgba(57,255,106,.55); }
+  @keyframes wipe { to { clip-path: inset(0 -10% 0 0); transform: none; } }
+  .out .cap, .out .scrim-l { animation: capout .22s ease-in forwards !important; }
+  @keyframes capout { to { opacity: 0; transform: translateX(4vh); } }
+
+  /* ---- a word for the last montage: centred, big, a neon echo ---- */
+  .word { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; }
+  .word span { display: inline-block; font: 700 italic 17vh/1 Oswald; color: #fff; letter-spacing: .01em; text-transform: uppercase; text-shadow: 0 0 4vh rgba(0,0,0,.6); animation: punch .2s cubic-bezier(.2,.9,.3,1) both; }
+  .word span.echo { position: absolute; left: 0; right: 0; color: transparent; -webkit-text-stroke: .25vh var(--g); filter: drop-shadow(0 0 1.2vh var(--g)); animation: echo .5s ease-out both; }
+  @keyframes punch { from { transform: scale(1.3); filter: blur(1.2vh); opacity: 0; } to { transform: none; filter: none; opacity: 1; } }
+  @keyframes echo { from { transform: scale(1); opacity: .9; } to { transform: scale(1.22); opacity: 0; } }
+  .scrim-w { background: radial-gradient(80vh 30vh at 50% 50%, rgba(0,0,0,.45), transparent 80%); }
+
+  /* ---- the end card ---- */
+  .end { background: var(--ink); }
+  .end .glow1 { background: radial-gradient(70vh 50vh at 50% 110%, rgba(57,255,106,.22), transparent 70%), radial-gradient(60vh 40vh at 50% -10%, rgba(57,255,106,.10), transparent 70%); }
+  .end .hex { opacity: .14; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16z M28 64v33' fill='none' stroke='%2339ff6a' stroke-width='1'/%3E%3C/svg%3E"); background-size: 5.6vh 9.7vh; -webkit-mask: radial-gradient(70% 70% at 50% 50%, #000, transparent); }
+  .end .lights i { position: absolute; width: .7vh; height: .7vh; border-radius: 50%; background: #eaffef; box-shadow: 0 0 1.5vh .4vh rgba(57,255,106,.8); opacity: 0; animation: tw 1.6s ease-in-out infinite; }
+  @keyframes tw { 50% { opacity: .9; } }
+  .end .beam { position: absolute; height: 1.1vh; width: 160vh; background: linear-gradient(90deg, transparent, var(--g) 30%, #c9ffd8 50%, var(--g) 70%, transparent); filter: drop-shadow(0 0 1.6vh var(--g)); opacity: 0; transform-origin: center; animation: beam .7s cubic-bezier(.2,.9,.2,1) forwards; }
+  @keyframes beam { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: .85; clip-path: inset(0 0 0 0); } }
+  .end .box { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6.5vh; }
+  .end .icon { width: 40vh; height: 40vh; border-radius: 9vh; overflow: hidden; box-shadow: 0 0 0 .25vh rgba(255,255,255,.14), 0 3vh 8vh rgba(0,0,0,.7), 0 0 7vh rgba(57,255,106,.35); animation: icon .5s cubic-bezier(.15,.9,.25,1.15) both; }
+  .end .icon img { width: 100%; height: 100%; display: block; transform: scale(1.03); }
+  @keyframes icon { from { transform: scale(.6) rotate(-6deg); opacity: 0; filter: blur(1vh); } to { transform: none; opacity: 1; filter: none; } }
+  .end .txt { animation: rise .5s .18s cubic-bezier(.2,.9,.2,1) both; transform: translateY(2vh); white-space: nowrap; }
+  .end h1 { margin: 0; font: 700 italic 13.5vh/1 Oswald; color: #fff; letter-spacing: .02em; }
+  .end h1 b { color: var(--g); text-shadow: 0 0 2.4vh rgba(57,255,106,.7); }
+  .end h1 small { display: block; margin-top: 1.2vh; font: 600 3.6vh/1 Inter, sans-serif; letter-spacing: .5em; color: rgba(255,255,255,.75); font-style: normal; }
+  .end p { margin: 3vh 0 0; font: 700 italic 6vh/1 Oswald; color: #fff; letter-spacing: .02em; }
+  .end p b { color: var(--g); }
+  .end .chips { margin-top: 2.6vh; display: flex; gap: 1.2vh; flex-wrap: nowrap; animation: rise .5s .38s cubic-bezier(.2,.9,.2,1) both; transform: translateY(1.5vh); }
+  .end .chips span { font: 600 2.4vh/1 Inter, sans-serif; letter-spacing: .22em; color: #dfffe8; padding: 1.1vh 1.5vh; border: .18vh solid rgba(57,255,106,.55); border-radius: 99vh; background: rgba(57,255,106,.08); }
+  /* a tall frame (the iPad) stacks the icon over the words */
+  @media (max-aspect-ratio: 3/2) { .end .box { flex-direction: column; text-align: center; gap: 3.6vh; } .end .chips { justify-content: center; } .end .icon { width: 30vh; height: 30vh; border-radius: 6.8vh; } .end h1 { font-size: 11vh; } .end p { font-size: 5vh; } .end .beam.b2 { bottom: 4vh; } }
+</style></head>
+<body>
+<div id="stage" class="full"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const card = q.get('card') || 'slam';
+const kicker = q.get('kicker') || '';
+const text = q.get('text') || '';
+const out = +(q.get('out') || 0);           // ms at which a caption leaves (0: it doesn't)
+// the mark: the icon's A (a slanted stroke, a cap, a counter) and its outlined XI
+const MARK = `
+  <svg class="mark" viewBox="-4 -4 214 108">
+    <polygon class="a" points="0,100 26,100 115,0 89,0"/>
+    <polygon class="a" points="64,68 100,68 86,48"/>
+    <g class="xi neon">
+      <polygon points="104,34 124,34 141,55 164,34 185,34 151,66 172,100 151,100 138,78 113,100 92,100 128,67"/>
+      <polygon points="182,100 199,100 210,34 193,34" transform="translate(-6 0)"/>
+    </g>
+  </svg>`;
+const words = (t) => t.split(' ').map((w, i) => {
+  const g = /^\*.*\*$/.test(w) || w.startsWith('*') || w.endsWith('*');
+  return `<span class="w${g ? ' g' : ''}" style="animation-delay:${(i * 0.06).toFixed(2)}s">${w.replace(/\*/g, '')}</span>`;
+}).join('');
+const S = document.getElementById('stage');
+if (card === 'slam') {
+  S.innerHTML = `<div class="full scrim-c"></div><div class="wave"></div>
+    <div class="slam">${MARK}<div class="name">APEX <b>XI</b></div><div class="tag">${text || 'BUILD YOUR XI · PLAY ONLINE'}</div></div>
+    <div class="full flash"></div>`;
+} else if (card === 'cap') {
+  // a *starred* run of words is lit green: "OPEN PACKS. *BUILD* *YOUR* *XI.*"
+  S.innerHTML = `<div class="full scrim-l"></div><div class="cap">${kicker ? `<div class="k">${kicker}</div>` : ''}<div class="t">${words(text)}</div></div>`;
+} else if (card === 'word') {
+  S.innerHTML = `<div class="full scrim-w"></div><div class="word"><span class="echo">${text}</span><span>${text}</span></div>`;
+} else if (card === 'end') {
+  const lights = Array.from({ length: 26 }, (_, i) => {
+    const left = i < 13; const k = i % 13;
+    return `<i style="left:${left ? 3 + k * 2.2 : 97 - k * 2.2}%;top:${44 - Math.abs(6 - k) * 0.9 + (k % 2) * 1.2}%;animation-delay:${(k * 0.11).toFixed(2)}s"></i>`;
+  }).join('');
+  S.innerHTML = `<div class="full end"><div class="full glow1"></div><div class="full hex"></div><div class="full lights">${lights}</div>
+    <div class="beam" style="left:-30vh;top:16vh;transform:rotate(-36deg)"></div>
+    <div class="beam b2" style="right:-40vh;bottom:14vh;transform:rotate(-36deg);animation-delay:.12s"></div>
+    <div class="box"><div class="icon"><img src="../../../assets/brand/icon-source.png"></div>
+      <div class="txt"><h1>APEX <b>XI</b><small>FOOTBALL</small></h1><p>BUILD YOUR XI. <b>PLAY ONLINE.</b></p>
+        <div class="chips"><span>ULTIMATE XI</span><span>CAREER</span><span>ONLINE</span><span>STREET</span></div></div></div></div>`;
+}
+// the stepper: every animation paused, driven to exact times; a caption's exit starts at `out`
+window.__at = (ms) => {
+  if (out && ms >= out && !document.body.classList.contains('out')) document.body.classList.add('out');
+  if (out && ms < out) document.body.classList.remove('out');
+  for (const a of document.getAnimations()) {
+    a.pause();
+    const isOut = a.animationName === 'capout';
+    a.currentTime = isOut ? Math.max(0, ms - out) : ms;
+  }
+};
+window.__ready = Promise.all([document.fonts.load('700 italic 80px Oswald'), document.fonts.load('600 30px Inter')])
+  .then(() => document.fonts.ready)
+  .then(() => Promise.all([...document.images].map((im) => (im.complete ? 1 : new Promise((r) => { im.onload = im.onerror = r; })))));
+</script>
+</body></html>

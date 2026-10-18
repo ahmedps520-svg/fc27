@@ -25,6 +25,8 @@ import { startServer } from '../../tests/smoke/server.mjs';
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const Q = arg('--quality', 'high');
 const W = +arg('--w', 1280); const H = +arg('--h', 720);
+// --appstore: film the App Store build (window.APEX_APP_STORE, js/platform.js): its invented names, clubs and crests
+const APPSTORE = process.argv.includes('--appstore');
 let SHOTS;
 if (arg('--shots')) {
   const dir = arg('--out');
@@ -44,7 +46,8 @@ const v = await fetch(`${server.url}/js/app.js`).then((r) => r.text()).then((t) 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 page.on('pageerror', (e) => console.log('page error', e.message));
-await page.addInitScript(({ v, Q }) => {
+await page.addInitScript(({ v, Q, APPSTORE }) => {
+  if (APPSTORE) window.APEX_APP_STORE = true;
   localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: Q, qualityPicked: true, tutorialDone: true, pregame: 'off', broadcast: false, sound: false } }));
   // the manual clock: off until the scene starts
   const realRAF = window.requestAnimationFrame.bind(window);
@@ -54,7 +57,7 @@ await page.addInitScript(({ v, Q }) => {
   window.requestAnimationFrame = (cb) => { if (!window.__manual) return realRAF(cb); cbs.push(cb); return cbs.length; };
   performance.now = () => (window.__manual && fake != null ? fake : realNow());
   window.__tick = (ms) => { if (fake == null) fake = realNow(); fake += ms; const run = cbs; cbs = []; for (const cb of run) cb(fake); };
-}, { v, Q });
+}, { v, Q, APPSTORE });
 // the game rolls its own goal replay when a goal phase ends — between two shots that is the next shot's
 // first frame, and the replay (its own camera, its own tape) would play over the footage: not while filming
 const play = readFileSync('js/screens/play.js', 'utf8').replace('startReplay();                       // celebration over — roll the tape', '/* filming: no replay */');
@@ -64,7 +67,7 @@ await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
 await page.evaluate(async ({ home, away, time, weather }) => {
   (await import('/js/app.js')).navigate('play', { homeId: home, awayId: away, duration: 600, skill: 1, mode: 'single', atmo: { time, weather } });
 }, { home: G[0].data.home, away: G[0].data.away, time: G[0].time || 'night', weather: G[0].weather || 'clear' });
-await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase === 'play', null, { timeout: 1200000 });
+await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden && window.__apexMatch?.phase === 'play', null, { timeout: +arg('--load-timeout', 3600000) });   // a stadium on the software renderer, shared with other jobs, can take a while
 await page.addStyleTag({ content: '.gm-hud,.gm-left,#gmFeed,#gmHints,.gm-touch,.bc-layer,.gm-alerts,#gmBooking,#gmAdv,.goal-card,.bc-sub,.gm-sub,.gm-caption,#gmCaption{visibility:hidden!important}' });
 
 // hand the match to the tape, and the camera to the shot
@@ -91,6 +94,10 @@ await page.evaluate(({ CAM }) => {
     else if (CAM === 'crane') { const u = Math.min(1, f / 110); want = { x: 52.5 - 30, y: -18 + u * 6, z: 3 + u * 16, tx: b.x, ty: 34, tz: 0, hfov: 58 }; }
     // tight on whoever has it
     else if (CAM === 'tight') { const c = mm.ball.owner || b; want = { x: c.x - 5, y: c.y - 7.5, z: 1.7, tx: c.x + 1, ty: c.y, tz: 1.05, hfov: 40 }; }
+    // tools/trailer/appstore: the same shots half a metre up, so the turf's grass tufts stay grass rather than filling the lens
+    else if (CAM === 'astight') { const c = mm.ball.owner || b; want = { x: c.x - 5.5, y: c.y - 8.5, z: 2.4, tx: c.x + 1, ty: c.y, tz: 1.0, hfov: 38 }; }
+    else if (CAM === 'asgoal') want = { x: gx - dir * 2.5, y: 34 + 11, z: 1.9, tx: b.x - dir * 4, ty: b.y, tz: 1.0, hfov: 52 };
+    else if (CAM === 'asorbit') { const c = mm.celebrant || b; S.cx = S.cx == null ? c.x : ease(S.cx, c.x, 0.08); S.cy = S.cy == null ? c.y : ease(S.cy, c.y, 0.08); const a = -1.9 + f * 0.016; want = { x: S.cx + Math.cos(a) * 7.5, y: S.cy + Math.sin(a) * 7.5, z: 2.5, tx: S.cx, ty: S.cy, tz: 1.2, hfov: 42 }; }
     // round the scorer (the celebrant), drifting after him as he runs
     else if (CAM === 'orbit') { const c = mm.celebrant || b; S.cx = S.cx == null ? c.x : ease(S.cx, c.x, 0.08); S.cy = S.cy == null ? c.y : ease(S.cy, c.y, 0.08); const a = -1.9 + f * 0.018; want = { x: S.cx + Math.cos(a) * 7, y: S.cy + Math.sin(a) * 7, z: 1.9, tx: S.cx, ty: S.cy, tz: 1.15, hfov: 44 }; }
     // portrait (tools/tiktok): higher and steeper, so the play sits mid-frame rather than over a field of grass

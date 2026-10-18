@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v191',
+    date: '2026-10-18',
+    tag: 'iPhone',
+    title: 'Feel it, and never miss a reward',
+    lede: 'The iPhone app taps back: shots, tackles, goals and pack reveals come through the Taptic Engine. And it can remind you when your daily reward, Weekend League or Career match is waiting.',
+    entries: [
+      {
+        head: 'Haptics',
+        summary: 'Shots, tackles, headers, saves, the woodwork and goals each have their own feel on iPhone, and so do the rip, the plinths and the card in a pack.',
+        detail: 'A goal is a double thump; a special card lands harder than a gold. Settings → Controller → Vibration turns them off. Android phones buzz as before.',
+      },
+      {
+        head: 'Reminders',
+        summary: 'After a couple of matches the app asks once whether you would like reminders. They are off unless you say yes.',
+        detail: 'At six in the evening: your daily reward and streak, Weekend League opening (and a nudge before it closes if you have matches left), and your Career club after three days away. They are scheduled on the phone itself; nothing is sent anywhere. Settings → App → Reminders turns them on or off.',
+      },
+    ],
+  },
+  {
     version: 'v190',
     date: '2026-10-11',
     tag: 'Online',

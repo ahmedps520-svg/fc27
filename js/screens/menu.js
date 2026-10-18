@@ -6,6 +6,8 @@ import { claimableCount, dailyStatus } from '../progress.js';
 import { activeEvent } from '../live.js';
 import { mountHero, disposeHero, heroPlayer } from '../menuHero.js';
 import { needsOnboarding, showWelcome } from '../onboarding.js';
+import { shouldAskReminders, enableReminders, declineReminders } from '../native.js';
+import { tx } from '../i18n.js';
 import { t, lang } from '../i18n.js';
 import { getState } from '../state.js';
 import { activeTheme, decorationHTML } from '../seasonal.js';
@@ -199,6 +201,8 @@ export function mount(root) {
     maybeStartTutorial();
   } else if (notesPending()) {
     closeNotes = showNotes(root);
+  } else if (shouldAskReminders()) {
+    closeNotes = askReminders(root);
   }
   const heroCanvas = root.querySelector('#menuHero');
   if (heroCanvas) mountHero(heroCanvas);
@@ -212,4 +216,23 @@ export function mount(root) {
     if (mpMute) { mpMute.textContent = tr.muted ? '🔇' : '♪'; mpMute.setAttribute('aria-label', tr.muted ? 'Unmute music' : 'Mute music'); }
   });
   return () => { closeNotes?.(); disposeHero(); offTrack(); };
+}
+
+/* v191: in the iPhone app, once, after a couple of matches: would the player
+   like a reminder? "Turn on" brings up iOS's own permission prompt; "Not now"
+   is final (Settings → App has the switch). native.js does the scheduling. */
+function askReminders(root) {
+  const card = document.createElement('div');
+  card.className = 'remind-ask glass';
+  card.setAttribute('role', 'dialog');
+  card.innerHTML = `<div class="ra-text"><b>${tx('Reminders')}</b><span>${tx('A nudge when your daily reward, Weekend League or Career match is waiting.')}</span></div>
+    <div class="ra-btns"><button class="btn ghost sm" data-ra="no">${tx('Not now')}</button><button class="btn primary sm" data-ra="yes">${tx('Turn on')}</button></div>`;
+  root.appendChild(card);
+  const close = () => card.remove();
+  card.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-ra]'); if (!b) return;
+    close();
+    if (b.dataset.ra === 'yes') { const ok = await enableReminders(); toast(ok ? tx('Reminders on.') : tx('No reminders — you can turn them on in Settings.'), ok ? 'good' : 'info'); } else declineReminders();
+  });
+  return close;
 }
