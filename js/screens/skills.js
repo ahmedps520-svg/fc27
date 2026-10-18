@@ -1,14 +1,17 @@
 /**
  * Skills & Practice (v82): the four skill games with leaderboards, a
- * stand-alone penalty shootout, and the practice arena (free roam and
- * set-piece training in a real match engine).
+ * stand-alone penalty shootout, the practice arena (free roam and
+ * set-piece training in a real match engine), and v197's scenarios (a match
+ * picked up part-way, three stars to reach — scenarios.js).
  */
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
 // v167: the dictionary's word where it has one, the drill's own otherwise
 const tOr = (k, d) => { const s = t(k); return s === k ? d : s; };
 import { getState, update } from '../state.js';
 import { navigate, toast, refreshCoins, veil } from '../app.js';
-import { about } from '../components/facts.js';
+import { about, facts } from '../components/facts.js';
+import { crestSVG } from '../components/crest.js';
+import { SCENARIOS, GOALS, STAR_APEX, sidesOf, scenarioById, scenarioParams, scenarioRecord, totalStars } from '../scenarios.js';
 import { screenHead } from '../components/screenHead.js';
 import { Input } from '../game/input.js';
 import { DRILLS, createDrill, step, draw } from '../game/drills.js';
@@ -25,11 +28,11 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const bests = () => getState().skills?.best || {};
 
 export function render() {
-  const NAV = [['drills', 'skills.nav.drills'], ['pens', 'skills.nav.pens'], ['practice', 'skills.nav.practice']];
+  const NAV = [['drills', 'skills.nav.drills'], ['scenarios', 'skills.nav.scenarios'], ['pens', 'skills.nav.pens'], ['practice', 'skills.nav.practice']];
   return `
     ${screenHead({ kicker: t('skills.kicker'), title: t('skills.title'), sub: t('skills.sub'), motif: 'season', tone: 'c' })}
     <nav class="cnav" id="skTabs">${NAV.map(([id, l]) => `<button class="cnav-b ${tab === id ? 'on' : ''}" data-tab="${id}">${t(l)}</button>`).join('')}</nav>
-    ${tab === 'pens' ? pensHTML() : tab === 'practice' ? practiceHTML() : drillsHTML()}
+    ${tab === 'pens' ? pensHTML() : tab === 'practice' ? practiceHTML() : tab === 'scenarios' ? scenariosHTML() : drillsHTML()}
     <div class="drill-stage" id="drillStage" hidden></div>`;
 }
 
@@ -43,6 +46,34 @@ function drillsHTML() {
       <button class="btn primary" data-drill="${d.id}">${t('common.play')}</button>
     </section>`).join('')}</div>
     ${about('Keyboard: WASD or arrows to move and aim, K (or Space) to strike — hold longer for power. Pad: left stick and ○/✕. Touch: the pad and the button on screen.', 'Controls')}`;
+}
+
+/* v197: scenarios — the minute, the score, who is missing, and three stars to reach */
+function scenariosHTML() {
+  const total = totalStars();
+  const done = !!getState().club.scenarioPack;
+  return `<section class="panel glass">
+    <header class="panel-head"><h2>${t('skills.nav.scenarios')}</h2><span class="tag ${done ? 'good' : ''}">★ ${total}/${SCENARIOS.length * 3}</span></header>
+    <p class="hint">${tx('Take over a match part-way through — the score already on the board, sometimes a man down — and change how it ends. Three stars each.')}</p>
+    ${facts([['star', `◈${STAR_APEX} ${tx('for each new star')}`, 'gold'], ['trophy', `${tx('Every star')}: ${tx('Prime pack')}`, done ? 'good' : 'gold']])}
+  </section>
+  <div class="scen-grid">${SCENARIOS.map((sc) => {
+    const { you, them } = sidesOf(sc);
+    const rec = scenarioRecord(sc.id);
+    const men = (n) => `${11 - n} ${tx('men')}`;
+    return `<section class="panel glass scen-card ${rec.stars.every(Boolean) ? 'all' : ''}">
+      <header class="scen-top"><span class="scen-min">${sc.minute}'</span><b>${tx(sc.name)}</b><span class="scen-got" aria-label="${rec.stars.filter(Boolean).length} / 3">${rec.stars.map((x) => (x ? '★' : '☆')).join('')}</span></header>
+      <div class="scen-score" dir="ltr">
+        <span>${crestSVG(you.club.crest, you.club.short, 30)}<em>${esc(you.club.short)}${sc.down[0] ? ` <i class="scen-red">${men(sc.down[0])}</i>` : ''}</em></span>
+        <b>${sc.score[0]} – ${sc.score[1]}</b>
+        <span>${crestSVG(them.club.crest, them.club.short, 30)}<em>${esc(them.club.short)}${sc.down[1] ? ` <i class="scen-red">${men(sc.down[1])}</i>` : ''}</em></span>
+      </div>
+      <p class="scen-brief">${tx(sc.brief)}</p>
+      <p class="scen-sides">${esc(you.club.name)} ${you.rating} · ${esc(them.club.name)} ${them.rating}</p>
+      <ul class="scen-goals">${sc.stars.map((k, i) => `<li class="${rec.stars[i] ? 'ok' : ''}">${rec.stars[i] ? '★' : '☆'} ${tx(GOALS[k].text)}</li>`).join('')}</ul>
+      <button class="btn primary" data-scen="${sc.id}">${t('common.play')}</button>
+    </section>`;
+  }).join('')}</div>`;
 }
 
 function pensHTML() {
@@ -82,6 +113,11 @@ export function mount(root) {
     }
   }
   root.querySelectorAll('[data-drill]').forEach((b) => b.addEventListener('click', () => playDrill(root, b.dataset.drill)));
+  root.querySelectorAll('[data-scen]').forEach((b) => b.addEventListener('click', () => {
+    const sc = scenarioById(b.dataset.scen); if (!sc) return;
+    enterFullscreen();
+    navigate('play', scenarioParams(sc));
+  }));
   root.querySelector('#penClub')?.addEventListener('change', (e) => { penClub = e.target.value; });
   root.querySelector('#penGo')?.addEventListener('click', () => {
     const mine = WORLD.clubsById[penClub] || WORLD.clubs[0];

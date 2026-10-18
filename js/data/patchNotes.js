@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v197',
+    date: '2026-10-18',
+    tag: 'Modes',
+    title: 'Scenarios',
+    lede: 'Ten matches picked up part-way through: the score is already on the board and sometimes a man is down. Change how they end.',
+    entries: [
+      {
+        head: 'How it works',
+        summary: 'Skills & Practice → Scenarios. Each one starts at a set minute with a set score, sometimes with red cards already shown, and gives you three goals to reach by full time.',
+        detail: 'A goal down with ten minutes left; holding a lead with ten men; level with the champions while playing for a bottom-tier side; a cup final, a goal and a man down. The clubs are the same for everyone, picked by strength, so a scenario is the same match each time you try it.',
+      },
+      {
+        head: 'Stars and rewards',
+        summary: 'A star is ◈500 the first time you earn it. Earn all thirty for a Prime pack.',
+        detail: 'Stars you have earned stay earned, so you can go back for the hardest one alone. A draw is final — there are no penalties in a scenario.',
+      },
+    ],
+  },
+  {
     version: 'v196',
     date: '2026-10-18',
     tag: 'Ultimate XI',

@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,pens,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,scenario,pens,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -472,6 +472,33 @@ try {
     const want = await page.evaluate(async (w) => (await import('/js/draft.js')).rewardFor(w).apex, wins);
     assert.equal(gain, want, `collected ${gain} for ${wins} wins`);
     step(`collected ◈${gain} for ${wins} win(s)`);
+    await ctx.close();
+  });
+
+  /* v197: a scenario from Skills & Practice → Scenarios: the match picks up at the
+     minute with the score and a man down, and full time judges the stars. */
+  await flow('scenario', async () => {
+    const { ctx, page } = await boot('scenario', baseSave({ club: { apex: 0 } }));
+    await go(page, 'skills');
+    await page.waitForSelector('[data-tab="scenarios"]', { timeout: 15000 });
+    await click(page, '[data-tab="scenarios"]');
+    await page.waitForSelector('[data-scen="cup-final"]', { timeout: 15000 });
+    await click(page, '[data-scen="cup-final"]');
+    await page.waitForSelector('#gmCanvas', { timeout: 20000 });
+    await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
+    const at = await page.evaluate(() => { const m = window.__apexMatch; return { minute: m.minute(), score: [m.teams[0].score, m.teams[1].score], reds: m.reds.slice(), half: m.half }; });
+    assert.ok(at.minute >= 70 && at.minute < 80, JSON.stringify(at)); assert.deepEqual(at.score, [0, 1]); assert.deepEqual(at.reds, [1, 0]); assert.equal(at.half, 2);
+    step(`picked up at ${at.minute}', 0–1, ten men`);
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => { const m = window.__apexMatch; m.teams[0].score = 2; m.teams[1].score = 1; m.t = m.duration - 0.6; });
+    await page.waitForSelector('[data-o="again"]', { timeout: 90000 });
+    const card = await page.evaluate(() => document.querySelector('.scen-stars')?.textContent);
+    assert.equal(card, '★★★');
+    const club = await page.evaluate(async () => { const st = (await import('/js/state.js')).getState(); return { apex: st.club.apex, rec: st.club.scenarios?.['cup-final'] }; });
+    assert.equal(club.apex, 1500, 'three new stars'); assert.deepEqual(club.rec.stars, [true, true, true]);
+    step('won it 2–1: three stars, ◈1500');
+    await click(page, '[data-o="quit"]');
+    await page.waitForSelector('[data-scen="cup-final"]', { timeout: 15000 });
     await ctx.close();
   });
 
