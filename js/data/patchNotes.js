@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v196',
+    date: '2026-10-18',
+    tag: 'Ultimate XI',
+    title: 'The Draft',
+    lede: 'Build a squad on the spot from cards you may not own, then take it through four knockout rounds.',
+    entries: [
+      {
+        head: 'How it works',
+        summary: 'Ultimate XI → Division → Draft. Pick a formation from three, a captain from five, then ten more players, each from five cards for that position.',
+        detail: 'Chemistry counts the same way as in your own squad. Then four knockout rounds against themed sides that get stronger each round. A draw goes to penalties; a defeat ends the run. Every choice is drawn once and saved, so leaving and coming back never changes it. Leaving a round part-way, or closing the app during one, counts as a defeat.',
+      },
+      {
+        head: 'Entry and rewards',
+        summary: 'Entry ◈3,000. Rewards by wins: 0 ◈600 · 1 ◈1,500 + Silver pack · 2 ◈3,000 + Gold pack · 3 ◈5,000 + Gold pack · 4 ◈8,000 + Prime pack.',
+        detail: 'The drafted cards go back when the run ends; the reward is what you keep. Draft matches do not move your evolutions or your division.',
+      },
+    ],
+  },
+  {
     version: 'v195',
     date: '2026-10-18',
     tag: 'Online',

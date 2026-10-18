@@ -11,6 +11,7 @@ import {
 import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullscreen.js';
 import { settleDivisionMatch } from '../ultimate.js';
 import { settleFives, settleClash, noteDivisionResult } from '../modes.js';
+import { settleDraft, rewardFor as draftReward, DRAFT_ROUNDS } from '../draft.js';
 import { recordEvoMatch } from '../evolutions.js';
 import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
@@ -2807,6 +2808,8 @@ export function mount(root, params) {
       exitFullscreen();
       if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; }
       if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
+      // v196: leaving a Draft round part-way is a defeat, as the Draft screen says
+      if (params.draft) { settleDraft(0, 1); navigate('draft'); return; }
       navigate('quick');
       return;
     }
@@ -2884,6 +2887,7 @@ export function mount(root, params) {
       xi: t.players.map((p) => p.ref),
       keeper: (t.players.find((p) => p.role === 'GK') || t.players[0]).ref,
     });
+    overlay.hidden = false;
     overlay.innerHTML = '<div class="gm-panel glass"></div>';
     runShootout(overlay.querySelector('.gm-panel'), {
       home: squadOf(h), away: squadOf(a), youAre: match.human ?? 0,
@@ -2891,7 +2895,7 @@ export function mount(root, params) {
       // The shootout does not touch the scoreline — a 2-2 is still a 2-2, which
       // is how football records it — so it pays out on its own.
       const won = winner === (match.human ?? 0);
-      update((st) => { st.club.apex += won ? 400 : 150; });
+      if (!params.draft) update((st) => { st.club.apex += won ? 400 : 150; });
       refreshCoins();
       shootoutResult = { winner, home, away, won };
       finish();
@@ -2899,9 +2903,11 @@ export function mount(root, params) {
   }
 
   function finish() {
-    if (params.final || params.weekend || params.showpiece) gl?.fireworks(16);
     const [ph, pa] = match.possession();
     const [h, a] = match.teams;
+    // v196: a Draft round is a knockout — level at full time, it goes to penalties
+    if (params.draft && !spectating && !shootoutResult && h.score === a.score) { offerShootout(); return; }
+    if (params.final || params.weekend || params.showpiece) gl?.fireworks(16);
     const goals = [...h.scorers.map((s) => [h.short, s]), ...a.scorers.map((s) => [a.short, s])]
       .sort((x, y) => x[1].minute - y[1].minute);
 
@@ -2948,8 +2954,11 @@ export function mount(root, params) {
     let sub = null;   // v80: a Fives or Squad Clash settlement
     let proLine = null;   // v81: my Player Career line
     let streetRes = null; // v82: a street match's stars and style
+    let draftRes = null;  // v196: a Draft round
     if (spectating) {
       // nothing to bank: it was somebody else's match
+    } else if (params.draft) {
+      draftRes = settleDraft(h.score, a.score, shootoutResult ? shootoutResult.won : null);
     } else if (params.fives) {
       sub = settleFives(h.score, a.score);
     } else if (params.clash) {
@@ -3002,7 +3011,7 @@ export function mount(root, params) {
       sub: params.fives ? 'fives' : params.clash ? 'clash' : null,
     });
     // v80: evolutions move on with every Ultimate XI match the squad plays
-    const evoDone = !spectating && params.homeSquad && (params.ultimate || params.fives || params.clash || params.weekend)
+    const evoDone = !spectating && !params.draft && params.homeSquad && (params.ultimate || params.fives || params.clash || params.weekend)
       ? recordEvoMatch(match, online ? online.seat : 0, (params.homeSquad.xi || []).map((p) => p.id)) : [];
     if (div?.objectivesDone?.length) progress.onObjective(div.objectivesDone.length);
     if (prog.tiers) toast(`Season Pass: tier up! +${prog.tiers}`, 'good');
@@ -3084,6 +3093,14 @@ export function mount(root, params) {
             <b>${sub.won ? 'Win' : sub.drew ? 'Draw' : 'Defeat'}</b>
             <span class="dr-reward">${params.fives ? `◈ ${sub.apex.toLocaleString()}` : `+${sub.pts} clash points`}</span>
           </div>` : ''}
+        ${draftRes ? `
+          <div class="div-result ${draftRes.won ? 'up' : 'down'}">
+            <span class="dr-kicker">${tx('Draft')} · ${tx(DRAFT_ROUNDS[params.draft.round] || '')}</span>
+            <b>${draftRes.champion ? tx('Champions') : draftRes.won ? tx('Through') : tx('Out')}</b>
+            <span class="dr-ladder">${draftRes.done
+              ? `${draftRes.wins} ${tx(draftRes.wins === 1 ? 'win' : 'wins')} · ◈ ${draftReward(draftRes.wins).apex.toLocaleString()}${draftReward(draftRes.wins).pack ? ` + ${draftReward(draftRes.wins).pack} pack` : ''} ${tx('to collect')}`
+              : `${tx('Next')}: ${tx(draftRes.next)}`}</span>
+          </div>` : ''}
         ${streetRes ? `
           <div class="div-result ${streetRes.won ? 'up' : ''}">
             <span class="dr-kicker">Street · ${'★'.repeat(streetRes.stars)}${'☆'.repeat(3 - streetRes.stars)}</span>
@@ -3113,6 +3130,8 @@ export function mount(root, params) {
         <div class="gm-btns">
           ${mode === 'career'
             ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
+            : params.draft
+            ? `<button class="btn primary" data-o="draft">${tx('Back to the Draft')}</button>`
             : spectating
             ? '<button class="btn primary" data-o="quit">Back online</button>'
             : online || params.ghost
@@ -3122,7 +3141,7 @@ export function mount(root, params) {
               : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
           ${cupRes ? `<p class="season-line tourney-line">${cupRes.champion ? `🏆 ${esc(customCup.cup()?.name || 'Cup')} winners!` : !cupRes.won ? `Out of ${esc(customCup.cup()?.name || 'the cup')}${cupRes.pens ? ' on penalties' : ''}.` : `Through${cupRes.pens ? ' on penalties' : ''} — next: ${customCup.roundName(customCup.cup().rounds.at(-1).length * 2)}.`}</p>` : ''}
           ${tourney ? `<p class="season-line tourney-line">${tourney.champion ? `🏆 World Tournament champions!` : tourney.out ? 'Out of the World Tournament.' : tourney.advanced ? `Through to the next round: ${tourney.stage === 'r16' ? 'Round of 16' : tourney.stage === 'qf' ? 'Quarter-finals' : tourney.stage === 'sf' ? 'Semi-finals' : tourney.stage === 'final' ? 'the Final' : 'the knockouts'}.` : 'Group stage continues.'}</p>` : ''}
-          <button class="btn ghost" data-o="quit">${t('end.quit')}</button>
+          ${params.draft ? '' : `<button class="btn ghost" data-o="quit">${t('end.quit')}</button>`}
         </div>
       </div>`;
   }
@@ -3176,6 +3195,7 @@ export function mount(root, params) {
       if (o === 'clip') { recordClip(); return; }
       if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.customCup) { navigate('cup'); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
+      if (o === 'draft') { exitFullscreen(); navigate('draft'); return; }
       if (o === 'career') { navigate('career'); return; }
       if (o === 'again') navigate('play', params);
       return;
@@ -3240,7 +3260,7 @@ export function mount(root, params) {
     else match.setTactic(team, key, val);
     if (online && !online.host) net.send({ t: 'evt', k: 'shape', team, key, val });
     // Ultimate XI keeps its instructions for the next match (v79)
-    if (params.ultimate && key !== 'formation') update((st) => { st.club.tactics = { ...(st.club.tactics || {}), ...match.teams[team].tactics, roles: { ...match.teams[team].tactics.roles } }; });
+    if (params.ultimate && !params.draft && key !== 'formation') update((st) => { st.club.tactics = { ...(st.club.tactics || {}), ...match.teams[team].tactics, roles: { ...match.teams[team].tactics.roles } }; });
   }
   // sliders and role pickers report on change, not click
   overlay.addEventListener('change', (e) => {

@@ -26,6 +26,7 @@ import { EVO_TRACKS, MAX_ACTIVE, trackById, startEvolution, cancelEvolution, evo
 import { settle, search, buyNow, placeBid, listCard, priceRange, historySVG, marketValue, TAX } from '../market.js';
 import { sets, setProgress, claimSet, binderSummary } from '../binder.js';
 import { weekendWindow, untilText } from '../weekend.js';
+import { DRAFT_ENTRY, DRAFT_ROUNDS, DRAFT_REWARDS, draftState } from '../draft.js';
 import { facts, about } from '../components/facts.js';
 
 const money = (n) => `◈${Math.round(n).toLocaleString()}`;
@@ -47,6 +48,8 @@ export function modesView(squad) {
   const lv = CLASH_LEVELS.find((l) => l.id === clashLevel);
   const opponents = clashWeek();
   const nextRank = CLASH_RANKS.find((r) => r.points > cs.points);
+  const dr = draftState();
+  const ds = s.club.draftStats || { runs: 0, best: 0, titles: 0 };
 
   return `
     <section class="panel glass mode-card fives-card">
@@ -56,6 +59,13 @@ export function modesView(squad) {
       <div class="mode-rec"><span>${f.won}W ${f.drawn}D ${f.lost}L</span><span>${f.gf}–${f.ga}</span><span>Best run ${f.best}</span>
         ${f.last ? `<span>Last: ${f.last.scored}–${f.last.conceded}</span>` : ''}</div>
       <button class="btn primary" id="playFives" ${squad ? '' : 'disabled'}>Play Fives</button>
+    </section>
+
+    <section class="panel glass mode-card draft-mode">
+      <header class="panel-head"><h2>Draft</h2>${dr ? `<span class="tag good">${dr.step === 'done' ? 'Reward to collect' : dr.step === 'cup' ? `${DRAFT_ROUNDS[dr.round]} next` : 'Drafting'}</span>` : ''}${about('Pick a formation, a captain and ten more from a few cards each — players you may not own — then four knockout rounds. A defeat ends it; the wins set the reward. The cards go back when it ends.')}</header>
+      ${facts([['coin', `${money(DRAFT_ENTRY)} entry`, 'gold'], ['players', `${DRAFT_ROUNDS.length} rounds`], ['trophy', `${money(DRAFT_REWARDS.at(-1).apex)} + ${packName(DRAFT_REWARDS.at(-1).pack)} for 4 wins`, 'gold']])}
+      <div class="mode-rec"><span>${ds.runs} runs</span><span>Best ${ds.best} wins</span><span>${ds.titles} titles</span></div>
+      <button class="btn primary" id="goDraft">${dr ? 'Continue the draft' : 'Start a draft'}</button>
     </section>
 
     <section class="panel glass mode-card clash-card">
@@ -109,6 +119,7 @@ export function mountModes(root, ultimateSquad) {
     launch({ field: 'fives', venueId: FIVES.venue, duration: FIVES.duration, skill: divisionSkill(u.divIdx),
       fives: true, homeSquad: { ...squad, xi: five, bench: [] }, awaySquad: { ...opp, bench: [] } });
   });
+  root.querySelector('#goDraft')?.addEventListener('click', () => navigate('draft'));
   root.querySelector('#clashLevels')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-clash-level]'); if (!b) return;
     clashLevel = b.dataset.clashLevel; navigate('squad');

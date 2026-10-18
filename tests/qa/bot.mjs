@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,pens,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,pens,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -401,6 +401,78 @@ try {
     assert.ok(/Guild weekend · (closes|opens) in/.test(panel), panel);
     step(`the guild weekend panel: ${gw.open ? `open, ${gw.guild.wins} win(s) for the guild` : 'shut, the last board'}`);
     await G.ctx.close(); await P.ctx.close();
+  });
+
+  /* v196: a Draft through the buttons — the entry, a formation, a captain, ten picks — then
+     a round won, a round drawn and settled through the shootout's own button, a round left
+     part-way (a defeat), and the reward collected. */
+  await flow('draft', async () => {
+    const { ctx, page } = await boot('draft', baseSave({ club: { apex: 20000 } }));
+    page.on('dialog', (d) => d.accept());
+    const st = () => page.evaluate(async () => (await import('/js/draft.js')).draftState());
+    const apex = () => page.evaluate(async () => (await import('/js/state.js')).getState().club.apex);
+    await go(page, 'draft');
+    await page.waitForSelector('[data-d="start"]', { timeout: 15000 });
+    await click(page, '[data-d="start"]');
+    await page.waitForSelector('[data-form]');
+    assert.equal(await apex(), 17000, 'the entry is paid');
+    await click(page, '[data-form]');
+    for (let i = 0; i < 11; i++) {
+      await page.waitForSelector('[data-pick]');
+      const before = (await st()).lineup.filter(Boolean).length;
+      await click(page, `[data-pick]:nth-child(${(i % 5) + 1})`);
+      await page.waitForFunction((n) => import('/js/draft.js').then((m) => m.draftState().lineup.filter(Boolean).length > n), before);
+    }
+    await page.waitForSelector('[data-d="play"]');
+    let d = await st();
+    assert.equal(d.step, 'cup'); assert.equal(new Set(d.lineup).size, 11);
+    step(`drafted a ${d.formation}: captain ${d.captain}, four rounds against ${d.opps.join(', ')}`);
+    const playRound = async (h, a) => {
+      await click(page, '[data-d="play"]');
+      await page.waitForSelector('#gmCanvas', { timeout: 20000 });
+      await page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
+      await page.waitForTimeout(1200);
+      await page.evaluate(([x, y]) => { const m = window.__apexMatch; m.teams[0].score = x; m.teams[1].score = y; m.half = 2; m.t = m.duration - 0.6; }, [h, a]);
+    };
+    await playRound(2, 0);
+    await page.waitForSelector('[data-o="draft"]', { timeout: 90000 });
+    assert.match(await page.evaluate(() => document.querySelector('.gm-panel').textContent), /Through/);
+    d = await st(); assert.deepEqual([d.round, d.wins], [1, 1]);
+    step('round of 16 won 2–0: through');
+    await click(page, '[data-o="draft"]');
+    await page.waitForSelector('[data-d="play"]');
+    await playRound(1, 1);
+    await page.waitForSelector('#soGo', { timeout: 90000 });
+    for (let i = 0; i < 40 && !(await page.$('[data-o="draft"]')); i++) {
+      await page.evaluate(() => { const b = document.getElementById('soGo'); if (b && !b.disabled) b.click(); });
+      await page.waitForTimeout(700);
+    }
+    await page.waitForSelector('[data-o="draft"]', { timeout: 30000 });
+    d = await st();
+    assert.equal(d.results[1].pens, true, 'the draw went to penalties');
+    step(`quarter-final 1–1: ${d.results[1].won ? 'won' : 'lost'} on penalties`);
+    await click(page, '[data-o="draft"]');
+    if (d.step === 'cup') {
+      // a round left part-way (as if the app closed): a defeat when the Draft screen opens again
+      await page.waitForSelector('[data-d="play"]');
+      await click(page, '[data-d="play"]');
+      await page.waitForSelector('#gmCanvas', { timeout: 20000 });
+      await go(page, 'draft');
+      await page.waitForSelector('[data-d="collect"]', { timeout: 15000 });
+      d = await st();
+      assert.equal(d.results.at(-1).won, false); assert.equal(d.step, 'done');
+      step('a round left part-way counted as a defeat');
+    }
+    await page.waitForSelector('[data-d="collect"]', { timeout: 15000 });
+    const wins = (await st()).wins;
+    const before = await apex();
+    await click(page, '[data-d="collect"]');
+    await page.waitForSelector('[data-d="start"]');
+    const gain = (await apex()) - before;
+    const want = await page.evaluate(async (w) => (await import('/js/draft.js')).rewardFor(w).apex, wins);
+    assert.equal(gain, want, `collected ${gain} for ${wins} wins`);
+    step(`collected ◈${gain} for ${wins} win(s)`);
+    await ctx.close();
   });
 
   /* v194: two people find each other for a penalty duel and play it out through the

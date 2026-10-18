@@ -20,6 +20,7 @@ const { matchApex } = await import('../js/ultimate.js');
 const { FIVES } = await import('../js/modes.js');
 const { DAILY } = await import('../js/progress.js');
 const { WORLD } = await import('../js/data/generator.js');
+const { DRAFT_ENTRY, DRAFT_REWARDS, DRAFT_DURATION } = await import('../js/draft.js');
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const OPENS = Number(arg('--opens', 2000));
@@ -69,8 +70,20 @@ rows.push([`Quickfire Fives (2 goals for)`, f.win + 2 * f.goal, f.draw + 2 * f.g
 rows.push([`Street (3 stars / 1 star)`, 500 + 3 * 150, 0, 150 + 1 * 150, 150]);
 rows.push([`Kick Off friendly (2 goals)`, 200 + 2 * 60, 200 + 2 * 60, 200 + 2 * 60, 240]);
 rows.push([`Skills drill (good score)`, 150, 0, 60, 45]);
+// v196: a Draft, per match of a run, net of the entry — the title (four wins) / out in the first round; drafting adds ~45 s a match
+const draftPay = (w) => DRAFT_REWARDS[w].apex + (DRAFT_REWARDS[w].pack ? PACKS.find((p) => p.id === DRAFT_REWARDS[w].pack)?.cost || 0 : 0);
+rows.push([`Draft (title / out first)`, (draftPay(4) - DRAFT_ENTRY) / 4, 0, draftPay(0) - DRAFT_ENTRY, DRAFT_DURATION + 45]);
 for (const [name, w, dr, l, secs] of rows) {
   console.log(`${name.padEnd(34)} ${String(fmt(w)).padStart(6)} ${String(fmt(dr)).padStart(8)} ${String(fmt(l)).padStart(8)}    ${fmt(perMin(w, secs))} / ${fmt(perMin(l, secs))}`);
+}
+// a whole Draft run at a given chance of winning each round: what it pays on average, net of the entry
+for (const p of [0.5, 0.7]) {
+  let ev = 0; let matches = 0;
+  for (let w = 0; w <= 4; w++) {
+    const prob = w < 4 ? p ** w * (1 - p) : p ** 4;
+    ev += prob * draftPay(w); matches += prob * Math.min(4, w + 1);
+  }
+  console.log(`  Draft run at ${Math.round(p * 100)}% a round: ${fmt(ev - DRAFT_ENTRY)} net over ${matches.toFixed(2)} matches — ${fmt(perMin((ev - DRAFT_ENTRY) / matches, DRAFT_DURATION + 45))} a minute`);
 }
 
 // ------------------------------------------------------------------ 3. a month
