@@ -36,6 +36,8 @@ import { trade, kindOf } from '../economy.js';
 import { facts, about, icon } from '../components/facts.js';
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { activeTheme } from '../seasonal.js';
+import { locked as cosmeticLocked } from '../cosmetics.js';
+import { styleView, mountStyle } from './styleShop.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -46,7 +48,7 @@ export const TITLE = 'Ultimate XI';
 export const chemistryFor = (lineup, formation) => chemRaw(lineup, formation, managerOf(getState().club));
 
 let tab = 'club';            // club | division | online | objectives | challenges | store
-let storeTab = 'packs';      // packs | locker | icons | market | binder — the Store tab's own row
+let storeTab = 'packs';      // packs | locker | icons | style | market | binder — the Store tab's own row
 /* The Club tab's own three. Squad and the identity editor used to be two
    top-level tabs sitting next to each other, which put "pick your eleven" and
    "pick your badge" at the same level as "play a match" — they are both the
@@ -58,6 +60,8 @@ let submission = [];         // card ids staged for it
 
 /** Land on the store's pack shelf next time the screen opens (the Today hub uses this). */
 export function openStore() { tab = 'store'; storeTab = 'packs'; }
+/** v198: straight to Store → Style (from a lock in Settings or the Stadium Builder). */
+export function openStyle() { tab = 'store'; storeTab = 'style'; }
 
 /**
  * Prices.
@@ -275,10 +279,14 @@ function kitView() {
       <div class="ci-row">
         <span class="ci-label">pattern</span>
         <div class="ci-opts">
-          ${KIT_PATTERNS.map(([pid, label]) => `
-            <button class="ci-opt ${k.pattern === pid ? 'on' : ''}" data-kd="pattern" data-val="${pid}">
-              <span class="ci-badge">${kitSVG({ ...k, pattern: pid }, 30)}</span><em>${label}</em>
-            </button>`).join('')}
+          ${KIT_PATTERNS.map(([pid, label]) => {
+            // v198: the bought patterns show a lock until they are yours (Store → Style)
+            const lock = cosmeticLocked('kit', pid);
+            return `
+            <button class="ci-opt ${k.pattern === pid ? 'on' : ''} ${lock ? 'is-locked' : ''}" data-kd="pattern" data-val="${pid}" ${lock ? 'data-locked="1"' : ''}>
+              <span class="ci-badge">${kitSVG({ ...k, pattern: pid }, 30)}</span><em>${lock ? '🔒 ' : ''}${label}</em>
+            </button>`;
+          }).join('')}
         </div>
       </div>
       ${swatches('shirt')}
@@ -433,7 +441,7 @@ export function storeView() {
   const subs = `
     <nav class="subtabs" id="sSubs">
       ${[['packs', t('uxi.packs')], ['locker', `${t('uxi.locker')}${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
-         ['icons', t('uxi.icons')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`]]
+         ['icons', t('uxi.icons')], ['style', t('uxi.style')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`]]
         // v184: the App Store build sells nothing for real money (yet): no ✦ shop tab
         .filter(([id]) => !(APP_STORE && id === 'ultimate'))
         .map(([id, label]) =>
@@ -442,6 +450,7 @@ export function storeView() {
 
   if (storeTab === 'locker') return subs + lockerView(owned, counts);
   if (storeTab === 'icons') return subs + iconExchangeView();
+  if (storeTab === 'style') return subs + styleView();
   if (storeTab === 'market') return subs + marketView();
   if (storeTab === 'binder') return subs + binderView();
   if (storeTab === 'ultimate' && !APP_STORE) return subs + ultimateShopView(s);
@@ -1153,7 +1162,9 @@ export function mount(root) {
     if (moved) veil(() => navigate('squad')); else navigate('squad');
   });
 
-  // the Store tab's own row
+  // the Store tab's own row; on a phone it scrolls, so the open one is brought into view (v198)
+  const sOn = root.querySelector('#sSubs .subtab.on');
+  if (sOn && sOn.parentElement.scrollWidth > sOn.parentElement.clientWidth) sOn.scrollIntoView({ block: 'nearest', inline: 'center' });
   root.querySelector('#sSubs')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-stab]');
     if (!b) return;
@@ -1181,6 +1192,7 @@ export function mount(root) {
   // v80 panels
   if (tab === 'club' && clubTab === 'evos') return mountEvos(root);
   if (tab === 'store' && storeTab === 'market') { mountMarket(root); return; }
+  if (tab === 'store' && storeTab === 'style') { mountStyle(root); return; }
   if (tab === 'store' && storeTab === 'binder') { mountBinder(root); return; }
   if (tab === 'store' && storeTab === 'ultimate') {
     root.querySelector('.ult-grid')?.addEventListener('click', (e) => {
@@ -1203,6 +1215,7 @@ export function mount(root) {
       }
       const b = e.target.closest('[data-kd]');
       if (!b) return;
+      if (b.dataset.locked) { toast(tx('That pattern is in Store → Style.'), 'info'); return; }
       update((st) => {
         const cur = { ...(st.club.identity || {}) };
         // only the strip being designed is written; the other keeps following the badge until it is touched

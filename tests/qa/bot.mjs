@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,scenario,pens,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,scenario,style,pens,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -443,7 +443,8 @@ try {
     await page.waitForSelector('[data-d="play"]');
     await playRound(1, 1);
     await page.waitForSelector('#soGo', { timeout: 90000 });
-    for (let i = 0; i < 40 && !(await page.$('[data-o="draft"]')); i++) {
+    // a kick takes 1.25 s to settle and sudden death can run long: keep pressing until full time comes back
+    for (let i = 0; i < 160 && !(await page.$('[data-o="draft"]')); i++) {
       await page.evaluate(() => { const b = document.getElementById('soGo'); if (b && !b.disabled) b.click(); });
       await page.waitForTimeout(700);
     }
@@ -499,6 +500,34 @@ try {
     step('won it 2–1: three stars, ◈1500');
     await click(page, '[data-o="quit"]');
     await page.waitForSelector('[data-scen="cup-final"]', { timeout: 15000 });
+    await ctx.close();
+  });
+
+  /* v198: Store → Style — buy a kit pattern and a celebration with Apex and put them on;
+     what is not bought stays locked in the kit designer and in Settings. */
+  await flow('style', async () => {
+    const { ctx, page } = await boot('style', baseSave({ club: { apex: 30000 } }));
+    const club = () => page.evaluate(async () => { const st = (await import('/js/state.js')).getState(); return { apex: st.club.apex, owned: st.club.cosmetics?.owned || [], kit: st.club.identity?.kit, celeb: st.settings.celebration }; });
+    await page.evaluate(async () => { (await import('/js/screens/squad.js')).openStyle(); (await import('/js/app.js')).navigate('squad'); });
+    await page.waitForSelector('[data-sty-buy="kit:quarters"]', { timeout: 15000 });
+    await click(page, '[data-sty-buy="kit:quarters"]');
+    await page.waitForSelector('[data-sty-use="kit:quarters"]');
+    await click(page, '[data-sty-use="kit:quarters"]');
+    await page.waitForSelector('[data-sty-buy="celeb:archer"]');
+    await click(page, '[data-sty-buy="celeb:archer"]');
+    await page.waitForSelector('[data-sty-use="celeb:archer"]');
+    await click(page, '[data-sty-use="celeb:archer"]');
+    await page.waitForTimeout(300);
+    let c = await club();
+    assert.deepEqual(c.owned, ['kit:quarters', 'celeb:archer']);
+    assert.equal(c.apex, 30000 - 8000 - 12000);
+    assert.equal(c.kit.home.pattern, 'quarters'); assert.equal(c.celeb, 'archer');
+    step(`bought Quarters and The Archer (◈${c.apex} left), both in use`);
+    await go(page, 'settings');
+    await page.waitForSelector('#celebSel', { timeout: 15000, state: 'attached' });
+    const opts = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#celebSel option')].map((o) => [o.value, o.disabled])));
+    assert.equal(opts.archer, false); assert.equal(opts.whirlwind, true); assert.equal(opts.kneeslide, false);
+    step('Settings: The Archer selectable, Whirlwind locked, the free sixteen as before');
     await ctx.close();
   });
 

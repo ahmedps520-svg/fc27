@@ -259,6 +259,7 @@ const STRIPES = 16;
  *   diagonal — bands at a slant, mown corner to corner
  *   rings    — concentric circles out from the centre spot
  *   plain    — a single cut, only the faintest banding
+ *   waves, chevron, diamonds — v198, bought for your own ground (cosmetics.js)
  */
 function mow(g, W, H, pattern, colA, colB, feather) {
   const band = (i, n, vertical) => {
@@ -278,6 +279,31 @@ function mow(g, W, H, pattern, colA, colB, feather) {
       if (vertical) g.fillRect(x - feather, 0, feather * 2, H); else g.fillRect(0, x - feather, W, feather * 2);
     }
   };
+  /* v198: bands whose edges bend along the length — `off(y)` is how far across a band has moved at y */
+  const bent = (n, off) => {
+    const sw = W / n; const steps = 64;
+    g.fillStyle = colB; g.fillRect(0, 0, W, H);
+    g.fillStyle = colA;
+    for (let i = -1; i <= n; i += 2) {
+      g.beginPath();
+      for (let k = 0; k <= steps; k++) { const y = (k / steps) * H; g.lineTo(sw * i + off(y), y); }
+      for (let k = steps; k >= 0; k--) { const y = (k / steps) * H; g.lineTo(sw * (i + 1) + off(y), y); }
+      g.closePath(); g.fill();
+    }
+  };
+  if (pattern === 'waves') { bent(STRIPES, (y) => Math.sin((y / H) * Math.PI * 3) * (W / STRIPES) * 0.45); return; }
+  if (pattern === 'chevron') { bent(STRIPES, (y) => (Math.abs(y - H / 2) / H) * (W / STRIPES) * 2.4); return; }
+  if (pattern === 'diamonds') {
+    // two slants crossed, the second at a third of the strength, as the checks are
+    const slant = (angle, alpha) => {
+      g.save(); g.globalAlpha = alpha; g.translate(W / 2, H / 2); g.rotate(angle);
+      const D = Math.hypot(W, H); const n = 22; const sw = D / n;
+      for (let i = 0; i < n; i++) { g.fillStyle = i % 2 ? colA : colB; g.fillRect(-D / 2 + sw * i - 1, -D / 2, sw + 2, D); }
+      g.restore();
+    };
+    slant(0.5, 1); slant(-0.5, 0.42);
+    return;
+  }
   if (pattern === 'plain') {
     g.fillStyle = colA; g.fillRect(0, 0, W, H);
     g.globalAlpha = 0.28;
@@ -1342,7 +1368,8 @@ export function createRenderer(canvas, match, quality, models = false) {
     const uStripe = { value: new THREE.Vector4(
       pattern2Axis(VENUE.pattern),                    // 0 = across the width, 2 = diagonal, 3 = rings
       PITCH.w / STRIPES,                              // band width in metres
-      lo ? 0.5 : 0.72,                                // how hard the light separates them
+      // how hard the light separates them; v198's bent patterns keep it faint, since these bands run straight
+      (['waves', 'chevron', 'diamonds'].includes(VENUE.pattern) ? 0.2 : 1) * (lo ? 0.5 : 0.72),
       VENUE.pattern === 'checks' ? 1 : 0) };
     const uTurfH = { value: turfHeight };
     // apparent blade depth, in the blade map's own uv (one tile is 2.6 m across)

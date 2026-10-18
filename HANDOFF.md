@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v198 — Style: cosmetics for Apex (owner's pick #12)
+- **`js/cosmetics.js`:** `COSMETICS` — 5 kit patterns, 4 celebrations, 3 pitch patterns, ◈6,000–15,000 (`price: { apex }`). Ownership in `club.cosmetics.owned`. `buyCosmetic(id, currency)`, `useCosmetic` (home shirt pattern / `settings.celebration` / `club.stadium.design.pattern`, making a ground from the club colours if there is none), `locked(kind, value)` for the pickers, `inUse`.
+- **Real money later, not now:** `payable(currency)` accepts only `'apex'`. The ✦ path goes through the same function and is shut by `ULTIMATE_SALES = false`; it is always shut when `APP_STORE`, which would need Apple in-app purchase. Selling for ✦ on the web later means adding `price.ultimate` and flipping the switch.
+- **Nothing free got a lock.** The new items are new options:
+  - **Kit** (`kitDesign.js KIT_PATTERNS` + `patternMask` + `paintKit`'s cell fallback + `playerModel.js PATTERN_GLSL`): chevron, band, quarters, checks, fade. `server/guard.js` `KIT_PATTERNS` takes them too, otherwise `cleanKit` would drop such a kit online; the 1.1 app draws them as plain.
+  - **Celebrations** (`game/celebrations.js`, `premium: true`, poses in `celebPose`): flex, drummer, archer, whirlwind. `pickCelebration` picks the CPU's from `CPU_IDS` (the original sixteen), so simulated matches are unchanged; sweeps are identical.
+  - **Pitch** (`builder.js PATTERNS`, appended): waves, chevron, diamonds. The share code has 3 bits for the pattern, so 8 is the limit; old codes decode unchanged. `renderGL.js mow` (`bent` bands; the straight specular banding turned down for these) and `renderGPU.js pitchCanvas`.
+- **Locks:** the kit designer shows 🔒 and points to Store → Style; Settings lists locked celebrations as disabled; the Stadium Builder locks the pitch buttons; a share code with a locked pattern loads as stripes.
+- **UI:** `js/screens/styleShop.js` (the Style sub-tab, between Icon Exchange and Market: kit previews from `kitSVG`, a stick figure from each celebration's real pose, an SVG of each mow). `openStyle()` in squad.js. The active store sub-tab now scrolls into view on a phone.
+- Tests: `tests/unit/cosmetics.test.mjs` (Apex only, buy once, no lock on anything free, Use for each kind, the CPU's celebrations unchanged, masks + kitOf + the server's kit check, stadium codes), QA bot `style` flow. Checked by hand: every new kit pattern compiles in the High (model) shader path; Waves renders in the WebGL builder preview.
+
 ## v197 — scenarios (owner's pick #5)
 - **`js/scenarios.js`:** ten `SCENARIOS` (all second half, so no half-time): `{minute, score:[you,them], down:[yours,theirs], secs (real seconds left), skill, stars:[3 GOALS keys], you/them (club strength rank, 0 = strongest of the 100 by best-XI rating), final?}`. `scenarioParams` works the whole match's `duration` back from `secs`. `GOALS` judge the full-time score plus goals for/against since the start (`score1/2`, `noLoss`, `win`, `winClean`, `by2`, `by3`).
 - **Staging** (`stageScenario(match, sc)`, called in `play.js` right after the Match is built): `t` and `half` from the minute, the score with synthetic scorers (so the full-time card adds up), red cards through the sim's own `sendOff` (a defender of yours, a midfielder of theirs: reshaped, parked), `cues` emptied (no whistle for cards shown before you took over), and the side behind kicks off with the minute as the banner. No pre-match show for a scenario.
