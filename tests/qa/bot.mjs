@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,pens,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -29,6 +29,8 @@ const step = (s) => console.log(`  · ${s}`);
 
 // v193: the ghost flow queues alone; a short wait for its ghost, and a short floor on the result
 process.env.APEX_GHOST_AFTER_MS ||= '3000'; process.env.APEX_GHOST_MIN_MS ||= '1000';
+// v194: a quicker duel clock and gap for the pens flow
+process.env.APEX_PENS_TURN_MS ||= '2500'; process.env.APEX_PENS_GAP_MS ||= '700';
 const server = await startServer();
 const browser = await chromium.launch({ args: ARGS });
 const pageErrors = [];
@@ -388,6 +390,50 @@ try {
     assert.equal(played, 1, 'the ghost match is on the record');
     step('full time: counted for the ranking');
     await G.ctx.close(); await P.ctx.close();
+  });
+
+  /* v194: two people find each other for a penalty duel and play it out through the
+     buttons: the shooter stops the marker, the keeper picks a dive. */
+  await flow('pens', async () => {
+    const mk = async (tag) => {
+      const { ctx, page } = await boot(tag, baseSave({ club: { apex: 5000 } }));
+      await page.evaluate(async () => { const ob = await import('/js/onboarding.js'); ob.dealStarter(); });
+      const name = `${tag}${Date.now().toString(36).slice(-5)}`;
+      await page.evaluate(async (n) => { const api = await import('/js/net/api.js'); await api.register(n, 'qa-pass-12345'); }, name);
+      await go(page, 'online');
+      await page.waitForSelector('#olPensGo', { timeout: 10000 });
+      await page.waitForFunction(async () => (await import('/js/net/socket.js')).isReady(), null, { timeout: 15000 });
+      return { ctx, page, name };
+    };
+    const A = await mk('pensA'); const B = await mk('pensB');
+    const coins0 = await A.page.evaluate(async () => (await import('/js/state.js')).getState().club.apex);
+    await click(A.page, '#olPensGo');
+    await A.page.waitForSelector('.pens-status', { timeout: 10000 });
+    await click(B.page, '#olPensGo');
+    for (const X of [A, B]) await X.page.waitForSelector('.pens-duel', { timeout: 15000 });
+    step('two people paired for a duel');
+    let kicks = 0;
+    for (let i = 0; i < 30; i++) {
+      const done = await Promise.race([
+        ...[A, B].map((X) => X.page.waitForSelector('#pensShoot', { timeout: 12000 }).then(() => X)),
+        A.page.waitForSelector('.pens-end', { timeout: 12000 }).then(() => 'end'),
+      ]).catch(() => 'end');
+      if (done === 'end') break;
+      const keeper = done === A ? B : A;
+      await keeper.page.waitForSelector('[data-dive]', { timeout: 5000 });
+      await keeper.page.click('[data-dive="0"]');
+      await done.page.click('#pensShoot');
+      await A.page.waitForFunction(() => /Scored|Saved|Wide/.test(document.getElementById('soStatus')?.textContent || '') || document.querySelector('.pens-end'), null, { timeout: 8000 });
+      kicks += 1;
+      await A.page.waitForFunction(() => !document.getElementById('pensShoot') || document.querySelector('.pens-end'), null, { timeout: 8000 }).catch(() => {});
+    }
+    for (const X of [A, B]) await X.page.waitForSelector('.pens-end', { timeout: 30000 });
+    const [ra, rb] = await Promise.all([A, B].map((X) => X.page.evaluate(() => document.querySelector('.pens-end b').textContent)));
+    assert.ok(/win/.test(ra) !== /win/.test(rb), `one winner (${ra} / ${rb})`);
+    const coins1 = await A.page.evaluate(async () => (await import('/js/state.js')).getState().club.apex);
+    assert.ok(coins1 - coins0 === 250 || coins1 - coins0 === 60, `paid ${coins1 - coins0}`);
+    step(`duel played through the buttons (${kicks} kicks): ${ra}`);
+    await A.ctx.close(); await B.ctx.close();
   });
 
   await flow('party', async () => {

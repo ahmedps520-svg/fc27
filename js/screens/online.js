@@ -19,7 +19,7 @@ import { navigate, toast, refreshCoins } from '../app.js';
 import { sfx } from '../audio.js';
 import { clubIdentity, ultimateSquad } from './squad.js';
 import { divisionOpponent, divisionSkill } from '../ultimate.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
 import { NET_PROTOCOL } from '../net/protocol.js';
 import { APP_STORE } from '../platform.js';
 import { openPlayerSheet, openBlockedList } from '../components/playerSheet.js';
@@ -69,6 +69,7 @@ const profileCard = () => {
         <b>${p?.name || 'Player'}</b>
         <span class="ol-conn" id="olConn">connecting…</span>
         ${p?.ghost ? `<span class="ol-def" title="${t('ghost.defendedHint')}">${t('ghost.defended')}: ${p.ghost.w | 0}W ${p.ghost.d | 0}D ${p.ghost.l | 0}L</span>` : ''}
+        ${p?.pens ? `<span class="ol-def">${tx('Penalty duels')}: ${p.pens.w | 0}W ${p.pens.l | 0}L</span>` : ''}
       </div>
       <div class="ol-record">
         <div><b>${o.points}</b><span>Points</span></div>
@@ -118,6 +119,21 @@ export function onlineView() {
           </div>
         </div>
         <p class="ol-code" id="olCodeOut" hidden></p>
+      </section>
+
+      <!-- v194: the online penalty duel (screens/pens.js, server/pens.js) -->
+      <section class="ol-card glass" id="olPens">
+        <span class="ol-kicker">${tx('Quick')}</span>
+        <h3>${tx('Penalty duel')}</h3>
+        <p>${tx('Five each against a real person: you shoot, they dive, then swap. About two minutes.')}</p>
+        <div class="ol-lobby">
+          <button class="btn primary" id="olPensGo" ${ready ? '' : 'disabled'}>${tx('Find a duel')}</button>
+          <button class="btn ghost" id="olPensHost" ${ready ? '' : 'disabled'}>${tx('Duel a friend')}</button>
+          <div class="ol-join">
+            <input id="olPensCode" maxlength="4" placeholder="CODE" aria-label="${tx('Duel code')}">
+            <button class="btn ghost" id="olPensJoin" ${ready ? '' : 'disabled'}>${tx('Join')}</button>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -466,6 +482,14 @@ export function mountOnline(root, { rerender }) {
     }, 1000);
   });
 
+  // v194: the penalty duel has its own screen
+  root.querySelector('#olPensGo')?.addEventListener('click', () => navigate('pens', { start: 'queue' }));
+  root.querySelector('#olPensHost')?.addEventListener('click', () => navigate('pens', { start: 'host' }));
+  root.querySelector('#olPensJoin')?.addEventListener('click', () => {
+    const code = (root.querySelector('#olPensCode')?.value || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(code)) return toast(tx('Enter the four-letter duel code'), 'warn');
+    navigate('pens', { start: 'join', code });
+  });
   root.querySelector('#olHost')?.addEventListener('click', () => {
     if (!net.isReady()) return toast('Not connected to the server', 'warn');
     net.send({ t: 'host', ...payload() });

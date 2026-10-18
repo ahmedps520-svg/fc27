@@ -682,7 +682,9 @@ function tellSpectators(host) {
 }
 /* v82: parties — 2v2, co-op against the CPU, five-a-side pro clubs (server/party.js) */
 const { createPartyHub } = require('./party.js');
+const { createPensHub } = require('./pens.js');   // v194: the online penalty duel
 const partyHub = createPartyHub({ store, guard, forget: (p) => { if (p.name && peers.get(p.name) === p) peers.delete(p.name); } });
+const pensHub = createPensHub({ store, guard });
 
 /* v189: the match protocol the current website speaks (js/net/protocol.js), and
  * what a client is told when it is too far behind or ahead of someone. A
@@ -849,6 +851,7 @@ ws.attach(server, '/ws', (sock) => {
   function handle(peer, m) {
     const sock = peer.sock;
     if ((peer.party || m.t.startsWith('party')) && partyHub.handle(peer, m)) return;
+    if (m.t.startsWith('pens') && pensHub.handle(peer, m)) return;     // v194
     switch (m.t) {
       case 'queue': {
         leaveQueue(peer);
@@ -1058,6 +1061,7 @@ ws.attach(server, '/ws', (sock) => {
     if (rec.sock !== sock) return;              // an older socket of a reconnected peer
     unspectate(rec);
     leaveQueue(rec);
+    pensHub.onClose(rec);                       // v194: a duel in progress goes to the other player
     if (rec.party && partyHub.onClose(rec)) return;
     /* Mid-match, the seat is held for a grace period rather than ended: the
      * opponent gets a 'dropped' event and pauses; a reconnect within the
