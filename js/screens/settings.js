@@ -7,6 +7,7 @@ import { navigate, applyTheme, toast, APP_VERSION, wheelDiagnostics, veil } from
 import { installUpdate, knownBuild } from '../update.js';
 import { serverPath } from '../net/config.js';
 import { APP_STORE, APP_BUILD } from '../platform.js';
+import { remindersAvailable, enableReminders, disableReminders } from '../native.js';
 import { icon } from '../components/facts.js';
 import { screenHead } from '../components/screenHead.js';
 import { setAudioSettings, startMusic, stopMusic, resumeAudio, sfx, announce, loadVoice, playVoice } from '../audio.js';
@@ -110,6 +111,12 @@ export function render() {
         <div><b>${tx("Version")}</b></div>
         <span class="tag">${APP_VERSION}</span>
       </div>
+      ${remindersAvailable() ? `
+      <!-- v191: local reminders the app schedules itself (native.js) -->
+      <div class="setting-row">
+        <div><b>${tx("Reminders")}</b><span>${tx("Daily reward, Weekend League and Career.")}</span></div>
+        <button class="switch ${s.reminders === true ? 'on' : ''}" id="remindTgl" role="switch" aria-checked="${s.reminders === true}"><i></i></button>
+      </div>` : ''}
       ${APP_STORE ? `
       <!-- v187: the App Store build is what is installed, not what the server
            is serving, and only TestFlight or the App Store can update it -->
@@ -341,7 +348,7 @@ export function render() {
         <div><b>${tx("Stick response")}</b><span>${tx("Left quick · right fine.")}</span></div>
         <input type="range" id="padCurve" min="50" max="200" step="10" value="${Math.round((s.padCurve ?? 1) * 100)}" aria-label="Stick response">
       </div>
-      <div class="setting-row"><div><b>${tx("Vibration")}</b><span>${tx("Pads and Android phones.")}</span></div>
+      <div class="setting-row"><div><b>${tx("Vibration")}</b><span>${tx("Pads and phones.")}</span></div>
         <button class="switch ${s.rumble !== false ? 'on' : ''}" id="rumbleTgl" role="switch" aria-checked="${s.rumble !== false}"><i></i></button></div>
       <p class="hint">Pick a control, then press its new key or button.</p>
       <div class="bind-grid">${ACTIONS.filter((a) => a !== 'curl').map((a) => { const b = bindingOf(a); return `
@@ -432,6 +439,12 @@ function mountRebind(root) {
   const tune = () => { const st = getState().settings; setPadTuning({ deadzone: st.padDeadzone, curve: st.padCurve }); };
   root.querySelector('#padDead')?.addEventListener('change', (e) => { const v = Number(e.target.value) / 100; update((st) => { st.settings.padDeadzone = v; }); tune(); });
   root.querySelector('#padCurve')?.addEventListener('change', (e) => { const v = Number(e.target.value) / 100; update((st) => { st.settings.padCurve = v; }); tune(); });
+  root.querySelector('#remindTgl')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget; const want = getState().settings.reminders !== true;
+    const on = want ? await enableReminders() : (await disableReminders(), false);
+    btn.classList.toggle('on', on); btn.setAttribute('aria-checked', String(on));
+    if (want && !on) toast(tx('Allow notifications for APEX XI in the iPhone Settings app first.'), 'warn');
+  });
   root.querySelector('#rumbleTgl')?.addEventListener('click', (e) => {
     const on = getState().settings.rumble === false; update((st) => { st.settings.rumble = on; });
     e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-checked', String(on));

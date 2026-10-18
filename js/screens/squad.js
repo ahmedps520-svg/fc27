@@ -27,6 +27,7 @@ import { toast, refreshCoins, navigate, veil } from '../app.js';
 import { BUNDLES, TEST_MODE, price as usd } from '../data/shop.js';
 import { openCheckout } from '../components/checkout.js';
 import { sfx } from '../audio.js';
+import { haptic } from '../native.js';
 import { onlineView, mountOnline, mountSignIn } from './online.js';
 import * as api from '../net/api.js';
 import { t, tx } from '../i18n.js';
@@ -1988,6 +1989,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
   const showCard = (p) => {
     revealed = true;
     sfx('reveal', p.rarity);
+    haptic(p.rarity === 'special' || p.rarity === 'star' || p.rarity === 'icon' ? 'special' : 'reveal');   // v191
     plinths.classList.add('done');
     overlay.classList.remove('flash');
     void overlay.offsetWidth;
@@ -2023,18 +2025,18 @@ function runPackAnimation(root, drawn, coins, onDone) {
     at(260, () => {
       a.classList.add('lit');
       a.querySelector('.pl-slot').innerHTML = `${flagSVG(p.nationColors, 46)}<em>${p.nation}</em>`;
-      sfx('packStep', 0);
+      sfx('packStep', 0); haptic('step');
     });
     at(1050, () => {
       b.classList.add('lit');
       b.querySelector('.pl-slot').innerHTML = `<strong>${p.position}</strong>`;
-      sfx('packStep', 1);
+      sfx('packStep', 1); haptic('step');
     });
     at(1840, () => {
       c.classList.add('lit');
       c.querySelector('.pl-slot').innerHTML =
         `${club ? crestSVG(club.crest, club.short, 44) : ''}<em>${club ? club.name : 'Free Agent'}</em>`;
-      sfx('packStep', 2);
+      sfx('packStep', 2); haptic('step');
     });
     at(2680, () => showCard(p));
   };
@@ -2069,6 +2071,7 @@ function runPackAnimation(root, drawn, coins, onDone) {
     ripped = true;
     const instant = document.documentElement.classList.contains('reduce-motion');
     sfx('reveal', 'silver');
+    haptic('rip');
     rip.classList.add('ripping');
     at(instant ? 0 : 620, () => {
       rip.remove();

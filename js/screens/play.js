@@ -41,6 +41,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const split = (a, b) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : 50);
 import { openPlayerSheet } from '../components/playerSheet.js';
 import { createCameraRig, venueBounds, collideCamera, directReplay, presetById } from '../game/camera.js';
+import { haptic } from '../native.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
@@ -2343,7 +2344,7 @@ export function mount(root, params) {
         showCam.x = PITCH.w / 2 - 9 + k * 2; showCam.y = -11 + k * 8; showCam.z = 2.4 + k * 0.6;
         showCam.tx = PITCH.w / 2; showCam.ty = -3 + k * 30; showCam.tz = 1.3; showCam.hfov = 46;
         liveCam = collideCamera(showCam, camBounds);
-      } else liveCam = walkoutCamera(showCam, (walkout.t - W) * (walkout.dur / (walkout.dur - W)) * 0.6 + walkout.dur * 0.4, walkout.dur);
+      } else liveCam = collideCamera(walkoutCamera(showCam, (walkout.t - W) * (walkout.dur / (walkout.dur - W)) * 0.6 + walkout.dur * 0.4, walkout.dur), camBounds);
       if (walkout.t >= walkout.dur) {
         walkout = null;
         stopAnthem();
@@ -2498,9 +2499,9 @@ export function mount(root, params) {
     // v105: "not set" is on, as the Settings switch shows it (older saves never rumbled)
     if (getState().settings.rumble === false) return;
     const fx = RUMBLE[c.name]; if (!fx) return;
-    /* v105: a phone buzzes too, where it can (Android; iOS Safari has no
-       vibration for web pages) — shorter than a pad's rumble, a tap not a shake */
-    const buzz = () => { if (!touchWrap.hidden) navigator.vibrate?.(Math.min(60, Math.round(fx[0] * 0.4))); };
+    /* v105: a phone buzzes too — a tap, not a pad's shake. v191: the iPhone app
+       through the Taptic Engine (native.js), Android through navigator.vibrate */
+    const buzz = () => { if (!touchWrap.hidden) haptic(c.name); };
     if (c.name === 'goal' || c.name === 'post') { for (const inp of inputs) inp.rumble?.(...fx); buzz(); return; }
     const who = c.arg && typeof c.arg === 'object' && c.arg.ref ? c.arg : null; if (!who) return;
     match.controllers.forEach((ct, i) => { if (match.playerOf(ct) === who) { inputs[i]?.rumble?.(...fx); buzz(); } });

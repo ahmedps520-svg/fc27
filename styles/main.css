@@ -3938,6 +3938,15 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .btn.primary.danger { background: #c8333b; color: #fff; border-color: #c8333b; }
 .del-card { width: min(380px, calc(100vw - 32px)); }
 .del-card input { width: 100%; }
+/* v191: the reminders question (menu.js askReminders), once, in the iPhone app */
+.remind-ask { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
+  width: min(560px, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))); display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.55); animation: raIn .35s cubic-bezier(.2,.9,.2,1) both; }
+.remind-ask .ra-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.remind-ask .ra-text span { color: var(--text-dim); font-size: 13px; line-height: 1.3; }
+.remind-ask .ra-btns { display: flex; gap: 8px; flex: none; }
+@keyframes raIn { from { opacity: 0; transform: translate(-50%, 14px); } }
+@media (prefers-reduced-motion: reduce) { .remind-ask { animation: none; } }
 .del-btns { display: flex; gap: 8px; justify-content: center; }
 
 /* ------------------------------ crash card ------------------------------ */

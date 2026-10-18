@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v191 — iPhone haptics and reminders (owner's picks #2 and #4 of the ideas list); #10 checked
+- **Native plugins** (`app/package.json`, exact): `@capacitor/haptics` 8.0.2 and `@capacitor/local-notifications` 8.3.1; `npx cap sync ios` wrote them into `app/ios/App/CapApp-SPM/Package.swift` (CI runs the same sync). They reach the page as `window.Capacitor.Plugins.Haptics` / `.LocalNotifications`; the web has neither. **They ship with the next TestFlight build (1.2)**; 1.1 in review is unaffected.
+- **`js/native.js`**:
+  - `haptic(kind)`: `FEEL` (impact/notification/selection steps, numbers are pauses) on the app, `BUZZ` patterns through `navigator.vibrate` elsewhere. One feeling per 45 ms burst (a goal always plays). Off with the existing `settings.rumble` (Settings → Controller → Vibration, now "Pads and phones").
+  - Wired in `play.js rumbleCue` (only when the touch controls are showing, as the Android buzz was) and the pack reveal in `squad.js` (rip, each plinth, the card; `special` for special/star/icon).
+  - `plannedReminders(save, now, { clubName })` is pure (tested): the login streak at 18:00 local after the UTC day turns (today's reward tonight if unclaimed before 17:00), Weekend League at `opensAt` (or 6 h before `closesAt` with matches left), Career three days on. Ids 9101–9103; `syncReminders()` cancels all three and re-plans on every trip to the background (`initNative` in app.js), and only when `settings.reminders === true` and iOS says granted.
+  - Opt-in: `shouldAskReminders()` (app only, once, after `stats.matches >= 2`) → the menu's `askReminders` card; "Turn on" runs iOS's prompt (`enableReminders`), "Not now" sets `flags.remindAsked`. Settings → App → Reminders toggles. A tapped reminder opens today / weekend / career.
+  - Nothing leaves the phone, so App Privacy is unchanged.
+- **#10 (camera in the stands)** was already done: `collideCamera` + `venueBounds` (v77) run on the live rig, replays, flyover, the pre-match show, photo mode and the trophy orbit, and `tests/unit/camera.test.mjs` checks every preset on every ground every frame. The v76 "not done" note below was stale. The walk-out camera now goes through `collideCamera` too, for consistency (it sits on the halfway line, so it never moved).
+- Tests: `tests/unit/native.test.mjs` (a fake bridge; passes under UTC, Asia/Riyadh and America/Los_Angeles).
+
 ## v190 — report and block, name filter (App Review 2.1 "Information Needed" on 1.0)
 - **Apple's request (2026-10-11):** for a new developer account, Apple asked for a device screen recording (launch, sign-up, login, deletion, player-content reporting and blocking, paid content), plus purpose and audience, setup steps with demo logins, external services, regional differences, and third-party material. The answers live in `app/store/listing.json` `review.notes`, applied by the listing workflow. The contact and the Sign-In box (demo accounts) are the owner's, so asc-listing now only sets the notes.
 - **Demo accounts for App Review:** AppReview1 and AppReview2 exist on production with one shared password, which only the owner has (it goes in App Store Connect → App Review Information → Sign-In Information). The notes say AppReview2 has the same password, so no password is ever written in this public repo. Ask reviewers to make a fresh account for the deletion test.
@@ -3759,8 +3770,7 @@ now tackles by temperament, which changes every contested ball.
   the frame with a 12 cm sag; a strike impulses every net at that goal.
   `net.js`: home pull 0.06 → 0.012, drag 0.978, gravity −11, constraints
   pull at 0.5 when stretched and 0.12 when slack.
-- Not done: the camera can sit inside a stand (seen behind the goal) — the
-  next round's camera collision.
+- ~~Not done: the camera can sit inside a stand~~ — done in v77 (`collideCamera`), see v191.
 
 ### v75 — Kick Off by country
 - **`data/countries.js`**: `COUNTRIES` (56, strongest first: Spain … India;
