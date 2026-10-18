@@ -375,6 +375,8 @@ try {
     await G.page.waitForTimeout(800);
     await G.page.evaluate(async () => (await import('/js/net/socket.js')).send({ t: 'cancel' }));
     const P = await mk('ghostP');
+    // v195: P is in a guild, so a counted result inside the weekend window goes on the guild weekend
+    await P.page.evaluate(async (n) => { const api = await import('/js/net/api.js'); await api.guildAction({ action: 'create', name: `QA ${n.slice(-5)}` }); }, P.name);
     await click(P.page, '#olQueue');
     await P.page.waitForSelector('#gmCanvas', { timeout: 20000 });
     await P.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
@@ -389,6 +391,15 @@ try {
     const played = await P.page.evaluate(async () => { const api = await import('/js/net/api.js'); return (await (await fetch('/api/me', { headers: { Authorization: `Bearer ${api.authToken()}` } })).json()).profile.online.played; });
     assert.equal(played, 1, 'the ghost match is on the record');
     step('full time: counted for the ranking');
+    const gw = await P.page.evaluate(async () => (await (await import('/js/net/api.js')).guild()).weekend);
+    if (gw.open) assert.equal(gw.guild.matches, 1, `inside the window the guild weekend has it (${JSON.stringify(gw.guild)})`);
+    await go(P.page, 'squad');
+    await P.page.waitForSelector('[data-utab="online"]', { timeout: 10000 });
+    await click(P.page, '[data-utab="online"]');
+    await P.page.waitForSelector('#gwPanel', { timeout: 15000 });
+    const panel = await P.page.evaluate(() => document.getElementById('gwPanel').textContent.replace(/\s+/g, ' '));
+    assert.ok(/Guild weekend · (closes|opens) in/.test(panel), panel);
+    step(`the guild weekend panel: ${gw.open ? `open, ${gw.guild.wins} win(s) for the guild` : 'shut, the last board'}`);
     await G.ctx.close(); await P.ctx.close();
   });
 

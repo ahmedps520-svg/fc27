@@ -11,6 +11,8 @@ import { getState, adoptCloudSave, cloudWins, save, update } from '../state.js';
 import { isRealConflict, chooseSave } from '../components/saveConflict.js';
 import { backupNow } from '../saveSafety.js';
 import { pend } from '../progress.js';
+import { untilText } from '../weekend.js';
+import { PACK_BY_ID } from '../data/packs.js';
 import { WORLD, getPlayer } from '../data/generator.js';
 import * as api from '../net/api.js';
 import * as net from '../net/socket.js';
@@ -336,6 +338,38 @@ export function mountOnline(root, { rerender }) {
         <span>${r.members} ${t('social.members')}</span><span>${r.wins}W · ${r.goals} goals</span>
         <span class="ol-gd"></span><em>${r.points}</em>
       </div>`).join('');
+    /* v195: the guild weekend — the window, your guild's total and place, last weekend's reward, the board */
+    const w = v.weekend;
+    const pack = (id) => t('gw.pack', { pack: PACK_BY_ID(id).name });
+    const gwRows = (w?.board || []).map((r) => `
+      <div class="ol-row ${v.guild && r.code === v.guild.code ? 'me' : ''}">
+        <i>${r.rank}</i><b>${esc(r.name)} <small>[${esc(r.tag)}]</small></b>
+        <span>${r.members} ${t('social.members')}</span><span>${r.goals} ${tx('goals')}</span>
+        <span class="ol-gd"></span><em>${r.wins}W</em>
+      </div>`).join('');
+    const mine = w?.open && w.guild;
+    const gw = !w ? '' : `
+      <div class="gw ${w.open ? 'open' : ''}" id="gwPanel">
+        <span class="ol-kicker">${t('gw.title')} · ${t(w.open ? 'gw.closesIn' : 'gw.opensIn', { t: untilText(w.open ? w.closesAt : w.opensAt) })}</span>
+        <p class="gw-sub">${t('gw.sub', { cap: w.cap })}</p>
+        ${mine ? `
+        <div class="gw-stats">
+          <div><b>${mine.wins}</b><span>${t('gw.wins')}</span></div>
+          <div><b>${mine.rank ? t('gw.placeOf', { rank: mine.rank, of: mine.of }) : '–'}</b><span>${t('gw.place')}</span></div>
+          <div><b>${mine.you}<small>/${w.cap}</small></b><span>${t('gw.yours')}</span></div>
+        </div>
+        ${mine.top.length ? `<p class="gw-top"><em>${t('gw.top')}</em> ${mine.top.map((m) => `<span>${esc(m.name)} <b>${m.wins}</b></span>`).join('')}</p>` : `<p class="ol-empty">${t('gw.noWins')}</p>`}` : ''}
+        ${w.last ? `
+        <div class="gw-last">
+          <span><em>${t('gw.last')}</em> ${t('gw.lastLine', { rank: w.last.rank, of: w.last.of, wins: w.last.wins })}</span>
+          ${w.last.claimable ? `<button class="btn primary sm" id="gwClaim">${t('gw.claim')} ◈ ${w.last.apex.toLocaleString()} + ${esc(pack(w.last.pack))}</button>`
+            : w.last.claimed ? `<span class="gd-claimed">${t('gw.claimed')}</span>` : !w.last.played ? `<small>${t('gw.didNotPlay')}</small>` : ''}
+        </div>` : ''}
+        <span class="ol-kicker">${t(w.open ? 'gw.board' : 'gw.boardLast')}</span>
+        <div class="ol-rows gd-board">${gwRows || `<p class="ol-empty">${t(w.open ? 'gw.empty' : 'gw.emptyLast')}</p>`}</div>
+        <details class="gw-rewards"><summary>${t('gw.rewards')}</summary><ul>${(w.rewards || []).map((r, i) => `
+          <li><b>${t(['gw.p1', 'gw.p3', 'gw.p10', 'gw.pAny'][i] || 'gw.pAny')}</b><span>◈ ${r.apex.toLocaleString()} + ${esc(pack(r.pack))}</span></li>`).join('')}</ul></details>
+      </div>`;
     guildEl.innerHTML = v.guild ? `
       <span class="ol-kicker">Guild · week ${esc(v.week?.id || '')}</span>
       <h3>${esc(v.guild.name)} <small>[${esc(v.guild.tag)}]</small></h3>
@@ -345,6 +379,7 @@ export function mountOnline(root, { rerender }) {
       <ul class="gd-objs">${objs}</ul>
       <span class="ol-kicker">${t('social.board')}</span>
       <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>
+      ${gw}
       <button class="btn ghost sm" id="gdLeave">${t('social.leave')}</button>` : `
       <span class="ol-kicker">Guild</span>
       <h3>${t('social.joinGuild')}</h3>
@@ -355,7 +390,8 @@ export function mountOnline(root, { rerender }) {
         <div class="ol-join"><input id="gdCode" maxlength="5" placeholder="CODE" aria-label="Guild code"><button class="btn ghost" id="gdJoin">${t('social.join')}</button></div>
       </div>
       <span class="ol-kicker">${t('social.board')}</span>
-      <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>`;
+      <div class="ol-rows gd-board">${rows || '<p class="ol-empty">No guild has played yet this week.</p>'}</div>
+      ${gw}`;
   };
   const loadGuild = async () => {
     try {
@@ -379,6 +415,13 @@ export function mountOnline(root, { rerender }) {
       } else if (b.id === 'gdLeave') {
         await api.guildAction({ action: 'leave' });
         toast('Left the guild', 'info');
+      } else if (b.id === 'gwClaim') {
+        const r = await api.guildAction({ action: 'claimWeekend' });
+        if (r.reward) {
+          update((st) => pend(st, { title: r.reward.title, pack: r.reward.pack, apex: r.reward.apex }));
+          sfx('confirm');
+          toast(t('gw.toast'), 'good');
+        }
       } else if (b.dataset.claim) {
         const r = await api.guildAction({ action: 'claim', id: b.dataset.claim });
         if (r.reward) {

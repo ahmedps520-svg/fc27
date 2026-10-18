@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { startServer } from '../smoke/server.mjs';
 
 const ROUTES = ['/api/register', '/api/login', '/api/me', '/api/save', '/api/pair/new', '/api/pair/claim', '/api/crash', '/api/weekend', '/api/skills',
-  '/api/leaderboard', '/api/guild', '/api/guild/board', '/api/friends', '/api/live', '/api/health', '/api/version', '/api/models', '/api/nope'];
+  '/api/leaderboard', '/api/guild', '/api/guild/board', '/api/guild/weekend', '/api/friends', '/api/live', '/api/health', '/api/version', '/api/models', '/api/nope'];
 const BODIES = ['', '{', 'null', '[]', '[1,2]', '42', '"str"', '{"name": {"$gt": ""}}', '{"save": "x"}', '{"save": [1]}', '{"action": "create", "name": "<script>"}',
   '{"action": "add", "name": 12}', '{"game": "slalom", "score": "999999"}', '{"code": {"a": 1}}', JSON.stringify({ save: { club: { apex: 1e308, collection: 'x' } } })];
 
