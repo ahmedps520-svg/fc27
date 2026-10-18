@@ -12,6 +12,7 @@ import { toggleFullscreen, exitFullscreen, fullscreenSupported } from '../fullsc
 import { settleDivisionMatch } from '../ultimate.js';
 import { settleFives, settleClash, noteDivisionResult } from '../modes.js';
 import { settleDraft, rewardFor as draftReward, DRAFT_ROUNDS } from '../draft.js';
+import { scenarioById, stageScenario, settleScenario, GOALS as SCENARIO_GOALS, STAR_APEX } from '../scenarios.js';
 import { recordEvoMatch } from '../evolutions.js';
 import { rateMatch } from '../game/ratings.js';
 import { advancePro } from '../proCareer.js';
@@ -441,6 +442,9 @@ export function mount(root, params) {
   /* v192: a party match wears its people's kits (the server picks each side's first designer); only the
      picture changes, so every machine's sim is still identical */
   if (Array.isArray(params.kits)) params.kits.forEach((k, i) => { if (k && match.teams[i]) match.teams[i].kit = kitOf(k, match.teams[i].colors); });
+  // v197: a scenario picks the match up part-way: the minute, the score, the red cards (scenarios.js)
+  const scenario = params.scenario ? scenarioById(params.scenario.id) : null;
+  if (scenario) stageScenario(match, scenario);
   // the ground and the weather, for the renderer and the commentary
   match.venue = venueOf(params);
   /* The camera rig (game/camera.js): presets, springs, set-piece angles, the
@@ -1583,7 +1587,7 @@ export function mount(root, params) {
     }
     if (!online && !S.reduceMotion && !view && !gallery) {
       const kind = S.pregame || 'full';
-      if (kind !== 'off' && bcAllowed && !guided && !attract) {
+      if (kind !== 'off' && bcAllowed && !guided && !attract && !scenario) {
         const [hm, aw] = match.teams;
         const atmo = match.venue?.atmo || {};
         const preLang = director?.desk.lang || 'en';
@@ -2810,6 +2814,7 @@ export function mount(root, params) {
       if (online) { net.send({ t: 'leave' }); navigate('squad'); return; }
       // v196: leaving a Draft round part-way is a defeat, as the Draft screen says
       if (params.draft) { settleDraft(0, 1); navigate('draft'); return; }
+      if (scenario) { navigate('skills'); return; }
       navigate('quick');
       return;
     }
@@ -2916,7 +2921,7 @@ export function mount(root, params) {
     const mine = match.teams[meIdx].score;
     const theirs = match.teams[1 - meIdx].score;
     // offered once: after the shootout there is nothing left to settle
-    const drawnKickOff = mine === theirs && !online && !params.ultimate && !params.pro && !params.street && !params.skills && !shootoutResult;
+    const drawnKickOff = mine === theirs && !online && !params.ultimate && !params.pro && !params.street && !params.skills && !scenario && !shootoutResult;
 
     if (online?.party) {
       // v82: only the host's simulation has a result; the co-op season takes it (server/party.js)
@@ -2955,10 +2960,13 @@ export function mount(root, params) {
     let proLine = null;   // v81: my Player Career line
     let streetRes = null; // v82: a street match's stars and style
     let draftRes = null;  // v196: a Draft round
+    let scenRes = null;   // v197: a scenario's stars
     if (spectating) {
       // nothing to bank: it was somebody else's match
     } else if (params.draft) {
       draftRes = settleDraft(h.score, a.score, shootoutResult ? shootoutResult.won : null);
+    } else if (scenario) {
+      scenRes = settleScenario(scenario.id, h.score, a.score);
     } else if (params.fives) {
       sub = settleFives(h.score, a.score);
     } else if (params.clash) {
@@ -3101,6 +3109,13 @@ export function mount(root, params) {
               ? `${draftRes.wins} ${tx(draftRes.wins === 1 ? 'win' : 'wins')} · ◈ ${draftReward(draftRes.wins).apex.toLocaleString()}${draftReward(draftRes.wins).pack ? ` + ${draftReward(draftRes.wins).pack} pack` : ''} ${tx('to collect')}`
               : `${tx('Next')}: ${tx(draftRes.next)}`}</span>
           </div>` : ''}
+        ${scenRes ? `
+          <div class="div-result ${scenRes.stars[0] ? 'up' : 'down'}">
+            <span class="dr-kicker">${tx('Scenario')} · ${tx(scenario.name)}</span>
+            <b class="scen-stars">${scenRes.stars.map((x) => (x ? '★' : '☆')).join('')}</b>
+            <ul class="dr-objs">${scenario.stars.map((k, i) => `<li class="${scenRes.stars[i] ? 'ok' : 'no'}">${scenRes.stars[i] ? '✓' : '✗'} ${tx(SCENARIO_GOALS[k].text)}${scenRes.fresh[i] ? ` <em>+◈${STAR_APEX}</em>` : ''}</li>`).join('')}</ul>
+            ${scenRes.pack ? `<span class="dr-ladder">${tx('Every star of every scenario')}: ${tx('Prime pack')}</span>` : ''}
+          </div>` : ''}
         ${streetRes ? `
           <div class="div-result ${streetRes.won ? 'up' : ''}">
             <span class="dr-kicker">Street · ${'★'.repeat(streetRes.stars)}${'☆'.repeat(3 - streetRes.stars)}</span>
@@ -3138,7 +3153,7 @@ export function mount(root, params) {
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
-              : `<button class="btn primary" data-o="again">${t('end.rematch')}</button>`}
+              : `<button class="btn primary" data-o="again">${scenario ? tx('Try again') : t('end.rematch')}</button>`}
           ${cupRes ? `<p class="season-line tourney-line">${cupRes.champion ? `🏆 ${esc(customCup.cup()?.name || 'Cup')} winners!` : !cupRes.won ? `Out of ${esc(customCup.cup()?.name || 'the cup')}${cupRes.pens ? ' on penalties' : ''}.` : `Through${cupRes.pens ? ' on penalties' : ''} — next: ${customCup.roundName(customCup.cup().rounds.at(-1).length * 2)}.`}</p>` : ''}
           ${tourney ? `<p class="season-line tourney-line">${tourney.champion ? `🏆 World Tournament champions!` : tourney.out ? 'Out of the World Tournament.' : tourney.advanced ? `Through to the next round: ${tourney.stage === 'r16' ? 'Round of 16' : tourney.stage === 'qf' ? 'Quarter-finals' : tourney.stage === 'sf' ? 'Semi-finals' : tourney.stage === 'final' ? 'the Final' : 'the knockouts'}.` : 'Group stage continues.'}</p>` : ''}
           ${params.draft ? '' : `<button class="btn ghost" data-o="quit">${t('end.quit')}</button>`}
@@ -3193,7 +3208,7 @@ export function mount(root, params) {
         return;
       }
       if (o === 'clip') { recordClip(); return; }
-      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.customCup) { navigate('cup'); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
+      if (o === 'quit') { exitFullscreen(); if (spectating) { net.send({ t: 'unspectate' }); navigate('online'); return; } if (guided) { finishOnboarding({ played: true }); navigate('today'); return; } if (params.tournament) { navigate('world', { tab: 9 }); return; } if (params.customCup) { navigate('cup'); return; } if (params.pro) { navigate('pro'); return; } if (params.street) { navigate('street'); return; } if (scenario) { navigate('skills'); return; } if (online?.party) { navigate('online'); return; } navigate(params.weekend ? 'weekend' : online || params.ultimate ? 'squad' : 'quick'); }
       if (o === 'uxi') { exitFullscreen(); navigate('squad'); }
       if (o === 'draft') { exitFullscreen(); navigate('draft'); return; }
       if (o === 'career') { navigate('career'); return; }
