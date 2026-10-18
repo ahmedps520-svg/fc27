@@ -14,6 +14,7 @@ export const LANGS = { en: 'English', ar: 'العربية' };
 
 const AR = {
   'ghost.toast': 'لا أحد متاح — تشكيلة من يلعبها الكمبيوتر:', 'ghost.house': 'لا أحد متاح — مباراة ضد فريق من دوري أبكس', 'ghost.searching': 'لا أحد متاح الآن — نجهز لك تشكيلة لاعب حقيقي…', 'ghost.vs': 'تشكيلة يلعبها الكمبيوتر', 'ghost.counted': 'احتُسبت في ترتيبك', 'ghost.notCounted': 'لم تُحتسب', 'ghost.daily': 'بلغت حد اليوم من المباريات ضد الكمبيوتر', 'ghost.defended': 'دفاع تشكيلتك', 'ghost.defendedHint': 'نتائج تشكيلتك عندما لعبها الكمبيوتر ضد لاعبين آخرين لم يجدوا خصماً',
+  'gw.title': 'نهاية أسبوع النقابات', 'gw.closesIn': 'تنتهي بعد {t}', 'gw.opensIn': 'تبدأ بعد {t}', 'gw.sub': 'من الجمعة 18:00 إلى الاثنين 06:00 بتوقيت UTC: كل فوز أونلاين لعضو يُضاف إلى مجموع النقابة — أول {cap} فوزاً لكل لاعب. كل من لعب للنقابة يستلم مكافأة مركزها.', 'gw.wins': 'انتصارات النقابة', 'gw.place': 'المركز', 'gw.placeOf': '#{rank} من {of}', 'gw.yours': 'انتصاراتك', 'gw.noWins': 'لا انتصارات بعد — كل فوز أونلاين يُحتسب.', 'gw.top': 'الأكثر فوزاً', 'gw.last': 'نهاية الأسبوع الماضية', 'gw.lastLine': 'المركز #{rank} من {of} بـ {wins} فوزاً', 'gw.claim': 'استلم', 'gw.claimed': 'تم الاستلام', 'gw.didNotPlay': 'لم تلعب للنقابة في نهاية الأسبوع تلك، فلا مكافأة لك منها.', 'gw.board': 'ترتيب نهاية الأسبوع', 'gw.boardLast': 'ترتيب نهاية الأسبوع الماضية', 'gw.empty': 'لم تفز أي نقابة بعد في نهاية الأسبوع هذه.', 'gw.emptyLast': 'لم تفز أي نقابة في نهاية الأسبوع الماضية.', 'gw.rewards': 'المكافآت', 'gw.p1': 'الأول', 'gw.p3': 'الثاني–الثالث', 'gw.p10': 'الرابع–العاشر', 'gw.pAny': 'أي فوز', 'gw.toast': 'مكافأة نهاية أسبوع النقابات بانتظارك في اليوم', 'gw.pack': 'حزمة {pack}',
   'menu.today': 'اليوم', 'menu.trophies': 'الجوائز', 'menu.career': 'المسيرة', 'menu.street': 'الشارع', 'menu.skills': 'المهارات', 'menu.settings': 'الإعدادات',
   'menu.ultimate': 'التشكيلة المثالية', 'menu.ultimate.blurb': 'ابنِ · ارتقِ · اكسب', 'menu.open': 'افتح ←',
   'menu.kickoff': 'انطلاق', 'menu.kickoff.blurb': 'مباشرة إلى المباراة', 'menu.play': 'العب ←',
@@ -68,6 +69,7 @@ const AR = {
 
 const EN = {
   'ghost.toast': 'Nobody free — the CPU is playing the squad of', 'ghost.house': 'Nobody free — playing an Apex Division side', 'ghost.searching': 'Nobody free right now — finding a real player\'s squad for you…', 'ghost.vs': 'squad, played by the CPU', 'ghost.counted': 'Counted for your ranking', 'ghost.notCounted': 'Not counted', 'ghost.daily': 'today\'s limit of CPU-played matches is reached', 'ghost.defended': 'Your squad\'s defence', 'ghost.defendedHint': 'How your squad did when the CPU played it against players who found nobody else online',
+  'gw.title': 'Guild weekend', 'gw.closesIn': 'closes in {t}', 'gw.opensIn': 'opens in {t}', 'gw.sub': "Friday 18:00 to Monday 06:00 UTC: every online win by a member adds to the guild's total — the first {cap} of each player's. Everyone who played for the guild claims the reward for its place.", 'gw.wins': 'Guild wins', 'gw.place': 'Place', 'gw.placeOf': '#{rank} of {of}', 'gw.yours': 'Your wins', 'gw.noWins': 'No wins yet — every online win counts.', 'gw.top': 'Top winners', 'gw.last': 'Last weekend', 'gw.lastLine': '#{rank} of {of} with {wins} wins', 'gw.claim': 'Claim', 'gw.claimed': 'Claimed', 'gw.didNotPlay': 'You did not play for the guild that weekend, so there is no reward for you from it.', 'gw.board': 'Weekend board', 'gw.boardLast': "Last weekend's board", 'gw.empty': 'No guild has a win yet this weekend.', 'gw.emptyLast': 'No guild won a match last weekend.', 'gw.rewards': 'Rewards', 'gw.p1': '1st', 'gw.p3': '2nd–3rd', 'gw.p10': '4th–10th', 'gw.pAny': 'Any win', 'gw.toast': 'Guild weekend reward waiting on Today', 'gw.pack': '{pack} pack',
   'menu.today': 'Today', 'menu.trophies': 'Trophies', 'menu.career': 'Career', 'menu.street': 'Street', 'menu.skills': 'Skills', 'menu.settings': 'Settings',
   'menu.ultimate': 'Ultimate XI', 'menu.ultimate.blurb': 'Build · rank up · rewards', 'menu.open': 'Open →',
   'menu.kickoff': 'Kick Off', 'menu.kickoff.blurb': 'Straight into a match', 'menu.play': 'Play →',
@@ -318,6 +320,7 @@ const AR_TEXT = {
   "Join": "انضمام",
   "Enter the four-letter duel code": "أدخل رمز المبارزة المكوّن من أربعة أحرف",
   "Penalty duels": "مبارزات الترجيح",
+  "goals": "أهداف",
 };
 export function tx(en) { return lang() === 'ar' ? AR_TEXT[en] ?? en : en; }
 

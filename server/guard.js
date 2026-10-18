@@ -334,17 +334,28 @@ function crashAllowed(req) { return allow(`crash:${clientIP(req)}`, 6, 6 / 60); 
  * under a weekend of its choosing.
  */
 function weekendIdNow(now = new Date()) {
+  const w = weekendWindow(now);
+  return w.open ? w.id : null;
+}
+/**
+ * v195: the whole window `now` belongs to — the open one, or the wait for the
+ * next — with the id of the one before it, which guild weekends pay out on.
+ */
+function weekendWindow(now = new Date()) {
+  now = new Date(now);
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const toFri = (5 - d.getUTCDay() + 7) % 7;
   let opens = new Date(d); opens.setUTCDate(d.getUTCDate() + toFri); opens.setUTCHours(18, 0, 0, 0);
   const closeOf = (o) => { const c = new Date(o); c.setUTCDate(o.getUTCDate() + 3); c.setUTCHours(6, 0, 0, 0); return c; };
   const prev = new Date(opens); prev.setUTCDate(opens.getUTCDate() - 7);
   if (opens > now && closeOf(prev) > now) opens = prev;
-  return now >= opens && now < closeOf(opens) ? opens.toISOString().slice(0, 10) : null;
+  const closes = closeOf(opens);
+  const before = new Date(opens); before.setUTCDate(opens.getUTCDate() - 7);
+  return { id: opens.toISOString().slice(0, 10), open: now >= opens && now < closes, opensAt: opens.getTime(), closesAt: closes.getTime(), prevId: before.toISOString().slice(0, 10) };
 }
 
 module.exports = {
-  crashAllowed, weekendIdNow,
+  crashAllowed, weekendIdNow, weekendWindow,
   clientIP, allow, peek, spend,
   loginAllowed, loginFailed, registerAllowed, saveAllowed, apiAllowed,
   sanitiseSave, checkResult, cleanClub, cleanSquad, cleanKit,

@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v195',
+    date: '2026-10-18',
+    tag: 'Online',
+    title: 'Guild weekends',
+    lede: 'Every weekend, guilds race each other. Each online win by a member adds to the guild\'s total, and the final places pay out to everyone who played.',
+    entries: [
+      {
+        head: 'How it works',
+        summary: 'From Friday 18:00 to Monday 06:00 UTC, every ranked online win by a guild member counts for the guild. Online → your guild shows the total, your place and the weekend board.',
+        detail: 'Wins against a CPU-played squad count too, inside their daily limit. Only the first 20 wins of each player\'s weekend count, so one player cannot carry a guild alone. Ties go to the guild with more goals.',
+      },
+      {
+        head: 'Rewards',
+        summary: 'When the weekend ends, everyone who played for the guild claims the reward for its place, until the next weekend ends.',
+        detail: '1st: ◈6,000 and a Prime pack. 2nd–3rd: ◈4,000 and a Gold pack. 4th–10th: ◈2,500 and a Gold pack. Any other guild with a win: ◈1,200 and a Silver pack. The places are fixed when the weekend ends, so a guild breaking up afterwards moves nobody.',
+      },
+    ],
+  },
+  {
     version: 'v194',
     date: '2026-10-18',
     tag: 'Online',

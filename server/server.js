@@ -351,12 +351,17 @@ async function api(req, res, route) {
       : body.action === 'join' ? store.joinGuild(acct, body.code)
       : body.action === 'leave' ? store.leaveGuild(acct)
       : body.action === 'claim' ? store.claimGuildObjective(acct, body.id)
+      : body.action === 'claimWeekend' ? store.claimGuildWeekend(acct)
       : { error: 'Unknown action.' };
     if (r.error) return json(res, 400, r);
     return json(res, 200, { ...r, view: store.guildView(acct, new Set(peers.keys())) });
   }
   if (route === '/api/guild/board') {
     return json(res, 200, { week: store.weekId(), rows: store.guildBoard(25) });
+  }
+  // v195: the guild weekend — live while open, the last one's final places while shut
+  if (route === '/api/guild/weekend') {
+    return json(res, 200, store.guildWeekendView(authOf(req)));
   }
   if (route === '/api/friends') {
     const acct = authOf(req);

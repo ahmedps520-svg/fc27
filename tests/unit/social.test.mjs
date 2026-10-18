@@ -73,6 +73,11 @@ test('guilds, friends, invites, spectating and emotes', async () => {
     assert.equal(board.rows[0].members, 2);
     const early = await post(url, '/api/guild', { action: 'claim', id: 'wins' }, A);
     assert.ok(early.error, 'nothing to claim yet');
+    // v195: the guild weekend rides along, and has nothing to pay out yet
+    assert.equal(typeof made.view.weekend?.open, 'boolean'); assert.equal(made.view.weekend.cap, 20);
+    assert.ok((await post(url, '/api/guild', { action: 'claimWeekend' }, A)).error);
+    const gw = await get(url, '/api/guild/weekend');
+    assert.ok(Array.isArray(gw.board) && gw.guild === null, 'signed out: the board only');
 
     // ---- friends over HTTP
     const noSelf = await post(url, '/api/friends', { action: 'add', name: names[0] }, A);

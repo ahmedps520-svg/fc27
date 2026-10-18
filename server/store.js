@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { isOffensive } = require('./names.js');
+const { weekendWindow } = require('./guard.js');
 
 // APEX_DATA_DIR: where accounts live. Tests point this at a scratch folder so
 // a run can never touch the real server/data.
@@ -329,6 +330,7 @@ function deleteAccount(acct, pass) {
   }
   delete db.accounts[key(acct.name)];
   if (db.ghosts) delete db.ghosts[key(acct.name)];       // v193: their squad leaves the pool too
+  forgetGuildWeekends(acct.name);                         // v195
   flush();
   return { ok: true };
 }
@@ -371,7 +373,7 @@ function putSave(acct, save) {
   flush();
 }
 
-function recordResult(acct, { scored, conceded, divIdx }) {
+function recordResult(acct, { scored, conceded, divIdx }, now = Date.now()) {
   const o = acct.online;
   o.played += 1;
   o.goalsFor += scored;
@@ -386,6 +388,9 @@ function recordResult(acct, { scored, conceded, divIdx }) {
     const w = guildWeek(g);
     w.matches += 1; w.goals += scored; if (scored > conceded) w.wins += 1;
     w.points += scored > conceded ? 3 : scored === conceded ? 1 : 0;
+    // v195: and, inside the weekend window, the guild weekend's
+    const wk = weekendWindow(now);
+    if (wk.open) guildWeekendCount(acct, g, wk.id, scored, conceded);
   }
   flush();
   return o;
@@ -509,10 +514,10 @@ function leaveGuild(acct) {
   flush();
   return { ok: true };
 }
-/** What a member sees: the guild, this week's objectives with progress and what they can claim, the board rank. */
+/** What a member sees: the guild, this week's objectives with progress and what they can claim, the board rank, the guild weekend (v195). */
 function guildView(acct, onlineNames = new Set()) {
   const g = acct.guild && db.guilds[acct.guild];
-  if (!g) return { guild: null, objectives: GUILD_OBJECTIVES.map((o) => ({ ...o, have: 0 })) };
+  if (!g) return { guild: null, objectives: GUILD_OBJECTIVES.map((o) => ({ ...o, have: 0 })), weekend: guildWeekendView(acct) };
   const id = weekId();
   const w = guildWeek(g, id);
   const board = guildBoard(200, id);
@@ -527,6 +532,7 @@ function guildView(acct, onlineNames = new Set()) {
       return { ...o, have, complete, claimed, claimable: complete && !claimed };
     }),
     rank, guilds: board.length,
+    weekend: guildWeekendView(acct),
   };
 }
 function claimGuildObjective(acct, objId) {
@@ -548,6 +554,127 @@ function guildBoard(limit = 25, id = weekId()) {
     .sort((x, y) => y.points - x.points || y.wins - x.wins || y.goals - x.goals || x.name.localeCompare(y.name))
     .slice(0, limit)
     .map((r, i) => ({ rank: i + 1, code: r.code, name: r.name, tag: r.tag, members: r.members, points: r.points, wins: r.wins, goals: r.goals, matches: r.matches }));
+}
+
+/* ------------------------------------------------------------------ *
+ * v195: guild weekends
+ *
+ * Inside the Weekend League window (Friday 18:00 → Monday 06:00 UTC) every
+ * member's validated online win — a ranked match, or a counted ghost — adds
+ * to the guild's weekend total. Only the first GW_CAP wins of each account's
+ * weekend count, wherever it plays them, so one grinder cannot carry a guild
+ * alone and two members cannot farm it between them. Once the window shuts
+ * the board is frozen (`gwFinal`), and every member who played for the guild
+ * that weekend claims the reward for its place, once, until the next weekend
+ * closes.
+ * ------------------------------------------------------------------ */
+const GW_CAP = 20;
+const GUILD_WEEKEND_REWARDS = [
+  { upTo: 1, pack: 'prime', apex: 6000, text: 'Guild weekend champions' },
+  { upTo: 3, pack: 'gold', apex: 4000, text: 'Guild weekend podium' },
+  { upTo: 10, pack: 'gold', apex: 2500, text: 'Guild weekend top ten' },
+  { upTo: Infinity, pack: 'silver', apex: 1200, text: 'Guild weekend' },
+];
+const gwRewardFor = (rank) => GUILD_WEEKEND_REWARDS.find((r) => rank <= r.upTo);
+function guildWeekendTally(g, id) {
+  if (!g.weekends) g.weekends = {};
+  const t = g.weekends[id] || (g.weekends[id] = { wins: 0, goals: 0, matches: 0, by: {}, claimed: [] });
+  // keep the last three weekends
+  const keys = Object.keys(g.weekends).sort();
+  while (keys.length > 3) delete g.weekends[keys.shift()];
+  return t;
+}
+function guildWeekendCount(acct, g, id, scored, conceded) {
+  const t = guildWeekendTally(g, id);
+  const me = t.by[key(acct.name)] || (t.by[key(acct.name)] = { name: acct.name, wins: 0, matches: 0 });
+  if (!acct.gw || acct.gw.id !== id) acct.gw = { id, wins: 0 };
+  me.matches += 1; t.matches += 1; t.goals += scored;
+  if (scored > conceded && acct.gw.wins < GW_CAP) { acct.gw.wins += 1; me.wins += 1; t.wins += 1; }
+}
+/** A weekend's guilds by wins (then goals). Only guilds with a win are ranked. */
+function guildWeekendBoard(id, limit = 25) {
+  return Object.values(db.guilds)
+    .filter((g) => g.weekends?.[id]?.wins > 0)
+    .map((g) => ({ code: g.code, name: g.name, tag: g.tag, members: g.members.length, wins: g.weekends[id].wins, goals: g.weekends[id].goals, matches: g.weekends[id].matches }))
+    .sort((x, y) => y.wins - x.wins || y.goals - x.goals || x.name.localeCompare(y.name))
+    .slice(0, limit)
+    .map((r, i) => ({ rank: i + 1, ...r }));
+}
+/** A closed weekend's places, worked out once and kept, so a guild folding later moves nobody. */
+function guildWeekendFinal(id) {
+  db.gwFinal = db.gwFinal || {};
+  if (!db.gwFinal[id]) {
+    const rows = guildWeekendBoard(id, Infinity);
+    db.gwFinal[id] = { n: rows.length, ranks: Object.fromEntries(rows.map((r) => [r.code, r.rank])), top: rows.slice(0, 10) };
+    const keys = Object.keys(db.gwFinal).sort();
+    while (keys.length > 3) delete db.gwFinal[keys.shift()];
+    flush();
+  }
+  return db.gwFinal[id];
+}
+/**
+ * The guild weekend as a member (or anyone) sees it: the window, the board —
+ * live while open, the last one's final places while shut — your guild's
+ * total, its members' wins, and last weekend's reward to claim.
+ */
+function guildWeekendView(acct, now = Date.now()) {
+  const wk = weekendWindow(now);
+  const g = acct?.guild && db.guilds[acct.guild];
+  const out = {
+    id: wk.id, open: wk.open, opensAt: wk.opensAt, closesAt: wk.closesAt, cap: GW_CAP,
+    rewards: GUILD_WEEKEND_REWARDS.map((r) => ({ upTo: Number.isFinite(r.upTo) ? r.upTo : null, pack: r.pack, apex: r.apex })),
+    board: wk.open ? guildWeekendBoard(wk.id, 10) : guildWeekendFinal(wk.prevId).top,
+    boardId: wk.open ? wk.id : wk.prevId,
+    guild: null, last: null,
+  };
+  if (!g) return out;
+  if (wk.open) {
+    const t = g.weekends?.[wk.id];
+    const live = guildWeekendBoard(wk.id, Infinity);
+    const mine = live.find((r) => r.code === g.code);
+    out.guild = {
+      wins: t?.wins || 0, goals: t?.goals || 0, matches: t?.matches || 0,
+      rank: mine?.rank || null, of: live.length,
+      you: acct.gw?.id === wk.id ? acct.gw.wins : 0,
+      // current members only: someone who left, or deleted their account, is not shown
+      top: Object.values(t?.by || {}).filter((b) => b.wins && g.members.includes(b.name)).sort((x, y) => y.wins - x.wins || x.name.localeCompare(y.name)).slice(0, 5).map((b) => ({ name: b.name, wins: b.wins })),
+    };
+  }
+  const t = g.weekends?.[wk.prevId];
+  if (t?.wins) {
+    const fin = guildWeekendFinal(wk.prevId);
+    const rank = fin.ranks[g.code] || null;
+    const r = rank && gwRewardFor(rank);
+    const played = !!t.by[key(acct.name)]?.matches;
+    const claimed = t.claimed.includes(key(acct.name));
+    out.last = { id: wk.prevId, rank, of: fin.n, wins: t.wins, pack: r?.pack || null, apex: r?.apex || 0, played, claimed, claimable: !!r && played && !claimed };
+  }
+  return out;
+}
+function claimGuildWeekend(acct, now = Date.now()) {
+  const g = acct.guild && db.guilds[acct.guild];
+  if (!g) return { error: 'Not in a guild.' };
+  const { prevId: id } = weekendWindow(now);
+  const t = g.weekends?.[id];
+  if (!t?.wins) return { error: 'Your guild has no weekend result to claim.' };
+  if (!t.by[key(acct.name)]?.matches) return { error: 'Only members who played for the guild that weekend can claim.' };
+  if (t.claimed.includes(key(acct.name))) return { error: 'Already claimed.' };
+  const fin = guildWeekendFinal(id);
+  const rank = fin.ranks[g.code];
+  if (!rank) return { error: 'Your guild has no weekend result to claim.' };
+  const r = gwRewardFor(rank);
+  t.claimed.push(key(acct.name));
+  flush();
+  return { reward: { pack: r.pack, apex: r.apex, title: `${r.text} — #${rank} of ${fin.n}`, rank, of: fin.n } };
+}
+/** An account that goes takes its name out of every guild's weekend record (the totals stay). */
+function forgetGuildWeekends(name) {
+  for (const g of Object.values(db.guilds)) {
+    for (const t of Object.values(g.weekends || {})) {
+      delete t.by[key(name)];
+      t.claimed = t.claimed.filter((n) => n !== key(name));
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -616,6 +743,7 @@ function removeAccount(name) {
   if (tokenIndex) { tokenIndex.delete(acct.token); for (const e of acct.extra || []) tokenIndex.delete(e.token); }
   delete db.accounts[key(acct.name)];
   if (db.ghosts) delete db.ghosts[key(acct.name)];       // v193
+  forgetGuildWeekends(acct.name);                         // v195
   db.banned = db.banned || [];
   if (!db.banned.includes(key(acct.name))) db.banned.push(key(acct.name));
   flush();
@@ -729,6 +857,7 @@ module.exports = {
   saveGhost, pickGhost, recordGhostDefence, ghostAllowance, countGhost, recordPens,
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
+  guildWeekendView, claimGuildWeekend, guildWeekendBoard, GW_CAP, GUILD_WEEKEND_REWARDS,
   addFriend, removeFriend, friendsView, deleteAccount,
   blockPlayer, unblockPlayer, blocks, removeAccount, nameOf,
   // operator tools only — see the note on accountByName
