@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v194 — the online penalty duel (owner's pick #7)
+- **Server** (`server/pens.js`, wired like the party hub: `m.t.startsWith('pens')` in `handle`, `pensHub.onClose` on a closed socket): `pensQueue` (pairs any two duellists not blocked either way; alone for `NOBODY_MS` 20 s → `pensNobody`), `pensHost`/`pensJoin` (4-letter code; a blocked pair sees "No duel with that code."), `pensCancel`, `pensShoot {aim}`, `pensDive {dive}`, `pensLeave`. Each kick: `pensTurn` to both, both inputs or the clock (`TURN_MS` 4 s; a missing aim is a rushed ±0.5, a missing dive random), `resolveKick` (same rules for everyone, no card stats: wide past 1.02; stay saves the middle 85%; the right way saves 75%, a corner 35%), `pensKick` to both, `decided()` (standard shootout arithmetic), `pensEnd`. A leave or a dropped socket is a walkover. Records `acct.pens {w,l}` (in `publicProfile.pens`). No caps flag needed: only new clients send `pens*`. Env-tunable `APEX_PENS_TURN_MS/_GAP_MS/_NOBODY_MS` for tests.
+- **What travels:** a name, card ids (`takers`, `keeper`, `[\w:.-]{1,48}`) and a kit — the other side's names are looked up from the card ids on each machine.
+- **Client** (`js/screens/pens.js`, route `pens`): the shootout's `.so-*` goal and pips; the shooter's sweeping marker (`pensShoot` sends the sine of the phase), the keeper's three buttons, a clock bar; a sideways phone drops the screen head and puts the controls beside the goal. Win ◈250 / loss ◈60 (client-side, like a friendly's pay). Nobody free → `runShootout` against a random club (◈120 / ◈30). Leaving the screen mid-duel sends `pensLeave`. Entry: the Online tab's "Penalty duel" card (find / friend / code + join); the profile card shows "Penalty duels W L".
+- Tests: `tests/unit/pens.test.mjs` (the kick rules, the arithmetic, whole duels: queue, the clock, code + block, walk-out, nobody free, records), QA bot `pens` flow (two browsers through the buttons to a result and the pay).
+
 ## v193 — ghost opponents (owner's pick #1)
 - **Why:** a new app has few people online; the ranked queue found nobody. Now, after `GHOST_AFTER_MS` (25 s) alone, the server hands a capable client an AI-controlled copy of a real player's recent squad.
 - **Capabilities, not a protocol bump:** the client's `auth` carries `caps: ['ghost']` (`js/net/socket.js`); `peer.caps` on the server. The 1.1 app sends none and never gets a ghost; bumping `NET_PROTOCOL` would have split matchmaking between the app and the web.

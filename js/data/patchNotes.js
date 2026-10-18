@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v194',
+    date: '2026-10-18',
+    tag: 'Online',
+    title: 'Penalty duel',
+    lede: 'A two-minute online mode: five penalties each against a real person. You shoot, they dive, then you swap.',
+    entries: [
+      {
+        head: 'How it works',
+        summary: 'Online → Penalty duel → Find a duel, or Duel a friend with a four-letter code. On your kick, stop the marker to aim; on theirs, pick Left, Stay or Right before the clock runs out.',
+        detail: 'The server decides every kick by the same rules for both of you: corners are a gamble, and a keeper who guesses right still has to reach it. Five each, then sudden death. A win pays ◈250 and a loss ◈60. Leaving part-way through counts as a loss.',
+      },
+      {
+        head: 'Nobody free?',
+        summary: 'After twenty seconds with nobody to play, take on the CPU instead, or keep looking.',
+        detail: 'Your takers are your Ultimate XI\'s best finishers and your keeper. Players you have blocked are never your opponent. The Online tab shows your duel record.',
+      },
+    ],
+  },
+  {
     version: 'v193',
     date: '2026-10-18',
     tag: 'Online',

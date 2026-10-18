@@ -424,6 +424,13 @@ function pickGhost(acct, divIdx = 0, rnd = Math.random) {
   const g = near[Math.floor(rnd() * near.length)];
   return { name: g.name, squad: g.squad.slice(), kit: g.kit, divIdx: g.divIdx };
 }
+/** v194: a penalty duel's result on the account. */
+function recordPens(acct, won) {
+  if (!acct) return;
+  acct.pens = acct.pens || { w: 0, l: 0 };
+  acct.pens[won ? 'w' : 'l'] += 1;
+  flush();
+}
 /** The owner's side of a ghost match: 'w' | 'd' | 'l' from the squad's point of view. */
 function recordGhostDefence(ownerName, outcome) {
   const owner = acctOf(ownerName); if (!owner || !['w', 'd', 'l'].includes(outcome)) return;
@@ -705,7 +712,7 @@ function leaderboard(limit = 25) {
 }
 
 /** What the client is allowed to see about itself. */
-const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null, coop: a.coop || {}, ghost: a.ghostRecord || null });
+const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null, coop: a.coop || {}, ghost: a.ghostRecord || null, pens: a.pens || null });
 
 /** For the health endpoint: where accounts are going, and whether that lasts. */
 const status = () => ({
@@ -719,7 +726,7 @@ module.exports = {
   mintToken,
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
-  saveGhost, pickGhost, recordGhostDefence, ghostAllowance, countGhost,
+  saveGhost, pickGhost, recordGhostDefence, ghostAllowance, countGhost, recordPens,
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
   addFriend, removeFriend, friendsView, deleteAccount,

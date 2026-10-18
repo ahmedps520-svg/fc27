@@ -3939,6 +3939,30 @@ button, .tile, .coll-item, .pcard { -webkit-user-select: none; user-select: none
 .del-card { width: min(380px, calc(100vw - 32px)); }
 .del-card input { width: 100%; }
 /* v191: the reminders question (menu.js askReminders), once, in the iPhone app */
+/* v194: the penalty duel (screens/pens.js); the goal and the pips are the shootout's (.so-*) */
+.pens-panel { max-width: 640px; margin: 0 auto; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.pens-status { margin: 0; font-weight: 600; }
+.pens-code { font: 800 44px/1 var(--font-cond, var(--font)); letter-spacing: .3em; color: var(--accent); }
+.pens-clock { display: block; width: min(420px, 100%); height: 4px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+.pens-clock b { display: block; height: 100%; width: 0; background: var(--accent); }
+.pens-act { min-height: 48px; display: flex; justify-content: center; }
+.pens-dives { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.pens-dives .btn { min-width: 96px; }
+.pens-leave { margin-top: 6px; opacity: .8; }
+.pens-end { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.pens-end b { font-size: 22px; }
+.pens-end.good b { color: var(--good, #3ddc97); }
+.pens-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+/* a sideways phone: no screen head, the goal on the left, what to do on the right — the buttons above the fold */
+@media (max-height: 560px) and (orientation: landscape) {
+  .pens-screen .screen-head { display: none; }
+  .pens-screen .pens-panel { max-width: 880px; padding: 10px 16px; }
+  .pens-duel { display: grid; grid-template-columns: auto minmax(220px, 1fr); grid-template-areas: 'score status' 'pips act' 'goal act' 'clock leave';
+    column-gap: 24px; row-gap: 6px; align-items: center; justify-items: center; width: 100%; }
+  .pens-duel .so-score { grid-area: score; } .pens-duel .so-pips { grid-area: pips; } .pens-duel .so-goal { grid-area: goal; margin: 0; }
+  .pens-duel .pens-clock { grid-area: clock; } .pens-duel .so-status { grid-area: status; } .pens-duel .pens-act { grid-area: act; align-self: center; }
+  .pens-duel .pens-leave { grid-area: leave; margin: 0; }
+}
 /* v193: the ghost defence line on the online profile card */
 .ol-id .ol-def { display: block; margin-top: 2px; font-size: 12px; color: var(--text-dim); letter-spacing: .02em; }
 .remind-ask { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60;
