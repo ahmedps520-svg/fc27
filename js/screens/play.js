@@ -363,6 +363,7 @@ export function mount(root, params) {
     if (st.oneHanded) shell.classList.add('one-hand', `one-hand-${st.oneHandedSide === 'left' ? 'left' : 'right'}`); }
   const mode = params.mode || 'single';
   const online = params.online || null;
+  let ghostSent = false;            // v193: a ghost match reports once
   /* v95: the attract demo — the title screen left alone plays a CPU match
      behind a "press any button" banner. Nobody holds a stick, nothing is
      paid or recorded, and any input (or the final whistle) goes back to the
@@ -2929,6 +2930,19 @@ export function mount(root, params) {
       });
     }
 
+    /* v193: a ghost match (a real player's squad played by the CPU, online.js) has one
+       result, which the server counts like a ranked one if it may (server.js offerGhosts) */
+    if (params.ghost && !ghostSent) {
+      ghostSent = true;
+      net.send({ t: 'ghostResult', matchId: params.ghost.matchId, scored: h.score, conceded: a.score });
+      const offG = net.on('ghostRecorded', (r) => {
+        offG();
+        const el = root.querySelector('#gmGhostNote'); if (!el) return;
+        el.textContent = r.counted ? t('ghost.counted') : `${t('ghost.notCounted')}${r.why === 'daily' ? ` — ${t('ghost.daily')}` : ''}`;
+        el.classList.toggle('good', !!r.counted);
+      });
+    }
+
     // Apex Division matches settle the ladder instead of paying a flat fee
     let div = null;
     let sub = null;   // v80: a Fives or Squad Clash settlement
@@ -2983,7 +2997,7 @@ export function mount(root, params) {
     const cupRes = params.customCup ? customCup.onResult(myScore, theirScore) : null;   // v118
     const prog = spectating ? {} : progress.onMatch({
       mode: params.weekend ? 'weekend' : params.ultimate ? 'ultimate' : mode,
-      scored: myScore, conceded: theirScore, online: !!online,
+      scored: myScore, conceded: theirScore, online: !!online || !!params.ghost,
       possession: online && online.team === 1 ? pa : ph, weekend: !!params.weekend,
       sub: params.fives ? 'fives' : params.clash ? 'clash' : null,
     });
@@ -3095,12 +3109,13 @@ export function mount(root, params) {
         ${drawnKickOff && mode !== 'career' ? `
           <button class="btn ghost so-offer" data-o="pens">Settle it on penalties</button>` : ''}
         ${online && !spectating && online.oppName ? `<button class="btn ghost sm gm-report" data-o="reportOpp">Report or block ${esc(online.oppName)}</button>` : ''}
+        ${params.ghost ? `<p class="season-line gm-ghost">${params.ghost.name ? `${esc(params.ghost.name)} — ${t('ghost.vs')}` : t('ghost.house')} · <span id="gmGhostNote">…</span></p>` : ''}
         <div class="gm-btns">
           ${mode === 'career'
             ? `<button class="btn primary" data-o="career">${t('end.continue')}</button>`
             : spectating
             ? '<button class="btn primary" data-o="quit">Back online</button>'
-            : online
+            : online || params.ghost
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
               ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'

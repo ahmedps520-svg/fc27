@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -27,6 +27,8 @@ const ARGS = GL
 const RESET = 'econ-2curr-1';
 const step = (s) => console.log(`  · ${s}`);
 
+// v193: the ghost flow queues alone; a short wait for its ghost, and a short floor on the result
+process.env.APEX_GHOST_AFTER_MS ||= '3000'; process.env.APEX_GHOST_MIN_MS ||= '1000';
 const server = await startServer();
 const browser = await chromium.launch({ args: ARGS });
 const pageErrors = [];
@@ -351,6 +353,43 @@ try {
   });
 
   // v82: parties — a co-op season with two browsers, then a 2v2 with four
+  /* v193: alone in the ranked queue, a ghost arrives: a real player's squad (G's, queued
+     and cancelled first) for the CPU to play. Played to full time, the result is counted. */
+  await flow('ghost', async () => {
+    const mk = async (tag) => {
+      const { ctx, page } = await boot(tag, baseSave({ club: { apex: 5000 } }));
+      await page.evaluate(async () => { const ob = await import('/js/onboarding.js'); ob.dealStarter(); });
+      const name = `${tag}${Date.now().toString(36).slice(-5)}`;
+      await page.evaluate(async (n) => { const api = await import('/js/net/api.js'); await api.register(n, 'qa-pass-12345'); }, name);
+      await go(page, 'squad');
+      await page.waitForSelector('[data-utab="online"]', { timeout: 10000 });
+      await click(page, '[data-utab="online"]');
+      await page.waitForSelector('#olQueue', { timeout: 10000 });
+      await page.waitForFunction(async () => (await import('/js/net/socket.js')).isReady(), null, { timeout: 15000 });
+      return { ctx, page, name };
+    };
+    const G = await mk('ghostG');
+    await click(G.page, '#olQueue');
+    await G.page.waitForTimeout(800);
+    await G.page.evaluate(async () => (await import('/js/net/socket.js')).send({ t: 'cancel' }));
+    const P = await mk('ghostP');
+    await click(P.page, '#olQueue');
+    await P.page.waitForSelector('#gmCanvas', { timeout: 20000 });
+    await P.page.waitForFunction(() => document.getElementById('gmLoad')?.hidden, null, { timeout: 90000 });
+    const away = await P.page.evaluate(() => ({ name: window.__apexMatch.teams[1].name, n: window.__apexMatch.teams[1].players.length }));
+    assert.equal(away.name, G.name, `the CPU plays G's squad (${JSON.stringify(away)})`);
+    assert.equal(away.n, 11);
+    step(`alone in the queue: ${G.name}'s squad, played by the CPU`);
+    await P.page.waitForTimeout(1200);
+    await P.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
+    await P.page.waitForSelector('#gmGhostNote', { timeout: 90000 });
+    await P.page.waitForFunction(() => /Counted/.test(document.getElementById('gmGhostNote')?.textContent || ''), null, { timeout: 15000 });
+    const played = await P.page.evaluate(async () => { const api = await import('/js/net/api.js'); return (await (await fetch('/api/me', { headers: { Authorization: `Bearer ${api.authToken()}` } })).json()).profile.online.played; });
+    assert.equal(played, 1, 'the ghost match is on the record');
+    step('full time: counted for the ranking');
+    await G.ctx.close(); await P.ctx.close();
+  });
+
   await flow('party', async () => {
     const mk = async (tag) => {
       const { ctx, page } = await boot(tag, baseSave({ club: { apex: 5000 } }));

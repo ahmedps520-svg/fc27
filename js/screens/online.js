@@ -17,7 +17,8 @@ import * as net from '../net/socket.js';
 import { DIVISIONS } from '../state.js';
 import { navigate, toast, refreshCoins } from '../app.js';
 import { sfx } from '../audio.js';
-import { clubIdentity } from './squad.js';
+import { clubIdentity, ultimateSquad } from './squad.js';
+import { divisionOpponent, divisionSkill } from '../ultimate.js';
 import { t } from '../i18n.js';
 import { NET_PROTOCOL } from '../net/protocol.js';
 import { APP_STORE } from '../platform.js';
@@ -67,6 +68,7 @@ const profileCard = () => {
       <div class="ol-id">
         <b>${p?.name || 'Player'}</b>
         <span class="ol-conn" id="olConn">connecting…</span>
+        ${p?.ghost ? `<span class="ol-def" title="${t('ghost.defendedHint')}">${t('ghost.defended')}: ${p.ghost.w | 0}W ${p.ghost.d | 0}D ${p.ghost.l | 0}L</span>` : ''}
       </div>
       <div class="ol-record">
         <div><b>${o.points}</b><span>Points</span></div>
@@ -460,7 +462,7 @@ export function mountOnline(root, { rerender }) {
       subEl.textContent = s < 8 ? `Looking in ${div}`
         : s < 16 ? `Widening the search around ${div}…`
           : s < 25 ? 'Looking further up and down the ladder…'
-            : 'Matching with anyone available…';
+            : t('ghost.searching');
     }, 1000);
   });
 
@@ -573,6 +575,7 @@ export function mountOnline(root, { rerender }) {
   offs.push(net.on('queued', () => { /* already showing the search overlay */ }));
 
   offs.push(net.on('match', hideSearch));
+  offs.push(net.on('ghost', hideSearch));          // v193
 
   offs.push(net.on('kicked', () => {
     toast('Signed in somewhere else — this session was closed', 'warn');
@@ -646,6 +649,35 @@ net.on('match', (m) => {
     weekend: m.kind === 'weekend' ? (m.wl || null) : null,
     homeSquad: m.host ? mine : theirs,
     awaySquad: m.host ? theirs : mine,
+  });
+});
+
+/* v193: nobody was free, so the server sent a ghost: a real player's recent
+ * squad (or, on a fresh server, a house side) for the CPU to play. It is played
+ * here, offline, like a Division fixture, and the result goes back as one
+ * ghostResult (play.js finish) to be counted like a ranked match. */
+net.on('ghost', (m) => {
+  const squad = ultimateSquad();
+  if (!squad) { toast('Fill all 11 positions first', 'warn'); return; }
+  const rating = Math.round(squad.xi.reduce((t2, p) => t2 + p.overall, 0) / squad.xi.length);
+  const divIdx = Math.max(0, Math.min(DIVISIONS.length - 1, (m.opp?.divIdx ?? getState().ultimate.divIdx) | 0));
+  let theirs = null; let oppName = '';
+  if (!m.opp?.house) {
+    oppName = String(m.opp?.name || '').slice(0, 16);
+    const xi = (m.opp?.squad || []).map(cardOrBase).filter(Boolean);
+    const colors = ['#ff2e88', '#160b16'];
+    if (xi.length === 11) theirs = { xi, name: oppName, short: oppName.slice(0, 3).toUpperCase(), colors, crest: { shape: 'circle', pattern: 'halves', device: 'star', colors }, kit: m.opp.kit ? kitOf(m.opp.kit, colors) : null };
+  }
+  if (!theirs) { theirs = divisionOpponent(divIdx, rating); oppName = ''; }
+  sfx('confirm');
+  toast(oppName ? `${t('ghost.toast')} ${oppName}` : t('ghost.house'), 'info');
+  navigate('play', {
+    homeId: WORLD.clubs[0].id, awayId: WORLD.clubs[1].id, duration: 180,
+    skill: divisionSkill(divIdx), mode: 'single',
+    // a Weekend League queue's ghost counts for the weekend, as a human pairing does (the 'match' handler)
+    ultimate: !m.wl, weekend: m.wl || null,
+    homeSquad: squad, awaySquad: theirs,
+    ghost: { matchId: m.matchId, name: oppName, wl: m.wl || null },
   });
 });
 

@@ -738,7 +738,47 @@ function tryMatchmake() {
 // Waiting players are re-checked on a timer as well as on arrival, because the
 // widening above is time-based: two lone players in different divisions must
 // eventually find each other with no new event to trigger it.
-setInterval(() => { if (queue.length >= 2) tryMatchmake(); }, 3000).unref();
+setInterval(() => { if (queue.length >= 2) tryMatchmake(); offerGhosts(); expireGhosts(); }, 3000).unref();
+
+/* v193: ghosts. Nobody for you after GHOST_AFTER_MS: an AI-controlled copy of a
+ * real player's recent squad (store.pickGhost), played on your own machine, the
+ * result counted like a ranked one. Only for clients that can (caps 'ghost');
+ * the empty pool of a fresh server sends a house side instead (the client
+ * fields an Apex Division team). One result per ghost, not before GHOST_MIN_MS,
+ * at most GHOST_DAILY a day; a ghost walked away from — queueing again, or no
+ * result within GHOST_EXPIRE_MS — is a 0–3 loss. */
+const GHOST_AFTER_MS = Number(process.env.APEX_GHOST_AFTER_MS) || 25000;
+const GHOST_MIN_MS = Number(process.env.APEX_GHOST_MIN_MS) || 60000;
+const GHOST_EXPIRE_MS = 30 * 60000;
+const GHOST_DAILY = Number(process.env.APEX_GHOST_DAILY) || 10;
+const GHOST_LEAVE_MS = Number(process.env.APEX_GHOST_LEAVE_MS) || 15000;   // quitting sooner than this costs nothing
+const ghostPending = new Map();     // account (lower-case) → { matchId, at, owner, divIdx, wl, acct }
+const gkey = (acct) => String(acct?.name || '').toLowerCase();
+function offerGhosts(now = Date.now()) {
+  for (const p of queue.slice()) {
+    if (!p.sock.open || p.opponent || p.ghostOffered || !p.caps?.has('ghost') || now - p.queuedAt < GHOST_AFTER_MS) continue;
+    p.ghostOffered = true;
+    leaveQueue(p);
+    const g = store.pickGhost(p.acct, p.divIdx);
+    const id = matchSeq++;
+    const wl = p.wl ? p.wl.id : null;
+    ghostPending.set(gkey(p.acct), { matchId: id, at: now, owner: g ? g.name : null, divIdx: p.divIdx, wl, acct: p.acct });
+    p.sock.send({ t: 'ghost', matchId: id, wl, opp: g ? { name: g.name, squad: g.squad, kit: g.kit, divIdx: g.divIdx } : { house: true, divIdx: p.divIdx } });
+    console.log(`[ghost ${id}] ${p.name} v ${g ? `${g.name}'s squad` : 'a house side'}`);
+  }
+}
+function settleGhost(acct, why, now = Date.now()) {
+  const g = ghostPending.get(gkey(acct)); if (!g) return;
+  ghostPending.delete(gkey(acct));
+  if (now - g.at < GHOST_LEAVE_MS || !store.ghostAllowance(acct, GHOST_DAILY, now).ok) return;      // left straight away, or past the day's cap
+  store.recordResult(acct, { scored: 0, conceded: 3, divIdx: g.divIdx });
+  store.countGhost(acct, now);
+  if (g.owner) store.recordGhostDefence(g.owner, 'w');
+  console.log(`[ghost ${g.matchId}] ${acct.name}: walked away (${why}) — a loss`);
+}
+function expireGhosts(now = Date.now()) {
+  for (const g of [...ghostPending.values()]) if (now - g.at > GHOST_EXPIRE_MS) settleGhost(g.acct, 'no result', now);
+}
 
 ws.attach(server, '/ws', (sock) => {
   const peer = {
@@ -795,6 +835,8 @@ ws.attach(server, '/ws', (sock) => {
       peer.acct = acct;
       peer.name = acct.name;
       peer.net = netOf(m);
+      // v193: what this client can do beyond the match protocol (the 1.1 app sends none): 'ghost'
+      peer.caps = new Set((Array.isArray(m.caps) ? m.caps : []).filter((c) => typeof c === 'string').slice(0, 8));
       peers.set(acct.name, peer);
       sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size, net: NET_PROTOCOL });
       return;
@@ -818,6 +860,9 @@ ws.attach(server, '/ws', (sock) => {
         peer.divIdx = Math.max(0, Math.min(20, m.divIdx | 0));
         peer.wl = mm.cleanWL(m.wl);
         peer.queuedAt = Date.now();
+        peer.ghostOffered = false;
+        settleGhost(peer.acct, 'queued again');          // v193: a ghost match walked away from is a loss
+        if (peer.squad?.length === 11) store.saveGhost(peer.acct, { squad: peer.squad, kit: peer.kit, divIdx: peer.divIdx });
         queue.push(peer);
         sock.send({ t: 'queued', size: queue.length, wl: !!peer.wl });
         tryMatchmake();
@@ -926,6 +971,24 @@ ws.attach(server, '/ws', (sock) => {
         }
         sock.send({ t: 'recorded', online: store.publicProfile(peer.acct).online });
         endMatch(peer, 'ended');
+        break;
+      }
+
+      case 'ghostResult': {
+        // v193: the one result of a ghost match (see offerGhosts)
+        const g = ghostPending.get(gkey(peer.acct));
+        if (!g || g.matchId !== Number(m.matchId)) { sock.send({ t: 'ghostRecorded', counted: false, why: 'no match' }); break; }
+        ghostPending.delete(gkey(peer.acct));
+        const goals = (v) => Math.max(0, Math.min(20, Math.floor(Number(v)) || 0));
+        const scored = goals(m.scored); const conceded = goals(m.conceded);
+        const now = Date.now();
+        if (now - g.at < GHOST_MIN_MS) { sock.send({ t: 'ghostRecorded', counted: false, why: 'too quick' }); break; }
+        if (!store.ghostAllowance(peer.acct, GHOST_DAILY, now).ok) { sock.send({ t: 'ghostRecorded', counted: false, why: 'daily' }); break; }
+        store.recordResult(peer.acct, { scored, conceded, divIdx: g.divIdx });
+        store.countGhost(peer.acct, now);
+        if (g.wl && g.wl === guard.weekendIdNow()) store.recordWeekend(peer.acct, g.wl, scored > conceded);
+        if (g.owner) store.recordGhostDefence(g.owner, scored < conceded ? 'w' : scored === conceded ? 'd' : 'l');
+        sock.send({ t: 'ghostRecorded', counted: true, online: store.publicProfile(peer.acct).online });
         break;
       }
 
