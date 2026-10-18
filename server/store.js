@@ -328,6 +328,7 @@ function deleteAccount(acct, pass) {
     for (const e of acct.extra || []) tokenIndex.delete(e.token);
   }
   delete db.accounts[key(acct.name)];
+  if (db.ghosts) delete db.ghosts[key(acct.name)];       // v193: their squad leaves the pool too
   flush();
   return { ok: true };
 }
@@ -389,6 +390,54 @@ function recordResult(acct, { scored, conceded, divIdx }) {
   flush();
   return o;
 }
+
+/* ------------------------------------------------------------------ *
+ * v193: ghosts — an AI-controlled copy of a real player's squad
+ *
+ * When the ranked queue has nobody for you, the server can hand you someone
+ * else's eleven to play against the CPU (server.js `offerGhost`). The pool is
+ * each account's most recent ranked squad and kit — card ids and colours,
+ * nothing typed by anyone — at most GHOST_POOL of them, the oldest dropped.
+ * The squad's owner keeps a "defended" record of how it did.
+ * ------------------------------------------------------------------ */
+const GHOST_POOL = 400;
+const GHOST_FRESH_MS = 21 * 864e5;
+function saveGhost(acct, { squad, kit, divIdx }) {
+  if (!acct || !Array.isArray(squad) || squad.length !== 11) return;
+  db.ghosts = db.ghosts || {};
+  db.ghosts[key(acct.name)] = { name: acct.name, squad: squad.slice(0, 11), kit: kit || null, divIdx: divIdx | 0, at: Date.now() };
+  const all = Object.entries(db.ghosts);
+  if (all.length > GHOST_POOL) {
+    all.sort((a, b) => a[1].at - b[1].at);
+    for (const [k] of all.slice(0, all.length - GHOST_POOL)) delete db.ghosts[k];
+  }
+  flush();
+}
+/** A squad for `acct` to play: the nearest divisions first, fresh ones only, never their own or a blocked player's. */
+function pickGhost(acct, divIdx = 0, rnd = Math.random) {
+  const now = Date.now();
+  const pool = Object.values(db.ghosts || {}).filter((g) => key(g.name) !== key(acct?.name) && now - g.at < GHOST_FRESH_MS
+    && acctOf(g.name) && !blocks(acct, g.name));
+  if (!pool.length) return null;
+  pool.sort((a, b) => Math.abs(a.divIdx - divIdx) - Math.abs(b.divIdx - divIdx) || b.at - a.at);
+  const near = pool.slice(0, 8);
+  const g = near[Math.floor(rnd() * near.length)];
+  return { name: g.name, squad: g.squad.slice(), kit: g.kit, divIdx: g.divIdx };
+}
+/** The owner's side of a ghost match: 'w' | 'd' | 'l' from the squad's point of view. */
+function recordGhostDefence(ownerName, outcome) {
+  const owner = acctOf(ownerName); if (!owner || !['w', 'd', 'l'].includes(outcome)) return;
+  owner.ghostRecord = owner.ghostRecord || { w: 0, d: 0, l: 0 };
+  owner.ghostRecord[outcome] += 1;
+  flush();
+}
+/** How many ghost results this account has had counted today (UTC), and whether one more may count. */
+function ghostAllowance(acct, cap, now = Date.now()) {
+  const day = new Date(now).toISOString().slice(0, 10);
+  if (!acct.ghostDay || acct.ghostDay.day !== day) acct.ghostDay = { day, n: 0 };
+  return { used: acct.ghostDay.n, ok: acct.ghostDay.n < cap };
+}
+function countGhost(acct, now = Date.now()) { ghostAllowance(acct, Infinity, now); acct.ghostDay.n += 1; flush(); }
 
 /* ------------------------------------------------------------------ *
  * Guilds — clubs of players
@@ -559,6 +608,7 @@ function removeAccount(name) {
   }
   if (tokenIndex) { tokenIndex.delete(acct.token); for (const e of acct.extra || []) tokenIndex.delete(e.token); }
   delete db.accounts[key(acct.name)];
+  if (db.ghosts) delete db.ghosts[key(acct.name)];       // v193
   db.banned = db.banned || [];
   if (!db.banned.includes(key(acct.name))) db.banned.push(key(acct.name));
   flush();
@@ -655,7 +705,7 @@ function leaderboard(limit = 25) {
 }
 
 /** What the client is allowed to see about itself. */
-const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null, coop: a.coop || {} });
+const publicProfile = (a) => ({ name: a.name, online: a.online, created: a.created, guild: a.guild || null, coop: a.coop || {}, ghost: a.ghostRecord || null });
 
 /** For the health endpoint: where accounts are going, and whether that lasts. */
 const status = () => ({
@@ -669,6 +719,7 @@ module.exports = {
   mintToken,
   load, shutdown, status,
   register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
+  saveGhost, pickGhost, recordGhostDefence, ghostAllowance, countGhost,
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,
   addFriend, removeFriend, friendsView, deleteAccount,

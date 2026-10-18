@@ -88,7 +88,8 @@ export function connect() {
 
   sock.onopen = () => {
     retry = 0;
-    sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL }));   // v189: see protocol.js
+    // v189: see protocol.js. v193: caps — what this client can play beyond a match ('ghost': server.js offerGhosts)
+    sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL, caps: ['ghost'] }));
   };
 
   sock.onmessage = (e) => {

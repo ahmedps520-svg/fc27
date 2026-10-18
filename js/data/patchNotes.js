@@ -22,6 +22,20 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v193',
+    date: '2026-10-18',
+    tag: 'Online',
+    title: 'Always someone to play',
+    lede: 'When nobody is free for a ranked match, you play a real player\'s squad, controlled by the CPU, and it counts.',
+    entries: [
+      {
+        head: 'Ghost opponents',
+        summary: 'After about 25 seconds in the queue with nobody to match, you get the squad of a real player near your division, played by the CPU. The result counts for your ranking, and for Weekend League when that is open.',
+        detail: 'Up to ten a day count. Leaving one part-way through counts as a loss. Your own squad joins the pool when you search, and the Online tab shows how it has done against other players. A player you have blocked is never your opponent.',
+      },
+    ],
+  },
+  {
     version: 'v192',
     date: '2026-10-18',
     tag: 'Online',

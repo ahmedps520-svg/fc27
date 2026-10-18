@@ -13,6 +13,7 @@ import { getState, update } from './state.js';
 export const LANGS = { en: 'English', ar: 'العربية' };
 
 const AR = {
+  'ghost.toast': 'لا أحد متاح — تشكيلة من يلعبها الكمبيوتر:', 'ghost.house': 'لا أحد متاح — مباراة ضد فريق من دوري أبكس', 'ghost.searching': 'لا أحد متاح الآن — نجهز لك تشكيلة لاعب حقيقي…', 'ghost.vs': 'تشكيلة يلعبها الكمبيوتر', 'ghost.counted': 'احتُسبت في ترتيبك', 'ghost.notCounted': 'لم تُحتسب', 'ghost.daily': 'بلغت حد اليوم من المباريات ضد الكمبيوتر', 'ghost.defended': 'دفاع تشكيلتك', 'ghost.defendedHint': 'نتائج تشكيلتك عندما لعبها الكمبيوتر ضد لاعبين آخرين لم يجدوا خصماً',
   'menu.today': 'اليوم', 'menu.trophies': 'الجوائز', 'menu.career': 'المسيرة', 'menu.street': 'الشارع', 'menu.skills': 'المهارات', 'menu.settings': 'الإعدادات',
   'menu.ultimate': 'التشكيلة المثالية', 'menu.ultimate.blurb': 'ابنِ · ارتقِ · اكسب', 'menu.open': 'افتح ←',
   'menu.kickoff': 'انطلاق', 'menu.kickoff.blurb': 'مباشرة إلى المباراة', 'menu.play': 'العب ←',
@@ -66,6 +67,7 @@ const AR = {
 };
 
 const EN = {
+  'ghost.toast': 'Nobody free — the CPU is playing the squad of', 'ghost.house': 'Nobody free — playing an Apex Division side', 'ghost.searching': 'Nobody free right now — finding a real player\'s squad for you…', 'ghost.vs': 'squad, played by the CPU', 'ghost.counted': 'Counted for your ranking', 'ghost.notCounted': 'Not counted', 'ghost.daily': 'today\'s limit of CPU-played matches is reached', 'ghost.defended': 'Your squad\'s defence', 'ghost.defendedHint': 'How your squad did when the CPU played it against players who found nobody else online',
   'menu.today': 'Today', 'menu.trophies': 'Trophies', 'menu.career': 'Career', 'menu.street': 'Street', 'menu.skills': 'Skills', 'menu.settings': 'Settings',
   'menu.ultimate': 'Ultimate XI', 'menu.ultimate.blurb': 'Build · rank up · rewards', 'menu.open': 'Open →',
   'menu.kickoff': 'Kick Off', 'menu.kickoff.blurb': 'Straight into a match', 'menu.play': 'Play →',
