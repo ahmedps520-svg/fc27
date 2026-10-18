@@ -22,7 +22,8 @@ import { screenHead } from '../components/screenHead.js';
 import { clubIdentity } from './squad.js';
 import { careerClub } from '../career.js';
 import { sfx } from '../audio.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
+import { locked as cosmeticLocked } from '../cosmetics.js';
 import * as B from '../builder.js';
 
 export const TITLE = 'Stadium Builder';
@@ -43,7 +44,9 @@ const careerClubInfo = () => {
 const me = () => (target === 'career' && careerClubInfo()) || { ...clubIdentity(), colors: clubIdentity().crest.colors };
 const savedDesign = () => (target === 'career' ? getState().career?.ground?.design : getState().club.stadium?.design);
 const current = () => design || (design = B.normalise(savedDesign() || B.defaultDesign(me().colors), me().colors));
-const seg = (key, list, val, labels) => `<div class="seg bld-seg" data-key="${key}">${list.map((v) => `<button class="${String(val) === String(v) ? 'on' : ''}" data-val="${v}">${labels ? labels[v] : v}</button>`).join('')}</div>`;
+// v198: a pitch pattern from Store → Style shows a lock until it is yours (cosmetics.js)
+const lockOf = (key, v) => key === 'pattern' && cosmeticLocked('pitch', v);
+const seg = (key, list, val, labels) => `<div class="seg bld-seg" data-key="${key}">${list.map((v) => `<button class="${String(val) === String(v) ? 'on' : ''}${lockOf(key, v) ? ' is-locked' : ''}" data-val="${v}"${lockOf(key, v) ? ' data-locked="1"' : ''}>${lockOf(key, v) ? '🔒 ' : ''}${labels ? labels[v] : v}</button>`).join('')}</div>`;
 
 export function render(params = {}) {
   if (params.target && params.target !== target) { target = params.target === 'career' && careerClubInfo() ? 'career' : 'club'; design = null; }
@@ -191,6 +194,7 @@ export function mount(root) {
   root.querySelector('#bldCap').addEventListener('input', (e) => change((d) => { d.capacity = +e.target.value; }));
   root.querySelectorAll('.bld-seg').forEach((sg) => sg.addEventListener('click', (e) => {
     const b = e.target.closest('[data-val]'); if (!b) return;
+    if (b.dataset.locked) { toast(tx('That pitch pattern is in Store → Style.'), 'info'); return; }
     const key = sg.dataset.key; const raw = b.dataset.val;
     sg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
     change((d) => { d[key] = key === 'tiers' ? +raw : raw; });
@@ -236,6 +240,8 @@ export function mount(root) {
   root.querySelector('#bldLoad').addEventListener('click', () => {
     const d = B.decode(root.querySelector('#bldIn').value, me().colors);
     if (!d) return toast('That is not a stadium code', 'warn');
+    // a code can carry a bought pitch pattern; loading it does not hand the pattern over
+    if (cosmeticLocked('pitch', d.pattern)) { d.pattern = 'stripes'; toast(tx('That pitch pattern is in Store → Style — mown in stripes for now.'), 'info'); }
     design = d;
     sfx('confirm');
     toast('Design loaded — save it or make it your ground', 'good');

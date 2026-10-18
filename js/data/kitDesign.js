@@ -14,6 +14,8 @@
 
 export const KIT_PATTERNS = [
   ['plain', 'Plain'], ['stripes', 'Stripes'], ['hoops', 'Hoops'], ['halves', 'Halves'], ['sash', 'Sash'], ['pinstripe', 'Pinstripe'],
+  // v198: bought in Store → Style (cosmetics.js); anyone's kit may wear them, so every client draws them
+  ['chevron', 'Chevron'], ['quarters', 'Quarters'], ['band', 'Chest band'], ['checks', 'Checks'], ['fade', 'Fade'],
 ];
 const PATTERN_IDS = KIT_PATTERNS.map(([id]) => id);
 
@@ -67,6 +69,11 @@ export function patternMask(pattern, u, v) {
     case 'hoops': return (v * 6) % 1 < 0.5;
     case 'halves': return u < 0.5;
     case 'sash': return Math.abs(u - v) < 0.13;
+    case 'chevron': return Math.abs(v - 0.25 - Math.abs(u - 0.5) * 0.6) < 0.07;
+    case 'quarters': return (u < 0.5) !== (v < 0.5);
+    case 'band': return v > 0.3 && v < 0.45;
+    case 'checks': return (Math.floor(u * 6) + Math.floor(v * 7)) % 2 === 0;
+    case 'fade': return (v * 12) % 1 < v;
     default: return false;
   }
 }
@@ -93,7 +100,11 @@ export function paintKit(g, strip_, size) {
       g.beginPath(); g.moveTo(-w, 0); g.lineTo(w, 0); g.lineTo(size + w, size); g.lineTo(size - w, size); g.closePath(); g.fill();
       break;
     }
-    default: break;
+    default: {
+      // v198's patterns: the mask itself, cell by cell, so the texture is the preview
+      const n = 64; const c = size / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (patternMask(strip_.pattern, (i + 0.5) / n, (j + 0.5) / n)) g.fillRect(i * c, j * c, c + 0.5, c + 0.5);
+    }
   }
 }
 

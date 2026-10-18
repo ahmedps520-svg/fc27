@@ -44,10 +44,25 @@ function pitchCanvas(pattern) {
   g.fillStyle = 'rgba(255,255,255,.07)';
   if (pattern === 'rings') {
     for (let r = 0; r < 12; r++) { g.beginPath(); g.ellipse(c.width / 2, c.height / 2, (r + 1) * c.width / 24, (r + 1) * c.height / 24, 0, 0, Math.PI * 2); if (r % 2) g.fill(); }
-  } else if (pattern !== 'plain') {
+  } else if (pattern !== 'plain' && !['waves', 'chevron', 'diamonds'].includes(pattern)) {
     for (let i = 0; i < n; i++) if (i % 2) g.fillRect((c.width / n) * i, 0, c.width / n, c.height);
     if (pattern === 'checks') for (let j = 0; j < 8; j++) if (j % 2) g.fillRect(0, (c.height / 8) * j, c.width, c.height / 8);
     if (pattern === 'diagonal') { g.save(); g.translate(c.width / 2, c.height / 2); g.rotate(0.35); for (let i = -12; i < 12; i++) if (i % 2) g.fillRect(i * 140, -c.height, 140, c.height * 2); g.restore(); }
+  }
+  // v198: the bought patterns (cosmetics.js), as renderGL.js mows them
+  if (pattern === 'waves' || pattern === 'chevron') {
+    g.fillStyle = 'rgba(255,255,255,.07)';
+    const sw = c.width / n; const H = c.height;
+    const off = pattern === 'waves' ? (y) => Math.sin((y / H) * Math.PI * 3) * sw * 0.45 : (y) => (Math.abs(y - H / 2) / H) * sw * 2.4;
+    for (let i = -1; i <= n; i += 2) {
+      g.beginPath();
+      for (let k = 0; k <= 48; k++) { const y = (k / 48) * H; g.lineTo(sw * i + off(y), y); }
+      for (let k = 48; k >= 0; k--) { const y = (k / 48) * H; g.lineTo(sw * (i + 1) + off(y), y); }
+      g.closePath(); g.fill();
+    }
+  } else if (pattern === 'diamonds') {
+    g.fillStyle = 'rgba(255,255,255,.06)';
+    for (const a of [0.5, -0.5]) { g.save(); g.translate(c.width / 2, c.height / 2); g.rotate(a); for (let i = -14; i < 14; i++) if (i % 2) g.fillRect(i * 120, -c.height, 120, c.height * 2); g.restore(); }
   }
   // markings, in metres
   const X = (m) => (m + MARGIN) * sx; const Y = (m) => (m + MARGIN) * sy;

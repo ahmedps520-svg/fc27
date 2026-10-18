@@ -309,7 +309,8 @@ function cleanSquad(squad) {
  * travels between players here.
  */
 const KIT_HEX = /^#[0-9a-f]{6}$/i;
-const KIT_PATTERNS = ['plain', 'stripes', 'hoops', 'halves', 'sash', 'pinstripe'];
+// v198: and the five sold in Store → Style (js/cosmetics.js) — the 1.1 app draws them as plain
+const KIT_PATTERNS = ['plain', 'stripes', 'hoops', 'halves', 'sash', 'pinstripe', 'chevron', 'quarters', 'band', 'checks', 'fade'];
 function cleanKit(kit) {
   if (!kit || typeof kit !== 'object') return null;
   const strip = (k) => {

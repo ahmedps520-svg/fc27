@@ -10823,15 +10823,20 @@
     { id: "cradle", name: "Cradle", blurb: "Rocking a baby — one for the family." },
     { id: "cupear", name: "Cup the Ear", blurb: "Hand to the ear: can't hear you." },
     { id: "bellyslide", name: "Belly Slide", blurb: "Dive and slide on the front across the grass." },
-    { id: "backflip", name: "Backflip", blurb: "A standing backflip. Show-off." }
-  ], IDS = CELEBRATIONS.map((c) => c.id), celebrationOf = (id) => IDS.includes(id) ? id : null;
+    { id: "backflip", name: "Backflip", blurb: "A standing backflip. Show-off." },
+    // v198: bought in Store → Style (cosmetics.js); only a person's own pick ever does them
+    { id: "flex", name: "Muscle Flex", blurb: "Both arms up, both biceps out, roaring.", premium: !0 },
+    { id: "archer", name: "The Archer", blurb: "Draw the bow, aim at the stand, let it fly.", premium: !0 },
+    { id: "drummer", name: "Drum Roll", blurb: "A furious drum roll on thin air.", premium: !0 },
+    { id: "whirlwind", name: "Whirlwind", blurb: "Arms out and spinning like a top.", premium: !0 }
+  ], IDS = CELEBRATIONS.map((c) => c.id), CPU_IDS = CELEBRATIONS.filter((c) => !c.premium).map((c) => c.id), celebrationOf = (id) => IDS.includes(id) ? id : null;
   function pickCelebration(choice, seedId = "", nth = 0) {
     let own = celebrationOf(choice);
     if (own) return own;
     let h = 2166136261;
     for (let ch of String(seedId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-    let favourites = [(h >>> 0) % IDS.length, (h >>> 8) % IDS.length, (h >>> 16) % IDS.length];
-    return IDS[favourites[nth % 3]];
+    let favourites = [(h >>> 0) % CPU_IDS.length, (h >>> 8) % CPU_IDS.length, (h >>> 16) % CPU_IDS.length];
+    return CPU_IDS[favourites[nth % 3]];
   }
   var arm = (raise = 0, fwd = 0, bend = 0) => ({ raise, fwd, bend }), REST = arm(0.08, 0.05, 0.25);
 

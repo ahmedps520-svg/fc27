@@ -43,8 +43,16 @@ export const CELEBRATIONS = [
   { id: 'cupear', name: 'Cup the Ear', blurb: "Hand to the ear: can't hear you." },
   { id: 'bellyslide', name: 'Belly Slide', blurb: 'Dive and slide on the front across the grass.' },
   { id: 'backflip', name: 'Backflip', blurb: 'A standing backflip. Show-off.' },
+  // v198: bought in Store → Style (cosmetics.js); only a person's own pick ever does them
+  { id: 'flex', name: 'Muscle Flex', blurb: 'Both arms up, both biceps out, roaring.', premium: true },
+  { id: 'archer', name: 'The Archer', blurb: 'Draw the bow, aim at the stand, let it fly.', premium: true },
+  { id: 'drummer', name: 'Drum Roll', blurb: 'A furious drum roll on thin air.', premium: true },
+  { id: 'whirlwind', name: 'Whirlwind', blurb: 'Arms out and spinning like a top.', premium: true },
 ];
 const IDS = CELEBRATIONS.map((c) => c.id);
+/* The CPU picks from the original sixteen only, so a scorer's pick — and with
+   it every simulated match — is what it was before v198. */
+const CPU_IDS = CELEBRATIONS.filter((c) => !c.premium).map((c) => c.id);
 
 /** A known kind, or null. */
 export const celebrationOf = (id) => (IDS.includes(id) ? id : null);
@@ -59,8 +67,8 @@ export function pickCelebration(choice, seedId = '', nth = 0) {
   if (own) return own;
   let h = 2166136261;
   for (const ch of String(seedId)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  const favourites = [(h >>> 0) % IDS.length, (h >>> 8) % IDS.length, (h >>> 16) % IDS.length];
-  return IDS[favourites[nth % 3]];
+  const favourites = [(h >>> 0) % CPU_IDS.length, (h >>> 8) % CPU_IDS.length, (h >>> 16) % CPU_IDS.length];
+  return CPU_IDS[favourites[nth % 3]];
 }
 
 const arm = (raise = 0, fwd = 0, bend = 0) => ({ raise, fwd, bend });
@@ -167,6 +175,37 @@ export function celebPose(kind, t, moving) {
       P.armL = arm(0.3, c < 0.08 ? -0.4 : 1.8, 0.1); P.armR = arm(0.3, c < 0.08 ? -0.4 : 1.8, 0.1);
       break;
     }
+    case 'flex': {
+      if (moving) { cheer(); break; }
+      // both arms up at the shoulder, elbows folded, squeezing on the beat
+      const q = Math.max(0, Math.sin(t * 5));
+      P.armL = arm(1.05, 0.15, 1.55 + q * 0.3); P.armR = arm(1.05, 0.15, 1.55 + q * 0.3);
+      P.lean = -0.08 - q * 0.05; P.mouth = 0.6 + q * 0.4;
+      break;
+    }
+    case 'archer': {
+      if (moving) { cheer(); break; }
+      // every 1.8 s: side-on, the bow arm out, the string drawn back to the cheek, then loosed
+      const c = (t % 1.8) / 1.8;
+      const drawn = c < 0.7 ? ease(c / 0.5) : 0;
+      P.spin = -0.6; P.mouth = 0.1;
+      P.armL = arm(1.0, 0.55, 0);
+      P.armR = arm(1.0, 0.45 - drawn * 0.25, 0.4 + drawn * 1.5);
+      break;
+    }
+    case 'drummer': {
+      if (moving) { cheer(); break; }
+      // forearms in front, beating in turn
+      const d = Math.sin(t * 16);
+      P.armL = arm(0.25, 0.75 + d * 0.3, 1.2); P.armR = arm(0.25, 0.75 - d * 0.3, 1.2);
+      P.lift = hop * 0.3; P.lean = 0.12; P.mouth = 0.7;
+      break;
+    }
+    case 'whirlwind':
+      if (moving) { cheer(); break; }
+      // arms out, turning on the spot, the head back
+      P.spin = (t * 7) % (Math.PI * 2); P.armL = arm(1.1, 0.1, 0); P.armR = arm(1.1, 0.1, 0); P.lean = -0.1;
+      break;
     case 'refcard':
       // v112: not a celebration — the referee holding a card up (game/referee.js)
       P.armR = arm(0.2, 1.95, 0); P.armL = arm(0.08, 0.05, 0.2); P.mouth = 0;

@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v198',
+    date: '2026-10-18',
+    tag: 'Ultimate XI',
+    title: 'Style',
+    lede: 'A new Style shelf in the Ultimate XI store: kit patterns, goal celebrations and pitch patterns for your ground, bought with Apex.',
+    entries: [
+      {
+        head: "What's on the shelf",
+        summary: 'Five kit patterns (Chevron, Chest band, Quarters, Checks, Fade), four celebrations (Muscle Flex, Drum Roll, The Archer, Whirlwind) and three ways to mow your ground (Waves, Chevrons, Diamonds).',
+        detail: 'Ultimate XI → Store → Style. Each one shows a preview and its price, ◈6,000 to ◈15,000. Use puts it on: the pattern on your home shirt, the celebration for your scorers, the mow on your ground. You can also pick them in Club → Kit, Settings and the Stadium Builder once they are yours.',
+      },
+      {
+        head: 'How your side looks, never how it plays',
+        summary: 'Nothing here changes a match. Everything you already had stays free.',
+        detail: 'Other players see your kit pattern online whether or not they own it. Computer-controlled scorers still celebrate the way they always have. Style is paid for in Apex only.',
+      },
+    ],
+  },
+  {
     version: 'v197',
     date: '2026-10-18',
     tag: 'Modes',

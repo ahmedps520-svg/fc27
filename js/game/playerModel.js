@@ -163,6 +163,12 @@ const PATTERN_GLSL = {
   hoops: 'fract(k.y * 6.0) < 0.5',
   halves: 'k.x < 0.5',
   sash: 'abs(k.x - k.y) < 0.13',
+  // v198 (cosmetics.js)
+  chevron: 'abs(k.y - 0.25 - abs(k.x - 0.5) * 0.6) < 0.07',
+  quarters: '(k.x < 0.5) != (k.y < 0.5)',
+  band: 'k.y > 0.3 && k.y < 0.45',
+  checks: 'mod(floor(k.x * 6.0) + floor(k.y * 7.0), 2.0) < 0.5',
+  fade: 'fract(k.y * 12.0) < k.y',
 };
 
 function recolour(material, colour, pattern = null, trim = null, box = null) {

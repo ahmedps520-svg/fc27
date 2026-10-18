@@ -26,7 +26,8 @@ export const BOWLS = ['open', 'bowl'];                       // corners open, or
 export const TIERS = [1, 2, 3];
 export const ROOFS = ['none', 'cantilever', 'ring', 'arch', 'dome'];
 export const PYLONS = ['lattice', 'mast', 'rim'];
-export const PATTERNS = ['stripes', 'checks', 'diagonal', 'rings', 'plain'];
+// v198: the last three are bought in Store → Style (cosmetics.js). A share code has three bits for this, so eight is the most there can be.
+export const PATTERNS = ['stripes', 'checks', 'diagonal', 'rings', 'plain', 'waves', 'chevron', 'diamonds'];
 export const FACADES = ['concrete', 'glass', 'brick', 'mesh'];
 export const LANDSCAPES = ['city', 'desert', 'coast', 'mountains'];
 export const SUFFIXES = ['Stadium', 'Arena', 'Park', 'Ground', 'Dome', 'Bowl', 'Field', 'Lane', 'Road', 'Coliseum'];
@@ -38,7 +39,7 @@ export const LABELS = {
   bowl: { open: 'Open corners', bowl: 'Closed bowl' },
   roof: { none: 'No roof', cantilever: 'Cantilever', ring: 'Full ring', arch: 'Great arch', dome: 'Dome' },
   pylons: { lattice: 'Corner pylons', mast: 'Roof masts', rim: 'Lit roof rim' },
-  pattern: { stripes: 'Stripes', checks: 'Checks', diagonal: 'Diagonal', rings: 'Rings', plain: 'Plain' },
+  pattern: { stripes: 'Stripes', checks: 'Checks', diagonal: 'Diagonal', rings: 'Rings', plain: 'Plain', waves: 'Waves', chevron: 'Chevrons', diamonds: 'Diamonds' },
   facade: { concrete: 'Concrete', glass: 'Glass', brick: 'Brick', mesh: 'Steel mesh' },
   landscape: { city: 'City', desert: 'Desert', coast: 'Coast', mountains: 'Mountains' },
 };
