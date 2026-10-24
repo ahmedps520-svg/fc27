@@ -15,6 +15,15 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v201 — fewer words, more pictures (v120's "facts, not paragraphs", carried further)
+- **Icons** (`components/facts.js`): sun, dusk, moon, cloud, rain, snow, auto, cpu, person, pad, stadium, globe, play, in the same 24-unit round-stroke hand.
+- **Kick Off** (`quickmatch.js`): the mode is a picture pair (person vs cpu, person vs person, players vs cpu) with its short name; time of day and weather are icon-only segments (`picSeg`, each with `aria-label` and `title`). The Authentic preset line moved into an ⓘ. Cup / World / Grounds are an icon row. The pad and key hints hide on a touch screen with no pad (`.touch-only`).
+- **Division tab** (`uxiHub.js`): Fives shows the five as rating + position (name in the tooltip); records as chips (W–D–L, goals, best run; Draft runs, best, titles). A Squad Clash tile is the button (`button.clash-opp[data-clash]`, a ▶ badge). The rank table folds into "Ranks".
+- **Club tab:** saved squads are tiles; empty ones are a dashed + (`data-sq-save`), filled ones have load / overwrite / delete icons.
+- **Explanations behind ⓘ** (`about()`): Skills (each drill, Scenarios, Penalties, Practice), Style (and the per-item blurb is the name's tooltip), the Draft entry and its rule about leaving, Today's event blurb (the Weekend Showdown line is chips), the guild weekend's rules. The Draft's "win it / lose it" line is two chips. Drill cards lead with a picture (`DRILL_PIC`).
+- **CSS:** an ⓘ that wraps in a panel head stays right-aligned so its popover opens inside the panel; in a centred row it opens as a line beneath. `.about:not([open]) > p { display: none }`, because Chrome lays out closed `<details>` content and the layout scan saw it.
+- **Measured:** words on screen (landscape phone): Division 280 → 205, Kick Off 291 → 263, Skills 115 → 84, Today 339 → 323. Layout scan clean (15 screens × 3 phones × 2 languages), a11y scan clean. QA bot `menus` flow drives the new controls.
+
 ## v200 — movement and ball physics the eye reads (render only; sweeps identical)
 - **Why render only:** the sim already had momentum steering (turn rate shrinking with speed, plant-and-brake), strength-weighted body contact (`separate`), Magnus curl, dip, knuckle, wind, surface bounce and net cloth. Changing ball drag or bounce would move shot and pass outcomes and need a retune measured by the sweep; the visible gaps were in how motion is drawn.
 - **Head on the ball** (`rig.js updateLook` → `p._look`, ±1.2 rad, smoothed at 7/s; 0 with the ball at his feet, down, diving, celebrating, or the ball more than ~137° behind): built figures turn head, hair and face (and the shoulders by 0.18 of it); scanned models (`playerModel.js lookRig`) turn the Mixamo head bone about its +y over the clip's own pose, kept as `_headBase` so the animation LOD never applies it twice. Measured in a match: heads 1° off the ball (built) and 13° (scanned) against 36° for the bodies. The referee too.

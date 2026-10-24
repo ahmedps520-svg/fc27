@@ -13,6 +13,7 @@ import { defaultDesign } from '../builder.js';
 import { clubIdentity } from './squad.js';
 import { COSMETICS, KINDS, owns, buyCosmetic, useCosmetic, inUse, payable } from '../cosmetics.js';
 import { tx } from '../i18n.js';
+import { about } from '../components/facts.js';
 
 const money = (n) => `◈${Math.round(n).toLocaleString()}`;
 
@@ -73,8 +74,7 @@ export function styleView() {
   const mine = COSMETICS.filter((c) => owns(c.id, s)).length;
   return `
     <section class="panel glass sty-head">
-      <header class="panel-head"><h2>${tx('Style')}</h2><span class="tag">${mine}/${COSMETICS.length} ${tx('owned')}</span></header>
-      <p class="hint">${tx('How your side looks — never how it plays. Bought with Apex; everything you already had stays free.')}</p>
+      <header class="panel-head"><h2>${tx('Style')}</h2><span class="tag">${mine}/${COSMETICS.length} ${tx('owned')}</span>${about(tx('How your side looks — never how it plays. Bought with Apex; everything you already had stays free.'))}</header>
     </section>
     ${KINDS.map(([kind, label]) => `
       <h3 class="sty-kind">${tx(label)}</h3>
@@ -82,8 +82,7 @@ export function styleView() {
         const have = owns(it.id, s); const on = have && inUse(it.id, s);
         return `<article class="panel glass sty-item ${have ? 'owned' : ''}">
           <div class="sty-prev">${previewOf(it)}</div>
-          <b>${tx(it.name)}</b>
-          <p>${tx(blurbOf(it))}</p>
+          <b title="${tx(blurbOf(it))}">${tx(it.name)}</b>
           ${!have ? `<button class="btn primary sm" data-sty-buy="${it.id}" ${(s.club.apex | 0) >= it.price.apex && payable('apex') ? '' : 'disabled'}>${money(it.price.apex)}</button>`
             : on ? `<span class="sty-on">✓ ${tx('In use')}</span>` : `<button class="btn ghost sm" data-sty-use="${it.id}">${tx('Use')}</button>`}
         </article>`;

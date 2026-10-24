@@ -8,7 +8,8 @@ import { enterFullscreen } from '../fullscreen.js';
 import { stadiumFor } from '../data/stadiums.js';
 import { COUNTRIES, INTERNATIONAL, countryNames, countryByName, flagOf, clubSheet, matchSquad, internationalTeams, internationalSquad } from '../data/countries.js';
 import { flagSVG } from '../components/crest.js';
-import { t } from '../i18n.js';
+import { t, tx } from '../i18n.js';
+import { icon, about } from '../components/facts.js';
 import { rivalryOf } from '../data/rivalries.js';
 
 export const TITLE = 'Kick Off';
@@ -28,11 +29,15 @@ let mode = 'single';       // single | versus | coop
 let timeOf = 'auto';       // auto | day | dusk | night
 let weather = 'auto';      // auto | clear | overcast | rain
 
+/* v201: each mode as who plays whom, in pictures — you and the CPU, two people head to head, two people on one side */
 const MODES = () => [
-  { id: 'single', label: t('quick.1p'), sub: t('quick.1p.sub') },
-  { id: 'versus', label: t('quick.2p'), sub: t('quick.2p.sub') },
-  { id: 'coop', label: t('quick.coop'), sub: t('quick.coop.sub') },
+  { id: 'single', label: t('quick.1p'), sub: t('quick.1p.sub'), pics: ['person', 'cpu'] },
+  { id: 'versus', label: t('quick.2p'), sub: t('quick.2p.sub'), pics: ['person', 'person'] },
+  { id: 'coop', label: t('quick.coop'), sub: t('quick.coop.sub'), pics: ['players', 'cpu'] },
 ];
+/** A segment of pictures: the word stays for a screen reader and as the tooltip. */
+const picSeg = (attr, list, cur) => list.map(([v, pic, label]) =>
+  `<button class="${cur === v ? 'on' : ''} seg-ico" data-${attr}="${v}" aria-label="${label}" title="${label}">${icon(pic, 20)}</button>`).join('');
 
 function teamCard(side) {
   const team = teamOf(side);
@@ -140,10 +145,10 @@ export function render() {
         <div id="tsH2h">${h2h()}</div>
         <div class="ts-opt">
           <span>${t('quick.mode')}</span>
-          <div class="seg col" id="modeSeg">
+          <div class="seg mode-pics" id="modeSeg">
             ${MODES().map((m) => `
-              <button class="${mode === m.id ? 'on' : ''}" data-mode="${m.id}">
-                <b>${m.label}</b><i>${m.sub}</i>
+              <button class="${mode === m.id ? 'on' : ''}" data-mode="${m.id}" aria-label="${m.label} — ${m.sub}" title="${m.sub}">
+                <span class="mp">${icon(m.pics[0], 20)}<i>vs</i>${icon(m.pics[1], 20)}</span><b>${m.label}</b>
               </button>`).join('')}
           </div>
         </div>
@@ -164,22 +169,22 @@ export function render() {
         <div class="ts-opt">
           <span>${t('quick.time')}</span>
           <div class="seg" id="timeSeg">
-            ${[['auto', t('auto')], ['day', t('day')], ['dusk', t('dusk')], ['night', t('night')]].map(([v, l]) =>
-              `<button class="${timeOf === v ? 'on' : ''}" data-time="${v}">${l}</button>`).join('')}
+            ${picSeg('time', [['auto', 'auto', t('auto')], ['day', 'sun', t('day')], ['dusk', 'dusk', t('dusk')], ['night', 'moon', t('night')]], timeOf)}
           </div>
         </div>
         <div class="ts-opt">
           <span>${t('quick.weather')}</span>
           <div class="seg" id="weatherSeg">
-            ${[['auto', t('auto')], ['clear', t('clear')], ['overcast', t('cloud')], ['rain', t('rain')], ['snow', t('snow')]].map(([v, l]) =>
-              `<button class="${weather === v ? 'on' : ''}" data-weather="${v}">${l}</button>`).join('')}
+            ${picSeg('weather', [['auto', 'auto', t('auto')], ['clear', 'sun', t('clear')], ['overcast', 'cloud', t('cloud')], ['rain', 'rain', t('rain')], ['snow', 'snow', t('snow')]], weather)}
           </div>
         </div>
-        <p class="preset-note"><b>${PRESETS.authentic.name}</b> ${PRESETS.authentic.blurb}</p>
-        <button class="btn primary big" id="kickOff">${t('quick.go')}</button>
-        <button class="btn ghost" id="cupBtn">Custom Cup</button>
-        <button class="btn ghost" id="worldBtn">${t('quick.world')}</button>
-        <button class="btn ghost" id="stadiumsBtn">${t('quick.stadiums')}</button>
+        <button class="btn primary big" id="kickOff">${icon('ball', 20)} ${t('quick.go')}</button>
+        <div class="qm-more">
+          <button class="btn ghost" id="cupBtn">${icon('trophy', 18)}<span>${tx('Cup')}</span></button>
+          <button class="btn ghost" id="worldBtn">${icon('globe', 18)}<span>${tx('World')}</span></button>
+          <button class="btn ghost" id="stadiumsBtn">${icon('stadium', 18)}<span>${tx('Grounds')}</span></button>
+          ${about(`<b>${PRESETS.authentic.name}</b> — ${PRESETS.authentic.blurb}`)}
+        </div>
       </div>
 
       <div class="ts-side ts-away">
@@ -189,7 +194,7 @@ export function render() {
         <div id="tsRailA">${clubRail('away')}</div>
       </div>
 
-      <div class="ts-hints">
+      <div class="ts-hints" id="tsHints">
         <span><b>✕</b> Select</span>
         <span><b>◀ ▶</b> Change team · country</span>
         <span><b>R</b> Randomise</span>
@@ -218,6 +223,8 @@ export function mount(root) {
     q('#tsPads').textContent = pads === 0
       ? 'No pads — keyboard: P1 WASD, P2 arrows'
       : `${pads} controller${pads === 1 ? '' : 's'} connected`;
+    // v201: the button and key hints are for a pad or a keyboard; a phone with neither does without them
+    q('#tsHints')?.classList.toggle('touch-only', !pads && matchMedia('(pointer: coarse)').matches);
   };
 
   const paint = () => {

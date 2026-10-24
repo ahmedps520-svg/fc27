@@ -5818,3 +5818,55 @@ body.pad-active [data-pad][data-pad-glyph]::after {
 .sty-pitch { width: 120px; height: 78px; }
 .sty-on { font-size: 12px; font-weight: 700; color: var(--good); }
 .ci-opt.is-locked, .bld-seg button.is-locked { opacity: .55; }
+
+/* v201: Kick Off — the settings as pictures */
+.seg .seg-ico { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding-inline: 10px; }
+.mode-pics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.mode-pics button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; }
+.mode-pics .mp { display: inline-flex; align-items: center; gap: 2px; }
+.mode-pics .mp i { font-style: normal; font-size: 9px; font-weight: 800; opacity: .6; letter-spacing: .04em; }
+.mode-pics b { font-size: 11px; font-weight: 700; }
+.qm-more { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.qm-more .btn { display: inline-flex; align-items: center; gap: 6px; padding-inline: 14px; }
+.btn.big .ico { vertical-align: -4px; }
+.ts-hints.touch-only { display: none; }
+
+/* v201: the Division tab — tiles that are buttons, stats as chips, reward tables folded */
+button.clash-opp { font: inherit; color: inherit; text-align: start; cursor: pointer; padding-right: 30px; transition: border-color .15s, background .15s, transform .15s; }
+button.clash-opp:hover, button.clash-opp:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+button.clash-opp:active { transform: scale(.98); }
+button.clash-opp:disabled { cursor: default; opacity: .55; }
+.co-go { position: absolute; right: 9px; top: 50%; translate: 0 -50%; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-style: normal; }
+.clash-opp em { font-style: normal; }
+.facts.mode-stats { margin: 6px 0 10px; }
+.rank-fold { margin-top: 6px; }
+.rank-fold > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--muted); list-style: none; }
+.rank-fold > summary::-webkit-details-marker { display: none; }
+.rank-fold[open] > summary { margin-bottom: 8px; }
+.btn .ico { vertical-align: -3px; }
+.gw-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+
+/* v201: saved squads as tiles */
+.saved-squads { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.saved-squads li { flex-direction: column; align-items: stretch; gap: 4px; padding: 8px; min-height: 66px; }
+.saved-squads li span:not(.sq-acts) { font-size: 11px; color: var(--muted); }
+.saved-squads li.free { padding: 0; background: none; }
+.sq-acts { display: flex; gap: 4px; }
+.sq-acts .mini-btn { flex: 1; display: inline-flex; justify-content: center; padding-inline: 0; }
+.sq-plus { width: 100%; height: 100%; min-height: 66px; border-radius: 8px; border: 1px dashed var(--line); background: rgba(255, 255, 255, .02); color: var(--muted); font: inherit; font-size: 22px; cursor: pointer; }
+.sq-plus:hover, .sq-plus:focus-visible { border-color: var(--accent); color: var(--accent); }
+
+/* v201: a skill game's card leads with its picture */
+.sk-card .panel-head { flex-wrap: nowrap; }
+.sk-card .panel-head h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 8px; }
+.sk-pic { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 16px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+/* v201: an ⓘ that wraps onto its own line in a panel head stays at the right, so its popover opens inside the panel */
+.panel-head > .about { margin-inline-start: auto; }
+/* …and in a centred row of buttons it opens as a line underneath instead of a popover */
+.qm-more .about[open] { flex-basis: 100%; display: flex; flex-direction: column; align-items: center; }
+.qm-more .about > p { position: static; width: auto; max-width: 520px; margin-top: 8px; }
+.mode-pics { width: 100%; box-sizing: border-box; }
+.mode-pics button { min-width: 0; padding-inline: 4px; }
+.mode-pics b { white-space: normal; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }
+.about:not([open]) > p { display: none; }

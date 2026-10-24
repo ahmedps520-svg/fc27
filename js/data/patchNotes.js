@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v201',
+    date: '2026-10-24',
+    tag: 'Menus',
+    title: 'Fewer words, more pictures',
+    lede: 'The menus say more with icons and less with sentences. Explanations are still there, behind each panel\'s ⓘ.',
+    entries: [
+      {
+        head: 'Kick Off',
+        summary: 'The mode, the time of day and the weather are pictures now: you vs the CPU, two players head to head, two on one side; sun, dusk and moon; sun, cloud, rain and snow.',
+        detail: 'Cup, World and Grounds are a row of icon buttons. The button and key hints only show when a controller or keyboard is in use.',
+      },
+      {
+        head: 'Ultimate XI',
+        summary: 'Squad Clash opponents are single tiles you tap to play. Records show as icon chips, the rank tables fold away, and saved squads are tiles with a + to save into.',
+        detail: 'Skill games lead with a picture of each drill. On Today, the Draft, Style, the Scenarios and the guild weekend, the explanations moved behind the ⓘ.',
+      },
+    ],
+  },
+  {
     version: 'v200',
     date: '2026-10-24',
     tag: 'Gameplay',

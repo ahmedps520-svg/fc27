@@ -1026,11 +1026,12 @@ function hubPanel(chem) {
       <ul class="saved-squads" id="savedSquads">
         ${Array.from({ length: SAVED_MAX }, (_, i) => {
           const sq = saved[i];
-          return `<li>${sq ? `<b>${sq.name}</b><span>${sq.formation}</span>
-            <button class="mini-btn" data-sq-load="${i}">Load</button>
-            <button class="mini-btn" data-sq-save="${i}">Overwrite</button>
-            <button class="mini-btn danger" data-sq-del="${i}" aria-label="Delete ${sq.name}">×</button>`
-            : `<span class="empty">Empty slot</span><button class="mini-btn" data-sq-save="${i}">Save current</button>`}</li>`;
+          // v201: slots as tiles — a name and three icons, or a + to save into
+          return `<li class="${sq ? '' : 'free'}">${sq ? `<b>${sq.name}</b><span>${sq.formation}</span>
+            <span class="sq-acts"><button class="mini-btn" data-sq-load="${i}" aria-label="Load ${sq.name}" title="Load">${icon('play', 14)}</button>
+            <button class="mini-btn" data-sq-save="${i}" aria-label="Overwrite ${sq.name}" title="Overwrite">${icon('refresh', 14)}</button>
+            <button class="mini-btn danger" data-sq-del="${i}" aria-label="Delete ${sq.name}" title="Delete">×</button></span>`
+            : `<button class="sq-plus" data-sq-save="${i}" aria-label="Save current squad" title="Save current squad">+</button>`}</li>`;
         }).join('')}
       </ul>
     </section>`;

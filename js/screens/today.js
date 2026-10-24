@@ -7,7 +7,7 @@
  */
 import { getState, update } from '../state.js';
 import { navigate, refreshCoins, toast } from '../app.js';
-import { about } from '../components/facts.js';
+import { about, facts } from '../components/facts.js';
 import { sfx } from '../audio.js';
 import { screenHead } from '../components/screenHead.js';
 import { PACK_BY_ID, samplePulls } from '../data/packs.js';
@@ -55,8 +55,7 @@ function eventPanel(s) {
   const feat = ev.featured ? WORLD.players.find((p) => p.name === ev.featured.player) : null;
   return `
     <section class="panel glass ev-card" style="--ev:${ev.theme || 'var(--accent)'}">
-      <header class="panel-head"><h2>${ev.name} <small>ends in ${untilText(eventEndsAt(ev))}</small></h2></header>
-      <p class="hint">${ev.blurb}</p>
+      <header class="panel-head"><h2>${ev.name} <small>ends in ${untilText(eventEndsAt(ev))}</small></h2>${about(ev.blurb)}</header>
       <div class="ev-showcase">
         ${feat ? `<div class="ev-feat-card">${playerCard({ ...feat, overall: feat.overall + ev.featured.boost }, { size: 'showcase' })}<span class="ev-kicker">Featured · +${ev.featured.boost} evolved · ${Math.round(ev.featured.chance * 100)}% in the ${pack?.name || 'event pack'}</span></div>` : ''}
         ${pack ? `<div class="ev-pack-side">${packArt(pack, { size: 'md' })}<span class="ev-kicker">In the pack this week</span>${cardStrip(samplePulls(pack, 3))}<button class="btn primary" data-go="store">${pack.name} · ◈ ${pack.cost.toLocaleString()}</button></div>` : ''}
@@ -117,7 +116,7 @@ function weekendPanel(s) {
         <div class="wl-row">
           <div><span class="ev-kicker">This weekend</span><b>${tally.wins}W ${tally.draws}D ${tally.losses}L</b><span>${matchesLeft(tally)} of 10 left · on course for <b>${rank.name}</b></span></div>
           <button class="btn primary" data-go="weekend">${matchesLeft(tally) ? 'Play' : 'Results'} →</button>
-        </div>` : `<p class="hint">Ten matches every weekend, Friday 18:00 to Monday 06:00 UTC. Rank by wins; rewards on Monday.</p>`}
+        </div>` : `${facts([['calendar', 'Fri 18:00 – Mon 06:00 UTC'], ['ball', '10 matches'], ['trophy', 'Rank by wins']])}`}
     </section>`;
 }
 
