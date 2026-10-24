@@ -117,16 +117,16 @@ export function dressGround(ctx) {
       dug.add(new THREE.Mesh(box(4.8, 0.45, 0.45, 0, -0.35, 0.45), seatMat));               // the bench
       dug.position.set(cx, -MARGIN + 2.2, -0.06);
       group.add(dug);
-      // the technical area: a dashed box on the apron in front of it
+      // the technical area: a dashed box on the apron in front of it — v199: one mesh, not eighteen
       const w = 9; const d = 2.1; const y0 = -MARGIN + 3.1;
+      const dashes = [];
       for (let i = 0; i < 18; i++) {
         const along = (i / 18) * (w * 2 + d * 2);
         let x, y, rot = 0;
         if (along < w) { x = cx - w / 2 + along; y = y0 + d; } else if (along < w + d) { x = cx + w / 2; y = y0 + d - (along - w); rot = Math.PI / 2; } else if (along < w * 2 + d) { x = cx + w / 2 - (along - w - d); y = y0; } else { x = cx - w / 2; y = y0 + (along - w * 2 - d); rot = Math.PI / 2; }
-        const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.09), lineMat);
-        dash.position.set(x, y, -0.045); dash.rotation.z = rot;
-        group.add(dash);
+        dashes.push(new THREE.PlaneGeometry(0.45, 0.09).rotateZ(rot).translate(x, y, -0.045));
       }
+      group.add(new THREE.Mesh(merge(dashes), lineMat));
     }
     // the tunnel: a telescopic walkway in the club's colours, out to the touchline
     const tunMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(home[0]).multiplyScalar(0.45), roughness: 0.7, side: THREE.DoubleSide });
