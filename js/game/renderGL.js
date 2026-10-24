@@ -14,6 +14,7 @@ import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
 import { kitTexture, buildPlayer, buildFor, posePlayer, gaitOf, strideRate, updateBank } from './rig.js';
+import { createFigureBatch } from './figureBatch.js';
 import { groundProfile } from '../data/grounds.js';
 import { dressGround } from './groundDressing.js';
 import { dressStreet, courtTexture } from './streetDressing.js';
@@ -352,6 +353,32 @@ function mow(g, W, H, pattern, colA, colB, feather) {
     for (let i = 0; i < 8; i++) band(i, 8, false);
     g.globalAlpha = 1;
   }
+}
+
+/**
+ * v199: a static group's meshes, welded into one per material (and shadow
+ * flags) — a stand's terrace steps, walls, trusses and rim lamps were each
+ * their own draw call, thirty-odd a stand, for a few hundred triangles.
+ * Only plain, indexed, childless meshes that nothing moves afterwards.
+ */
+function mergeStatic(g) {
+  const buckets = new Map();
+  for (const c of g.children) {
+    if (!c.isMesh || c.isInstancedMesh || c.isSkinnedMesh || c.children.length || !c.geometry?.index || !c.visible) continue;
+    const key = `${c.material.uuid}|${c.castShadow}|${c.receiveShadow}|${c.renderOrder}|${!!c.geometry.attributes.uv}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(c);
+  }
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    const geos = list.map((c) => { c.updateMatrix(); return c.geometry.clone().applyMatrix4(c.matrix); });
+    const m = new THREE.Mesh(mergeGeos(...geos), list[0].material);
+    m.castShadow = list[0].castShadow; m.receiveShadow = list[0].receiveShadow; m.renderOrder = list[0].renderOrder;
+    for (const c of list) { g.remove(c); c.geometry.dispose(); }
+    for (const x of geos) x.dispose();
+    g.add(m);
+  }
+  return g;
 }
 
 /** Weld a couple of small indexed geometries into one. */
@@ -2006,7 +2033,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         arch.position.add(new THREE.Vector3(bk.cx, bk.cy, 0));
       }
     }
-    scene.add(g);
+    scene.add(mergeStatic(g));     // v199: a stand in a few draws, not thirty-five
   }
 
   /* Curved corners, on the big grounds only.
@@ -2045,7 +2072,7 @@ export function createRenderer(canvas, match, quality, models = false) {
         cap.material.side = THREE.DoubleSide;
         g.add(cap);
       }
-      scene.add(g);
+      scene.add(mergeStatic(g));
     }
   }
 
@@ -2759,6 +2786,9 @@ export function createRenderer(canvas, match, quality, models = false) {
   const kitHome = new THREE.Color(hexOf(stripHome.shirt));
   const kitAway = new THREE.Color(hexOf(stripAway.shirt));
   const rigs = new Map();
+  /* v199: every built figure's parts drawn as one instanced mesh per part shape (figureBatch.js).
+     `__apexNoFigureBatch` turns it off, for the perf harness to measure the difference. */
+  const figBatch = globalThis.__apexNoFigureBatch ? null : createFigureBatch(scene);
   /* One player's figure. Built again when a substitute takes the slot: the
      look (skin, hair, build) and the name on the shirt are baked in, and the
      man coming on used to run out as the man he replaced. */
@@ -2814,6 +2844,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       shirtNo++;
       scene.add(rig.grp);
       rigs.set(p, rig);
+      figBatch?.add(rig);
     }
   }
 
@@ -2918,6 +2949,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       if (mgrRig.parts[part]) mgrRig.parts[part].material = trouser;
     }
     scene.add(mgrRig.grp);
+    figBatch?.add(mgrRig);
   }
   const mgrProxy = { x: 0, y: 0, vx: 0, vy: 0, dirX: 1, dirY: 0, celebrating: false, stumble: 0, holdT: 0 };
 
@@ -2932,6 +2964,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     const k = new THREE.Color(REF_KIT);
     refRig = buildPlayer(k, k.clone(), new THREE.Color('#c99a74'), new THREE.Color('#1d140d'), k.clone(), { height: 1.01, girth: 1, shoulders: 1 });
     scene.add(refRig.grp);
+    figBatch?.add(refRig);
   }
   const refCard = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.105),
     new THREE.MeshBasicMaterial({ color: 0xffd21f, side: THREE.DoubleSide, toneMapped: false }));
@@ -3686,9 +3719,11 @@ export function createRenderer(canvas, match, quality, models = false) {
           if (simple && simple.refId !== p.ref?.id) {
             scene.remove(simple.grp);
             simple.parts.torso.material.map?.dispose?.();
+            figBatch?.remove(simple);
             const fresh = simpleRig(p, t, simple.shirtNo);
             fresh.grp.visible = !useModels;
             scene.add(fresh.grp); rigs.set(p, fresh);
+            figBatch?.add(fresh);
           }
           if (useModels) {
             let rig = modelRigs.get(p);
@@ -3880,6 +3915,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       }
 
       if (contextLost) return;
+      figBatch?.sync(camera);      // v199: the posed figures into their instanced meshes
       /* `info` is reset by every render call, so through the composer it would
          only ever describe the final fullscreen quad. Accumulate across the
          passes and reset here, once a frame, so the counters mean the frame. */
@@ -3911,6 +3947,7 @@ export function createRenderer(canvas, match, quality, models = false) {
      *  left alive for the next one to reuse. */
     dispose({ keepContext = false } = {}) {
       try { dressing.dispose(); } catch { /* already gone */ }
+      try { figBatch?.dispose(); } catch { /* already gone */ }
       disposed = true;
       for (const rig of modelRigs.values()) {
         rig.mixer.stopAllAction();

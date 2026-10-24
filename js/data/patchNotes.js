@@ -22,6 +22,20 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v199',
+    date: '2026-10-24',
+    tag: 'Performance',
+    title: 'Smoother matches',
+    lede: 'A match now asks the graphics chip for about a fifth of the work it did, so frames come faster and steadier, most of all on phones.',
+    entries: [
+      {
+        head: 'What changed',
+        summary: 'All 22 players and the referee are drawn together instead of one body part at a time, and the stands are drawn in a few pieces instead of dozens.',
+        detail: 'On the Medium setting most phones use, a frame went from about 1,400 drawing calls to under 300; Low from about 600 to under 160; High from about 1,000 to under 400. Players look exactly as they did. Their shaders are also prepared on the loading screen, so nothing stalls the first time a player comes into view.',
+      },
+    ],
+  },
+  {
     version: 'v198',
     date: '2026-10-18',
     tag: 'Ultimate XI',

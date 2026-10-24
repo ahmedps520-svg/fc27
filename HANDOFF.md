@@ -15,6 +15,15 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v199 — draw calls: the figures batched, the stands merged
+- **Measured first** (`tests/perf/gl-fps.mjs` + a scene breakdown): Medium drew 1,411 calls a frame, more than High (1,033). Each built figure (rig.js) is ~25 meshes, 22 of them shadow casters, so 23 figures were ~1,080 of the calls.
+- **`js/game/figureBatch.js`:** the posing is untouched; the parts move to layer 31 (no camera draws it, and three.js skips it in the shadow pass), and `sync(camera)` copies every visible part's world matrix and colour into one `InstancedMesh` per shared geometry (capsule, joint sphere, boot, hips, sleeve, one per hair style), packed and `count`-limited each frame. A figure that is hidden, or more than 4 m outside the frustum, costs nothing. The shirt (number, name, High's cloth) stays its own mesh. Wired in renderGL: `figBatch.add` for players, substitutes (`remove` + `add`), the referee and the manager; `sync` just before the render calls; dispose. `window.__apexNoFigureBatch = true` turns it off for A/B.
+  - The group is only a pivot (rig.js rotates it about the player); the parts are world-placed, so the frustum test uses the shirt's world position.
+  - Each instanced mesh is sized `capacity × parts per figure of that shape` (nine limbs share the capsule). The meshes start visible so the loading screen's `compileAsync` compiles them; hidden, they compiled mid-match (a 4 s frame in SwiftShader).
+- **`mergeStatic(group)`** in renderGL welds a static group's plain meshes per material and shadow flags: each stand (35 → 6) and the far corner terraces. The technical-area dashes in groundDressing.js are one mesh per side (18 → 1). The landscape's sector count was left alone: it was measured before (fewer sectors cost more than they saved).
+- **Result, draw calls a frame (night, broadcast):** Low 610 → 158, Medium 1,411 → 286, High 1,033 → 386 (839 → 362 with scanned models). JS time in `render()` on Medium dropped from 10–26 ms to 6–9 ms median in headless Chrome. Players look the same. The black-patch scan is clean and the sweeps are identical (the sim is untouched).
+- Tests: `tests/unit/figure-batch.test.mjs`; `tests/perf/batch-ab.mjs` (on/off back to back).
+
 ## App Review, 24 October 2026: 1.1 (7) rejected under 5.1.2(i)
 - **Why:** the App Privacy label in App Store Connect said *Other User Content* is used to track the user, and the app has no App Tracking Transparency prompt.
 - **The app does not track:** no ads, analytics or attribution SDKs (`app/package.json` has Capacitor core, haptics and local notifications only), no third-party scripts, and crash reports carry no account. So the fix is the label, not ATT: every data type → tracking **No**, then **Publish** (web only, Account Holder or Admin). `app/README.md` spells it out.
