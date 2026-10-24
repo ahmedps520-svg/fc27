@@ -20,7 +20,7 @@ import { CLASH_THEMES } from '../modes.js';
 import { playerCard } from '../components/playerCard.js';
 import { crestSVG } from '../components/crest.js';
 import { screenHead } from '../components/screenHead.js';
-import { facts } from '../components/facts.js';
+import { facts, about, icon } from '../components/facts.js';
 import { enterFullscreen } from '../fullscreen.js';
 import { clubIdentity } from './squad.js';
 import { tx } from '../i18n.js';
@@ -76,11 +76,10 @@ function body() {
     const can = (s.club.apex | 0) >= DRAFT_ENTRY;
     return `
       <div class="panel glass draft-entry">
-        <p>${tx('Pick a formation, a captain and ten more, each from a handful of cards — players you may not own. Then take the squad through four knockout rounds against sides that get stronger each round. A draw goes to penalties; a defeat ends the run. The cards go back when it ends: what you keep is the reward.')}</p>
+        <header class="panel-head"><h2>${tx('Draft')}</h2>${about(`${tx('Pick a formation, a captain and ten more, each from a handful of cards — players you may not own. Then take the squad through four knockout rounds against sides that get stronger each round. A draw goes to penalties; a defeat ends the run. The cards go back when it ends: what you keep is the reward.')} ${tx('Leaving a round part-way, or closing the app during one, counts as a defeat.')}`)}</header>
         ${facts([['coin', `${tx('Entry')} ${money(DRAFT_ENTRY)}`, 'gold'], ['players', tx('4 rounds')], ['trophy', `${st.titles} ${tx('titles')} · ${tx('best')} ${st.best}`]])}
         <ul class="draft-rewards">${DRAFT_REWARDS.map((r) => `<li><b>${r.wins} ${tx(r.wins === 1 ? 'win' : 'wins')}</b><span>${rewardLine(r)}</span></li>`).join('')}</ul>
-        <p class="hint">${tx('Leaving a round part-way, or closing the app during one, counts as a defeat.')}</p>
-        <button class="btn primary" data-d="start" ${can ? '' : 'disabled'}>${tx('Start a draft')} · ${money(DRAFT_ENTRY)}</button>
+        <button class="btn primary" data-d="start" ${can ? '' : 'disabled'}>${icon('play', 16)} ${tx('Start a draft')} · ${money(DRAFT_ENTRY)}</button>
         ${can ? '' : `<p class="hint">${tx('You need')} ${money(DRAFT_ENTRY)}.</p>`}
       </div>`;
   }
@@ -120,8 +119,8 @@ function body() {
               <em>${r ? `${r.scored}–${r.conceded}${r.pens ? ` (${tx('pens')})` : ''}` : i === d.round ? `≈${o.squad.rating}` : ''}</em>
             </li>`;
           }).join('')}</ol>
-          <p class="hint">${tx('Win it and')}: ${rewardLine(rewardFor(d.wins + 1))} · ${tx('lose it')}: ${rewardLine(rewardFor(d.wins))}</p>
-          <button class="btn primary" data-d="play">${tx('Play the')} ${tx(DRAFT_ROUNDS[d.round])}</button>
+          ${facts([['trophy', rewardLine(rewardFor(d.wins + 1)), 'gold'], ['coin', rewardLine(rewardFor(d.wins))]])}
+          <button class="btn primary" data-d="play">${icon('play', 16)} ${tx('Play the')} ${tx(DRAFT_ROUNDS[d.round])}</button>
           <button class="btn ghost sm" data-d="abandon">${tx('Walk away')}</button>
         </div>
       </div>`;

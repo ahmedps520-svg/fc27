@@ -27,7 +27,7 @@ import { settle, search, buyNow, placeBid, listCard, priceRange, historySVG, mar
 import { sets, setProgress, claimSet, binderSummary } from '../binder.js';
 import { weekendWindow, untilText } from '../weekend.js';
 import { DRAFT_ENTRY, DRAFT_ROUNDS, DRAFT_REWARDS, draftState } from '../draft.js';
-import { facts, about } from '../components/facts.js';
+import { facts, about, icon } from '../components/facts.js';
 
 const money = (n) => `◈${Math.round(n).toLocaleString()}`;
 const packName = (id) => ({ gold: 'Gold', silver: 'Silver', prime: 'Prime', inform: 'In-Form', campaign: 'Campaign', vault: 'Legends Vault' }[id] || id);
@@ -55,17 +55,16 @@ export function modesView(squad) {
     <section class="panel glass mode-card fives-card">
       <header class="panel-head"><h2>Quickfire Fives</h2>${about('Your keeper and four best outfielders on a small pitch. Short, sharp, and it pays straight away.')}</header>
       ${facts([['clock', '2½ min'], ['players', '5v5'], ['trophy', `${money(FIVES.reward.win)} win`, 'gold'], ['ball', `${money(FIVES.reward.goal)} goal`, 'gold']])}
-      <div class="fives-five">${five.map((p) => `<span class="ff-p"><b>${p.overall}</b><i>${p.position}</i>${p.short || p.name}</span>`).join('') || '<span class="empty">Fill your XI first.</span>'}</div>
-      <div class="mode-rec"><span>${f.won}W ${f.drawn}D ${f.lost}L</span><span>${f.gf}–${f.ga}</span><span>Best run ${f.best}</span>
-        ${f.last ? `<span>Last: ${f.last.scored}–${f.last.conceded}</span>` : ''}</div>
-      <button class="btn primary" id="playFives" ${squad ? '' : 'disabled'}>Play Fives</button>
+      <div class="fives-five">${five.map((p) => `<span class="ff-p" title="${p.name}"><b>${p.overall}</b><i>${p.position}</i></span>`).join('') || '<span class="empty">Fill your XI first.</span>'}</div>
+      ${facts([['trophy', `${f.won}–${f.drawn}–${f.lost}`], ['ball', `${f.gf}–${f.ga}`], ['bolt', `${f.best}`], f.last ? ['clock', `${f.last.scored}–${f.last.conceded}`] : null], 'mode-stats')}
+      <button class="btn primary" id="playFives" ${squad ? '' : 'disabled'}>${icon('play', 16)} Play Fives</button>
     </section>
 
     <section class="panel glass mode-card draft-mode">
       <header class="panel-head"><h2>Draft</h2>${dr ? `<span class="tag good">${dr.step === 'done' ? 'Reward to collect' : dr.step === 'cup' ? `${DRAFT_ROUNDS[dr.round]} next` : 'Drafting'}</span>` : ''}${about('Pick a formation, a captain and ten more from a few cards each — players you may not own — then four knockout rounds. A defeat ends it; the wins set the reward. The cards go back when it ends.')}</header>
       ${facts([['coin', `${money(DRAFT_ENTRY)} entry`, 'gold'], ['players', `${DRAFT_ROUNDS.length} rounds`], ['trophy', `${money(DRAFT_REWARDS.at(-1).apex)} + ${packName(DRAFT_REWARDS.at(-1).pack)} for 4 wins`, 'gold']])}
-      <div class="mode-rec"><span>${ds.runs} runs</span><span>Best ${ds.best} wins</span><span>${ds.titles} titles</span></div>
-      <button class="btn primary" id="goDraft">${dr ? 'Continue the draft' : 'Start a draft'}</button>
+      ${facts([['refresh', `${ds.runs}`], ['up', `${ds.best}/${DRAFT_ROUNDS.length}`], ['trophy', `${ds.titles}`, ds.titles ? 'gold' : '']], 'mode-stats')}
+      <button class="btn primary" id="goDraft">${icon('play', 16)} ${dr ? 'Continue the draft' : 'Start a draft'}</button>
     </section>
 
     <section class="panel glass mode-card clash-card">
@@ -78,14 +77,15 @@ export function modesView(squad) {
         ${opponents.map((th) => {
           const done = cs.played[th.id];
           const rating = Math.max(55, Math.min(95, myRating + lv.delta));
-          return `<div class="clash-opp ${done ? 'done' : ''}" style="--c1:${th.colors[0]};--c2:${th.colors[1]}">
-            <i class="co-kit"></i><b>${th.name}</b>
-            <span>${done ? `${done.scored}–${done.conceded} · +${done.pts}` : `≈${rating} rated`}</span>
-            ${done ? '<em>Played</em>' : `<button class="mini-btn" data-clash="${th.id}" ${squad ? '' : 'disabled'}>Play</button>`}
-          </div>`;
+          // v201: the tile is the button — a kit, a name, the rating, and a ▶
+          return done
+            ? `<div class="clash-opp done" style="--c1:${th.colors[0]};--c2:${th.colors[1]}"><i class="co-kit"></i><b>${th.name}</b><span>${done.scored}–${done.conceded} · <em>+${done.pts}</em></span></div>`
+            : `<button class="clash-opp" data-clash="${th.id}" ${squad ? '' : 'disabled'} style="--c1:${th.colors[0]};--c2:${th.colors[1]}" aria-label="Play ${th.name}"><i class="co-kit"></i><b>${th.name}</b><span>≈${rating}</span><i class="co-go">${icon('play', 14)}</i></button>`;
         }).join('')}
       </div>
-      <div class="rank-strip">${CLASH_RANKS.map((r) => `<span class="${cs.rank === r ? 'on' : ''}"><b>${r.name}</b>${r.points}+<em>${rewardLine(r)}</em></span>`).join('')}</div>
+      <details class="rank-fold"><summary>${icon('trophy', 15)} Ranks</summary>
+        <div class="rank-strip">${CLASH_RANKS.map((r) => `<span class="${cs.rank === r ? 'on' : ''}"><b>${r.name}</b>${r.points}+<em>${rewardLine(r)}</em></span>`).join('')}</div>
+      </details>
     </section>
 
     <section class="panel glass mode-card">

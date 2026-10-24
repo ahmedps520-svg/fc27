@@ -3,7 +3,7 @@
  * the real server, and fails on any page error or any step that does not
  * land where it should.
  *
- *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,scenario,style,pens,party,watch]
+ *   node tests/qa/bot.mjs [--gl] [--only onboarding,ultimate,career,pro,weekend,online,ghost,draft,scenario,style,menus,pens,party,watch]
  *
  * Runs on the 2D canvas path by default (WebGL off) because software WebGL
  * draws a frame in a third of a second and a sixty-second match would take
@@ -528,6 +528,31 @@ try {
     const opts = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#celebSel option')].map((o) => [o.value, o.disabled])));
     assert.equal(opts.archer, false); assert.equal(opts.whirlwind, true); assert.equal(opts.kneeslide, false);
     step('Settings: The Archer selectable, Whirlwind locked, the free sixteen as before');
+    await ctx.close();
+  });
+
+  /* v201: the simpler menus still do their jobs — Kick Off's picture segments, a saved
+     squad from the + tile, and a Squad Clash tile that is itself the button. */
+  await flow('menus', async () => {
+    const { ctx, page } = await boot('menus', baseSave({ club: { apex: 5000 } }));
+    await page.evaluate(async () => { const ob = await import('/js/onboarding.js'); ob.dealStarter(); });
+    await go(page, 'quick');
+    await page.waitForSelector('[data-weather="rain"]');
+    await click(page, '[data-weather="rain"]'); await click(page, '[data-time="night"]'); await click(page, '[data-mode="versus"]');
+    const on = await page.evaluate(() => ['[data-weather="rain"]', '[data-time="night"]', '[data-mode="versus"]'].map((q) => document.querySelector(q).classList.contains('on')));
+    assert.deepEqual(on, [true, true, true]);
+    assert.ok(await page.evaluate(() => [...document.querySelectorAll('.seg-ico')].every((b) => b.getAttribute('aria-label'))), 'every picture button is named');
+    step('Kick Off: rain, night and 2P picked from the pictures');
+    await go(page, 'squad');
+    await page.waitForSelector('[data-sq-save="0"]');
+    await click(page, '[data-sq-save="0"]');
+    await page.waitForSelector('[data-sq-load="0"]', { timeout: 10000 });
+    step('a squad saved from the + tile');
+    await click(page, '[data-utab="division"]');
+    await page.waitForSelector('button.clash-opp[data-clash]');
+    await click(page, 'button.clash-opp[data-clash]');
+    await page.waitForSelector('#gmCanvas', { timeout: 20000 });
+    step('a Squad Clash tile starts its match');
     await ctx.close();
   });
 

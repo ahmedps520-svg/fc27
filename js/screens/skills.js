@@ -9,7 +9,9 @@ import { t, tx } from '../i18n.js';
 const tOr = (k, d) => { const s = t(k); return s === k ? d : s; };
 import { getState, update } from '../state.js';
 import { navigate, toast, refreshCoins, veil } from '../app.js';
-import { about, facts } from '../components/facts.js';
+import { about, facts, icon } from '../components/facts.js';
+// v201: each drill as a picture
+const DRILL_PIC = { slalom: 'boot', freekicks: 'target', crossing: 'ball', passing: 'swap' };
 import { crestSVG } from '../components/crest.js';
 import { SCENARIOS, GOALS, STAR_APEX, sidesOf, scenarioById, scenarioParams, scenarioRecord, totalStars } from '../scenarios.js';
 import { screenHead } from '../components/screenHead.js';
@@ -40,8 +42,8 @@ function drillsHTML() {
   const b = bests();
   return `<div class="sk-grid">${DRILLS.map((d) => `
     <section class="panel glass sk-card">
-      <header class="panel-head"><h2>${tOr(`drill.${d.id}`, d.name)}</h2><span class="tag">${t('skills.best')} ${b[d.id] ?? '–'}</span></header>
-      <p class="hint">${tOr(`drill.${d.id}.blurb`, d.blurb)}</p>
+      <header class="panel-head"><h2>${tOr(`drill.${d.id}`, d.name)}</h2>${about(tOr(`drill.${d.id}.blurb`, d.blurb))}</header>
+      <div class="sk-top"><span class="sk-pic">${icon(DRILL_PIC[d.id] || 'ball', 34)}</span><span class="tag">${t('skills.best')} ${b[d.id] ?? '–'}</span></div>
       <ol class="sk-board" data-board="${d.id}"><li class="empty">${t(api.isSignedIn() ? 'skills.loading' : 'skills.signIn')}</li></ol>
       <button class="btn primary" data-drill="${d.id}">${t('common.play')}</button>
     </section>`).join('')}</div>
@@ -53,8 +55,7 @@ function scenariosHTML() {
   const total = totalStars();
   const done = !!getState().club.scenarioPack;
   return `<section class="panel glass">
-    <header class="panel-head"><h2>${t('skills.nav.scenarios')}</h2><span class="tag ${done ? 'good' : ''}">★ ${total}/${SCENARIOS.length * 3}</span></header>
-    <p class="hint">${tx('Take over a match part-way through — the score already on the board, sometimes a man down — and change how it ends. Three stars each.')}</p>
+    <header class="panel-head"><h2>${t('skills.nav.scenarios')}</h2><span class="tag ${done ? 'good' : ''}">★ ${total}/${SCENARIOS.length * 3}</span>${about(tx('Take over a match part-way through — the score already on the board, sometimes a man down — and change how it ends. Three stars each.'))}</header>
     ${facts([['star', `◈${STAR_APEX} ${tx('for each new star')}`, 'gold'], ['trophy', `${tx('Every star')}: ${tx('Prime pack')}`, done ? 'good' : 'gold']])}
   </section>
   <div class="scen-grid">${SCENARIOS.map((sc) => {
@@ -80,8 +81,7 @@ function pensHTML() {
   const clubs = WORLD.clubs.slice(0, 40);
   penClub = penClub || clubs[0].id;
   return `<section class="panel glass">
-    <header class="panel-head"><h2>${t('skills.nav.pens')}</h2></header>
-    <p class="hint">Five each, then sudden death. Stop the marker to place your kick; the keeper guesses.</p>
+    <header class="panel-head"><h2>${t('skills.nav.pens')}</h2>${about(tx('Five each, then sudden death. Stop the marker to place your kick; the keeper guesses.'))}</header>
     <label class="field"><span>Your side</span><select id="penClub">${clubs.map((c) => `<option value="${c.id}" ${c.id === penClub ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <button class="btn primary big" id="penGo">Take the walk</button>
     <div id="penStage"></div>
@@ -90,8 +90,7 @@ function pensHTML() {
 
 function practiceHTML() {
   return `<section class="panel glass">
-    <header class="panel-head"><h2>${t('skills.nav.practice')}</h2></header>
-    <p class="hint">Your team on a full pitch against a keeper and nobody else. No clock, no offside. Free-roam, or stage a set piece from the pause menu: a free kick where you stand, a penalty, a corner.</p>
+    <header class="panel-head"><h2>${t('skills.nav.practice')}</h2>${about(tx('Your team on a full pitch against a keeper and nobody else. No clock, no offside. Free-roam, or stage a set piece from the pause menu: a free kick where you stand, a penalty, a corner.'))}</header>
     <div class="offer-actions">
       <button class="btn primary big" data-practice="free">Free roam</button>
       <button class="btn" data-practice="freekick">Free kicks</button>

@@ -22,6 +22,7 @@ import { sfx } from '../audio.js';
 import { clubIdentity, ultimateSquad } from './squad.js';
 import { divisionOpponent, divisionSkill } from '../ultimate.js';
 import { t, tx } from '../i18n.js';
+import { about } from '../components/facts.js';
 import { NET_PROTOCOL } from '../net/protocol.js';
 import { APP_STORE } from '../platform.js';
 import { openPlayerSheet, openBlockedList } from '../components/playerSheet.js';
@@ -350,8 +351,7 @@ export function mountOnline(root, { rerender }) {
     const mine = w?.open && w.guild;
     const gw = !w ? '' : `
       <div class="gw ${w.open ? 'open' : ''}" id="gwPanel">
-        <span class="ol-kicker">${t('gw.title')} · ${t(w.open ? 'gw.closesIn' : 'gw.opensIn', { t: untilText(w.open ? w.closesAt : w.opensAt) })}</span>
-        <p class="gw-sub">${t('gw.sub', { cap: w.cap })}</p>
+        <span class="ol-kicker gw-head">${t('gw.title')} · ${t(w.open ? 'gw.closesIn' : 'gw.opensIn', { t: untilText(w.open ? w.closesAt : w.opensAt) })}${about(t('gw.sub', { cap: w.cap }))}</span>
         ${mine ? `
         <div class="gw-stats">
           <div><b>${mine.wins}</b><span>${t('gw.wins')}</span></div>
