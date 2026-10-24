@@ -285,6 +285,12 @@ export function updateBank(p, dt) {
   const w = dt > 0 ? dh / dt : 0;                                 // turn rate, rad/s
   const want = Math.max(-0.11, Math.min(0.11, w * sp * 0.011));   // lateral g, as a sideways lean in metres
   p._bank = (p._bank || 0) + (want - (p._bank || 0)) * Math.min(1, dt * 9);
+  /* v200: and forward into a burst, back against a hard stop — the
+     acceleration along his run, smoothed, as metres of lean (a sprinter's
+     drive out of a standstill, a defender braking to hold his line) */
+  const along = dt > 0 && p._spPrev != null ? (sp - p._spPrev) / dt : 0;
+  p._spPrev = sp;
+  p._surge = (p._surge || 0) + (Math.max(-0.06, Math.min(0.06, along * 0.007)) - (p._surge || 0)) * Math.min(1, dt * 6);
   updateCut(p, dt);                                              // v137: plant-and-cut, and the turn's twist
   return p._bank;
 }
@@ -331,6 +337,27 @@ export function updateCut(p, dt) {
   return cutEnv(p);
 }
 export const cutEnv = (p) => (p._cut ? Math.sin(Math.PI * Math.min(1, p._cut.t / p._cut.dur)) : 0);
+
+/**
+ * v200: he watches the ball. The head turns towards it, up to about 70° each
+ * way of where the body faces, and a little of the shoulders goes with it;
+ * a ball behind him he lets the body come round for rather than craning.
+ * Smoothed, so a pass flicking across the pitch is followed, not snapped to.
+ * Render only: called once a frame by the renderer, read by the pose as
+ * `p._look` (radians, positive to his left).
+ */
+const LOOK_MAX = 1.2;
+export function updateLook(p, ball, dt) {
+  let want = 0;
+  if (ball && !p.celebrating && !(p.downT > 0) && !(p.diveT > 0) && ball.owner !== p) {
+    let a = Math.atan2(ball.y - p.y, ball.x - p.x) - Math.atan2(p.dirY, p.dirX);
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    if (Math.abs(a) < 2.4) want = Math.max(-LOOK_MAX, Math.min(LOOK_MAX, a));
+  }
+  p._look = (p._look || 0) + (want - (p._look || 0)) * Math.min(1, dt * 7);
+  return p._look;
+}
 
 const RISE_MS = 350;
 
@@ -392,12 +419,14 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   const hd = C ? null : headerPose(p._header);
   if (hd) rig.grp.position.z += hd.hop;
   const lean = Math.max(-0.04, Math.min(0.14, sp / 62) * mf) + (C ? (TORSO * Math.sin(C.lean)) / 1.7 : 0) - 0.07 * kickE
+    + (C || tk ? 0 : (p._surge || 0) * Math.max(0, mf))
     + (tk ? tk.lean : 0) + (hd ? hd.nod : 0);
   // a turn tips the body into it (p._bank, from the renderer: how fast the path is curving)
   // v137: the cut — hips drop over the planted foot and the body throws itself into the new line
   const cut = C ? 0 : cutEnv(p);
   const bank = (p._bank || 0) + (C ? C.roll * TORSO : 0) + (cut ? p._cut.side * 0.13 * cut : 0);
   const twist = C ? 0 : (p._twist || 0);
+  const look = C ? 0 : (p._look || 0);           // v200: the head on the ball (updateLook)
   const cheer = p.celebrating && !C ? 1 : 0;
   // little hop while celebrating, so the whole body lifts off the turf
   // a celebration's jump lifts the whole figure (the group, below), boots and all; kneeling sinks the hips
@@ -654,24 +683,24 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
     CHEST_W * b.shoulders * G, CHEST_D * G, face + twist * 0.6, 1);
   // deltoids: a flattened cap that rounds off the top of the shirt
   parts.shoulder.position.set(wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ);
-  parts.shoulder.rotation.set(0, 0, face + twist);
+  parts.shoulder.rotation.set(0, 0, face + twist + look * 0.18);
   parts.shoulder.scale.set(CHEST_D * G, CHEST_W * b.shoulders * G * 1.02, 0.085 * G);
   segment(parts.neck, wx(lean * 1.7, bank), wy(lean * 1.7, bank), shZ,
     wx(lean * 1.7 - 0.01, bank * 1.1), wy(lean * 1.7 - 0.01, bank * 1.1), shZ + 0.1 * H, 0.046);
 
   const hz = shZ + 0.21 * H;
   parts.head.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz);
-  parts.head.rotation.set(0, 0, face + twist * 1.3);
+  parts.head.rotation.set(0, 0, face + twist * 1.3 + look);
   // a head is taller than it is wide, and deeper than it is broad
   parts.head.scale.set(0.098, 0.092, 0.112);
   parts.hair.position.set(wx(lean * 1.7 - 0.012, bank * 1.15), wy(lean * 1.7 - 0.012, bank * 1.15), hz + 0.022);
-  parts.hair.rotation.set(0, 0, face + twist * 1.3);
+  parts.hair.rotation.set(0, 0, face + twist * 1.3 + look);
   parts.hair.scale.set(0.101, 0.095, 0.104);
   parts.hair.visible = fine;
   /* The face sits on the front of the head: the eyes a little above centre,
      the mouth below, all along the facing direction. Shouting on a
      celebration: the mouth opens (scales tall) on the hop's rhythm. */
-  const fx = Math.cos(face + twist * 1.3); const fy = Math.sin(face + twist * 1.3);   // v137: the head leads a turn
+  const fx = Math.cos(face + twist * 1.3 + look); const fy = Math.sin(face + twist * 1.3 + look);   // v137: the head leads a turn
   const lx = -fy; const ly = fx;                         // across the face
   const hx = wx(lean * 1.7 - 0.012, bank * 1.15); const hy = wy(lean * 1.7 - 0.012, bank * 1.15);
   parts.eyeL.position.set(hx + fx * 0.085 + lx * 0.034, hy + fy * 0.085 + ly * 0.034, hz + 0.02);
@@ -679,7 +708,7 @@ export function posePlayer(rig, p, phase, fine, celebT = 0) {
   parts.eyeL.scale.set(0.012, 0.012, 0.012); parts.eyeR.scale.set(0.012, 0.012, 0.012);
   const shout = C ? C.mouth : cheer ? 0.5 + Math.abs(Math.sin(celebT * 6.5)) * 0.5 : 0;
   parts.mouth.position.set(hx + fx * 0.09, hy + fy * 0.09, hz - 0.035);
-  parts.mouth.rotation.set(0, 0, face + twist * 1.3);
+  parts.mouth.rotation.set(0, 0, face + twist * 1.3 + look);
   parts.mouth.scale.set(0.012, 0.022, 0.006 + shout * 0.02);
   parts.eyeL.visible = fine; parts.eyeR.visible = fine; parts.mouth.visible = fine;
 }

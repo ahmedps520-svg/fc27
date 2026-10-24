@@ -15,6 +15,15 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v200 — movement and ball physics the eye reads (render only; sweeps identical)
+- **Why render only:** the sim already had momentum steering (turn rate shrinking with speed, plant-and-brake), strength-weighted body contact (`separate`), Magnus curl, dip, knuckle, wind, surface bounce and net cloth. Changing ball drag or bounce would move shot and pass outcomes and need a retune measured by the sweep; the visible gaps were in how motion is drawn.
+- **Head on the ball** (`rig.js updateLook` → `p._look`, ±1.2 rad, smoothed at 7/s; 0 with the ball at his feet, down, diving, celebrating, or the ball more than ~137° behind): built figures turn head, hair and face (and the shoulders by 0.18 of it); scanned models (`playerModel.js lookRig`) turn the Mixamo head bone about its +y over the clip's own pose, kept as `_headBase` so the animation LOD never applies it twice. Measured in a match: heads 1° off the ball (built) and 13° (scanned) against 36° for the bodies. The referee too.
+- **Surge lean** (`updateBank` → `p._surge`): forward into acceleration, back under hard braking, ±0.06 m, on both figure kinds.
+- **Ball spin in the air** (renderGL): the ball carries a spin vector — rolling (v/r) on the ground, and in the air sidespin about the vertical from `ball.curl` (up to ~8 turns a second, fading as the sim's curl does), topspin with `dip`, backspin otherwise, ~0.3 turns with `knuckle`. Before, it "rolled" through the air at v/r (~25 turns a second on a 30 m/s shot).
+- **Woodwork shudder:** sim `hitFrame` records `frameHit {at, gx, speed, bar}` (like `netHit`, nothing reads it in the sim); renderGL shakes that goal's posts and bar a few centimetres at ~13 Hz, dying away in 0.7 s.
+- Not done, on purpose: smoothing the body's turn on top of v137's twist and cut (it would fight that tuned feel), and any change to the sim's ball drag or bounce.
+- Tests: `tests/unit/movement.test.mjs` (the look's range and smoothing, surge, the pose, post and bar hits recorded and the bounce unchanged).
+
 ## v199 — draw calls: the figures batched, the stands merged
 - **Measured first** (`tests/perf/gl-fps.mjs` + a scene breakdown): Medium drew 1,411 calls a frame, more than High (1,033). Each built figure (rig.js) is ~25 meshes, 22 of them shadow casters, so 23 figures were ~1,080 of the calls.
 - **`js/game/figureBatch.js`:** the posing is untouched; the parts move to layer 31 (no camera draws it, and three.js skips it in the shadow pass), and `sync(camera)` copies every visible part's world matrix and colour into one `InstancedMesh` per shared geometry (capsule, joint sphere, boot, hips, sleeve, one per hair style), packed and `count`-limited each frame. A figure that is hidden, or more than 4 m outside the frustum, costs nothing. The shirt (number, name, High's cloth) stays its own mesh. Wired in renderGL: `figBatch.add` for players, substitutes (`remove` + `add`), the referee and the manager; `sync` just before the render calls; dispose. `window.__apexNoFigureBatch = true` turns it off for A/B.

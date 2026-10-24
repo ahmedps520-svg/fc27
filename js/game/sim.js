@@ -1786,6 +1786,7 @@ export class Match {
         b.px = b.x; b.py = b.y; b.pz = b.z;
         b.curl = 0;
         b.shotBy = null;
+        this.frameHit = { at: this.t, gx, speed: Math.abs(vn) };   // v200: for the renderer — the woodwork shudders
         this.cue('post');
         return true;
       }
@@ -1795,6 +1796,7 @@ export class Match {
         const tx = Math.abs(ex - sx) > 1e-6 ? clamp((gx - sx) / (ex - sx), 0, 1) : 1;
         const cy = sy + (ey - sy) * tx; const cz = sz + (ez - sz) * tx;
         if (Math.abs(cy - CY) < GOAL_HALF + 0.2 && Math.abs(cz - GOAL_HEIGHT) < 0.22 && b.vz > -40) {
+          this.frameHit = { at: this.t, gx, speed: Math.hypot(b.vx, b.vy, b.vz), bar: true };   // v200: render only
           b.vz = -Math.abs(b.vz) * 0.55 - 1.2;
           b.vx *= 0.7; b.vy *= 0.7;
           b.x = gx - inw * (R + 0.02); b.y = cy;
