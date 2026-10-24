@@ -13,7 +13,7 @@ import { createReferee, updateReferee } from './referee.js';
 import { GLTFLoader } from '../vendor/jsm/loaders/GLTFLoader.js';
 import { buildLandscape } from './landscape.js';
 import { CinematicPass } from './cinematic.js';
-import { kitTexture, buildPlayer, buildFor, posePlayer, gaitOf, strideRate, updateBank } from './rig.js';
+import { kitTexture, buildPlayer, buildFor, posePlayer, gaitOf, strideRate, updateBank, updateLook } from './rig.js';
 import { createFigureBatch } from './figureBatch.js';
 import { groundProfile } from '../data/grounds.js';
 import { dressGround } from './groundDressing.js';
@@ -197,6 +197,7 @@ const GK_KIT = 0xc6f24a;
 const UP_Y = new THREE.Vector3(0, 1, 0);
 const _v = new THREE.Vector3();
 const _q = new THREE.Quaternion();
+const _spinAxis = new THREE.Vector3();
 const _q2 = new THREE.Quaternion();
 
 function mulberry(seed) {
@@ -1771,6 +1772,8 @@ export function createRenderer(canvas, match, quality, models = false) {
   const GOAL_STYLE = VENUE.goalStyle || 'box';
   const NET_DEPTH = GOAL_STYLE === 'deep' ? 2.7 : GOAL_STYLE === 'stanchion' ? 2.25 : 2.0;
   const nets = [];
+  // v200: each goal's front frame (posts and bar), to shudder when the ball hits it (sim frameHit)
+  const frames = [[], []];
   /* The frame.
    *
    * A goal is the one piece of furniture on the pitch every camera angle
@@ -1794,6 +1797,7 @@ export function createRenderer(canvas, match, quality, models = false) {
       post.rotation.x = Math.PI / 2;
       post.castShadow = true;
       scene.add(post);
+      frames[side].push({ mesh: post, base: post.position.clone() });
       // the rear upright, and the stay that runs back to it along the ground
       const rear = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R, REAR_R, REAR_H, 8), postMat);
       rear.position.set(gx + inw * NET_DEPTH, CY + sy, REAR_H / 2);
@@ -1817,6 +1821,7 @@ export function createRenderer(canvas, match, quality, models = false) {
     bar.position.set(gx, CY, GOAL_H);
     bar.castShadow = true;
     scene.add(bar);
+    frames[side].push({ mesh: bar, base: bar.position.clone(), bar: true });
     const rearBar = new THREE.Mesh(new THREE.CylinderGeometry(REAR_R, REAR_R, GOAL_HALF * 2, 8), postMat);
     rearBar.position.set(gx + inw * NET_DEPTH, CY, REAR_H);
     rearBar.castShadow = true;
@@ -2789,6 +2794,9 @@ export function createRenderer(canvas, match, quality, models = false) {
   /* v199: every built figure's parts drawn as one instanced mesh per part shape (figureBatch.js).
      `__apexNoFigureBatch` turns it off, for the perf harness to measure the difference. */
   const figBatch = globalThis.__apexNoFigureBatch ? null : createFigureBatch(scene);
+  // v200: the ball's spin, carried frame to frame (its quaternion is turned by it in render)
+  const ballSpin = new THREE.Vector3(); const spinWant = new THREE.Vector3();
+  let lastFrameHit = null; let shudder = null;     // v200: the woodwork's shudder
   /* One player's figure. Built again when a substitute takes the slot: the
      look (skin, hair, build) and the name on the shirt are baked in, and the
      man coming on used to run out as the man he replaced. */
@@ -3746,6 +3754,7 @@ export function createRenderer(canvas, match, quality, models = false) {
               let every = !ahead ? 4 : d2 > 70 * 70 ? 3 : d2 > 45 * 45 ? 2 : 1;
               if (!load.shadows && every > 1) every += 1;          // the governor is already shedding work
               if (replayMode) every = 1;                           // a replay is the one time everything is looked at
+              updateLook(p, m.ball, dt);
               setCelebClock(m.celebT); poseRig(rig, p, dt, every);
               rig.root.position.z += surfaceAt(p.x, p.y);
               continue;
@@ -3755,7 +3764,7 @@ export function createRenderer(canvas, match, quality, models = false) {
           if (!rig) continue;
           // v102: a real cadence (longer strides as he speeds up), and the body tipped into a turn;
           // the feet step on their own (rig.js), in whatever direction he moves
-          { const g = gaitOf(p); p._phase = (p._phase || 0) + strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(p, dt); }
+          { const g = gaitOf(p); p._phase = (p._phase || 0) + strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(p, dt); updateLook(p, m.ball, dt); }
           rig.groundZ = surfaceAt(p.x, p.y);
           posePlayer(rig, p, p._phase, fine, m.celebT || 0);
         }
@@ -3767,11 +3776,11 @@ export function createRenderer(canvas, match, quality, models = false) {
         const fig = useModels && refModel ? refModel : null;
         if (fig) {
           fig.root.visible = live;
-          if (live) { setRigLod(fig, lodClose || cinema ? 0 : 1); setCelebClock(0); poseRig(fig, refState, dt, 1); fig.root.position.z += surfaceAt(refState.x, refState.y); }
+          if (live) { setRigLod(fig, lodClose || cinema ? 0 : 1); setCelebClock(0); updateLook(refState, m.ball, dt); poseRig(fig, refState, dt, 1); fig.root.position.z += surfaceAt(refState.x, refState.y); }
         } else if (refRig) {
           refRig.grp.visible = live;
           if (live) {
-            const g = gaitOf(refState); refState._phase += strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(refState, dt);
+            const g = gaitOf(refState); refState._phase += strideRate(g.sp) * Math.min(1, g.sp / 1.2) * dt; updateBank(refState, dt); updateLook(refState, m.ball, dt);
             refRig.groundZ = surfaceAt(refState.x, refState.y);
             posePlayer(refRig, refState, refState._phase, fine, 0);
           }
@@ -3839,17 +3848,52 @@ export function createRenderer(canvas, match, quality, models = false) {
       const holder = m.ball.owner && m.ball.owner.role === 'GK' && m.ball.owner.inHands !== false ? m.ball.owner : null;
       if (holder) ball.position.set(holder.x + (holder.dirX || 0) * 0.3, holder.y + (holder.dirY || 0) * 0.3, 1.14 + surfaceAt(holder.x, holder.y));
       else ball.position.set(m.ball.x, m.ball.y, (m.ball.z || 0) + 0.19 + surfaceAt(m.ball.x, m.ball.y));
-      // Roll it. Angular speed is v/r about the axis perpendicular to travel,
-      // so the ball visibly spins along the ground instead of sliding.
+      /* Spin. Along the ground the ball rolls: v/r about the axis across its
+         travel, so it turns instead of sliding. v200: in the air it keeps the
+         spin it was struck with instead — sidespin about the vertical for a
+         curler (the spin behind the sim's Magnus bend, fading as the bend
+         does), topspin for a dipping drive, backspin for a lofted pass or a
+         chip, next to none for a knuckleball — a few turns a second, where
+         "rolling" through the air turned a 30 m/s shot 25 times a second. */
       {
-        const vx = m.ball.vx || 0;
-        const vy = m.ball.vy || 0;
+        const bl = m.ball;
+        const vx = bl.vx || 0;
+        const vy = bl.vy || 0;
         const sp = Math.hypot(vx, vy);
-        if (sp > 0.05 && dt > 0) {
-          _v.set(-vy / sp, vx / sp, 0);
-          _q.setFromAxisAngle(_v, (sp / 0.19) * dt);
+        if (sp > 0.05) _v.set(-vy / sp, vx / sp, 0); else _v.set(0, 0, 0);
+        const air = (bl.z || 0) > 0.05 && !holder;
+        if (holder) spinWant.set(0, 0, 0);
+        else if (!air) spinWant.copy(_v).multiplyScalar(sp / 0.19);
+        else {
+          const top = bl.knuckle ? 0.3 : bl.dip ? 6 : -3;                       // turns a second about the travel axis: + topspin, − backspin
+          const side = bl.curl ? Math.max(-1.2, Math.min(1.2, bl.curl / 46)) * 8 : 0;   // + bends left, as the sim's curl does
+          spinWant.copy(_v).multiplyScalar(top * 2 * Math.PI).setZ(side * 2 * Math.PI);
+        }
+        ballSpin.lerp(spinWant, Math.min(1, dt * (air ? 12 : 20)));
+        const w = ballSpin.length();
+        if (w > 1e-3 && dt > 0) {
+          _q.setFromAxisAngle(_spinAxis.copy(ballSpin).divideScalar(w), w * dt);
           ball.quaternion.premultiply(_q);
         }
+      }
+
+      /* v200: the woodwork rings. A ball off a post or the bar sets that goal's
+         frame shuddering — a few centimetres along the goal line's normal, at
+         about 13 Hz, dying away in half a second; harder for a harder strike. */
+      if (m.frameHit && m.frameHit.at !== lastFrameHit) {
+        lastFrameHit = m.frameHit.at;
+        shudder = { side: m.frameHit.gx > PITCH.w / 2 ? 1 : 0, t: 0, amp: Math.min(0.045, 0.006 + m.frameHit.speed * 0.0016), bar: !!m.frameHit.bar };
+      }
+      if (shudder) {
+        shudder.t += dt;
+        const done = shudder.t > 0.7;
+        const k = done ? 0 : shudder.amp * Math.sin(shudder.t * 2 * Math.PI * 13) * Math.exp(-shudder.t * 7);
+        for (const f of frames[shudder.side]) {
+          f.mesh.position.copy(f.base);
+          f.mesh.position.x += k * (f.bar || !shudder.bar ? 1 : 0.4);
+          if (f.bar) f.mesh.position.z += k * (shudder.bar ? 0.5 : 0.2);
+        }
+        if (done) shudder = null;
       }
 
       // netting: take the strike, then keep simulating so it ripples and settles

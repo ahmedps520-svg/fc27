@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v200',
+    date: '2026-10-24',
+    tag: 'Gameplay',
+    title: 'Livelier players, truer ball',
+    lede: 'Players now watch the ball, lean into their runs, and the ball spins in the air the way it was struck.',
+    entries: [
+      {
+        head: 'Players',
+        summary: 'Every player turns his head to follow the ball, up to the limit a neck allows, and leans into a burst of speed and back against a hard stop.',
+        detail: 'A ball behind him is left for his body to turn to, rather than craning round. The referee watches the play too. All of this is in how players are drawn: the football itself is unchanged, and match balance is identical.',
+      },
+      {
+        head: 'The ball and the goal',
+        summary: 'In the air the ball now shows the spin it was struck with: sidespin on a curler, topspin on a dipping drive, backspin on a lofted pass, almost none on a knuckleball.',
+        detail: 'It used to roll through the air, turning about 25 times a second on a hard shot. Rolling along the grass is unchanged. A ball that hits the post or the bar now sets the frame shuddering.',
+      },
+    ],
+  },
+  {
     version: 'v199',
     date: '2026-10-24',
     tag: 'Performance',

@@ -11986,12 +11986,12 @@
           d2 < 1e-4 ? (nx = -inw, ny = 0) : (nx /= d2, ny /= d2);
           let vn = b.vx * nx + b.vy * ny;
           if (!(vn > 0))
-            return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R2 + 0.01), b.y = py + ny * (R2 + 0.01), b.z = Math.max(0, hz), b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+            return b.vx -= 2 * vn * nx, b.vy -= 2 * vn * ny, b.vx *= 0.62, b.vy *= 0.62, b.x = gx + nx * (R2 + 0.01), b.y = py + ny * (R2 + 0.01), b.z = Math.max(0, hz), b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.frameHit = { at: this.t, gx, speed: Math.abs(vn) }, this.cue("post"), !0;
         }
         if ((sx - gx) * inw < R2 && (ex - gx) * inw > -R2) {
           let tx = Math.abs(ex - sx) > 1e-6 ? clamp2((gx - sx) / (ex - sx), 0, 1) : 1, cy = sy + (ey - sy) * tx, cz = sz + (ez - sz) * tx;
           if (Math.abs(cy - CY) < GOAL_HALF + 0.2 && Math.abs(cz - GOAL_HEIGHT) < 0.22 && b.vz > -40)
-            return b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.x = gx - inw * (R2 + 0.02), b.y = cy, b.z = GOAL_HEIGHT - 0.24, b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
+            return this.frameHit = { at: this.t, gx, speed: Math.hypot(b.vx, b.vy, b.vz), bar: !0 }, b.vz = -Math.abs(b.vz) * 0.55 - 1.2, b.vx *= 0.7, b.vy *= 0.7, b.x = gx - inw * (R2 + 0.02), b.y = cy, b.z = GOAL_HEIGHT - 0.24, b.px = b.x, b.py = b.y, b.pz = b.z, b.curl = 0, b.shotBy = null, this.cue("post"), !0;
         }
       }
       return !1;

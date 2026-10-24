@@ -374,7 +374,7 @@ export function makeRig(model, { kit, ref, index, isGK }) {
   const startAt = (index % 11) / 11;
 
   return {
-    root, figure, mixer, actions, hips, trait, isGK,
+    root, figure, mixer, actions, hips, head, trait, isGK,
     current: null,
     offset: startAt,
     index,              // v87: staggers the animation LOD so skipped players are not all skipped on the same frame
@@ -446,6 +446,8 @@ export function poseRig(rig, p, dt, every = 1) {
     return;
   }
   if (want === 'run') pitch = Math.min(0.14, Math.max(0, speed - 4.5) * 0.05);
+  // v200: forward into a burst, back against a hard stop (rig.js updateBank's surge)
+  if (!p.celebrating && (want === 'run' || want === 'idle')) pitch = Math.max(-0.08, Math.min(0.2, pitch + (p._surge || 0) * Math.max(0, g.mf) * 1.6));
   // the roulette: one full turn through the move (sim.js skillMove), about the vertical
   const roulette = p.spinT > 0 ? (1 - p.spinT / 0.7) * Math.PI * 2 : 0;
 
@@ -470,7 +472,9 @@ export function poseRig(rig, p, dt, every = 1) {
      is next drawn close; position and heading below are set every frame. */
   rig._acc = (rig._acc || 0) + dt;
   rig._n = ((rig._n || 0) + 1) % 1024;
-  if (every <= 1 || (rig._n + (rig.index || 0)) % every === 0) { rig.mixer.update(rig._acc); rig._acc = 0; }
+  let stepped = false;
+  if (every <= 1 || (rig._n + (rig.index || 0)) % every === 0) { rig.mixer.update(rig._acc); rig._acc = 0; stepped = true; }
+  lookRig(rig, p, stepped);
 
   // The clips walk the character across the floor; the match decides where a
   // player is, so the root motion is cancelled by pinning the hips to the spot
@@ -485,6 +489,25 @@ export function poseRig(rig, p, dt, every = 1) {
     rig.hips.position.z = 0;
   }
   if (p.celebrating && p.celebKind && p.celebKind !== 'corner') celebrateRig(rig, p, speed, celebClock);
+}
+
+/**
+ * v200: the head on the ball (rig.js updateLook), over whatever the clip has
+ * the head doing. The clip's own turn of the head is kept as `_headBase` from
+ * the last time the mixer ran, so a frame the animation LOD skips is not
+ * turned twice — and a clip that never touches the head (the mixer left our
+ * last turn in place) does not have it added again either.
+ */
+const HEAD_UP = new THREE.Vector3(0, 1, 0);     // Mixamo's head bone: +y up the neck, +z forward, +x his left
+const _lq = new THREE.Quaternion();
+function lookRig(rig, p, stepped) {
+  const head = rig.head; if (!head) return;
+  if (!rig._headBase) { rig._headBase = head.quaternion.clone(); rig._headSet = head.quaternion.clone(); }
+  else if (stepped && head.quaternion.angleTo(rig._headSet) > 1e-6) rig._headBase.copy(head.quaternion);
+  const look = p.celebrating || p.downT > 0 || p.diveT > 0 ? 0 : (p._look || 0);
+  head.quaternion.copy(rig._headBase);
+  if (look) head.quaternion.multiply(_lq.setFromAxisAngle(HEAD_UP, look));
+  rig._headSet.copy(head.quaternion);
 }
 
 /**
