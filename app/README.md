@@ -68,6 +68,13 @@ In App Store Connect, on the app's page:
   and linked to the user: *User ID* (the player name) and *Other User Content*
   (the cloud save), for App Functionality. Collected and not linked:
   *Crash Data*, for App Functionality.
+  For **every** data type, answer **No** to "Do you or your third-party partners
+  use this data for tracking purposes?", then press **Publish** at the top of the
+  App Privacy page (saving alone does not change the label). The app has no ads,
+  analytics or attribution code and shares nothing with data brokers, so it does
+  not track and has no App Tracking Transparency prompt. A "Yes" there is what
+  got 1.1 (7) rejected under guideline 5.1.2(i) on 24 October 2026. Only the
+  Account Holder or an Admin can edit this page, and the API cannot.
 - **Age rating questionnaire:** answer yes to "Contains simulated gambling /
   loot boxes"; the packs contain random cards bought with in-game coins. With no
   free-text chat, answer no to unrestricted web access and user-generated

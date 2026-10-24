@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## App Review, 24 October 2026: 1.1 (7) rejected under 5.1.2(i)
+- **Why:** the App Privacy label in App Store Connect said *Other User Content* is used to track the user, and the app has no App Tracking Transparency prompt.
+- **The app does not track:** no ads, analytics or attribution SDKs (`app/package.json` has Capacitor core, haptics and local notifications only), no third-party scripts, and crash reports carry no account. So the fix is the label, not ATT: every data type → tracking **No**, then **Publish** (web only, Account Holder or Admin). `app/README.md` spells it out.
+- `app/store/listing.json` review notes now have a PRIVACY AND TRACKING paragraph. The binary does not change, so the resubmission is 1.1 (7) again: run "iOS → App Store listing" (notes), then "iOS → App Store review" (1.1, build 7) once the label is published.
+- Still open: Sign-In Information holds the owner's own account (Landonado). The notes tell the reviewer AppReview2 shares AppReview1's password, which only works if AppReview1 is the account in Sign-In Information.
+
 ## v198 — Style: cosmetics for Apex (owner's pick #12)
 - **`js/cosmetics.js`:** `COSMETICS` — 5 kit patterns, 4 celebrations, 3 pitch patterns, ◈6,000–15,000 (`price: { apex }`). Ownership in `club.cosmetics.owned`. `buyCosmetic(id, currency)`, `useCosmetic` (home shirt pattern / `settings.celebration` / `club.stadium.design.pattern`, making a ground from the club colours if there is none), `locked(kind, value)` for the pickers, `inUse`.
 - **Real money later, not now:** `payable(currency)` accepts only `'apex'`. The ✦ path goes through the same function and is shut by `ULTIMATE_SALES = false`; it is always shut when `APP_STORE`, which would need Apple in-app purchase. Selling for ✦ on the web later means adding `price.ultimate` and flipping the switch.
