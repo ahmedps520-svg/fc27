@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## 1.1 live on the App Store (early November 2026); 1.2 prepared
+- 1.1 (7) cleared review after the App Privacy fix and is on sale. It carries the web build of about v190, so v191–v201 (haptics, reminders, ghosts, penalty duels, guild weekends, Draft, scenarios, Style, the draw-call work, movement, the menus) reach iPhones only with 1.2.
+- `app/store/listing.json`: `whatsNew["1.2"]`; the description names the Draft, penalty duels, guild weekends and scenarios; the review notes have NEW IN 1.2 (reminders are opt-in local notifications, CPU-played squads are labelled, Style is sold for Apex earned by playing). Notes are 3,963 of Apple's 4,000 characters, so trim something before adding more.
+- Order for 1.2: "iOS → TestFlight" (version 1.2; build = run number) → test on the iPhone → "iOS → App Store review" (1.2, that build; it creates the version) → "iOS → App Store listing" (1.2, for whatsNew and the description) → submit.
+- 1.1 and 1.2 still play each other online: `NET_PROTOCOL` was not bumped; the 1.1 app simply never gets a ghost (no `caps`).
+
 ## v201 — fewer words, more pictures (v120's "facts, not paragraphs", carried further)
 - **Icons** (`components/facts.js`): sun, dusk, moon, cloud, rain, snow, auto, cpu, person, pad, stadium, globe, play, in the same 24-unit round-stroke hand.
 - **Kick Off** (`quickmatch.js`): the mode is a picture pair (person vs cpu, person vs person, players vs cpu) with its short name; time of day and weather are icon-only segments (`picSeg`, each with `aria-label` and `title`). The Authentic preset line moved into an ⓘ. Cup / World / Grounds are an icon row. The pad and key hints hide on a touch screen with no pad (`.touch-only`).
