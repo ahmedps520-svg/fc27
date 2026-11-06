@@ -112,6 +112,30 @@ function relayWins(rtts, margin = 15) {
   return viaRelay + margin <= viaHome;
 }
 
+/**
+ * v203: a relay behind a Cloudflare quick tunnel gets a new address each time
+ * the tunnel restarts, so it tells the main server where it is:
+ *   POST /api/relay/announce   {"url":"https://<name>.trycloudflare.com","ts":<unix s>}
+ *   X-Relay-Signature: lowercase hex HMAC-SHA256(RELAY_SECRET, the body bytes)
+ * True when the signature is right for these exact bytes.
+ */
+function checkAnnounce(secret, body, signature) {
+  if (!secret || typeof signature !== 'string' || !/^[0-9a-f]{64}$/.test(signature)) return false;
+  const want = crypto.createHmac('sha256', secret).update(body).digest();
+  const got = Buffer.from(signature, 'hex');
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
+}
+
+/** The body and signature a relay sends (what the spare PC's tunnel script does; used by the tests). */
+function signAnnounce(secret, url, ts = Math.floor(Date.now() / 1000)) {
+  const body = JSON.stringify({ url, ts });
+  return { body, signature: crypto.createHmac('sha256', secret).update(body).digest('hex') };
+}
+
+/** An address a relay may announce: a quick tunnel's, or the fixed one the main server was given. */
+const QUICK_TUNNEL = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
+const announceable = (url, fixed = '') => typeof url === 'string' && url.length <= 200 && (QUICK_TUNNEL.test(url) || (!!fixed && url === fixed));
+
 /* -------------------------------- the relay ------------------------------- */
 
 function createRelay({ secret, log = () => {} } = {}) {
@@ -266,4 +290,4 @@ if (require.main === module) {
   for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { relay.close().then(() => process.exit(0)); });
 }
 
-module.exports = { signTicket, verifyTicket, relayWins, createRelay, settings, RELAY_VERSION };
+module.exports = { signTicket, verifyTicket, relayWins, createRelay, settings, checkAnnounce, signAnnounce, announceable, RELAY_VERSION };

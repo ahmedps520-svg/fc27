@@ -15,6 +15,12 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## Relay follow-up (server only, no version bump): the quick tunnel announces itself
+- The owner went out and could not do the Cloudflare dashboard, the GoDaddy → Cloudflare DNS move or the tunnel token, and this session could not drive their PC (no computer-use or browser tools; their Remote Control folders are not offered to cloud sessions). So the spare PC uses a **Cloudflare quick tunnel** (no account) and announces its changing `trycloudflare.com` address: `POST /api/relay/announce` (server.js), HMAC hex over the body with `RELAY_SECRET`, `ts` ±300 s and newer than the last, `?dry=1`. `relay.js` gained `checkAnnounce`/`signAnnounce`/`announceable`. `RELAY_SECRET` alone now turns the feature on (address from the announcement).
+- `checkRelay` ignores an answer for an address that was replaced while it was in flight (found by the test: a slow check of the old address marked the new one down).
+- **Render:** the fc27 service ("Apex", srv-d9o19joae00c73agt5gg) is in **Singapore**, not Frankfurt as render.yaml's comment says. `RELAY_SECRET` set on it through the Render connector on 2026-11-06 (the owner's go-ahead); the value is the one the owner pasted to the ForgeBase session for the spare PC's package on the USB stick (H:\ApexRelay-Setup, one click: `H:\INSTALL-APEX-RELAY.bat`). Never in the repo.
+- Still to happen: the owner runs that on the spare PC; then `/api/health` shows `relay.url` = the trycloudflare address and `up: true`.
+
 ## v202 — the near relay (lower ping when the phones cannot link directly)
 - **Why:** players are near Saudi Arabia; the main server is in Frankfurt (~90 ms from the owner's home). A 1v1 already goes phone-to-phone (p2p.js) when it can, but on mobile data that link often fails and every packet went through Frankfurt twice. Parties always did.
 - **`server/relay.js`** (standalone, needs only `server/ws.js`; Node 22+): ticket-gated rooms. The host may send only `snap` (to every other seat), a guest only `in` (to the host, `sq` stamped by the relay in a party, removed in a 1v1). Roster messages (`rly`), probe echo (`pp`), `/health`, rate limit 90/s, 24 KB cap, pings every 25 s. Settings from `relay.env` beside it or the environment. Also exports `signTicket`/`verifyTicket`/`relayWins` for server.js; required as a module it starts nothing.

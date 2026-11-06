@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import { startServer } from '../smoke/server.mjs';
 
 const require = createRequire(import.meta.url);
-const { signTicket, verifyTicket, relayWins, createRelay } = require('../../server/relay.js');
+const { signTicket, verifyTicket, relayWins, createRelay, signAnnounce } = require('../../server/relay.js');
 
 const SECRET = 'test-relay-secret-0123456789abcdef-xyz';
 const later = () => Date.now() / 1000 + 600;
@@ -247,4 +247,59 @@ test('the client: ready only when the other side is there; inputs and snapshots 
     assert.deepEqual(snaps, [7e6, 5e5]);
     off2(); off3();
   } finally { stopRelay(); await relay.close(); }
+});
+
+test('v203: a relay announces where it is, signed; only a quick tunnel\'s address (or the fixed one), only newer, dry runs apply nothing', async () => {
+  const relay = createRelay({ secret: SECRET });
+  const { port } = await relay.listen(0, '127.0.0.1');
+  const fixed = `http://127.0.0.1:${port}`;
+  const { url, stop } = await startServer(undefined, { env: { RELAY_URL: fixed, RELAY_SECRET: SECRET } });
+  const health = async () => (await (await fetch(`${url}/api/health`)).json()).relay;
+  const announce = (body, signature, q = '') => fetch(`${url}/api/relay/announce${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Relay-Signature': signature }, body });
+  try {
+    for (let i = 0; i < 50 && !(await health()).up; i++) await sleep(100);
+    assert.equal((await health()).up, true);
+    const now = Math.floor(Date.now() / 1000);
+    const quick = 'https://quiet-river-1234.trycloudflare.com';
+    let a = signAnnounce(SECRET, quick, now);
+    assert.equal((await announce(a.body, a.signature.replace(/^./, (c) => (c === 'a' ? 'b' : 'a')))).status, 401, 'a wrong signature');
+    assert.equal((await announce(a.body, signAnnounce('another-secret-0123456789abcdef-xyz', quick, now).signature)).status, 401, 'another key');
+    assert.equal((await announce(a.body.replace('1234', '9999'), a.signature)).status, 401, 'the body changed after signing');
+    for (const bad of ['https://evil.example.com', 'http://quiet-river-1234.trycloudflare.com', 'https://a.b.trycloudflare.com', 'https://trycloudflare.com.evil.com']) {
+      const b = signAnnounce(SECRET, bad, now);
+      assert.equal((await announce(b.body, b.signature)).status, 400, bad);
+    }
+    const old = signAnnounce(SECRET, quick, now - 3600);
+    assert.equal((await announce(old.body, old.signature)).status, 400, 'an hour old');
+    // a dry run checks and applies nothing
+    const dry = await announce(a.body, a.signature, '?dry=1');
+    assert.equal(dry.status, 200); assert.equal((await dry.json()).dry, true);
+    assert.equal((await health()).url, fixed);
+    // the real thing: the address moves (that tunnel does not exist here, so it reads down)
+    assert.equal((await announce(a.body, a.signature)).status, 200);
+    assert.equal((await health()).url, quick);
+    for (let i = 0; i < 50 && (await health()).up; i++) await sleep(100);
+    assert.equal((await health()).up, false);
+    // an older announcement than the last is ignored; a newer one for the fixed address brings it back up
+    const back = signAnnounce(SECRET, fixed, now - 10);
+    assert.equal((await (await announce(back.body, back.signature)).json()).stale, true);
+    assert.equal((await health()).url, quick);
+    const again = signAnnounce(SECRET, fixed, now + 1);
+    assert.equal((await announce(again.body, again.signature)).status, 200);
+    for (let i = 0; i < 50 && !(await health()).up; i++) await sleep(100);
+    const h = await health();
+    assert.equal(h.url, fixed); assert.equal(h.up, true);
+  } finally { stop(); await relay.close(); }
+});
+
+test('v203: with RELAY_SECRET alone the relay is off until it announces; a server with no relay refuses announcements', async () => {
+  const a = await startServer(undefined, { env: { RELAY_SECRET: SECRET } });
+  const b = await startServer();
+  try {
+    assert.deepEqual({ url: null, up: false }, (({ url, up }) => ({ url, up }))((await (await fetch(`${a.url}/api/health`)).json()).relay));
+    const s = signAnnounce(SECRET, 'https://calm-sea-77.trycloudflare.com');
+    const r = await fetch(`${a.url}/api/relay/announce?dry=1`, { method: 'POST', headers: { 'X-Relay-Signature': s.signature }, body: s.body });
+    assert.equal(r.status, 200);
+    assert.equal((await fetch(`${b.url}/api/relay/announce`, { method: 'POST', headers: { 'X-Relay-Signature': s.signature }, body: s.body })).status, 404);
+  } finally { a.stop(); b.stop(); }
 });

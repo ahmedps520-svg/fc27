@@ -23,6 +23,26 @@ phone A ──┐                         ┌── phone B
 `RELAY_SECRET` is at least 32 random characters. It is set by hand on both
 machines and never put in the repo or a chat.
 
+## Without a domain: a quick tunnel that announces itself (v203)
+
+The spare PC can use a Cloudflare quick tunnel (`cloudflared tunnel --url
+http://127.0.0.1:8790`, no account), whose `https://<name>.trycloudflare.com`
+address changes each time it restarts. A script beside it tells the main server:
+
+```
+POST https://fc27.onrender.com/api/relay/announce[?dry=1]
+X-Relay-Signature: lowercase hex HMAC-SHA256(RELAY_SECRET, the body bytes)
+{"url":"https://<name>.trycloudflare.com","ts":<Unix seconds>}
+```
+
+at start, every 120 s (the main server forgets on a restart) and on a change.
+Only a quick tunnel's address, or the fixed `RELAY_URL`, is accepted; `ts` must
+be within 5 minutes and newer than the last one taken; `?dry=1` checks the
+signature and applies nothing. With `RELAY_SECRET` set and no `RELAY_URL`, the
+relay is off until the first announcement. A named tunnel on
+`relay.apexxi.online` is still the better long-term home (a fixed address, no
+quick-tunnel limits); set `RELAY_URL` then.
+
 ## How a match chooses
 
 1. Every 30 s the main server asks `RELAY_URL/health`.
