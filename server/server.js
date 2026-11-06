@@ -449,7 +449,7 @@ async function api(req, res, route) {
   if (route === '/api/health') {
     return json(res, 200, {
       ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(), mail: shop.mailMode(),
-      relay: RELAY ? { url: RELAY.http, up: RELAY.up, ...(RELAY.info || {}) } : null,   // v202 (v203: url null until a relay announces itself)
+      relay: RELAY ? { url: RELAY.http, up: RELAY.up, ...(RELAY.info || {}), rtt: rttSummary() } : null,   // v202 (v203: url null until a relay announces itself)
     });
   }
 
@@ -765,6 +765,14 @@ const RELAY = (() => {
   return { fixed: url, http: url || null, wss: url ? url.replace(/^http/, 'ws') : null, secret, up: false, info: null, lastTs: 0, force: process.env.RELAY_FORCE === '1' };
 })();
 const RTT_FRESH_MS = 20 * 60 * 1000;
+// the last few round trips players reported, with no names: is the relay actually quicker for them?
+const rttSeen = [];
+const median = (xs) => { const v = xs.filter(Number.isFinite).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+function rttSummary() {
+  const recent = rttSeen.filter((r) => Date.now() - r.at < 60 * 60 * 1000);
+  const both = recent.filter((r) => Number.isFinite(r.relay) && Number.isFinite(r.home));
+  return { reports: recent.length, relayMs: median(recent.map((r) => r.relay)), homeMs: median(recent.map((r) => r.home)), relayQuicker: both.filter((r) => r.relay < r.home).length };
+}
 
 function greetRelay(p) {
   if (!RELAY?.up || !RELAY.wss || !p?.sock?.open || !p.caps?.has('relay')) return;
@@ -1168,6 +1176,7 @@ ws.attach(server, '/ws', (sock) => {
       case 'rtt': {
         const ms = (v) => (Number.isFinite(v) && v > 0 && v < 5000 ? Math.round(v) : null);
         peer.rtt = { relay: ms(m.relay), home: ms(m.home), at: Date.now() };
+        rttSeen.push(peer.rtt); if (rttSeen.length > 200) rttSeen.shift();
         break;
       }
 

@@ -174,6 +174,8 @@ test('the main server: relayHi only to clients that can; tickets on the match ca
     // both near the relay: tickets for seats 0 and 1 of one room
     A.send({ t: 'rtt', relay: 18, home: 92 }); B.send({ t: 'rtt', relay: 22, home: 88 });
     await sleep(100);
+    const seen = (await (await fetch(`${url}/api/health`)).json()).relay.rtt;
+    assert.equal(seen.reports, 2); assert.equal(seen.relayQuicker, 2); assert.ok(seen.relayMs >= 18 && seen.homeMs >= 88, JSON.stringify(seen));
     const [ma, mb] = await friendly(A, B);
     assert.ok(ma.relay && mb.relay, 'tickets on both cards');
     const ta = verifyTicket(SECRET, ma.relay.t); const tb = verifyTicket(SECRET, mb.relay.t);
