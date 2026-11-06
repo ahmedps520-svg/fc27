@@ -441,6 +441,7 @@ async function api(req, res, route) {
   if (route === '/api/health') {
     return json(res, 200, {
       ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(), mail: shop.mailMode(),
+      relay: RELAY ? { url: RELAY.http, up: RELAY.up, ...(RELAY.info || {}) } : null,   // v202
     });
   }
 
@@ -688,7 +689,7 @@ function tellSpectators(host) {
 /* v82: parties — 2v2, co-op against the CPU, five-a-side pro clubs (server/party.js) */
 const { createPartyHub } = require('./party.js');
 const { createPensHub } = require('./pens.js');   // v194: the online penalty duel
-const partyHub = createPartyHub({ store, guard, forget: (p) => { if (p.name && peers.get(p.name) === p) peers.delete(p.name); } });
+const partyHub = createPartyHub({ store, guard, relayFor: (members, party) => relayFor(members, party), forget: (p) => { if (p.name && peers.get(p.name) === p) peers.delete(p.name); } });
 const pensHub = createPensHub({ store, guard });
 
 /* v189: the match protocol the current website speaks (js/net/protocol.js), and
@@ -709,6 +710,65 @@ const REPORT_REASONS = { name: 'Offensive name', cheating: 'Cheating', abuse: 'A
 
 const EMOTE_IDS = new Set(['gg', 'wow', 'lucky', 'ouch', 'nice', 'rematch', 'thanks', 'nooo']);
 
+/* v202: the near relay (server/relay.js). RELAY_URL is its public address
+ * (https://…; the tunnel on the machine near the players), RELAY_SECRET the
+ * key both sides sign tickets with. Without both, nothing here does anything.
+ * It is checked every 30 s; a client that can (caps 'relay') is sent its
+ * address and a probe ticket, measures, and reports `rtt`; a match goes
+ * through it only when that is quicker for everybody in it (relayWins). The
+ * match card then carries each player's ticket. RELAY_FORCE=1 routes every
+ * match whose players reached the relay at all, for trying it out. */
+const relayKit = require('./relay.js');
+const RELAY = (() => {
+  const url = String(process.env.RELAY_URL || '').trim().replace(/\/+$/, '');
+  const secret = String(process.env.RELAY_SECRET || '');
+  const fine = /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url);
+  if (!url && !secret) return null;
+  if (!fine || secret.length < 32) { console.warn('[relay] RELAY_URL must be https://host and RELAY_SECRET 32+ characters — the near relay is off'); return null; }
+  return { http: url, wss: url.replace(/^http/, 'ws'), secret, up: false, info: null, force: process.env.RELAY_FORCE === '1' };
+})();
+const RTT_FRESH_MS = 20 * 60 * 1000;
+
+function greetRelay(p) {
+  if (!RELAY?.up || !p?.sock?.open || !p.caps?.has('relay')) return;
+  const probe = relayKit.signTicket(RELAY.secret, { r: '*probe', x: Date.now() / 1000 + 30 * 60 });
+  p.sock.send({ t: 'relayHi', url: RELAY.wss, probe });
+}
+
+async function checkRelay() {
+  if (!RELAY) return;
+  const was = RELAY.up;
+  try {
+    const r = await fetch(`${RELAY.http}/health`, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    const j = r.ok ? await r.json() : null;
+    RELAY.up = !!j?.ok;
+    RELAY.info = j ? { v: j.v, rooms: j.rooms, peers: j.peers } : null;
+  } catch { RELAY.up = false; RELAY.info = null; }
+  if (RELAY.up !== was) {
+    console.log(`[relay] ${RELAY.http} is ${RELAY.up ? 'up' : 'down'}`);
+    if (RELAY.up) for (const p of peers.values()) greetRelay(p);
+  }
+}
+if (RELAY) { checkRelay(); setInterval(checkRelay, 30000).unref(); }
+
+/**
+ * Tickets for a match, one per seat (seat 0 the host), or null to keep it on
+ * this server. `members` is [{ peer, seat }].
+ */
+function relayFor(members, party = false) {
+  if (!RELAY?.up || members.length < 2 || members.length > 10) return null;
+  if (!members.every(({ peer }) => peer?.caps?.has('relay'))) return null;
+  const now = Date.now();
+  const rtts = members.map(({ peer }) => (peer.rtt && now - peer.rtt.at < RTT_FRESH_MS ? peer.rtt : null));
+  if (RELAY.force ? !rtts.every((r) => r && Number.isFinite(r.relay)) : !relayKit.relayWins(rtts)) return null;
+  const room = crypto.randomBytes(12).toString('base64url');
+  const x = now / 1000 + 3 * 3600;
+  const n = members.length;
+  const out = [];
+  for (const { seat } of members) out[seat] = { url: RELAY.wss, t: relayKit.signTicket(RELAY.secret, { r: room, s: seat, n, p: party ? 1 : 0, x }), n };
+  return out;
+}
+
 function pair(a, b, kind) {
   const id = matchSeq++;
   a.opponent = b; b.opponent = a;
@@ -718,6 +778,8 @@ function pair(a, b, kind) {
   // and it makes the choice deterministic rather than a race
   a.isHost = true; b.isHost = false;
 
+  // v202: through the near relay when it is quicker for both (clients that cannot are never sent a ticket)
+  const relay = relayFor([{ peer: a, seat: 0 }, { peer: b, seat: 1 }]);
   const card = (self, opp, host) => ({
     t: 'match',
     matchId: id,
@@ -727,10 +789,11 @@ function pair(a, b, kind) {
     you: { name: self.name, club: self.club, divIdx: self.divIdx },
     opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx, kit: opp.kit || null },
     wl: self.wl ? self.wl.id : null,
+    ...(relay ? { relay: relay[host ? 0 : 1] } : {}),
   });
   a.sock.send(card(a, b, true));
   b.sock.send(card(b, a, false));
-  console.log(`[match ${id}] ${a.name} (host) vs ${b.name} — ${kind}`);
+  console.log(`[match ${id}] ${a.name} (host) vs ${b.name} — ${kind}${relay ? ' — near relay' : ''}`);
 }
 
 function tryMatchmake() {
@@ -821,6 +884,7 @@ ws.attach(server, '/ws', (sock) => {
         peer.adopted = existing;
         sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size });
         partyHub.onReconnect(existing, sock);
+        greetRelay(existing);                          // v202
         return;
       }
       if (existing && existing !== peer && existing.dropped && existing.opponent) {
@@ -832,6 +896,7 @@ ws.attach(server, '/ws', (sock) => {
         sock.send({ t: 'rejoined', matchId: existing.matchId, host: existing.isHost, seat: existing.isHost ? 0 : 1 });
         existing.opponent.sock.send({ t: 'evt', k: 'resumed', name: existing.name });
         console.log(`[match ${existing.matchId}] ${existing.name} reconnected`);
+        greetRelay(existing);                          // v202
         return;
       }
       // a second sign-in from elsewhere kicks the first
@@ -846,6 +911,7 @@ ws.attach(server, '/ws', (sock) => {
       peer.caps = new Set((Array.isArray(m.caps) ? m.caps : []).filter((c) => typeof c === 'string').slice(0, 8));
       peers.set(acct.name, peer);
       sock.send({ t: 'ready', profile: store.publicProfile(acct), online: peers.size, net: NET_PROTOCOL });
+      greetRelay(peer);                                // v202
       return;
     }
     if (peer.adopted) return handle(peer.adopted, m);
@@ -1055,6 +1121,13 @@ ws.attach(server, '/ws', (sock) => {
       case 'ping':
         sock.send({ t: 'pong', at: m.at });
         break;
+
+      // v202: what this client measured to the near relay and to here (net/relay.js)
+      case 'rtt': {
+        const ms = (v) => (Number.isFinite(v) && v > 0 && v < 5000 ? Math.round(v) : null);
+        peer.rtt = { relay: ms(m.relay), home: ms(m.home), at: Date.now() };
+        break;
+      }
 
       default:
         break;
