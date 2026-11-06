@@ -15,6 +15,17 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## v202 — the near relay (lower ping when the phones cannot link directly)
+- **Why:** players are near Saudi Arabia; the main server is in Frankfurt (~90 ms from the owner's home). A 1v1 already goes phone-to-phone (p2p.js) when it can, but on mobile data that link often fails and every packet went through Frankfurt twice. Parties always did.
+- **`server/relay.js`** (standalone, needs only `server/ws.js`; Node 22+): ticket-gated rooms. The host may send only `snap` (to every other seat), a guest only `in` (to the host, `sq` stamped by the relay in a party, removed in a 1v1). Roster messages (`rly`), probe echo (`pp`), `/health`, rate limit 90/s, 24 KB cap, pings every 25 s. Settings from `relay.env` beside it or the environment. Also exports `signTicket`/`verifyTicket`/`relayWins` for server.js; required as a module it starts nothing.
+- **Main server** (`server.js`): `RELAY_URL` + `RELAY_SECRET` (32+). `checkRelay` every 30 s; `greetRelay` sends `relayHi {url, probe}` to `caps 'relay'` clients; `rtt {relay, home}` reports; `relayFor(members, party)` puts per-seat tickets (random room, 3 h) on the `match` card and `partyMatch`/`partyRejoin`. `RELAY_FORCE=1` skips the comparison. `/api/health` has `relay`.
+- **Client** (`js/net/relay.js`, loaded at boot by app.js): measures over websockets both ways, `startRelay/stopRelay/relayReady/sendRelay`. `p2p.js sendMatch`: direct → relay → main server, per packet; `offHub()` makes the host copy its picture up for spectators. Badge `· near server`. `?norelay=1` turns it off (and drops the cap).
+- **Two fixes found on the way** (`socket.js injectMessage`): the newest-`ts` guard was never reset, so a second online match against a host whose page had been open for less time than the last host's dropped every snapshot; and it was per type only, so in a 2v2 a guest whose clock was behind another guest's had every input dropped. Now `resetOrder()` at each match start (play.js) and one count per seat (`sq`).
+- **The 1.1 app** sends no `relay` cap and never gets a ticket. **Build 8 of 1.2** (TestFlight, from v201) has none of this either: run "iOS → TestFlight" (1.2) again and submit that build.
+- **Disclosed:** privacy.html (a relay of ours reached through Cloudflare, stores nothing) and the review notes' EXTERNAL SERVICES (3,994 of 4,000 characters now).
+- **Not live yet:** needs the spare PC set up (relay + cloudflared, built as an installer by the owner's ForgeBase session), apexxi.online added to Cloudflare (its DNS is at GoDaddy, with iCloud mail and Resend records that must come across), and `RELAY_URL`/`RELAY_SECRET` on Render. See `server/RELAY.md`.
+- Tests: `tests/unit/relay.test.mjs`; `tests/qa/relay-match.mjs` (two browsers through the relay, a spectator, the relay killed mid-match, full time).
+
 ## 1.1 live on the App Store (early November 2026); 1.2 prepared
 - 1.1 (7) cleared review after the App Privacy fix and is on sale. It carries the web build of about v190, so v191–v201 (haptics, reminders, ghosts, penalty duels, guild weekends, Draft, scenarios, Style, the draw-call work, movement, the menus) reach iPhones only with 1.2.
 - `app/store/listing.json`: `whatsNew["1.2"]`; the description names the Draft, penalty duels, guild weekends and scenarios; the review notes have NEW IN 1.2 (reminders are opt-in local notifications, CPU-played squads are labelled, Style is sold for Apex earned by playing). Notes are 3,963 of Apple's 4,000 characters, so trim something before adding more.

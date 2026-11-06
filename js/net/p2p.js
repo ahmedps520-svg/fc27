@@ -31,6 +31,7 @@
  * upgrade — the hello goes unanswered and the relay carries the match.
  */
 import * as net from './socket.js';
+import { sendRelay, relayReady } from './relay.js';
 
 const DISABLED = new URLSearchParams(location.search).has('nop2p');
 
@@ -43,17 +44,20 @@ let pc = null;          // RTCPeerConnection
 let dc = null;          // the match DataChannel
 let open = false;
 let offs = [];          // socket subscriptions to detach on stop
-let stats = { sent: 0, viaDc: 0, got: 0 };
+let stats = { sent: 0, viaDc: 0, viaRelay: 0, got: 0 };
 
 export const p2pActive = () => open;
 export const p2pStats = () => ({ ...stats, open });
+/** v202: true when the match's picture is not going through the main server (direct, or the near relay) — spectators need a copy then. */
+export const offHub = () => open || relayReady();
 
-/** Send a high-rate match message: DataChannel when open, websocket when not. */
+/** Send a high-rate match message: DataChannel when open, the near relay (v202) when that is up, the main server's socket when neither is. */
 export function sendMatch(obj) {
   stats.sent += 1;
   if (open && dc && dc.readyState === 'open') {
     try { dc.send(JSON.stringify(obj)); stats.viaDc += 1; return true; } catch { /* fall through */ }
   }
+  if (sendRelay(obj)) { stats.viaRelay += 1; return true; }
   return net.send(obj);
 }
 
@@ -84,7 +88,7 @@ const sig = (payload) => net.send({ t: 'evt', k: 'rtc', ...payload });
 export function startP2P(online) {
   if (DISABLED || !('RTCPeerConnection' in window)) return;
   stopP2P();
-  stats = { sent: 0, viaDc: 0, got: 0 };
+  stats = { sent: 0, viaDc: 0, viaRelay: 0, got: 0 };
 
   pc = new RTCPeerConnection(ICE);
   pc.onicecandidate = (e) => { if (e.candidate) sig({ ice: e.candidate.toJSON() }); };

@@ -6,6 +6,7 @@ import { startPadMenu, resetPadFocus } from './padMenu.js';
 import { resumeAudio, startMusic, stopMusic, sfx, setAudioSettings } from './audio.js';
 import * as api from './net/api.js';
 import * as net from './net/socket.js';
+import './net/relay.js';            // v202: hears relayHi after sign-in and measures the near relay
 import { adoptCloudSave, cloudWins, save, recoveredFrom } from './state.js';
 import { isRealConflict, chooseSave } from './components/saveConflict.js';
 import { backupNow } from './saveSafety.js';
@@ -78,7 +79,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v201';
+export const APP_VERSION = 'v202';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');

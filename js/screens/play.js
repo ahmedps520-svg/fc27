@@ -48,7 +48,8 @@ import { kitOf } from '../data/kitDesign.js';
 import { QUICK_TACTICS, DEF_STYLES, BUILD_UPS, rolesFor } from '../game/tactics.js';
 import { toDef as builderDef, groundCapacity, groundFill } from '../builder.js';
 import * as net from '../net/socket.js';
-import { startP2P, stopP2P, sendMatch, p2pActive } from '../net/p2p.js';
+import { startP2P, stopP2P, sendMatch, p2pActive, offHub } from '../net/p2p.js';
+import { startRelay, stopRelay, relayReady } from '../net/relay.js';   // v202: the near relay
 import { advanceWeek } from '../career.js';
 import * as progress from '../progress.js';
 import { weekendWindow } from '../weekend.js';
@@ -921,7 +922,7 @@ export function mount(root, params) {
     if (online?.host && highlightIdx < 0 && !ended) {
       const snap = encodeSnapshot(match);
       sendMatch(snap);
-      if (spectators > 0 && p2pActive()) net.send(snap);
+      if (spectators > 0 && offHub()) net.send(snap);
     }
     replayTag.hidden = false;
     root.querySelector('#gmRoot')?.classList.add('gm-replay-on');   // v156: the pad steps aside (the tag skips it)
@@ -1052,6 +1053,9 @@ export function mount(root, params) {
       finish();
     }));
     // try to go direct; the relay carries the match until (and unless) it works
+    // v202: a new match starts its own order — the last match's timestamps came from another machine's clock
+    net.resetOrder();
+    if (!spectating) startRelay(online);                 // v202: if the match card carried a ticket for the near relay
     if (!spectating && !online.party) startP2P(online);   // a party goes through the hub: one host, many guests
     /* Reconnects. The hub holds a dropped player's seat for a grace period.
      * Their opponent gets 'dropped' and the match pauses through the same
@@ -2286,7 +2290,7 @@ export function mount(root, params) {
         sendMatch(snap);
         // watchers only ever see what goes through the hub: a match running
         // browser-to-browser has to copy its picture up for them as well
-        if (spectators > 0 && p2pActive()) net.send(snap);
+        if (spectators > 0 && offHub()) net.send(snap);
       }
     }
 
@@ -2457,7 +2461,7 @@ export function mount(root, params) {
       // stream during one is expected rather than a connection problem
       const lost = view?.stale && !replay;
       // '· direct' = this match is running browser-to-browser, not through the relay
-      netEl.textContent = lost ? 'reconnecting…' : spectating ? `👁 Spectating · ${online.oppName}` : `${online.oppName} · ${q.text}${p2pActive() ? ' · direct' : ''}`;
+      netEl.textContent = lost ? 'reconnecting…' : spectating ? `👁 Spectating · ${online.oppName}` : `${online.oppName} · ${q.text}${p2pActive() ? ' · direct' : relayReady() ? ' · near server' : ''}`;
       netEl.className = `gm-net ${lost ? 'bad' : q.cls}`;
     }
     lastScores = [match.teams[0].score, match.teams[1].score];
@@ -3367,6 +3371,7 @@ export function mount(root, params) {
     document.body.classList.remove('in-game');
     if (mgr) window.removeEventListener('keydown', onWheelKey);
     stopP2P();
+    stopRelay();
     if (spectating && net.isReady()) net.send({ t: 'unspectate' });
     stopClip();
     window.removeEventListener('resize', resize);

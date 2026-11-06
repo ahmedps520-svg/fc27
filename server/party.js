@@ -45,7 +45,7 @@ function cleanPro(p) {
 }
 const GRACE_MS = 45_000;
 
-function createPartyHub({ store, guard, log = console.log, forget = () => {} }) {
+function createPartyHub({ store, guard, log = console.log, forget = () => {}, relayFor = () => null }) {
   const parties = new Map();
   let seq = 90_000;
 
@@ -135,7 +135,9 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
         // nobody designed for, keeps its club's. Clients older than v192 ignore the field.
         const kitOfSide = (team) => p.members.find((x) => x.partySide === team && x.partyKit)?.partyKit || null;
         p.kits = [kitOfSide(0), MODES[p.mode].sides[1] ? kitOfSide(1) : null];
-        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup, kits: p.kits });
+        // v202: the near relay, when it is quicker for everyone in the party (server.js relayFor); one ticket per seat
+        p.relay = relayFor(p.members.map((x) => ({ peer: x, seat: x.partySeat })), true);
+        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup, kits: p.kits, ...(p.relay ? { relay: p.relay[x.partySeat] } : {}) });
         log(`[party ${p.code}] match ${p.matchId}: ${seats.map((s) => `${s.name}@${s.team}`).join(', ')}`);
         return true;
       }
@@ -200,7 +202,7 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {} }) 
     if (!p?.matchId || !existing.dropped) return false;
     clearTimeout(existing.partyTimer);
     existing.sock = sock; existing.dropped = false;
-    sock.send({ t: 'partyRejoin', matchId: p.matchId, mode: p.mode, host: false, seat: existing.partySeat, seats: p.seats, setup: p.setup, kits: p.kits || [null, null] });
+    sock.send({ t: 'partyRejoin', matchId: p.matchId, mode: p.mode, host: false, seat: existing.partySeat, seats: p.seats, setup: p.setup, kits: p.kits || [null, null], ...(p.relay?.[existing.partySeat] ? { relay: p.relay[existing.partySeat] } : {}) });
     if (p.host.sock.open) p.host.sock.send({ t: 'evt', k: 'resumed', seat: existing.partySeat, name: existing.name });
     tell(p, view(p));
     log(`[party ${p.code}] ${existing.name} reconnected to seat ${existing.partySeat}`);

@@ -51,15 +51,21 @@ function emit(msg) {
  * than the newest already delivered of its type) is dropped rather than passed
  * to handlers that assume time moves forwards.
  */
-const newest = new Map();      // type -> highest ts seen
+const newest = new Map();      // type (and seat) -> highest ts seen
 export function injectMessage(msg) {
   if (msg && typeof msg.ts === 'number') {
-    const top = newest.get(msg.t) || 0;
+    // v202: per seat — in a party the host hears inputs from several guests, each stamped
+    // with its own clock, and one guest's newer clock must not silence another's inputs
+    const key = msg.sq == null ? msg.t : `${msg.t}:${msg.sq}`;
+    const top = newest.get(key) || 0;
     if (msg.ts < top) return;
-    newest.set(msg.t, msg.ts);
+    newest.set(key, msg.ts);
   }
   emit(msg);
 }
+
+/** v202: forget the newest timestamps (a new match: its packets come from another machine's clock, often an earlier one). */
+export function resetOrder() { newest.clear(); }
 
 export function send(obj) {
   if (!ready || !sock || sock.readyState !== WebSocket.OPEN) return false;
@@ -88,8 +94,10 @@ export function connect() {
 
   sock.onopen = () => {
     retry = 0;
-    // v189: see protocol.js. v193: caps — what this client can play beyond a match ('ghost': server.js offerGhosts)
-    sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL, caps: ['ghost'] }));
+    // v189: see protocol.js. v193: caps — what this client can play beyond a match ('ghost': server.js offerGhosts;
+    // v202 'relay': net/relay.js, unless ?norelay)
+    const caps = ['ghost']; if (!new URLSearchParams(location.search).has('norelay')) caps.push('relay');
+    sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL, caps }));
   };
 
   sock.onmessage = (e) => {

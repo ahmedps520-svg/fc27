@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v202',
+    date: '2026-11-06',
+    tag: 'Online',
+    title: 'A server nearer you',
+    lede: 'Online matches can now run through a server close to the players, instead of one in Frankfurt, when that is quicker for both of you.',
+    entries: [
+      {
+        head: 'Lower ping',
+        summary: 'When your phones cannot link up directly, the match now goes through the nearest server that is quicker for both of you. The match bar says "near server" when it does.',
+        detail: 'Your game measures how far away the near server and the main server are, and the main server only uses the near one when it is quicker for everyone in the match. If the near server goes down mid-match, the match carries on through the main one without stopping. Two-against-two and co-op parties use it too.',
+      },
+      {
+        head: 'Fixes',
+        summary: 'A second online match in one sitting no longer freezes if the new host started their game after the last one did, and every guest\'s controls reach the host in a 2v2.',
+        detail: 'The newest-packet check compared timestamps from different players\' clocks: it now starts afresh with each match, and keeps one count per seat in a party.',
+      },
+    ],
+  },
+  {
     version: 'v201',
     date: '2026-10-24',
     tag: 'Menus',

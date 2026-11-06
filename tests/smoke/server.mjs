@@ -17,13 +17,13 @@ function freePort() {
   });
 }
 
-export async function startServer(port, { cwd = process.cwd() } = {}) {
+export async function startServer(port, { cwd = process.cwd(), env = {} } = {}) {
   port ??= await freePort();
   const dataDir = mkdtempSync(join(tmpdir(), 'apexxi-test-'));
   const child = spawn(process.execPath, ['server/server.js'], {
     cwd,
     // TRUST_PROXY as in production (render.yaml): tests stand in for many players by writing X-Forwarded-For
-    env: { ...process.env, PORT: String(port), APEX_DATA_DIR: dataDir, TOKEN_EPOCH: '0', TRUST_PROXY: '1' },
+    env: { ...process.env, PORT: String(port), APEX_DATA_DIR: dataDir, TOKEN_EPOCH: '0', TRUST_PROXY: '1', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';

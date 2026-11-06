@@ -66,6 +66,7 @@ function launch(m) {
       matchId: m.matchId, host: m.host, seat: m.seat, team: mySeat.team, kind: 'party',
       oppName: m.seats.filter((st) => st.seat !== m.seat).map((st) => st.name).join(', '), myName: api.getName(),
       party: { mode: m.mode, seats: m.seats, locks: sq.locks, rejoin: !!m.rejoin },
+      relay: m.relay || null,          // v202
     },
   });
 }
