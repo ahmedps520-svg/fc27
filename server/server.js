@@ -147,6 +147,14 @@ const readBody = (req) => new Promise((resolve, reject) => {
 
 const authOf = (req) => store.byToken((req.headers.authorization || '').replace(/^Bearer /, ''));
 
+/** v203: the body's exact bytes, for a signature over them. */
+const readRaw = (req, max) => new Promise((resolve, reject) => {
+  const parts = []; let n = 0;
+  req.on('data', (c) => { n += c.length; if (n > max) { reject(new Error('too large')); req.destroy(); return; } parts.push(c); });
+  req.on('end', () => resolve(Buffer.concat(parts)));
+  req.on('error', reject);
+});
+
 async function api(req, res, route) {
   // a blanket ceiling on every endpoint, so no single address can occupy the
   // box that is also running live matches
@@ -441,8 +449,36 @@ async function api(req, res, route) {
   if (route === '/api/health') {
     return json(res, 200, {
       ok: true, build: BUILD, uptime: Math.round(process.uptime()), store: store.status(), mail: shop.mailMode(),
-      relay: RELAY ? { url: RELAY.http, up: RELAY.up, ...(RELAY.info || {}) } : null,   // v202
+      relay: RELAY ? { url: RELAY.http, up: RELAY.up, ...(RELAY.info || {}) } : null,   // v202 (v203: url null until a relay announces itself)
     });
+  }
+
+  /* v203: the near relay says where it is. A quick tunnel's address changes each
+   * time it restarts; the relay's machine signs {url, ts} with RELAY_SECRET.
+   * Only a quick tunnel's address (or the fixed RELAY_URL) is taken, only a
+   * newer one than the last, and ?dry=1 checks without applying. */
+  if (route === '/api/relay/announce' && req.method === 'POST') {
+    if (!RELAY) return json(res, 404, { error: 'No relay is configured.' });
+    if (!guard.allow(`relay:${guard.clientIP(req)}`, 12, 0.2)) return json(res, 429, { error: 'Too many requests. Wait a moment.' });
+    const raw = await readRaw(req, 2048).catch(() => null);
+    if (!raw) return json(res, 400, { error: 'No body.' });
+    if (!relayKit.checkAnnounce(RELAY.secret, raw, String(req.headers['x-relay-signature'] || ''))) return json(res, 401, { error: 'Bad signature.' });
+    let body = null;
+    try { body = JSON.parse(raw.toString('utf8')); } catch { /* below */ }
+    const url = typeof body?.url === 'string' ? body.url.trim().replace(/\/+$/, '').toLowerCase() : '';
+    const ts = Number(body?.ts);
+    if (!relayKit.announceable(url, RELAY.fixed)) return json(res, 400, { error: 'That address is not one a relay may use.' });
+    if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return json(res, 400, { error: 'The time is more than 5 minutes off.' });
+    const dry = new URL(req.url, 'http://x').searchParams.get('dry') === '1';
+    if (dry) return json(res, 200, { ok: true, dry: true });
+    if (ts < RELAY.lastTs) return json(res, 200, { ok: true, stale: true });
+    RELAY.lastTs = ts;
+    if (url !== RELAY.http) {
+      console.log(`[relay] announced at ${url}`);
+      RELAY.http = url; RELAY.wss = url.replace(/^http/, 'ws'); RELAY.up = false; RELAY.info = null;
+    }
+    checkRelay();
+    return json(res, 200, { ok: true });
   }
 
   // What the client polls on boot to decide whether it is running current code.
@@ -722,28 +758,34 @@ const relayKit = require('./relay.js');
 const RELAY = (() => {
   const url = String(process.env.RELAY_URL || '').trim().replace(/\/+$/, '');
   const secret = String(process.env.RELAY_SECRET || '');
-  const fine = /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url);
+  const fine = !url || /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url);
   if (!url && !secret) return null;
   if (!fine || secret.length < 32) { console.warn('[relay] RELAY_URL must be https://host and RELAY_SECRET 32+ characters — the near relay is off'); return null; }
-  return { http: url, wss: url.replace(/^http/, 'ws'), secret, up: false, info: null, force: process.env.RELAY_FORCE === '1' };
+  // v203: with RELAY_SECRET alone, the address comes from the relay itself (POST /api/relay/announce)
+  return { fixed: url, http: url || null, wss: url ? url.replace(/^http/, 'ws') : null, secret, up: false, info: null, lastTs: 0, force: process.env.RELAY_FORCE === '1' };
 })();
 const RTT_FRESH_MS = 20 * 60 * 1000;
 
 function greetRelay(p) {
-  if (!RELAY?.up || !p?.sock?.open || !p.caps?.has('relay')) return;
+  if (!RELAY?.up || !RELAY.wss || !p?.sock?.open || !p.caps?.has('relay')) return;
   const probe = relayKit.signTicket(RELAY.secret, { r: '*probe', x: Date.now() / 1000 + 30 * 60 });
   p.sock.send({ t: 'relayHi', url: RELAY.wss, probe });
 }
 
 async function checkRelay() {
-  if (!RELAY) return;
-  const was = RELAY.up;
+  if (!RELAY?.http) return;
+  const target = RELAY.http;
+  let up = false; let info = null;
   try {
-    const r = await fetch(`${RELAY.http}/health`, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    const r = await fetch(`${target}/health`, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
     const j = r.ok ? await r.json() : null;
-    RELAY.up = !!j?.ok;
-    RELAY.info = j ? { v: j.v, rooms: j.rooms, peers: j.peers } : null;
-  } catch { RELAY.up = false; RELAY.info = null; }
+    up = !!j?.ok;
+    info = j ? { v: j.v, rooms: j.rooms, peers: j.peers } : null;
+  } catch { /* down */ }
+  // v203: the relay may have announced a new address while this was in flight — an old address's answer is not news
+  if (RELAY.http !== target) return;
+  const was = RELAY.up;
+  RELAY.up = up; RELAY.info = info;
   if (RELAY.up !== was) {
     console.log(`[relay] ${RELAY.http} is ${RELAY.up ? 'up' : 'down'}`);
     if (RELAY.up) for (const p of peers.values()) greetRelay(p);
@@ -756,7 +798,7 @@ if (RELAY) { checkRelay(); setInterval(checkRelay, 30000).unref(); }
  * this server. `members` is [{ peer, seat }].
  */
 function relayFor(members, party = false) {
-  if (!RELAY?.up || members.length < 2 || members.length > 10) return null;
+  if (!RELAY?.up || !RELAY.wss || members.length < 2 || members.length > 10) return null;
   if (!members.every(({ peer }) => peer?.caps?.has('relay'))) return null;
   const now = Date.now();
   const rtts = members.map(({ peer }) => (peer.rtt && now - peer.rtt.at < RTT_FRESH_MS ? peer.rtt : null));
