@@ -42,8 +42,18 @@ try {
   R.ok(`App: ${app.attributes.name} (${BUNDLE})`);
 
   const vs = (await get(`/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=50`)).data;
-  const ver = vs.find((v) => v.attributes.versionString === VERSION);
-  if (!ver) throw new Error(`no App Store version ${VERSION} (run "iOS → App Store review" once to create it)`);
+  let ver = vs.find((v) => v.attributes.versionString === VERSION);
+  // the version is made here when it is missing (as asc.mjs does on submit), so the text is right before anything is sent for review
+  if (!ver) {
+    const editable = vs.filter((v) => EDITABLE.has(stateOf(v)));
+    if (editable.length === 1) {
+      ver = (await api('PATCH', `/v1/appStoreVersions/${editable[0].id}`, { data: { type: 'appStoreVersions', id: editable[0].id, attributes: { versionString: VERSION } } })).data;
+      R.ok(`Renamed the editable version ${editable[0].attributes.versionString} to ${VERSION}`);
+    } else {
+      ver = (await api('POST', '/v1/appStoreVersions', { data: { type: 'appStoreVersions', attributes: { platform: 'IOS', versionString: VERSION }, relationships: { app: { data: { type: 'apps', id: app.id } } } } })).data;
+      R.ok(`Created App Store version ${VERSION}`);
+    }
+  }
   if (!EDITABLE.has(stateOf(ver))) throw new Error(`version ${VERSION} is ${stateOf(ver)} and cannot be edited now`);
 
   /* the version page */
