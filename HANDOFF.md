@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## 1.2 (9) submitted for review, 2026-11-11 18:39 UTC; the relay live on the spare PC
+- The owner ran the one-click package on the spare PC: a quick tunnel announced itself (`/api/health` relay up), a signed room carried a snapshot and an input through it, and the first three players' measurements were relay 158 ms vs Render (Singapore) 295 ms, all three quicker through the relay.
+- Submission order that works for an update: "iOS → App Store listing" (it now creates the version when missing, then What's New, description, notes, screenshots) → "iOS → App Store review" with submit. Apple now requires `socialMedia` on the age rating declaration (answered no in listing.json).
+- Reviewer notes no longer depend on AppReview1/AppReview2 being in Sign-In Information (the owner keeps their own account there): the reviewer creates two free accounts.
+
 ## Relay follow-up (server only, no version bump): the quick tunnel announces itself
 - The owner went out and could not do the Cloudflare dashboard, the GoDaddy → Cloudflare DNS move or the tunnel token, and this session could not drive their PC (no computer-use or browser tools; their Remote Control folders are not offered to cloud sessions). So the spare PC uses a **Cloudflare quick tunnel** (no account) and announces its changing `trycloudflare.com` address: `POST /api/relay/announce` (server.js), HMAC hex over the body with `RELAY_SECRET`, `ts` ±300 s and newer than the last, `?dry=1`. `relay.js` gained `checkAnnounce`/`signAnnounce`/`announceable`. `RELAY_SECRET` alone now turns the feature on (address from the announcement).
 - `checkRelay` ignores an answer for an address that was replaced while it was in flight (found by the test: a slow check of the old address marked the new one down).
