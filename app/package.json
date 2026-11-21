@@ -2,7 +2,7 @@
   "name": "apexxi-ios",
   "version": "1.0.0",
   "private": true,
-  "description": "The App Store build of APEX XI: the web game in a Capacitor shell, with original names and no paid items.",
+  "description": "The App Store build of APEX XI: the web game in a Capacitor shell, with original names; purchases through StoreKit 2 (v205).",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "@capacitor/core": "8.5.3",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.5.3",
-    "@capacitor/local-notifications": "8.3.1"
+    "@capacitor/local-notifications": "8.3.1",
+    "@capgo/native-purchases": "8.9.17"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.3"

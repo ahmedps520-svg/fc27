@@ -38,6 +38,8 @@ const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 import { activeTheme } from '../seasonal.js';
 import { locked as cosmeticLocked } from '../cosmetics.js';
 import { styleView, mountStyle } from './styleShop.js';
+import { iapShopView, mountIapShop } from './iapShop.js';   // v205: App Store purchases
+import { iapAvailable } from '../iap.js';
 
 /** Re-exported so existing importers and the odds tooling keep working. */
 export { PACK_BY_ID, openPack as __openPackForTest };
@@ -62,6 +64,8 @@ let submission = [];         // card ids staged for it
 export function openStore() { tab = 'store'; storeTab = 'packs'; }
 /** v198: straight to Store → Style (from a lock in Settings or the Stadium Builder). */
 export function openStyle() { tab = 'store'; storeTab = 'style'; }
+/** v205: the App Store app's shop (Starter Pack, ✦ and ◈ bundles, Season Pass). */
+export function openShop() { tab = 'store'; storeTab = APP_STORE ? 'shop' : 'ultimate'; }
 
 /**
  * Prices.
@@ -441,9 +445,9 @@ export function storeView() {
   const subs = `
     <nav class="subtabs" id="sSubs">
       ${[['packs', t('uxi.packs')], ['locker', `${t('uxi.locker')}${owned.length ? ` <i class="tab-dot">${owned.length}</i>` : ''}`],
-         ['icons', t('uxi.icons')], ['style', t('uxi.style')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`]]
-        // v184: the App Store build sells nothing for real money (yet): no ✦ shop tab
-        .filter(([id]) => !(APP_STORE && id === 'ultimate'))
+         ['icons', t('uxi.icons')], ['style', t('uxi.style')], ['market', t('uxi.market')], ['binder', t('uxi.binder')], ['ultimate', `<b class="ult-sub">✦</b> ${t('uxi.ultimate')}`], ['shop', `<b class="ult-sub">✦</b> ${tx('Shop')}`]]
+        // v184: the website's ✦ shop is a test-mode card form; v205: the App Store app has its own, through Apple
+        .filter(([id]) => (id === 'ultimate' ? !APP_STORE : id === 'shop' ? iapAvailable() : true))
         .map(([id, label]) =>
           `<button class="subtab ${storeTab === id ? 'on' : ''}" data-stab="${id}">${label}</button>`).join('')}
     </nav>`;
@@ -454,6 +458,7 @@ export function storeView() {
   if (storeTab === 'market') return subs + marketView();
   if (storeTab === 'binder') return subs + binderView();
   if (storeTab === 'ultimate' && !APP_STORE) return subs + ultimateShopView(s);
+  if (storeTab === 'shop' && iapAvailable()) return subs + iapShopView();
   const shelfEvent = eventShelf(s);
 
   /* Shelves, not one grid.
@@ -1208,6 +1213,7 @@ export function mount(root) {
   if (tab === 'club' && clubTab === 'evos') return mountEvos(root);
   if (tab === 'store' && storeTab === 'market') { mountMarket(root); return; }
   if (tab === 'store' && storeTab === 'style') { mountStyle(root); return; }
+  if (tab === 'store' && storeTab === 'shop' && iapAvailable()) { mountIapShop(root); return; }
   if (tab === 'store' && storeTab === 'binder') { mountBinder(root); return; }
   if (tab === 'store' && storeTab === 'ultimate') {
     root.querySelector('.ult-grid')?.addEventListener('click', (e) => {

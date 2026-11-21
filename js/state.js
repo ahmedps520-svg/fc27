@@ -409,6 +409,8 @@ export function adoptCloudSave(cloud) {
    * because it had to; adopting a desktop's Ultra on sign-in put it straight
    * back into the stutter the setting existed to escape. */
   const device = { quality: state?.settings?.quality, models: state?.settings?.models, renderer: state?.settings?.renderer };
+  // v205: App Store purchases live on the device, not in the cloud copy (api.js cloudCopy) — keep this device's
+  const bought = { starterBought: state?.club?.starterBought, pass: state?.club?.pass };
   state = { ...defaults(), ...cloud };
   state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
   if (device.quality) state.settings.quality = device.quality;
@@ -416,6 +418,8 @@ export function adoptCloudSave(cloud) {
   // WebGPU is a property of this browser too (v77)
   state.settings.renderer = device.renderer;
   state.club = { ...defaults().club, ...(cloud.club || {}) };
+  if (bought.starterBought) state.club.starterBought = true;
+  if (bought.pass) state.club.pass = { ...(state.club.pass || {}), ...bought.pass };
   state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
   state.flags = { ...defaults().flags, ...(cloud.flags || {}) };
   state.meta = { ...(cloud.meta || {}) };

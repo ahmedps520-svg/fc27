@@ -48,6 +48,8 @@ export const CELEBRATIONS = [
   { id: 'archer', name: 'The Archer', blurb: 'Draw the bow, aim at the stand, let it fly.', premium: true },
   { id: 'drummer', name: 'Drum Roll', blurb: 'A furious drum roll on thin air.', premium: true },
   { id: 'whirlwind', name: 'Whirlwind', blurb: 'Arms out and spinning like a top.', premium: true },
+  // v205: the Season 2 pass's own (data/season.js PREMIUM_TIERS tier 1); never sold in Style
+  { id: 'crown', name: 'The Crown', blurb: 'Both hands make a crown over the head. Season 2 Pass only.', premium: true, pass: 's2' },
 ];
 const IDS = CELEBRATIONS.map((c) => c.id);
 /* The CPU picks from the original sixteen only, so a scorer's pick — and with
@@ -206,6 +208,14 @@ export function celebPose(kind, t, moving) {
       // arms out, turning on the spot, the head back
       P.spin = (t * 7) % (Math.PI * 2); P.armL = arm(1.1, 0.1, 0); P.armR = arm(1.1, 0.1, 0); P.lean = -0.1;
       break;
+    case 'crown': {
+      if (moving) { cheer(); break; }
+      // both arms up, elbows bent so the hands meet over the head, and a slow proud bob
+      const b = Math.sin(t * 3);
+      P.armL = arm(0.45, 1.75, 1.25); P.armR = arm(0.45, 1.75, 1.25);
+      P.lean = -0.12; P.lift = Math.max(0, b) * 0.08; P.mouth = 0.3;
+      break;
+    }
     case 'refcard':
       // v112: not a celebration — the referee holding a card up (game/referee.js)
       P.armR = arm(0.2, 1.95, 0); P.armL = arm(0.08, 0.05, 0.2); P.mouth = 0;

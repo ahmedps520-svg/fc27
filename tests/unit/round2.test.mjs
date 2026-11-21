@@ -70,8 +70,8 @@ test('live content: the rotation always has an event, and events.json matches th
   assert.ok(isoWeek(new Date('2026-01-01T00:00:00Z')) >= 1);
   const file = JSON.parse(readFileSync('events.json', 'utf8'));
   assert.deepEqual(file, JSON.parse(JSON.stringify(LIVE_DEFAULT)), 'events.json is the bundled default until edited');
-  const se = season(new Date('2026-09-20T00:00:00Z'));
-  assert.equal(se.id, 's1');
+  const se = season(new Date('2026-12-01T00:00:00Z'));
+  assert.equal(se.id, 's2', 'v205: Season 2');
   assert.equal(se.tiers.length, 30);
   assert.equal(se.active, true);
   // a dated event beats the rotation

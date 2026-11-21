@@ -10829,7 +10829,9 @@
     { id: "flex", name: "Muscle Flex", blurb: "Both arms up, both biceps out, roaring.", premium: !0 },
     { id: "archer", name: "The Archer", blurb: "Draw the bow, aim at the stand, let it fly.", premium: !0 },
     { id: "drummer", name: "Drum Roll", blurb: "A furious drum roll on thin air.", premium: !0 },
-    { id: "whirlwind", name: "Whirlwind", blurb: "Arms out and spinning like a top.", premium: !0 }
+    { id: "whirlwind", name: "Whirlwind", blurb: "Arms out and spinning like a top.", premium: !0 },
+    // v205: the Season 2 pass's own (data/season.js PREMIUM_TIERS tier 1); never sold in Style
+    { id: "crown", name: "The Crown", blurb: "Both hands make a crown over the head. Season 2 Pass only.", premium: !0, pass: "s2" }
   ], IDS = CELEBRATIONS.map((c) => c.id), CPU_IDS = CELEBRATIONS.filter((c) => !c.premium).map((c) => c.id), celebrationOf = (id) => IDS.includes(id) ? id : null;
   function pickCelebration(choice, seedId = "", nth = 0) {
     let own = celebrationOf(choice);
@@ -14844,10 +14846,11 @@
   var LIVE_DEFAULT = {
     version: 1,
     season: {
-      id: "s1",
-      name: "Season 1 · Kick-Off",
-      from: "2026-09-14",
-      to: "2026-10-25"
+      // v205: Season 2 (the v204 wipe); its pass is the App Store product online.apexxi.game.pass.s2 (iap.js)
+      id: "s2",
+      name: "Season 2",
+      from: "2026-11-21",
+      to: "2027-01-31"
       // tiers: optional override of data/season.js DEFAULT_TIERS
     },
     events: [
@@ -14950,6 +14953,9 @@
   var DEFAULT_TIERS = Array.from({ length: 30 }, (_, i) => {
     let t = i + 1;
     return t === 30 ? { ultimate: 6, pack: "limited", label: "Season finale" } : t === 20 ? { pack: "prime", apex: 4e3, label: "Milestone" } : t === 10 ? { pack: "gold", apex: 2e3, label: "Milestone" } : t % 5 === 0 ? { pack: "gold" } : t % 3 === 0 ? { pack: "silver" } : t % 7 === 0 ? { pack: "dip" } : { apex: 400 + Math.floor(t / 4) * 200 };
+  }), PREMIUM_TIERS = Array.from({ length: 30 }, (_, i) => {
+    let t = i + 1;
+    return t === 1 ? { celebration: "crown", label: "The Crown" } : t === 30 ? { pack: "vault", label: "Legends Vault" } : t % 5 === 0 || t === 28 ? { pack: "prime" } : { ultimate: t % 4 === 0 ? 7 : 4 };
   }), tierOf = (xp) => Math.min(30, Math.floor((xp || 0) / 250)), tierProgress = (xp) => tierOf(xp) >= 30 ? 1 : (xp || 0) % 250 / 250;
 
   // js/live.js

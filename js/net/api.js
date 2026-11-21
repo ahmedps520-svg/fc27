@@ -96,14 +96,28 @@ export async function fetchSave() {
  * Push progress to the cloud, debounced and de-duplicated — `save()` fires on
  * every coin change, and none of that needs its own request.
  */
+/**
+ * v205: the cloud copy leaves out what a player bought from the App Store (the
+ * Starter Pack bought, the Season Pass owned) — purchases stay on the device
+ * (privacy.html). The pass comes back from StoreKit on any iPhone signed into
+ * the same Apple ID (iap.js syncEntitlements); balances travel as always.
+ */
+export function cloudCopy(state) {
+  if (!state?.club || (state.club.starterBought == null && state.club.pass == null)) return state;
+  const club = { ...state.club };
+  delete club.starterBought; delete club.pass;
+  return { ...state, club };
+}
+
 export function pushSave(state) {
   if (!token) return;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(async () => {
-    const body = JSON.stringify(state);
+    const save = cloudCopy(state);
+    const body = JSON.stringify(save);
     if (body === lastPushed) return;
     try {
-      await call('/api/save', { method: 'PUT', body: { save: state } });
+      await call('/api/save', { method: 'PUT', body: { save } });
       lastPushed = body;
     } catch { /* offline: localStorage already has it, retry on next save */ }
   }, 1200);

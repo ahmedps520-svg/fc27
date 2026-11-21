@@ -15,6 +15,7 @@
  * Reads the key from KEY_PATH (cleaned by app/ci/asc-key.sh) and prints nothing
  * secret. Writes a summary to $GITHUB_STEP_SUMMARY when it is set.
  */
+import fs from 'node:fs';
 import { api, get, maybe, describe, sleep, reporter, ApiError, EDITABLE, SUBMITTED, stateOf } from './asc-api.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
@@ -152,15 +153,41 @@ try {
   if (avail?.data) ok('Availability set'); else note('Could not read country availability (check Pricing and Availability → App Availability)');
   note('App Privacy (the data labels) cannot be read through the API — Apple will refuse the submission below if it is not published');
 
+  /* v205: the in-app purchases in app/store/iap.json. An app's first ones go to App Review with
+   * a version, so on submit each one that is ready is submitted here first; one that is missing or
+   * incomplete stops the submission, because the version's shop would show nothing to buy. */
+  const iapCfg = (() => { try { return JSON.parse(fs.readFileSync(new URL('../store/iap.json', import.meta.url), 'utf8')); } catch { return null; } })();
+  const iapReady = [];
+  if (iapCfg?.products?.length && !process.argv.includes('--no-iap')) {
+    const have = [];
+    for (let next = `/v1/apps/${app.id}/inAppPurchasesV2?limit=200`; next;) {
+      const r = await get(next); have.push(...(r.data || []));
+      next = r.links?.next ? r.links.next.replace('https://api.appstoreconnect.apple.com', '') : null;
+    }
+    for (const p of iapCfg.products) {
+      const productId = iapCfg.prefix + p.id;
+      const it = have.find((x) => x.attributes.productId === productId);
+      const st = it?.attributes.state || 'MISSING';
+      if (['WAITING_FOR_REVIEW', 'IN_REVIEW', 'APPROVED', 'READY_TO_SUBMIT'].includes(st)) {
+        ok(`In-app purchase ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`);
+        if (st === 'READY_TO_SUBMIT') iapReady.push(it);
+      } else { bad(`In-app purchase ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`, 'run "iOS → In-app purchases", and check App Store Connect → Business for the Paid Applications Agreement'); blocker = true; }
+    }
+  }
+
   /* submit */
   if (!SUBMIT) {
     summary(`App Store review check: ${VERSION} (${BUILD}) — ${problems.length ? `${problems.length} to fix` : 'ready'}`);
     process.exit(problems.length ? 1 : 0);
   }
   if (blocker) {
-    note('Not submitted: fill in the demo account above, then run this again');
-    summary(`App Store review: ${VERSION} (${BUILD}) — not submitted, the demo account is missing`);
+    note('Not submitted: fix what is marked ✗ above (the demo account, or the in-app purchases), then run this again');
+    summary(`App Store review: ${VERSION} (${BUILD}) — not submitted`);
     process.exit(1);
+  }
+  for (const it of iapReady) {
+    await api('POST', '/v1/inAppPurchaseSubmissions', { data: { type: 'inAppPurchaseSubmissions', relationships: { inAppPurchaseV2: { data: { type: 'inAppPurchases', id: it.id } } } } });
+    ok(`Submitted in-app purchase ${it.attributes.productId}`);
   }
   if (problems.length) note(`${problems.length} gap(s) found above — submitting anyway, so Apple's own answer is on record`);
   const open = (await get(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES&limit=10`)).data;

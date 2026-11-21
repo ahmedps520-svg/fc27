@@ -37,6 +37,22 @@ export const DEFAULT_TIERS = Array.from({ length: TIERS }, (_, i) => {
   return { apex: 400 + Math.floor(t / 4) * 200 };
 });
 
+/**
+ * v205: the Season Pass's paid track — a second reward on every tier for a
+ * player who bought the pass for this season (an App Store purchase, iap.js).
+ * The tiers are still earned by playing; the pass only adds to what each one
+ * pays. About 100 ✦, six Prime packs, a Legends Vault (one Icon) at tier 30,
+ * and the pass's own celebration at tier 1, so it is yours the moment you buy.
+ * `celebration` unlocks; it is not a balance.
+ */
+export const PREMIUM_TIERS = Array.from({ length: TIERS }, (_, i) => {
+  const t = i + 1;
+  if (t === 1) return { celebration: 'crown', label: 'The Crown' };
+  if (t === 30) return { pack: 'vault', label: 'Legends Vault' };
+  if (t % 5 === 0 || t === 28) return { pack: 'prime' };
+  return { ultimate: t % 4 === 0 ? 7 : 4 };
+});
+
 /** Tier reached for an XP total (0..TIERS). */
 export const tierOf = (xp) => Math.min(TIERS, Math.floor((xp || 0) / TIER_XP));
 
@@ -49,5 +65,6 @@ export function rewardText(r) {
   if (r.apex) parts.push(`◈ ${r.apex.toLocaleString()}`);
   if (r.ultimate) parts.push(`✦ ${r.ultimate}`);
   if (r.pack) parts.push(`${r.pack} pack`);
+  if (r.celebration) parts.push(r.label || 'celebration');
   return parts.join(' + ') || '—';
 }

@@ -16,7 +16,7 @@ import { getState, update } from './state.js';
 import { levelFromXP, levelReward, bump as bumpTask } from './tasks.js';
 import { WORLD } from './data/generator.js';
 import { ACHIEVEMENTS, evaluateAll } from './data/achievements.js';
-import { XP, TIER_XP, TIERS } from './data/season.js';
+import { XP, TIER_XP, TIERS, PREMIUM_TIERS } from './data/season.js';
 import { activeEvent, eventKey, season } from './live.js';
 import { currentWeekend, WL_MATCHES, rankFor } from './weekend.js';
 
@@ -278,6 +278,29 @@ export function claimTier(tier) {
   return reward;
 }
 
+/**
+ * v205: a tier's paid reward, for a player who owns this season's pass
+ * (`club.pass[seasonId]`, set by iap.js when the App Store says so). Claimed
+ * once per tier, beside the free reward, and only up to the tier reached.
+ */
+export function claimPremiumTier(tier) {
+  const se = season();
+  let reward = null;
+  update((s) => {
+    const sp = s.club.season;
+    if (!sp || sp.id !== se.id || !s.club.pass?.[se.id]) return;
+    if (!Array.isArray(sp.premium)) sp.premium = [];
+    if (tier < 1 || tier > TIERS || Math.floor(sp.xp / TIER_XP) < tier || sp.premium.includes(tier)) return;
+    reward = (se.premiumTiers || PREMIUM_TIERS)[tier - 1];
+    if (!reward) return;
+    sp.premium.push(tier);
+    if (reward.apex) s.club.apex += reward.apex;
+    if (reward.pack) s.club.packs.push(reward.pack);
+    if (reward.ultimate) s.club.ultimate = (s.club.ultimate || 0) + reward.ultimate;
+  });
+  return reward;
+}
+
 export function claimWeekend() {
   let out = null;
   update((s) => {
@@ -304,5 +327,7 @@ export function claimableCount() {
   const ach = Object.values(s.club.achievements || {}).filter((r) => !r.claimed).length;
   const pending = (s.club.pending || []).length;
   const daily = dailyStatus().claimable ? 1 : 0;
-  return tiers + ach + pending + daily;
+  // v205: the Season Pass's paid rewards waiting, for a pass holder
+  const pass = s.club.pass?.[se.id] ? Math.max(0, Math.min(TIERS, tier) - (s.club.season?.premium?.length || 0)) : 0;
+  return tiers + ach + pending + daily + pass;
 }
