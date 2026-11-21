@@ -15,6 +15,11 @@ there are no dependencies.
 
 Everything below is on the local machine only.
 
+## 1.3 (10): staged for review; the first purchases need the website (2026-11-21)
+- Apple's public API cannot submit an app's **first** purchases: `inAppPurchaseSubmissions` answers FIRST_CONSUMABLE / FIRST_NON_CONSUMABLE_MUST_BE_SUBMITTED_ON_VERSION before and after the version is submitted, and `reviewSubmissionItems` has no in-app purchase relationship (ENTITY_ERROR.RELATIONSHIP.UNKNOWN). Tools that do it use the website's private session (needs the owner's Apple ID login) — not done here.
+- `asc.mjs` now stages the version in the review submission (READY_FOR_REVIEW, unsent) and stops with the website steps when purchases cannot be added: App Store Connect → APEX XI → iOS App 1.3 → In-App Purchases and Subscriptions → Select → all 12 → Done → Add for Review → Submit to App Review. After the first approval, later purchases go through the API (`inAppPurchaseSubmissions`).
+- The Paid Applications Agreement is signed (owner, 2026-11-21). Build 10 (1.3) is in TestFlight.
+
 ## v205 — App Store purchases (StoreKit 2), the Season 2 Pass, the live season is Season 2
 - **Owner's prices:** ✦ 20 $1.99 · 55 $4.99 · 110 $9.99 · 240 $19.99 · 650 $49.99; ◈ 10k $0.99 · 60k $4.99 · 130k $9.99 · 280k $19.99 · 750k $49.99; Starter $0.99 (20 ✦ + Prime + ◈ 10,000, once); Season 2 Pass $4.99 (non-consumable). ✦ never buys packs.
 - **Native:** `@capgo/native-purchases` 8.9.17 (MPL-2.0, StoreKit 2, read before adding: no network calls of its own) in app/package.json; `npx cap sync ios` wrote it into CapApp-SPM/Package.swift. `capacitor.config.json` sets `NativePurchases.autoFinishTransactions: false` — every transaction is finished by js/iap.js **after** it is credited.
