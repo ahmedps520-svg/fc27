@@ -23,7 +23,7 @@ const rows = [];
 for (const tier of TIERS) {
   const page = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1 });
   await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-    meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+    meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
     settings: { quality: q, reduceMotion: true, tutorialDone: true, models: 'simple' },
   })), tier);
   await page.goto(`${server.url}/`);

@@ -5870,3 +5870,39 @@ button.clash-opp:disabled { cursor: default; opacity: .55; }
 .mode-pics button { min-width: 0; padding-inline: 4px; }
 .mode-pics b { white-space: normal; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }
 .about:not([open]) > p { display: none; }
+
+/* v204: a phone held sideways — the App Store app always is — gets the whole
+   menu on one screen with nothing to scroll. It was about twice the height of
+   one (725 px of menu in 375–430 px of screen): a wordmark the size of a
+   headline, six small tiles in three rows of 116 px, two doors to match, then
+   the music and the small print underneath, and the page's own 72 px of
+   bottom padding. Here the wordmark shrinks onto one line with the music, the
+   small tiles are a 2 × 3 grid cut to the height that is left, the doors take
+   the rest, and the small print is one line. The top bar stops adding the
+   bottom safe area (meant for a bar at the bottom) to its own padding. */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.on-menu .topbar { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px; }
+  body.on-menu .screen { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .menu-screen {
+    --hub-h: calc(100dvh - 118px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto var(--hub-h) auto;
+    column-gap: 12px; row-gap: 6px; align-content: start;
+  }
+  .menu-screen .menu-wordmark { grid-column: 1; grid-row: 1; font-size: 30px; margin: 0; align-self: center; }
+  .menu-screen .music-player { grid-column: 2; grid-row: 1; margin: 0; align-self: center; max-width: 42vw; }
+  .menu-screen .hub { grid-column: 1 / -1; grid-row: 2; margin: 0; height: var(--hub-h); min-height: 0; grid-template-columns: minmax(190px, 30%) minmax(0, 1fr); gap: 8px; }
+  .menu-screen .hub-rail { display: grid; grid-auto-flow: row; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 8px; min-height: 0; }
+  .menu-screen .tile.t-mini { min-height: 0; padding: 6px 4px; gap: 3px; justify-content: center; align-items: center; text-align: center; }
+  .menu-screen .t-mini .tile-icon { transform: scale(.82); }
+  .menu-screen .t-mini .tile-name { font-size: 12.5px; }
+  .menu-screen .t-mini .tile-sub { display: none; }
+  .menu-screen .hub-main { gap: 8px; min-height: 0; grid-template-columns: 1.1fr .9fr; }
+  .menu-screen .tile.t-club, .menu-screen .tile.t-play { min-height: 0; padding: 14px 16px; gap: 6px; }
+  .menu-screen .tile.t-club .tile-name, .menu-screen .tile.t-play .tile-name { font-size: 22px; }
+  .menu-screen .disclaimer {
+    grid-column: 1 / -1; grid-row: 3; margin: 0; max-width: none;
+    font-size: 10px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .menu-screen .menu-hero { display: none; }
+}

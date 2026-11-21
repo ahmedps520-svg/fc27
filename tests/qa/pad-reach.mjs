@@ -36,7 +36,7 @@ page.on('pageerror', (e) => { const k = `${e.message} @ ${(e.stack || '').split(
 page.on('dialog', (d) => d.accept().catch(() => {}));
 const consoleIssues = watchConsole(page, { origin: server.url });   // v100: console.error and 4xx/5xx too, not only exceptions
 await page.addInitScript((ver) => {
-  if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: ver }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
+  if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: ver }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
   // the simulated controller
   const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
   const pad = { id: 'Xbox Wireless Controller (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons, vibrationActuator: null };

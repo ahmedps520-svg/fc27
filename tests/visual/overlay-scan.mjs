@@ -66,7 +66,7 @@ async function boot(ph, save) {
   await page.click('#startBtn');
   return { ctx, page };
 }
-const save = (extra = {}) => ({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: notesVersion, onboarded: true, ...extra.flags }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, club: { apex: 50000 }, ...extra.rest });
+const save = (extra = {}) => ({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notesVersion, onboarded: true, ...extra.flags }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, club: { apex: 50000 }, ...extra.rest });
 const go = (page, n, p = {}) => page.evaluate(async ({ n: nn, p: pp }) => (await import('/js/app.js')).navigate(nn, pp), { n, p });
 const check = async (ph, page, what, sel) => {
   const bad = await page.evaluate(UNREACHABLE, sel);
@@ -87,7 +87,7 @@ for (const ph of PHONES) {
   }
   // a brand-new player's welcome
   {
-    const { ctx, page } = await boot(ph, { meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true } });
+    const { ctx, page } = await boot(ph, { meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true } });
     await page.waitForSelector('#onboardOverlay', { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(600);
     await check(ph, page, 'welcome', '#onboardOverlay');

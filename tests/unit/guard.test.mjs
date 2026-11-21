@@ -16,13 +16,13 @@ test('token buckets: a burst is allowed, then refused, failures can be charged',
 
 test('sanitiseSave clamps balances, dedupes collections and caps size', () => {
   const { save, notes } = guard.sanitiseSave(
-    { club: { apex: 99e9, ultimate: -5, collection: ['a', 'a', 'b', 7, 'c'], packs: ['bronze'] } },
+    { meta: { season: 2 }, club: { apex: 99e9, ultimate: -5, collection: ['a', 'a', 'b', 7, 'c'], packs: ['bronze'] } },
     null, 0, null);
   assert.ok(save.club.apex <= 10_000_000);
   assert.equal(save.club.ultimate, 0);
   assert.deepEqual(save.club.collection, ['a', 'b', 'c']);
   assert.ok(notes.length >= 2);
-  const big = guard.sanitiseSave({ club: { blob: 'x'.repeat(guard.MAX_SAVE_BYTES + 10) } }, { kept: true }, 0, null);
+  const big = guard.sanitiseSave({ meta: { season: 2 }, club: { blob: 'x'.repeat(guard.MAX_SAVE_BYTES + 10) } }, { kept: true }, 0, null);
   assert.deepEqual(big.save, { kept: true });
   assert.deepEqual(guard.sanitiseSave('junk', { kept: 1 }, 0, null).save, { kept: 1 });
   assert.equal(guard.sanitiseSave(null, null, 0, null).save, null);
@@ -31,9 +31,9 @@ test('sanitiseSave clamps balances, dedupes collections and caps size', () => {
 test('sanitiseSave holds a rise to the hourly budget but never touches spending', () => {
   const gain = { since: 0, spent: 0 };
   const prev = { club: { apex: 100_000 } };
-  const up = guard.sanitiseSave({ club: { apex: 5_000_000 } }, prev, 0, gain);
+  const up = guard.sanitiseSave({ meta: { season: 2 }, club: { apex: 5_000_000 } }, prev, 0, gain);
   assert.ok(up.save.club.apex <= 100_000 + 1_000_000);
-  const down = guard.sanitiseSave({ club: { apex: 10 } }, prev, 0, gain);
+  const down = guard.sanitiseSave({ meta: { season: 2 }, club: { apex: 10 } }, prev, 0, gain);
   assert.equal(down.save.club.apex, 10);
 });
 

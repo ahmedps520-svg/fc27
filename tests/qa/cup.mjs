@@ -17,7 +17,7 @@ const check = (ok, what) => { console.log(`${ok ? '✓' : '✗'} ${what}`); if (
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await ctx.newPage();
 const errs = watchConsole(page, { origin: server.url });
-await page.addInitScript(() => { if (!sessionStorage.getItem('s')) { localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999', hintMatches: 9 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })); sessionStorage.setItem('s', '1'); } });
+await page.addInitScript(() => { if (!sessionStorage.getItem('s')) { localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999', hintMatches: 9 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })); sessionStorage.setItem('s', '1'); } });
 try {
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');

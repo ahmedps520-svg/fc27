@@ -21,7 +21,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 480, height: 270 }, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.log('PAGEERR', e.message));
 await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
   settings: { quality: 'ultra', reduceMotion: true, tutorialDone: true },
 })));
 await page.goto(`${server.url}/`);

@@ -22,7 +22,7 @@ const page = await ctx.newPage();
 const errs = watchConsole(page, { origin: server.url });
 await page.addInitScript(() => {
   if (sessionStorage.getItem('seeded')) return;
-  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999', hintMatches: 9 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
+  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999', hintMatches: 9 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
   sessionStorage.setItem('seeded', '1');
 });
 const box = (sel) => page.evaluate((s) => { const b = document.querySelector(s).getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width }; }, sel);

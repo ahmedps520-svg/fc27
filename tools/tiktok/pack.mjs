@@ -18,7 +18,7 @@ const ctx = await browser.newContext({ viewport: { width: 432, height: 768 }, de
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('page error', e.message));
 await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v },
   settings: { quality: 'medium', qualityPicked: true, tutorialDone: true, reduceMotion: false, menuTheme: 'off', sound: true, musicVol: 0, sfxVol: 1 },
 })), v);
 await logSfx(page);

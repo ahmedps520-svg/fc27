@@ -43,7 +43,7 @@ async function player(tag) {
   const ctx = await browser.newContext({ viewport: { width: 900, height: 560 }, extraHTTPHeaders: { 'x-forwarded-for': `10.8.0.${++addr}` } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${tag}: ${e.message}`));
-  const save = { meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, club: { apex: 5000 } };
+  const save = { meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, club: { apex: 5000 } };
   await page.addInitScript(({ s }) => { localStorage.setItem('apexxi.save.v1', JSON.stringify(s)); }, { s: save });
   await page.goto(`${server.url}/?nop2p=1`);
   await page.waitForSelector('#startBtn', { timeout: 20000 });

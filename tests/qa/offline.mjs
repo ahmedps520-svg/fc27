@@ -18,7 +18,7 @@ try {
   page.on('pageerror', (e) => errors.push(`page: ${e.message}`));
   if (process.env.DBG) page.on('requestfailed', (r) => console.log('FAILED', r.url().replace(/^https?:\/\/[^/]+/, ''), r.failure()?.errorText));
   page.on('console', (m) => { if (process.env.DBG) console.log('C', m.type(), m.text()); if (m.type() === 'error' && !/favicon|net::ERR|Failed to load resource|WebSocket|ws:\/\/|socket/i.test(m.text())) errors.push(`console: ${m.text()}`); });
-  await page.addInitScript(() => { if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })); });
+  await page.addInitScript(() => { if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })); });
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn', { timeout: 30000 });
   // wait for the worker to install and fill its cache (polled from here:

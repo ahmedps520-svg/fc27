@@ -146,6 +146,7 @@ const APEX_PER_HOUR = 1_000_000;
 const GAIN_WINDOW = 60 * 60 * 1000;
 const MAX_COLLECTION = 4_000;         // the world holds ~731 cards; a duplicate-free collection cannot approach this
 const MAX_PACKS = 500;
+const SEASON = 2;                     // v204: saves from before Season 2 are refused (sanitiseSave)
 const MAX_SAVE_BYTES = 256 * 1024;
 
 const clampNum = (v, lo, hi, fallback = lo) => {
@@ -175,6 +176,14 @@ function sanitiseSave(incoming, previous, sinceMs, gain) {
   const bytes = Buffer.byteLength(JSON.stringify(incoming));
   if (bytes > MAX_SAVE_BYTES) {
     return { save: previous ?? null, notes: [`save was ${bytes} bytes (cap ${MAX_SAVE_BYTES}) — kept the previous one`] };
+  }
+
+  /* v204: Season 2. A save that has not been through the Season 2 wipe comes
+   * from a build that does not know about it (the 1.1 and 1.2 iPhone apps):
+   * taking it would put Season 1 back over a Season 2 save. The device keeps
+   * its own copy; the cloud keeps the season's. */
+  if ((incoming.meta?.season | 0) < SEASON) {
+    return { save: previous ?? null, notes: ['a Season 1 save from an older build — kept the stored one'], refused: 'season' };
   }
 
   const save = incoming;

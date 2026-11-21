@@ -47,7 +47,7 @@ const server = await startServer();
 const browser = await chromium.launch({ args: ['--disable-webgl'] });
 const page = await (await browser.newContext({ viewport: { width: W, height: 900 } })).newPage();
 const version = await fetch(`${server.url}/js/app.js`).then((r) => r.text()).then((t) => (t.match(/APP_VERSION = '(v\d+)'/) || [])[1]);
-await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v, onboarded: true }, settings: { reduceMotion: true, tutorialDone: true, quality: 'low' } })), version);
+await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v, onboarded: true }, settings: { reduceMotion: true, tutorialDone: true, quality: 'low' } })), version);
 await page.goto(`${server.url}/`);
 await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
 

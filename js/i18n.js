@@ -125,6 +125,15 @@ const DICT = { en: EN, ar: AR };
 /* v169: short labels translated by their English text, where a key per row
    would only repeat the English (Settings rows, table headers). */
 const AR_TEXT = {
+  // v204: Season 2
+  "Season 2 — everyone starts again": "الموسم 2 — الجميع يبدأ من جديد",
+  "A new season: every club, card, pack and balance is back to the start, for every player. Your club's name, badge and colours, your stadiums and your trophy cabinet stay.": "موسم جديد: كل نادٍ وبطاقة وحزمة ورصيد عاد إلى البداية لكل اللاعبين. يبقى اسم ناديك وشعاره وألوانه وملاعبك وخزانة كؤوسك.",
+  "to start with": "للبداية",
+  "A Gold pack, two Silver and a Bronze": "حزمة ذهبية وحزمتان فضيتان وحزمة برونزية",
+  "in your locker": "في خزانتك",
+  "New online rankings": "تصنيفات جديدة عبر الإنترنت",
+  "— everyone from zero": "— الجميع من الصفر",
+  "Let's go": "هيا بنا",
   "Support": "الدعم",
   "Bugs and ideas.": "الأعطال والأفكار.",
   "What's new": "ما الجديد",

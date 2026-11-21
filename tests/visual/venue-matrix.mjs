@@ -37,7 +37,7 @@ const fresh = async () => {
   page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR|Failed to load resource/.test(m.text())) problems.push(`console: ${m.text().slice(0, 160)}`); });
   await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-    meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+    meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
     settings: { quality: 'low', reduceMotion: true, tutorialDone: true },
   })));
   await page.goto(`${server.url}/`);

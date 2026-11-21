@@ -47,7 +47,7 @@ test('a damaged save is kept aside and the newest backup comes back', () => {
 
 test('old shapes survive: missing sections, the old single balance, retired settings', () => {
   const ids = WORLD.players.slice(0, 8).map((p) => p.id);
-  storage.setItem(KEY, JSON.stringify({ meta: { reset: RESET }, club: { apex: 900, collection: [...ids, 'no-such-card'], lineup: [ids[0], 'gone', null] }, settings: { models: 'simple' } }));
+  storage.setItem(KEY, JSON.stringify({ meta: { reset: RESET, season: 2 }, club: { apex: 900, collection: [...ids, 'no-such-card'], lineup: [ids[0], 'gone', null] }, settings: { models: 'simple' } }));
   loadState();
   const s = getState();
   healthy(s);
@@ -59,7 +59,7 @@ test('old shapes survive: missing sections, the old single balance, retired sett
 });
 
 test('random mutations of a real save never break loading', () => {
-  update((s) => { s.meta.reset = RESET; s.club.collection = WORLD.players.slice(0, 30).map((p) => p.id); s.ultimate.played = 12; });
+  update((s) => { s.meta.reset = RESET; s.meta.season = 2; s.club.collection = WORLD.players.slice(0, 30).map((p) => p.id); s.ultimate.played = 12; });
   const base = JSON.parse(JSON.stringify(getState()));
   const paths = [];
   const walk = (o, p) => { if (!o || typeof o !== 'object' || p.length > 3) return; for (const k of Object.keys(o)) { paths.push([...p, k]); walk(o[k], [...p, k]); } };

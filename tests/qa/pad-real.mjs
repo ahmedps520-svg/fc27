@@ -38,7 +38,7 @@ for (const [name, K] of Object.entries(KINDS)) {
   page.on('pageerror', (e) => problems.push(`${name}: page error ${e.message}`));
   const consoleIssues = watchConsole(page, { tag: name, origin: server.url });
   await page.addInitScript(({ ver, K }) => {
-    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: ver }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
+    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: ver }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
     const mk = (n) => Array.from({ length: n }, () => ({ pressed: false, touched: false, value: 0 }));
     const phantom = { id: 'Steam Virtual Gamepad', index: 0, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons: mk(17) };
     const real = { id: K.id, index: 1, connected: true, mapping: '', timestamp: 0, axes: [...K.axes], buttons: mk(K.buttons) };

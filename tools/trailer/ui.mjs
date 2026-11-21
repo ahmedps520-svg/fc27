@@ -22,7 +22,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 page.on('pageerror', (e) => console.log('page error', e.message));
 await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v },
   settings: { quality: 'high', qualityPicked: true, tutorialDone: true, reduceMotion: false, menuTheme: 'off' },
 })), v);
 const shot = async (name, wait = 900) => { await page.waitForTimeout(wait); await page.waitForFunction(() => !document.querySelector('#screenCurtain.on')).catch(() => {}); await page.screenshot({ path: join(OUT, `${name}.jpg`), type: 'jpeg', quality: 94 }); console.log('✔', name); };

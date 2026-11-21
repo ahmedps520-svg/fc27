@@ -63,7 +63,7 @@ async function boot(tag, save, viewport = { width: 900, height: 560 }) {
   await page.waitForSelector('[data-go="squad"]', { timeout: 15000 });
   return { ctx, page };
 }
-const baseSave = (extra = {}) => ({ meta: { reset: RESET }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, ...extra });
+const baseSave = (extra = {}) => ({ meta: { reset: RESET, season: 2 }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' }, ...extra });
 const go = (page, name, params = {}) => page.evaluate(async ({ n, p }) => { const app = await import('/js/app.js'); app.navigate(n, p); }, { n: name, p: params });
 const click = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) throw new Error(`no element ${s}`); el.click(); }, sel);
 const save = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('apexxi.save.v1')));
@@ -93,7 +93,7 @@ const flow = async (name, fn) => {
 
 try {
   await flow('onboarding', async () => {
-    const fresh = { meta: { reset: RESET }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true } };
+    const fresh = { meta: { reset: RESET, season: 2 }, flags: { notesSeen: notesVersion }, settings: { quality: 'min', reduceMotion: true } };
     const { ctx, page } = await boot('onboarding', fresh);
     await page.waitForSelector('#onboardOverlay', { timeout: 5000 });
     step('welcome card with a starter squad');

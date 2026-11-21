@@ -15,7 +15,7 @@ const server = await startServer();
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
 async function run(tier, batch) {
   const page = await browser.newPage({ viewport: { width: 844, height: 390 } });
-  await page.addInitScript(([q, b]) => { if (!b) window.__apexNoFigureBatch = true; localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' }, settings: { quality: q, reduceMotion: true, tutorialDone: true, models: 'simple', pregame: 'off' } })); }, [tier, batch]);
+  await page.addInitScript(([q, b]) => { if (!b) window.__apexNoFigureBatch = true; localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' }, settings: { quality: q, reduceMotion: true, tutorialDone: true, models: 'simple', pregame: 'off' } })); }, [tier, batch]);
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
   await page.evaluate(async () => { const app = await import('/js/app.js'); app.navigate('play', { homeId: 'c1', awayId: 'c2', duration: 60, skill: 1, mode: 'single', atmo: { time: 'night', weather: 'clear' } }); });

@@ -22,6 +22,30 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v204',
+    date: '2026-11-21',
+    tag: 'Season 2',
+    title: 'Season 2 — everyone starts again',
+    lede: 'A new season: every club, card, pack and balance is back to the start, for every player, and the online rankings begin again from zero.',
+    entries: [
+      {
+        head: 'Season 2',
+        summary: 'Every club starts again with ◈ 5,000 and a Gold pack, two Silver and a Bronze. Your club\'s name, badge and colours, your stadiums and your trophy cabinet stay.',
+        detail: 'Ultimate XI, Career, Player Career, Street and skill bests all start again, and so do the online leaderboards, divisions and duels. Style items are yours again once bought again. Settings, friends and guilds are untouched.',
+      },
+      {
+        head: 'Lower ping',
+        summary: 'Online matches that cannot link your phones directly now go through a server in Frankfurt, much nearer most players than the one in Singapore. The ping in the match bar is now the real one.',
+        detail: 'The ping used to be measured through the main server even when the match went phone to phone, so it read far worse than the match was. It is now measured over the same route as the match itself.',
+      },
+      {
+        head: 'iPhone',
+        summary: 'The main menu fits a phone held sideways on one screen, with nothing to scroll. Players on the App Store app get a welcome gift on Today.',
+        detail: 'The welcome gift is 30 ✦, a Prime pack, two Gold packs and ◈ 15,000, once per player, in the App Store app only.',
+      },
+    ],
+  },
+  {
     version: 'v202',
     date: '2026-11-06',
     tag: 'Online',

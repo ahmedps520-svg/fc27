@@ -192,6 +192,27 @@ const acctOf = (name) => { const k = key(name); return Object.prototype.hasOwnPr
  * only safe answer, since serving from an empty database would hand every
  * player a "no account with that name" and then overwrite the real one.
  */
+/**
+ * v204: Season 2 — once, on the first boot that knows about it: every
+ * account's online record goes back to zero (the leaderboards and divisions
+ * start again), and the ghost pool empties (it held Season 1 squads). Names,
+ * passwords, friends, blocks and guilds stay; cloud saves are wiped by the
+ * game itself when it next loads one (js/state.js applySeason).
+ */
+const SEASON = 2;
+function startSeason(d, season = SEASON) {
+  if ((d.season | 0) >= season) return false;
+  for (const acct of Object.values(d.accounts || {})) {
+    acct.online = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, divIdx: 0 };
+    delete acct.pens; delete acct.weekend; delete acct.skills; delete acct.coop; delete acct.ghostRecord;
+    if (acct.guard) acct.guard = { since: 0, spent: 0 };
+  }
+  d.ghosts = {};
+  d.season = season;
+  console.log(`[store] season ${season}: every online record reset, ghost pool emptied`);
+  return true;
+}
+
 async function load() {
   backend = backend || pickBackend();
   let stored = null;
@@ -204,6 +225,7 @@ async function load() {
   }
   db = (stored && stored.accounts) ? stored : EMPTY();
   if (!db.guilds) db.guilds = {};
+  const newSeason = startSeason(db);
   indexTokens();
   const count = Object.keys(db.accounts).length;
   console.log(`[store] ${backend.name} — ${count} account${count === 1 ? '' : 's'}`);
@@ -212,6 +234,7 @@ async function load() {
     console.warn('[store]          every restart or redeploy. Set UPSTASH_REDIS_REST_URL and');
     console.warn('[store]          UPSTASH_REDIS_REST_TOKEN to keep accounts and cloud saves.');
   }
+  if (newSeason) flush();
   return db;
 }
 
@@ -853,7 +876,7 @@ const status = () => ({
 module.exports = {
   mintToken,
   load, shutdown, status,
-  register, login, byToken, putSave, recordResult, leaderboard, publicProfile,
+  register, login, byToken, putSave, recordResult, leaderboard, publicProfile, startSeason, SEASON,
   saveGhost, pickGhost, recordGhostDefence, ghostAllowance, countGhost, recordPens,
   recordWeekend, weekendBoard, recordSkill, skillBoard, SKILL_MAX, recordCoop,
   createGuild, joinGuild, leaveGuild, guildView, claimGuildObjective, guildBoard, weekId,

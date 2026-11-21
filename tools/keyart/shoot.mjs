@@ -31,7 +31,7 @@ const ctx = await browser.newContext({ viewport: { width: W, height: H } });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('page error', e.message));
 await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' },
   settings: { tutorialDone: true, quality: q, models: 'realistic', pregame: 'off', broadcast: false, menuTheme: 'off' },
 })), QUALITY);
 await page.goto(`${server.url}/`);

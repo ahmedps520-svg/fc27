@@ -20,7 +20,7 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 800 }], ['phone', 
   const page = await browser.newPage({ viewport: vp });
   page.on('pageerror', (e) => problems.push(`${label}: page error ${e.message}`));
   const issues = watchConsole(page, { tag: label, origin: server.url });
-  await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: 'low', tutorialDone: true, reduceMotion: true } })), appVersion);
+  await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v }, settings: { quality: 'low', tutorialDone: true, reduceMotion: true } })), appVersion);
   await page.goto(server.url + '/');
   await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
   // v135: the desktop run signs in (its order is emailed); the phone run stays signed out
