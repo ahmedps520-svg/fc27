@@ -30,7 +30,7 @@
  * wss:// address to it, so nothing is opened on the router. Settings:
  *
  *   RELAY_SECRET  required, 32+ characters
- *   RELAY_PORT    default 8790
+ *   RELAY_PORT    default PORT (a host's), else 8790
  *   RELAY_HOST    default 127.0.0.1
  *   RELAY_LOG     optional file to append the log to (kept under 5 MB)
  *
@@ -283,7 +283,8 @@ if (require.main === module) {
   const log = fileLog(cfg.RELAY_LOG);
   let relay;
   try { relay = createRelay({ secret: cfg.RELAY_SECRET, log }); } catch (err) { log(`[relay] cannot start: ${err.message}`); process.exit(1); }
-  const port = Number(cfg.RELAY_PORT) || 8790;
+  // a host such as Render says which port to answer on (PORT); RELAY_HOST=0.0.0.0 there, since the host's proxy is not on this machine
+  const port = Number(cfg.RELAY_PORT) || Number(process.env.PORT) || 8790;
   const host = cfg.RELAY_HOST || '127.0.0.1';
   relay.listen(port, host).then(() => log(`[relay] v${RELAY_VERSION} listening on ${host}:${port}`), (err) => { log(`[relay] cannot listen on ${host}:${port}: ${err.message}`); process.exit(1); });
   process.on('uncaughtException', (err) => log(`[relay] error: ${err.stack || err.message}`));

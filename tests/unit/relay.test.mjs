@@ -277,31 +277,35 @@ test('v203: a relay announces where it is, signed; only a quick tunnel\'s addres
     const dry = await announce(a.body, a.signature, '?dry=1');
     assert.equal(dry.status, 200); assert.equal((await dry.json()).dry, true);
     assert.equal((await health()).url, fixed);
-    // the real thing: the address moves (that tunnel does not exist here, so it reads down)
-    assert.equal((await announce(a.body, a.signature)).status, 200);
-    assert.equal((await health()).url, quick);
-    for (let i = 0; i < 50 && (await health()).up; i++) await sleep(100);
-    assert.equal((await health()).up, false);
-    // an older announcement than the last is ignored; a newer one for the fixed address brings it back up
+    // a fixed RELAY_URL (a hosted relay) is not moved by a quick tunnel announcing itself
+    const ig = await announce(a.body, a.signature);
+    assert.equal(ig.status, 200); assert.equal((await ig.json()).ignored, true);
+    assert.equal((await health()).url, fixed); assert.equal((await health()).up, true);
+    // an older announcement than the last taken is stale
+    const same = signAnnounce(SECRET, fixed, now + 1);
+    assert.equal((await announce(same.body, same.signature)).status, 200);
     const back = signAnnounce(SECRET, fixed, now - 10);
     assert.equal((await (await announce(back.body, back.signature)).json()).stale, true);
-    assert.equal((await health()).url, quick);
-    const again = signAnnounce(SECRET, fixed, now + 1);
-    assert.equal((await announce(again.body, again.signature)).status, 200);
-    for (let i = 0; i < 50 && !(await health()).up; i++) await sleep(100);
-    const h = await health();
-    assert.equal(h.url, fixed); assert.equal(h.up, true);
   } finally { stop(); await relay.close(); }
 });
 
-test('v203: with RELAY_SECRET alone the relay is off until it announces; a server with no relay refuses announcements', async () => {
+test('v203: with RELAY_SECRET alone the relay is off until it announces, then follows the newest announcement; a server with no relay refuses them', async () => {
   const a = await startServer(undefined, { env: { RELAY_SECRET: SECRET } });
   const b = await startServer();
+  const health = async () => (await (await fetch(`${a.url}/api/health`)).json()).relay;
   try {
-    assert.deepEqual({ url: null, up: false }, (({ url, up }) => ({ url, up }))((await (await fetch(`${a.url}/api/health`)).json()).relay));
+    assert.deepEqual({ url: null, up: false }, (({ url, up }) => ({ url, up }))(await health()));
     const s = signAnnounce(SECRET, 'https://calm-sea-77.trycloudflare.com');
     const r = await fetch(`${a.url}/api/relay/announce?dry=1`, { method: 'POST', headers: { 'X-Relay-Signature': s.signature }, body: s.body });
     assert.equal(r.status, 200);
+    assert.equal((await health()).url, null, 'a dry run applies nothing');
+    const now = Math.floor(Date.now() / 1000);
+    const post = (x) => fetch(`${a.url}/api/relay/announce`, { method: 'POST', headers: { 'X-Relay-Signature': x.signature }, body: x.body });
+    assert.equal((await post(signAnnounce(SECRET, 'https://calm-sea-77.trycloudflare.com', now))).status, 200);
+    assert.equal((await health()).url, 'https://calm-sea-77.trycloudflare.com');
+    assert.equal((await (await post(signAnnounce(SECRET, 'https://old-one-11.trycloudflare.com', now - 30))).json()).stale, true);
+    assert.equal((await post(signAnnounce(SECRET, 'https://new-one-22.trycloudflare.com', now + 1))).status, 200);
+    assert.equal((await health()).url, 'https://new-one-22.trycloudflare.com', 'the newest announcement wins');
     assert.equal((await fetch(`${b.url}/api/relay/announce`, { method: 'POST', headers: { 'X-Relay-Signature': s.signature }, body: s.body })).status, 404);
   } finally { a.stop(); b.stop(); }
 });
