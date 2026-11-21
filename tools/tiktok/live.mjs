@@ -34,7 +34,7 @@ const audio = readFileSync(join(DIR, 'js/audio.js'), 'utf8')
 await page.route('**/assets/candidates/player.glb', (r) => r.fulfill({ body: readFileSync(join(DIR, 'assets/candidates/player.glb')), contentType: 'model/gltf-binary' }));
 await page.route('**/js/audio.js', (r) => r.fulfill({ body: audio, contentType: 'text/javascript' }));
 await page.addInitScript(({ v, SEED }) => {
-  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: 'high', qualityPicked: true, graphicsAsked: true, tutorialDone: true, pregame: 'off', sound: false, commentary: false } }));
+  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v }, settings: { quality: 'high', qualityPicked: true, graphicsAsked: true, tutorialDone: true, pregame: 'off', sound: false, commentary: false } }));
   let a = SEED; Math.random = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const realRAF = window.requestAnimationFrame.bind(window); const realNow = performance.now.bind(performance);
   let cbs = []; let fake = null; window.__manual = false;

@@ -34,7 +34,7 @@ let problems = 0;
 for (const ph of PHONES) {
   const ctx = await browser.newContext({ viewport: { width: ph.width, height: ph.height }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
-  await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v, hintMatches: 0 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })), version);
+  await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v, hintMatches: 0 }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })), version);
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.tap('#startBtn'); await page.waitForSelector('[data-go="squad"]');
   await page.evaluate(async () => (await import('/js/app.js')).navigate('play', { homeId: 'c1', awayId: 'c2', duration: 1200, skill: 1, mode: 'single' }));

@@ -825,6 +825,20 @@ export function objectivesView() {
  * happened, why, and what they have been given to start again with.
  */
 function apologyCard() {
+  // v204: Season 2 — every club starts again (state.js applySeason)
+  if (getState().flags?.season2) {
+    return `
+    <section class="panel glass apology" id="apologyCard">
+      <header class="panel-head"><h2>${tx('Season 2 — everyone starts again')}</h2></header>
+      <p>${tx('A new season: every club, card, pack and balance is back to the start, for every player. Your club\'s name, badge and colours, your stadiums and your trophy cabinet stay.')}</p>
+      <ul class="ap-list">
+        <li><b>◈ 5,000</b> ${tx('to start with')}</li>
+        <li><b>${tx('A Gold pack, two Silver and a Bronze')}</b> ${tx('in your locker')}</li>
+        <li><b>${tx('New online rankings')}</b> ${tx('— everyone from zero')}</li>
+      </ul>
+      <button class="btn primary" id="apologyOk">${tx('Let\'s go')}</button>
+    </section>`;
+  }
   if (!getState().flags?.apology) return '';
   return `
     <section class="panel glass apology" id="apologyCard">
@@ -1149,7 +1163,7 @@ function collectionHTML() {
 export function mount(root) {
   // Dismissing clears the flag for good: it is an explanation, not a nag.
   root.querySelector('#apologyOk')?.addEventListener('click', () => {
-    update((s) => { s.flags.apology = false; });
+    update((s) => { s.flags.apology = false; s.flags.season2 = false; });
     root.querySelector('#apologyCard')?.remove();
   });
 

@@ -90,7 +90,7 @@ async function boot(browser, F, server, notes) {
     window.APEX_IOS = { version: '1.1', build: '7', commit: '' };
     if (!localStorage.getItem('apexxi.save.v1')) {
       localStorage.setItem('apexxi.save.v1', JSON.stringify({
-        meta: { reset: 'econ-2curr-1' },
+        meta: { reset: 'econ-2curr-1', season: 2 },
         flags: { notesSeen: notes, onboarded: true, hintMatches: 9 },
         settings: { quality: 'high', reduceMotion: false, tutorialDone: true, music: false, sfx: false, commentary: false, menuTheme: 'off' },
       }));

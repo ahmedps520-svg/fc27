@@ -39,7 +39,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(`page: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR|Failed to load resource|WebSocket|WebGL/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
 watchResponses(page, server.url, errors);   // v100: the filter above hides failed loads; this names them
-await page.addInitScript(() => { if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, sound: false, commVoice: false } })); });
+await page.addInitScript(() => { if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, sound: false, commVoice: false } })); });
 await page.goto(`${server.url}/`);
 await page.waitForSelector('#startBtn', { timeout: 60000 });
 await page.click('#startBtn');

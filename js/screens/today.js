@@ -127,7 +127,7 @@ function claimsPanel(s) {
   return `
     <section class="panel glass">
       <header class="panel-head"><h2>To claim <small>${pending.length + ach}</small></h2></header>
-      ${pending.map((p) => `<div class="claim-row"><div><b>${p.title}</b><span>${p.sub || ''}</span></div><button class="btn primary" data-claim="${p.id}">${p.apex ? `◈ ${p.apex.toLocaleString()}` : 'Claim'}</button></div>`).join('')}
+      ${pending.map((p) => `<div class="claim-row"><div><b>${p.title}</b><span>${p.sub || ''}</span></div><button class="btn primary" data-claim="${p.id}">${p.apex && !p.ultimate && !p.packs ? `◈ ${p.apex.toLocaleString()}` : 'Claim'}</button></div>`).join('')}
       ${ach ? `<div class="claim-row"><div><b>${ach} achievement${ach > 1 ? 's' : ''} unlocked</b><span>Collect them in the trophy room</span></div><button class="btn" data-go="trophies">Trophy room →</button></div>` : ''}
     </section>`;
 }

@@ -33,7 +33,7 @@ try {
     page.on('pageerror', (e) => errors.push(`${tag}: ${e.message}`));
     page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR|Failed to load resource/.test(m.text())) errors.push(`${tag} console: ${m.text()}`); });
     await page.addInitScript(({ notes }) => {
-      if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: notes }, settings: { quality: 'low', reduceMotion: false, tutorialDone: true, commVoice: false } }));
+      if (!localStorage.getItem('apexxi.save.v1')) localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notes }, settings: { quality: 'low', reduceMotion: false, tutorialDone: true, commVoice: false } }));
     }, { notes });
     const shot = async (name) => {
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

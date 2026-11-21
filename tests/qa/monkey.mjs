@@ -20,7 +20,7 @@ const note = (kind, msg) => { const k = `${kind}: ${msg.slice(0, 200)}`; if (!fo
 page.on('pageerror', (e) => note('pageerror', `${e.message} ${(e.stack || '').split('\n')[1] || ''}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::ERR|Failed to load resource|WebSocket/.test(m.text())) note('console', m.text()); });
 page.on('dialog', (d) => d.accept().catch(() => {}));
-await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })));
+await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } })));
 await page.goto(`${server.url}/`); await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
 const screens = arg('--screens', 'menu,squad,career,quick,settings,world,stadiums,builder,pro,street,skills,online,today,trophies,weekend').split(',');
 const nav = (n, p = {}) => page.evaluate(async ([n, p]) => { (await import('/js/app.js')).navigate(n, p); }, [n, p]);

@@ -32,7 +32,7 @@ for (const device of ONLY) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|WebSocket|net::/.test(m.text())) errors.push(m.text()); });
   await page.addInitScript((pad) => {
-    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
+    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true } }));
     window.__apexFrames = 0; const count = () => { window.__apexFrames++; requestAnimationFrame(count); }; requestAnimationFrame(count);
     if (pad) {
       const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));

@@ -11,7 +11,7 @@ const v = await fetch(`${server.url}/js/app.js`).then((r) => r.text()).then((t) 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: 432, height: 768 }, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
-await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: 'high', qualityPicked: true, tutorialDone: true, menuTheme: 'off', sound: false } })), v);
+await page.addInitScript((v) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v }, settings: { quality: 'high', qualityPicked: true, tutorialDone: true, menuTheme: 'off', sound: false } })), v);
 await page.goto(`${server.url}/`);
 // the early builds walled portrait phones off with a rotate hint: that is what a phone saw, so that is the shot
 if (await page.$('#rotateHint:visible')) { await page.waitForTimeout(3000); await page.screenshot({ path: OUT, type: 'jpeg', quality: 92, timeout: 180000 }); console.log('✔ rotate wall', v, OUT); await browser.close(); server.stop(); process.exit(0); }

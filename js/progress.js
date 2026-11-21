@@ -243,6 +243,7 @@ export function claimPending(id) {
     [got] = s.club.pending.splice(i, 1);
     if (got.apex) s.club.apex += got.apex;
     if (got.pack) s.club.packs.push(got.pack);
+    if (Array.isArray(got.packs)) s.club.packs.push(...got.packs.filter((x) => typeof x === 'string'));   // v204: a gift of several
     if (got.ultimate) s.club.ultimate = (s.club.ultimate || 0) + got.ultimate;
   });
   return got;

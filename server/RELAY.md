@@ -1,5 +1,11 @@
 # The near relay (v202)
 
+**Now (v204): a Render service in Frankfurt**, `apexxi-relay-fra`
+(https://apexxi-relay-fra.onrender.com), `node server/relay.js` with
+`RELAY_SECRET` and `RELAY_HOST=0.0.0.0` (it listens on Render's `PORT`). The
+main service's `RELAY_URL` points at it. The spare-PC quick tunnel below is
+retired: its secret was rotated.
+
 A small server near the players that carries an online match's snapshots and
 inputs when the two phones cannot link up directly. The main server on Render
 keeps accounts, saves, matchmaking, results and spectators, and is the fallback

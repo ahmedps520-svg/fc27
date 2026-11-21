@@ -961,7 +961,31 @@ export function mount(root, params) {
   const view = online && !online.host ? new SnapshotView(match) : null;
   // input rides the direct channel when one is up — sendMatch falls back to the
   // websocket per packet, so this is safe before, during and after an upgrade
-  const sender = online && !online.host && !spectating ? new InputSender(localInput, 20, sendMatch) : null;
+  /* v204: the ping on the match's own route. The old readout bounced an `evt`
+   * through the main server, so it showed the trip to Singapore and back twice
+   * even when the match itself ran phone to phone or through the near relay.
+   * Now each side stamps one outgoing snapshot or input a second (`pp`) and the
+   * other side sends the stamp straight back on its next one (`pr`), over
+   * whichever route that packet takes — the delay you actually play with. A
+   * 1v1 only (a party's host would have to answer several guests); an older
+   * build never echoes, and the readout falls back to the old bounce. */
+  let pathRtt = null;
+  let echoOut = null;
+  const myStamps = [];
+  const stampOut = (msg) => {
+    if (!online || online.party || spectating) return msg;
+    if (echoOut != null) { msg.pr = echoOut; echoOut = null; }
+    const now = performance.now();
+    if (!myStamps.length || now - myStamps[myStamps.length - 1] > 1000) { msg.pp = now; myStamps.push(now); if (myStamps.length > 4) myStamps.shift(); }
+    return msg;
+  };
+  const stampIn = (m) => {
+    if (!online || online.party || spectating) return;
+    if (typeof m.pp === 'number') echoOut = m.pp;
+    if (typeof m.pr === 'number' && myStamps.includes(m.pr)) pathRtt = Math.round(performance.now() - m.pr);
+  };
+  const sendStamped = (msg) => sendMatch(stampOut(msg));
+  const sender = online && !online.host && !spectating ? new InputSender(localInput, 20, sendStamped) : null;
   const netEl = root.querySelector('#gmNet');
   let snapAcc = 0;
 
@@ -1014,10 +1038,11 @@ export function mount(root, params) {
     match.online = true;
     // Only the host's clock is authoritative, so the guest must not tick its own.
     if (online.host) {
-      netOffs.push(net.on('in', (m) => (remotes ? remotes[m.sq]?.accept(m) : remote.accept(m))));
+      netOffs.push(net.on('in', (m) => { stampIn(m); return remotes ? remotes[m.sq]?.accept(m) : remote.accept(m); }));
       netOffs.push(net.on('evt', (m) => { if (m.k === 'pausereq') requestPause(m.name || online.oppName); }));
     } else {
       netOffs.push(net.on('snap', (m) => {
+        stampIn(m);
         view.accept(m);
         /* v186: the host sends nothing while its own replay plays, so a picture
            arriving well into ours means the host is back in play — and so are
@@ -2225,7 +2250,7 @@ export function mount(root, params) {
       } else { tapeAcc = 0; tapeLast = null; }
       if (match.phase === 'end') {
         // v82: the whistle goes out with a last picture, so every guest sees the end the host saw
-        if (online?.host) sendMatch(encodeSnapshot(match));
+        if (online?.host) sendStamped(encodeSnapshot(match));
         ended = true;
         if (attract) { navigate('splash'); return; }
         finish();
@@ -2287,7 +2312,7 @@ export function mount(root, params) {
         if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
         if (pq && syncLeft <= 0) snap.pq = pq.name;
         if (syncLeft > 0) snap.pz = [pq ? pq.name : '', Math.ceil(syncLeft * 10)];
-        sendMatch(snap);
+        sendStamped(snap);
         // watchers only ever see what goes through the hub: a match running
         // browser-to-browser has to copy its picture up for them as well
         if (spectators > 0 && offHub()) net.send(snap);
@@ -2456,7 +2481,7 @@ export function mount(root, params) {
       padEl.hidden = !input.pad && lastDevice() === 'touch';
     }
     if (online) {
-      const q = qualityLabel(peerRtt ?? rtt);
+      const q = qualityLabel(pathRtt ?? peerRtt ?? rtt);
       // the host stops broadcasting while it plays its own replay, so a stale
       // stream during one is expected rather than a connection problem
       const lost = view?.stale && !replay;

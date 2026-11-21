@@ -18,7 +18,7 @@ const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, sound: false } })));
+await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, sound: false } })));
 await page.goto(`${server.url}/`);
 await page.waitForSelector('#startBtn', { timeout: 60000 });
 await page.click('#startBtn');

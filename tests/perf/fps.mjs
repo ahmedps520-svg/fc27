@@ -36,7 +36,7 @@ const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
   settings: { quality: 'low', reduceMotion: true, tutorialDone: true },
 })));
 await page.goto(`${server.url}/`);

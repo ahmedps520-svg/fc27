@@ -48,7 +48,7 @@ const page = await browser.newPage({ viewport: { width: W, height: H } });
 page.on('pageerror', (e) => console.log('page error', e.message));
 await page.addInitScript(({ v, Q, APPSTORE }) => {
   if (APPSTORE) window.APEX_APP_STORE = true;
-  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v }, settings: { quality: Q, qualityPicked: true, tutorialDone: true, pregame: 'off', broadcast: false, sound: false } }));
+  localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v }, settings: { quality: Q, qualityPicked: true, tutorialDone: true, pregame: 'off', broadcast: false, sound: false } }));
   // the manual clock: off until the scene starts
   const realRAF = window.requestAnimationFrame.bind(window);
   const realNow = performance.now.bind(performance);

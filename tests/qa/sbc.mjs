@@ -17,7 +17,7 @@ const problems = [];
 page.on('pageerror', (e) => problems.push(`page error ${e.message}`));
 const consoleIssues = watchConsole(page, { tag: 'sbc', origin: server.url });
 await page.addInitScript(() => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-  meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' },
+  meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' },
   settings: { reduceMotion: true, tutorialDone: true, quality: 'low' },
 })));
 await page.goto(`${server.url}/`);

@@ -20,7 +20,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/favicon|WebSocket|net::/.test(m.text())) errors.push(m.text()); });
 await page.addInitScript(() => {
   if (!sessionStorage.getItem('seeded')) {
-    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', tutorialDone: true } }));
+    localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999' }, settings: { quality: 'low', tutorialDone: true } }));
     sessionStorage.setItem('seeded', '1');
   }
   window.__apexAttractMs = 1500;

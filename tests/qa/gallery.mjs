@@ -5,7 +5,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const notesVersion = await fetch(`${server.url}/js/data/patchNotes.js`).then((r) => r.text()).then((t) => (t.match(/version: '(v\d+)'/) || [])[1]);
 const page = await browser.newPage({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 page.on('pageerror', (e) => console.log('pageerror', e.message));
-const s = { meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: notesVersion }, settings: { quality: 'medium', reduceMotion: false, tutorialDone: true, models: 'simple' } };
+const s = { meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notesVersion }, settings: { quality: 'medium', reduceMotion: false, tutorialDone: true, models: 'simple' } };
 await page.addInitScript((sv) => localStorage.setItem('apexxi.save.v1', JSON.stringify(sv)), s);
 await page.goto(`${server.url}/`); await page.tap('#startBtn'); await page.waitForSelector('[data-go="squad"]');
 await page.evaluate(async () => (await import('/js/app.js')).navigate('play', { homeId: 'c1', awayId: 'c2', duration: 240, skill: 1, mode: 'single', atmo: { weather: 'clear', time: 'day' } }));

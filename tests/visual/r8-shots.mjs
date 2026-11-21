@@ -31,7 +31,7 @@ for (const sh of SHOTS) {
   const page = await browser.newPage({ viewport: { width: 640, height: 360 }, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => errors.push(`${sh.name}: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|net::|Failed to load/.test(m.text())) errors.push(`${sh.name}: console ${m.text().slice(0, 200)}`); });
-  await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' }, settings: { quality: q, reduceMotion: true, tutorialDone: true } })), TIER);
+  await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' }, settings: { quality: q, reduceMotion: true, tutorialDone: true } })), TIER);
   await page.goto(`${server.url}/`);
   await page.waitForSelector('#startBtn'); await page.click('#startBtn'); await page.waitForSelector('[data-go="squad"]');
   await page.evaluate(async (s) => { const app = await import('/js/app.js'); app.navigate('play', { homeId: 'c1', awayId: 'c4', venueId: s.venue, duration: 1200, skill: 1, mode: 'single', atmo: s.atmo }); }, sh);

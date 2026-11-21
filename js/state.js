@@ -5,6 +5,7 @@ import { pushSave } from './net/api.js';
 import * as storage from './storage.js';
 import * as safety from './saveSafety.js';
 import { deviceClass } from './game/quality.js';
+import { APP_STORE } from './platform.js';
 
 const KEY = 'apexxi.save.v1';
 
@@ -22,6 +23,49 @@ const START_APEX = 5_000;
  * were worth several times what the new ones cost to assemble.
  */
 const RESET_TAG = 'econ-2curr-1';
+
+/**
+ * v204: Season 2 — everybody starts again: every club, card, pack, balance,
+ * squad, division, Draft, scenario, Style item, season pass, Career, Player
+ * Career, Street and skill best. Kept: settings, your club's name, badge and
+ * colours, your stadium designs, the trophy cabinet (Season 1's silverware)
+ * and the one-off flags. Everyone gets the new-manager start.
+ *
+ * It is `meta.season`, not a new `meta.reset`: the 1.1 and 1.2 iPhone apps
+ * carry the old code, whose reset check wipes any save whose `reset` it does
+ * not recognise — so a Season 2 save synced through one of them would be
+ * wiped again, and pushed back. They pass a field they do not know straight
+ * through. The server refuses Season 1 saves from now on (guard.js), so an
+ * old app cannot push one back over a Season 2 save either.
+ */
+export const SEASON = 2;
+// kept in step with cosmetics.js (tests/unit/season2.test.mjs): a Style item is yours again only once bought again
+const PREMIUM = { kit: ['chevron', 'quarters', 'band', 'checks', 'fade'], celebration: ['flex', 'drummer', 'archer', 'whirlwind'], pitch: ['waves', 'chevron', 'diamonds'] };
+export const SEASON_PREMIUM = PREMIUM;
+
+function applySeason(s) {
+  if ((s.meta?.season | 0) >= SEASON) return false;
+  const d = defaults();
+  const old = s.club && typeof s.club === 'object' ? s.club : {};
+  s.club = { ...d.club };
+  if (old.identity && typeof old.identity === 'object') {
+    const identity = JSON.parse(JSON.stringify(old.identity));
+    for (const side of ['home', 'away']) if (identity.kit?.[side] && PREMIUM.kit.includes(identity.kit[side].pattern)) identity.kit[side].pattern = 'plain';
+    s.club.identity = identity;
+  }
+  if (old.stadium && typeof old.stadium === 'object') {
+    const stadium = JSON.parse(JSON.stringify(old.stadium));
+    for (const design of [stadium.design, ...(Array.isArray(stadium.saved) ? stadium.saved : [])]) if (design && PREMIUM.pitch.includes(design.pattern)) design.pattern = 'stripes';
+    s.club.stadium = stadium;
+  }
+  if (Array.isArray(old.cabinet)) s.club.cabinet = old.cabinet;
+  if (s.settings && PREMIUM.celebration.includes(s.settings.celebration)) delete s.settings.celebration;
+  s.ultimate = freshUltimate();
+  s.career = null; s.pro = null; s.street = null; s.skills = null;
+  s.flags = { ...s.flags, apology: false, season2: true };
+  s.meta = { ...s.meta, season: SEASON, reset: RESET_TAG };
+  return true;
+}
 
 const defaults = () => ({
   settings: {
@@ -119,7 +163,7 @@ const defaults = () => ({
     // announces itself exactly once and an existing one never does.
     notesSeen: null,
   },
-  meta: { reset: RESET_TAG }, // which wipe this save has already been through
+  meta: { reset: RESET_TAG, season: SEASON }, // which wipe this save has already been through (v204: and which season it is)
   career: null,               // set once a career is started
   pro: null,                  // v81: the Player Career, once a player is created
   street: null,               // v82: the Street mode: your baller, crew, tour, cosmetics
@@ -195,6 +239,21 @@ let state = defaults();
 /** v87: set when a damaged save was replaced by a backup, so the app can say so once. */
 export let recoveredFrom = null;
 
+/**
+ * v204: the App Store app's welcome gift — once per player, on the save they
+ * keep, waiting on the Today hub. The website never gives it (`APP_STORE` is
+ * set only by the iPhone shell). Flagged as it is queued, so it cannot queue
+ * twice; claimed like any other reward (progress.js claimPending).
+ */
+export const APP_GIFT = { apex: 15000, ultimate: 30, packs: ['prime', 'gold', 'gold'] };
+export function grantAppGift(s, appStore = APP_STORE) {
+  if (!appStore || !s?.club || !s.flags || s.flags.appGift) return false;
+  if (!Array.isArray(s.club.pending)) s.club.pending = [];
+  s.club.pending.unshift({ id: 'appgift', at: Date.now(), kind: 'gift', title: 'Welcome gift', sub: 'For playing on the App Store app: 30 ✦ · a Prime pack · 2 Gold packs · ◈ 15,000', ...APP_GIFT });
+  s.flags.appGift = true;
+  return true;
+}
+
 export function loadState() {
   let raw = null;
   try {
@@ -241,7 +300,8 @@ export function loadState() {
       // Persist the wipe the moment it happens. Leaving it in memory would mean
       // re-running it on the next load — and by then the player may have earned
       // something, which the second wipe would take back off them.
-      if (applyReset(state)) {
+      const wiped = applyReset(state);
+      if (applySeason(state) || wiped) {
         try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
       }
     }
@@ -249,6 +309,7 @@ export function loadState() {
     state = defaults();
   }
   repairSave(state);
+  if (grantAppGift(state)) { try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ } }
   return state;
 }
 
@@ -361,7 +422,9 @@ export function adoptCloudSave(cloud) {
   // a save pulled from the cloud may predate the wipe even when this device's
   // local copy did not
   applyReset(state);
+  applySeason(state);           // v204
   repairSave(state);
+  grantAppGift(state);          // v204: on the save that is kept
   try { storage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
   return true;
 }

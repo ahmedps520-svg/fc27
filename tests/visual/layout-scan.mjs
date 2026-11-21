@@ -42,7 +42,7 @@ for (const lang of LANGS) {
     page.on('pageerror', (e) => problems.push(`${lang}/${ph.name}: page error ${e.message}`));
     consoleIssues.push(watchConsole(page, { tag: `${lang}/${ph.name}`, origin: server.url }));   // v100: console.error and 4xx/5xx
     await page.addInitScript((l) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-      meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+      meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
       settings: { lang: l, reduceMotion: true, tutorialDone: true, quality: 'low' },
     })), lang);
     await page.goto(`${server.url}/`);

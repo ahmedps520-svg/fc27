@@ -35,7 +35,7 @@ async function fresh() {
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => console.log('  page error:', e.message));
   await page.addInitScript(([q, v]) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-    meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v, hintMatches: 9 },
+    meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v, hintMatches: 9 },
     settings: { quality: q, tutorialDone: true, pregame: 'off', camera: { preset: 'broadcast' } },
   })), [QUALITY, VERSION]);
   await page.goto(`${server.url}/`);

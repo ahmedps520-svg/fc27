@@ -51,7 +51,7 @@ test('saveWeight counts progress, cloudWins arbitrates and adminRev overrides', 
 
 test('adopting a cloud save replaces the club but keeps device settings', () => {
   update((s) => { s.settings.quality = 'low'; s.settings.commentary = false; });
-  adoptCloudSave({ club: { apex: 42, collection: ['p9'] }, ultimate: freshUltimate(), meta: { reset: 'econ-2curr-1' }, settings: { commentary: true, quality: 'ultra' } });
+  adoptCloudSave({ club: { apex: 42, collection: ['p9'] }, ultimate: freshUltimate(), meta: { reset: 'econ-2curr-1', season: 2 }, settings: { commentary: true, quality: 'ultra' } });
   const s = getState();
   assert.equal(s.club.apex, 42);
   assert.deepEqual(s.club.collection, ['p9']);

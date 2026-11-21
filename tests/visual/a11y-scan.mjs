@@ -28,7 +28,7 @@ try {
     const page = await ctx.newPage();
     page.on('pageerror', (e) => problems.push(`${lang}: page error ${e.message}`));
     consoleIssues.push(watchConsole(page, { tag: lang, origin: server.url }));   // v100: console.error and 4xx/5xx
-    await page.addInitScript((lang) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v999', onboarded: true }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, lang } })), lang);
+    await page.addInitScript((lang) => localStorage.setItem('apexxi.save.v1', JSON.stringify({ meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v999', onboarded: true }, settings: { quality: 'low', reduceMotion: true, tutorialDone: true, lang } })), lang);
     await page.goto(`${server.url}/`);
     await page.waitForSelector('#startBtn', { timeout: 30000 });
     await page.click('#startBtn');

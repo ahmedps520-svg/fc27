@@ -21,7 +21,7 @@ const rows = [];
 for (const tier of TIERS) {
   const page = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1 });
   await page.addInitScript(({ q, v }) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-    meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: v },
+    meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: v },
     settings: { quality: q, qualityPicked: true, reduceMotion: true, tutorialDone: true, models: 'realistic', pregame: 'off', broadcast: false },
   })), { q: tier, v: appVersion });
   await page.goto(`${server.url}/`);

@@ -10212,7 +10212,8 @@
   }
 
   // js/state.js
-  var START_APEX = 5e3, RESET_TAG = "econ-2curr-1", defaults = () => ({
+  var START_APEX = 5e3, RESET_TAG = "econ-2curr-1", SEASON = 2;
+  var defaults = () => ({
     settings: {
       simSpeed: "normal",
       // instant | fast | normal
@@ -10348,8 +10349,8 @@
       // announces itself exactly once and an existing one never does.
       notesSeen: null
     },
-    meta: { reset: RESET_TAG },
-    // which wipe this save has already been through
+    meta: { reset: RESET_TAG, season: SEASON },
+    // which wipe this save has already been through (v204: and which season it is)
     career: null,
     // set once a career is started
     pro: null,

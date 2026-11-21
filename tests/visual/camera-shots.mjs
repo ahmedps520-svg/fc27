@@ -49,7 +49,7 @@ for (const venue of VENUES) {
   const page = await browser.newPage({ viewport: { width: 480, height: 270 }, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => failures.push(`${venue}: page error ${e.message}`));
   await page.addInitScript((q) => localStorage.setItem('apexxi.save.v1', JSON.stringify({
-    meta: { reset: 'econ-2curr-1' }, flags: { notesSeen: 'v99' },
+    meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: 'v99' },
     settings: { quality: q, reduceMotion: true, tutorialDone: true, camera: { preset: 'broadcast' } },
   })), QUALITY);
   await page.goto(`${server.url}/`);
