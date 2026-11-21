@@ -472,6 +472,8 @@ async function api(req, res, route) {
     const dry = new URL(req.url, 'http://x').searchParams.get('dry') === '1';
     if (dry) return json(res, 200, { ok: true, dry: true });
     if (ts < RELAY.lastTs) return json(res, 200, { ok: true, stale: true });
+    // a fixed RELAY_URL (a hosted relay) is the one in use: a quick tunnel announcing elsewhere does not move it
+    if (RELAY.fixed && url !== RELAY.fixed) return json(res, 200, { ok: true, ignored: true });
     RELAY.lastTs = ts;
     if (url !== RELAY.http) {
       console.log(`[relay] announced at ${url}`);
