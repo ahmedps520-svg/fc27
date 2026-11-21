@@ -125,6 +125,27 @@ const DICT = { en: EN, ar: AR };
 /* v169: short labels translated by their English text, where a key per row
    would only repeat the English (Settings rows, table headers). */
 const AR_TEXT = {
+  // v206: APEX Club
+  "Member until": "عضو حتى",
+  "Daily member Apex": "أبكس العضو اليومي",
+  "Once a day while you are a member": "مرة يومياً طوال عضويتك",
+  "Claimed today": "تم الاستلام اليوم",
+  "Manage subscription": "إدارة الاشتراك",
+  "Every month: 80 ✦, 2 Prime packs, a Gold pack and ◈ 40,000": "كل شهر: 80 ✦ وحزمتا برايم وحزمة ذهبية و◈ 40,000",
+  "Plus ◈ 2,000 every day. Monthly, cancel any time.": "و◈ 2,000 كل يوم. شهري، ألغِ متى شئت.",
+  "Monthly membership": "عضوية شهرية",
+  "Every month": "كل شهر",
+  "2 Prime packs": "حزمتا برايم",
+  "a Gold pack": "حزمة ذهبية",
+  "Every day": "كل يوم",
+  "month": "شهر",
+  "APEX Club renews every month at the price shown until you cancel. Payment is charged to your Apple ID when you confirm, and each renewal within 24 hours before the month ends; cancel at least 24 hours before to stop it. Manage or cancel any time in Settings → your name → Subscriptions.": "يتجدد نادي أبكس كل شهر بالسعر المعروض حتى تلغيه. يُخصم المبلغ من حساب Apple عند التأكيد، وكل تجديد خلال 24 ساعة قبل نهاية الشهر؛ ألغِ قبل 24 ساعة على الأقل لإيقافه. أدِر اشتراكك أو ألغِه في الإعدادات ← اسمك ← الاشتراكات.",
+  "Terms of Use": "شروط الاستخدام",
+  "Privacy Policy": "سياسة الخصوصية",
+  // v206: pack ceilings
+  "best card": "أفضل بطاقة",
+  "outside the promo slot": "خارج خانة العرض",
+  "up to": "حتى",
   // v205: the App Store app's shop and the Season Pass
   "Shop": "المتجر",
   "bonus": "إضافي",

@@ -41,8 +41,11 @@ beforeEach(() => { resetStorage(); resetAll(); loadState(); calls.finished = [];
 test('the products are the ones App Store Connect is given, at the owner\'s prices', () => {
   const cfg = JSON.parse(fs.readFileSync(new URL('../../app/store/iap.json', import.meta.url), 'utf8'));
   assert.equal(cfg.prefix, iap.PREFIX);
-  assert.deepEqual(cfg.products.map((p) => p.id), iap.PRODUCTS.map((p) => p.id));
-  for (const c of cfg.products) {
+  assert.deepEqual(cfg.products.map((p) => p.id), iap.PRODUCTS.filter((p) => p.type !== 'subscription').map((p) => p.id));
+  assert.deepEqual(cfg.subscriptions.map((p) => p.id), iap.PRODUCTS.filter((p) => p.type === 'subscription').map((p) => p.id));
+  assert.equal(cfg.subscriptions[0].baseTerritory, 'SAU'); assert.equal(Number(cfg.subscriptions[0].price), 15, '15 riyals');
+  assert.ok(cfg.subscriptions[0].name.length <= 30 && cfg.subscriptions[0].description.length <= 45);
+  for (const c of cfg.products) {  // the one-time products
     const p = P(c.id);
     assert.equal(Number(c.usd), p.usd, c.id);
     assert.equal(c.type, p.type === 'nonconsumable' ? 'NON_CONSUMABLE' : 'CONSUMABLE', c.id);
@@ -148,4 +151,46 @@ test('purchases stay on the device: the cloud copy leaves them out, and adopting
   assert.equal(s.club.starterBought, true, 'the device keeps its own copy');
   adoptCloudSave(JSON.parse(JSON.stringify(c)));
   assert.equal(getState().club.starterBought, true); assert.equal(getState().club.pass.s2, true);
+});
+
+test('APEX Club: a monthly drop with every payment, once each; ◈ 2,000 a day while it runs; lapsed or refunded, nothing', async () => {
+  const progress2 = await import('../../js/progress.js');
+  const club = P('club.monthly');
+  assert.equal(club.type, 'subscription');
+  const until = new Date(Date.now() + 30 * 864e5).toISOString();
+  calls.next = { transactionId: '5001', productIdentifier: iap.PREFIX + 'club.monthly', expirationDate: until };
+  assert.equal((await iap.buy(club)).ok, true);
+  const s = getState();
+  assert.equal(iap.isMember(s), true);
+  const drops = () => getState().club.pending.filter((p) => p.kind === 'club');
+  assert.equal(drops().length, 1);
+  assert.deepEqual({ u: drops()[0].ultimate, a: drops()[0].apex, p: drops()[0].packs }, { u: 80, a: 40000, p: ['prime', 'prime', 'gold'] });
+  // the same payment again (redelivered): no second drop; a renewal (a new transaction): another
+  await iap.settle({ transactionId: '5001', productIdentifier: iap.PREFIX + 'club.monthly', expirationDate: until });
+  assert.equal(drops().length, 1);
+  const later = new Date(Date.now() + 60 * 864e5).toISOString();
+  await iap.settle({ transactionId: '5002', productIdentifier: iap.PREFIX + 'club.monthly', expirationDate: later });
+  assert.equal(drops().length, 2);
+  assert.equal(getState().club.member.until, Date.parse(later));
+  // the daily Apex: once a day
+  const a0 = getState().club.apex;
+  const day = Date.now();
+  assert.equal(progress2.claimClubDaily(day), 2000);
+  assert.equal(progress2.claimClubDaily(day), 0, 'once a day');
+  assert.equal(progress2.claimClubDaily(day + 864e5), 2000, 'and again tomorrow');
+  assert.equal(getState().club.apex, a0 + 4000);
+  // StoreKit says it has lapsed (or was refunded): no member, no daily
+  calls.purchases = [];
+  await iap.syncEntitlements();
+  assert.equal(iap.isMember(getState()), false);
+  assert.equal(progress2.claimClubDaily(day + 2 * 864e5), 0);
+  // a refund arriving through the update listener ends it too
+  calls.purchases = [{ transactionId: '5002', productIdentifier: iap.PREFIX + 'club.monthly', expirationDate: later }];
+  await iap.syncEntitlements();
+  assert.equal(iap.isMember(getState()), true);
+  await iap.settle({ transactionId: '5002', productIdentifier: iap.PREFIX + 'club.monthly', revocationDate: '2026-12-02T00:00:00Z' });
+  assert.equal(iap.isMember(getState()), false);
+  // and the membership never reaches the cloud copy
+  const { cloudCopy } = await import('../../js/net/api.js');
+  assert.equal(cloudCopy(getState()).club.member, undefined);
 });

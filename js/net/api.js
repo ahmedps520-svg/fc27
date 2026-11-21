@@ -103,9 +103,9 @@ export async function fetchSave() {
  * the same Apple ID (iap.js syncEntitlements); balances travel as always.
  */
 export function cloudCopy(state) {
-  if (!state?.club || (state.club.starterBought == null && state.club.pass == null)) return state;
+  if (!state?.club || (state.club.starterBought == null && state.club.pass == null && state.club.member == null)) return state;
   const club = { ...state.club };
-  delete club.starterBought; delete club.pass;
+  delete club.starterBought; delete club.pass; delete club.member;    // v206: and APEX Club membership
   return { ...state, club };
 }
 

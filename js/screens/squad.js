@@ -12,7 +12,7 @@ import { eventPack, activeEvent } from '../live.js';
 import { evolveInfo, evolve } from '../evolve.js';
 import {
   PACKS, PACK_BY_ID, packTone, RARITY_RANK, rollRarity, drawPlayer, openPack, dupValue,
-  FREE_MS, fmtLeft, hasKeeper, samplePulls, nationOfWeek, storeCatalog } from '../data/packs.js';
+  FREE_MS, fmtLeft, hasKeeper, samplePulls, nationOfWeek, storeCatalog, packCap } from '../data/packs.js';
 
 /** The player ids a pull would be a repeat of: the collection as it stands. */
 const ownedIds = () => new Set(getState().club.collection);
@@ -630,7 +630,9 @@ function oddsLine(p) {
     .map(([k, v]) => `${RARITY[k].label} ${Math.round(v * 100)}%`);
   // v80: the promo slot's own odds, stated plainly
   const v = p.variantOdds ? ` · promo slot: ${p.variantOdds.map(([n, x]) => `${n} ${Math.round(x * 1000) / 10}%`).join(', ')}` : '';
-  return parts.join(' · ') + v;
+  // v206: the best card the pack can give, stated (packCap)
+  const cap = packCap(p);
+  return parts.join(' · ') + v + (cap ? ` · ${tx('best card')} ${p.variant ? `${tx('outside the promo slot')} ` : ''}${tx('up to')} ${cap}` : '');
 }
 
 /* ---------------------------- Challenges ---------------------------- */

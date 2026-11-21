@@ -10,7 +10,10 @@ import { sfx } from '../audio.js';
 import { haptic } from '../native.js';
 import { tx } from '../i18n.js';
 import { about } from '../components/facts.js';
-import { PRODUCTS, PASS_SEASON, loadProducts, priceOf, buy, restore } from '../iap.js';
+import { PRODUCTS, PASS_SEASON, loadProducts, priceOf, buy, restore, isMember, manageSubscriptions } from '../iap.js';
+import { serverPath } from '../net/config.js';
+
+const EULA = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 let loaded = false;            // prices fetched once per visit to the tab
 let reachable = true;
@@ -32,6 +35,28 @@ function bundle(p, i, gem) {
   </button>`;
 }
 
+/**
+ * v206: APEX Club, with what Apple asks to be shown before an auto-renewing
+ * subscription is bought: its name, length and price, what it gives, how it
+ * renews and how to cancel, and the Terms of Use and Privacy Policy.
+ */
+function clubCard(s) {
+  const club = PRODUCTS.find((p) => p.id === 'club.monthly');
+  const member = isMember(s);
+  const pr = priceOf(club);
+  const until = member ? new Date(s.club.member.until).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '';
+  return `<div class="panel glass iap-offer iap-club ${member ? 'owned' : ''}">
+      <span class="iap-offer-k">${tx('Monthly membership')}</span>
+      <b>APEX Club</b>
+      <span class="iap-offer-items"><i>${tx('Every month')}: ✦ 80</i><i>${tx('2 Prime packs')}</i><i>${tx('a Gold pack')}</i><i>◈ 40,000</i><i>${tx('Every day')}: ◈ 2,000</i></span>
+      ${member
+        ? `<button class="iap-price owned" id="iapManage">✓ ${tx('Member until')} ${until}</button>`
+        : `<button class="iap-price" data-iap="${club.id}" ${pr ? '' : 'disabled'}>${pr ? `${pr} / ${tx('month')}` : (reachable ? '…' : '—')}</button>`}
+      <small class="iap-terms">${tx('APEX Club renews every month at the price shown until you cancel. Payment is charged to your Apple ID when you confirm, and each renewal within 24 hours before the month ends; cancel at least 24 hours before to stop it. Manage or cancel any time in Settings → your name → Subscriptions.')}
+        <a href="${EULA}" target="_blank" rel="noopener">${tx('Terms of Use')}</a> · <a href="${serverPath('privacy.html')}" target="_blank" rel="noopener">${tx('Privacy Policy')}</a></small>
+    </div>`;
+}
+
 export function iapShopView() {
   const s = getState();
   const starter = PRODUCTS.find((p) => p.id === 'starter');
@@ -46,6 +71,7 @@ export function iapShopView() {
       <span class="iap-offer-items"><i>✦ 20</i><i>${tx('Prime pack')}</i><i>◈ 10,000</i></span>
       ${priceBtn(starter)}
     </button>`}
+    ${clubCard(s)}
     <button class="panel glass iap-offer iap-pass ${hasPass ? 'owned' : ''}" data-iap="${pass.id}" ${hasPass || !priceOf(pass) ? 'disabled' : ''}>
       <span class="iap-offer-k">${tx('Season 2')}</span>
       <b>${tx('Season Pass')}</b>
@@ -87,6 +113,7 @@ export function mountIapShop(root) {
       b.disabled = false;
     } else b.disabled = false;
   });
+  root.querySelector('#iapManage')?.addEventListener('click', () => { manageSubscriptions(); });
   root.querySelector('#iapRestore')?.addEventListener('click', async (e) => {
     e.currentTarget.disabled = true;
     const r = await restore();

@@ -10670,7 +10670,41 @@
     }
   ], FREE_MS = 360 * 60 * 1e3;
   var DAY = 864e5, WEEK_MS = 7 * DAY;
-  var packTone = (p) => p.tone || p.guarantee || p.id, RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, nationalday: 4, star: 4, icon: 5 };
+  var packTone = (p) => p.tone || p.guarantee || p.id, PACK_CAPS = {
+    bronze: 74,
+    fodder: 76,
+    silver: 80,
+    keeper: 82,
+    striker: 82,
+    stack: 82,
+    dip: 84,
+    youth: 83,
+    defence: 83,
+    midfield: 83,
+    gold: 85,
+    form: 87,
+    premier: 87,
+    nations: 87,
+    builder: 87,
+    mega: 87,
+    gamble: 89,
+    double: 89,
+    prime: 89,
+    campaign: 86,
+    inform: 86,
+    nationalday: 86,
+    // the filler; the promo slot is the pack's promise
+    eleven: 92,
+    wildcard: 93
+  }, UNCAPPED = /* @__PURE__ */ new Set(["vault", "stars", "limited", "wonder", "legend"]);
+  function packCap(pack) {
+    if (!pack || UNCAPPED.has(pack.id) || pack.guarantee === "icon" || pack.guarantee === "star") return null;
+    if (Number.isFinite(pack.maxOverall)) return pack.maxOverall;
+    if (PACK_CAPS[pack.id]) return PACK_CAPS[pack.id];
+    let c = pack.cost || 0;
+    return c <= 0 ? 74 : c <= 2e3 ? 80 : c <= 6e3 ? 83 : c <= 9e3 ? 85 : c <= 22e3 ? 87 : c <= 32e3 ? 90 : null;
+  }
+  var RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, nationalday: 4, star: 4, icon: 5 };
   function rollRarity(odds) {
     let r = Math.random(), acc = 0;
     for (let [rarity, chance] of Object.entries(odds))
@@ -10690,8 +10724,19 @@
     } : null;
   }
   function openPack(pack, seen = /* @__PURE__ */ new Set(), needGK = !1) {
-    let scope = filterOf(pack.filter), inPack = /* @__PURE__ */ new Set(), LADDER2 = ["bronze", "silver", "gold", "special"], draw2 = (rarity, extra = null) => {
-      let only = scope && extra ? (p2) => scope(p2) && extra(p2) : scope || extra, p = drawPlayer(rarity, seen, only);
+    let scope = filterOf(pack.filter), inPack = /* @__PURE__ */ new Set(), LADDER2 = ["bronze", "silver", "gold", "special"], cap2 = packCap(pack), capOk = cap2 ? (p) => p.overall <= cap2 : null, memo = /* @__PURE__ */ new Map(), has = (rarity, only) => {
+      if (only === capOk && memo.has(rarity)) return memo.get(rarity);
+      let v = WORLD.players.some((p) => !p.sbc && p.rarity === rarity && (!only || only(p)));
+      return only === capOk && memo.set(rarity, v), v;
+    }, draw2 = (rarity, extra = null) => {
+      let preds = [scope, extra, capOk].filter(Boolean), only = preds.length > 1 ? (p2) => preds.every((f) => f(p2)) : preds[0] || null;
+      if (cap2 && !has(rarity, only)) {
+        for (let at = LADDER2.indexOf(rarity) - 1; at >= 0; at--) if (has(LADDER2[at], only)) {
+          rarity = LADDER2[at];
+          break;
+        }
+      }
+      let p = drawPlayer(rarity, seen, only);
       if (inPack.has(p.id)) {
         let at = Math.max(0, LADDER2.indexOf(rarity)), order = [...LADDER2.slice(at + 1), ...LADDER2.slice(0, at).reverse()];
         for (let r of order) {

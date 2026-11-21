@@ -16,7 +16,7 @@ import { packArt } from '../components/packArt.js';
 import { WORLD } from '../data/generator.js';
 import { activeEvent, eventKey, eventEndsAt, season, eventPack } from '../live.js';
 import { TIER_XP, TIERS, rewardText, tierOf, PREMIUM_TIERS } from '../data/season.js';
-import { iapAvailable, PASS_SEASON } from '../iap.js';   // v205: the Season Pass's paid track
+import { iapAvailable, PASS_SEASON, isMember, manageSubscriptions } from '../iap.js';   // v205: the Season Pass's paid track; v206: APEX Club
 import { openShop } from './squad.js';
 import { weekendWindow, currentWeekend, matchesLeft, rankFor, untilText } from '../weekend.js';
 import * as progress from '../progress.js';
@@ -150,6 +150,31 @@ function weekendPanel(s) {
     </section>`;
 }
 
+/** v206: APEX Club — the member's daily Apex and a way to manage it, or the door to joining (App Store app only). */
+function clubPanel(s) {
+  if (isMember(s)) {
+    const until = new Date(s.club.member.until).toLocaleDateString(lang() === 'ar' ? 'ar-u-nu-latn' : undefined, { day: 'numeric', month: 'long' });
+    return `
+    <section class="panel glass club-panel">
+      <header class="panel-head"><h2>✦ APEX Club</h2><span class="tag">${tx('Member until')} ${until}</span></header>
+      <div class="claim-row">
+        <div><b>${tx('Daily member Apex')}</b><span>${tx('Once a day while you are a member')}</span></div>
+        ${progress.clubDailyReady(s) ? `<button class="btn primary" id="clubDaily">◈ ${progress.CLUB_DAILY_APEX.toLocaleString()}</button>` : `<span class="tag">✓ ${tx('Claimed today')}</span>`}
+      </div>
+      ${iapAvailable() ? `<button class="btn ghost sm" id="clubManage">${tx('Manage subscription')}</button>` : ''}
+    </section>`;
+  }
+  if (!iapAvailable()) return '';
+  return `
+    <section class="panel glass club-panel join">
+      <header class="panel-head"><h2>✦ APEX Club</h2></header>
+      <div class="claim-row">
+        <div><b>${tx('Every month: 80 ✦, 2 Prime packs, a Gold pack and ◈ 40,000')}</b><span>${tx('Plus ◈ 2,000 every day. Monthly, cancel any time.')}</span></div>
+        <button class="btn primary" id="clubJoin">${tx('Join')}</button>
+      </div>
+    </section>`;
+}
+
 function claimsPanel(s) {
   const pending = s.club.pending || [];
   const ach = Object.entries(s.club.achievements || {}).filter(([, r]) => !r.claimed).length;
@@ -191,7 +216,7 @@ function worldPanel() {
 export function render() {
   const s = getState();
   const head = screenHead({ kicker: t('today.kicker'), title: t('today.title'), sub: new Date().toLocaleDateString(lang() === 'ar' ? 'ar-u-nu-latn-ca-gregory' : undefined, { weekday: 'long', day: 'numeric', month: 'long' }), motif: 'ladder', tone: 'a' });
-  return head + `<div class="today">${claimsPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${worldPanel()}${objectivesPanel(s)}</div>`;
+  return head + `<div class="today">${claimsPanel(s)}${clubPanel(s)}${dailyPanel()}${eventPanel(s)}${seasonPanel(s)}${weekendPanel(s)}${worldPanel()}${objectivesPanel(s)}</div>`;
 }
 
 export function mount(root) {
@@ -220,6 +245,14 @@ export function mount(root) {
     if (n) { sfx('coin'); refreshCoins(); toast(`${n} ${tx('pass rewards')}`, 'good'); refresh(); }
   });
   root.querySelector('#getPass')?.addEventListener('click', () => { openShop(); navigate('squad'); });
+  // v206: APEX Club
+  root.querySelector('#clubJoin')?.addEventListener('click', () => { openShop(); navigate('squad'); });
+  root.querySelector('#clubManage')?.addEventListener('click', () => { manageSubscriptions(); });
+  root.querySelector('#clubDaily')?.addEventListener('click', () => {
+    const n = progress.claimClubDaily();
+    if (!n) return;
+    sfx('coin'); refreshCoins(); toast(`APEX Club · ◈ ${n.toLocaleString()}`, 'good'); refresh();
+  });
   root.querySelector('#claimTiers')?.addEventListener('click', () => {
     let n = 0;
     for (let t = 1; t <= TIERS; t++) if (progress.claimTier(t)) n += 1;

@@ -158,6 +158,7 @@ try {
    * incomplete stops the submission, because the version's shop would show nothing to buy. */
   const iapCfg = (() => { try { return JSON.parse(fs.readFileSync(new URL('../store/iap.json', import.meta.url), 'utf8')); } catch { return null; } })();
   const iapReady = [];
+  const subsReady = [];     // v206
   if (iapCfg?.products?.length && !process.argv.includes('--no-iap')) {
     const have = [];
     for (let next = `/v1/apps/${app.id}/inAppPurchasesV2?limit=200`; next;) {
@@ -172,6 +173,17 @@ try {
         ok(`In-app purchase ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`);
         if (st === 'READY_TO_SUBMIT') iapReady.push(it);
       } else { bad(`In-app purchase ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`, 'run "iOS → In-app purchases", and check App Store Connect → Business for the Paid Applications Agreement'); blocker = true; }
+    }
+    // v206: the subscriptions (APEX Club) — the same check; Apple's API has no way to send a first one with a version either
+    for (const sub of iapCfg.subscriptions || []) {
+      const productId = iapCfg.prefix + sub.id;
+      const groups = (await get(`/v1/apps/${app.id}/subscriptionGroups?limit=200&include=subscriptions`));
+      const it = (groups.included || []).find((x) => x.type === 'subscriptions' && x.attributes.productId === productId);
+      const st = it?.attributes.state || 'MISSING';
+      if (['WAITING_FOR_REVIEW', 'IN_REVIEW', 'APPROVED', 'READY_TO_SUBMIT'].includes(st)) {
+        ok(`Subscription ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`);
+        if (st === 'READY_TO_SUBMIT') subsReady.push(it);
+      } else { bad(`Subscription ${productId}: ${st.replace(/_/g, ' ').toLowerCase()}`, 'run "iOS → In-app purchases"'); blocker = true; }
     }
   }
 
@@ -231,8 +243,9 @@ try {
       if (notTaken.length === 1) note(`Apple will not take an in-app purchase as a submission item: ${describe(e).replace(/\n\s*/g, ' ')}`);
     }
   }
+  for (const it of subsReady) notTaken.push([it, null]);           // v206: a subscription is never accepted as an item
   if (notTaken.length) {
-    bad(`${notTaken.length} in-app purchase(s) can only be added on the website`, `App Store Connect → APEX XI → iOS App ${VERSION} → In-App Purchases and Subscriptions → Select → tick them → Done → Add for Review → Submit to App Review`);
+    bad(`${notTaken.length} in-app purchase(s) or subscription(s) can only be added on the website`, `App Store Connect → APEX XI → iOS App ${VERSION} → In-App Purchases and Subscriptions → Select → tick them → Done → Add for Review → Submit to App Review`);
     note(`Version ${VERSION} with build ${BUILD} is staged in the review submission, ready — not sent`);
     summary(`App Store review: ${VERSION} (${BUILD}) — staged; the first in-app purchases are added and sent on the website`);
     process.exit(1);
