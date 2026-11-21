@@ -301,6 +301,25 @@ export function claimPremiumTier(tier) {
   return reward;
 }
 
+/**
+ * v206: APEX Club's daily Apex — once a UTC day while the membership runs
+ * (`club.member.until`, kept by iap.js from StoreKit). The monthly drop is a
+ * pending reward (iap.js applyClub), claimed like any other.
+ */
+export const CLUB_DAILY_APEX = 2000;
+const utcDay = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
+export const clubDailyReady = (s = getState(), now = Date.now()) => (s.club.member?.until || 0) > now && s.club.memberDaily !== utcDay(now);
+export function claimClubDaily(now = Date.now()) {
+  let got = 0;
+  update((s) => {
+    if (!clubDailyReady(s, now)) return;
+    s.club.memberDaily = utcDay(now);
+    s.club.apex += CLUB_DAILY_APEX;
+    got = CLUB_DAILY_APEX;
+  });
+  return got;
+}
+
 export function claimWeekend() {
   let out = null;
   update((s) => {
@@ -329,5 +348,5 @@ export function claimableCount() {
   const daily = dailyStatus().claimable ? 1 : 0;
   // v205: the Season Pass's paid rewards waiting, for a pass holder
   const pass = s.club.pass?.[se.id] ? Math.max(0, Math.min(TIERS, tier) - (s.club.season?.premium?.length || 0)) : 0;
-  return tiers + ach + pending + daily + pass;
+  return tiers + ach + pending + daily + pass + (clubDailyReady(s) ? 1 : 0);
 }

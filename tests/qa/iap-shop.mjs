@@ -20,7 +20,7 @@ const errors = [];
 const notes = await fetch(`${server.url}/js/data/patchNotes.js`).then((r) => r.text()).then((t) => (t.match(/version: '(v\d+)'/) || [])[1]);
 const save = { meta: { reset: 'econ-2curr-1', season: 2 }, flags: { notesSeen: notes, appGift: true }, settings: { quality: 'min', reduceMotion: true, tutorialDone: true, models: 'simple' } };
 
-const PRICES = { ult20: '$1.99', ult55: '$4.99', ult110: '$9.99', ult240: '$19.99', ult650: '$49.99', apex10k: '$0.99', apex60k: '$4.99', apex130k: '$9.99', apex280k: '$19.99', apex750k: '$49.99', starter: '$0.99', 'pass.s2': '$4.99' };
+const PRICES = { ult20: '$1.99', ult55: '$4.99', ult110: '$9.99', ult240: '$19.99', ult650: '$49.99', apex10k: '$0.99', apex60k: '$4.99', apex130k: '$9.99', apex280k: '$19.99', apex750k: '$49.99', starter: '$0.99', 'pass.s2': '$4.99', 'club.monthly': '14.99 SAR' };
 async function boot({ app, scale = 1, viewport = { width: 932, height: 430 } }) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: scale, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();

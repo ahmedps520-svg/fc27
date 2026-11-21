@@ -46,7 +46,16 @@ export const PRODUCTS = [
   { id: 'apex750k', shelf: 'apex', type: 'consumable', usd: 49.99, grant: { apex: 750000 }, tag: 'Best value', name: '750,000 Apex' },
   { id: 'starter', shelf: 'starter', type: 'consumable', usd: 0.99, grant: { ultimate: 20, apex: 10000, packs: ['prime'], starter: true }, once: true, name: 'Starter Pack' },
   { id: 'pass.s2', shelf: 'pass', type: 'nonconsumable', usd: 4.99, grant: { pass: PASS_SEASON }, name: 'Season 2 Pass' },
+  // v206: APEX Club, auto-renewing monthly (15 riyals: Saudi Arabia is the base price)
+  { id: 'club.monthly', shelf: 'club', type: 'subscription', sar: 14.99, grant: { club: true }, name: 'APEX Club' },
 ];
+
+/**
+ * v206: APEX Club — what a member gets. The monthly drop arrives with every
+ * subscription payment (the first and each renewal: one per transaction, on
+ * Today); the daily Apex can be claimed once a day while the membership runs.
+ */
+export const CLUB = { monthly: { ultimate: 80, apex: 40000, packs: ['prime', 'prime', 'gold'] }, daily: { apex: 2000 } };
 export const productOf = (fullId) => PRODUCTS.find((p) => PREFIX + p.id === fullId) || null;
 
 const plugin = () => globalThis.Capacitor?.Plugins?.NativePurchases || null;
@@ -75,6 +84,14 @@ export function applyGrant(s, product) {
   if (g.pass) s.club.pass = { ...(s.club.pass || {}), [g.pass]: true };
 }
 
+/** v206: a subscription payment — the membership runs to its expiry, and the month's drop waits on Today. */
+export function applyClub(s, tx) {
+  const until = Date.parse(tx?.expirationDate || '') || (Date.now() + 31 * 864e5);
+  s.club.member = { until: Math.max(until, s.club.member?.until || 0) };
+  if (!Array.isArray(s.club.pending)) s.club.pending = [];
+  s.club.pending.unshift({ id: `club-${tx?.transactionId || Date.now()}`, at: Date.now(), kind: 'club', title: 'APEX Club — monthly drop', sub: '80 ✦ · 2 Prime packs · a Gold pack · ◈ 40,000', ...CLUB.monthly });
+}
+
 /**
  * Credit a verified transaction once and finish it. Returns the product, or
  * null for one that is not ours or was already credited (still finished).
@@ -83,9 +100,17 @@ export async function settle(tx, { finish = true } = {}) {
   const product = productOf(tx?.productIdentifier);
   const id = tx?.transactionId;
   if (!product || !id) return null;
-  if (tx.revocationDate) { if (product.grant.pass) setPass(product.grant.pass, false); if (finish) await finishTx(id); return null; }
+  if (tx.revocationDate) {
+    if (product.grant.pass) setPass(product.grant.pass, false);
+    if (product.grant.club) update((s) => { s.club.member = { until: 0 }; });
+    if (finish) await finishTx(id);
+    return null;
+  }
   let fresh = false;
-  if (product.type === 'nonconsumable') {
+  if (product.type === 'subscription') {
+    if (tx.expirationDate && Date.parse(tx.expirationDate) < Date.now() && credited(id)) { if (finish) await finishTx(id); return null; }
+    if (!credited(id)) { update((s) => applyClub(s, tx)); remember(id); fresh = true; }
+  } else if (product.type === 'nonconsumable') {
     update((s) => applyGrant(s, product));         // an entitlement: saying it twice changes nothing
     fresh = !credited(id);
     if (fresh) remember(id);
@@ -114,9 +139,12 @@ let listeners = [];
 export async function loadProducts() {
   if (!iapAvailable()) return null;
   try {
-    const r = await plugin().getProducts({ productIdentifiers: PRODUCTS.map((p) => PREFIX + p.id), productType: 'inapp' });
     products = {};
-    for (const p of r?.products || []) products[p.identifier] = { priceString: p.priceString, price: p.price, currency: p.currencyCode };
+    for (const productType of ['inapp', 'subs']) {
+      const ids = PRODUCTS.filter((p) => (p.type === 'subscription') === (productType === 'subs')).map((p) => PREFIX + p.id);
+      const r = await plugin().getProducts({ productIdentifiers: ids, productType });
+      for (const p of r?.products || []) products[p.identifier] = { priceString: p.priceString, price: p.price, currency: p.currencyCode };
+    }
     return products;
   } catch { return null; }
 }
@@ -131,7 +159,7 @@ export async function buy(product) {
   if (!iapAvailable()) return { error: 'Purchases are only in the App Store app.' };
   if (product.once && getState().club.starterBought) return { error: 'You already have this one.' };
   try {
-    const tx = await plugin().purchaseProduct({ productIdentifier: PREFIX + product.id, productType: 'inapp', quantity: 1, autoAcknowledgePurchases: false });
+    const tx = await plugin().purchaseProduct({ productIdentifier: PREFIX + product.id, productType: product.type === 'subscription' ? 'subs' : 'inapp', quantity: 1, autoAcknowledgePurchases: false });
     const got = await settle(tx);
     return { ok: true, product: got || product };
   } catch (err) {
@@ -156,8 +184,13 @@ export async function syncEntitlements() {
   if (!iapAvailable()) return;
   try {
     const r = await plugin().getPurchases({ onlyCurrentEntitlements: true });
-    const owned = (r?.purchases || []).some((t) => t.productIdentifier === PREFIX + `pass.${PASS_SEASON}` && !t.revocationDate);
+    const list = r?.purchases || [];
+    const owned = list.some((t) => t.productIdentifier === PREFIX + `pass.${PASS_SEASON}` && !t.revocationDate);
     if (!!getState().club.pass?.[PASS_SEASON] !== owned) setPass(PASS_SEASON, owned);
+    // v206: APEX Club runs to the latest expiry StoreKit reports for this Apple ID (0 when it has lapsed or was refunded)
+    const sub = list.filter((t) => t.productIdentifier === PREFIX + 'club.monthly' && !t.revocationDate)
+      .map((t) => Date.parse(t.expirationDate || '') || 0).reduce((a, b) => Math.max(a, b), 0);
+    if ((getState().club.member?.until || 0) !== sub) update((s) => { s.club.member = { until: sub }; });
   } catch { /* offline: keep what the save says */ }
 }
 
@@ -172,6 +205,12 @@ export async function creditUnfinished() {
   for (const p of got) for (const fn of listeners) fn(p);
   return got;
 }
+
+/** v206: Apple's own page for managing (and cancelling) subscriptions. */
+export async function manageSubscriptions() {
+  try { await plugin()?.manageSubscriptions(); return true; } catch { return false; }
+}
+export const isMember = (s = getState(), now = Date.now()) => (s.club.member?.until || 0) > now;
 
 /** Hear about purchases credited outside a buy() call (to show a toast). */
 export function onCredited(fn) { listeners.push(fn); return () => { listeners = listeners.filter((x) => x !== fn); }; }

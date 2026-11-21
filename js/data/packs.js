@@ -250,6 +250,38 @@ export const packTone = (p) => p.tone || p.guarantee || p.id;
 /* Cheapest to rarest. `rarityFor` only ever returns the first four — star and
  * icon are set by hand on the named cards — but they rank above `special` so a
  * "gold or better" floor is satisfied by an Icon rather than overwritten by one. */
+/**
+ * v206: a ceiling for each pack — the best card it can give, by its price.
+ *
+ * The rarity odds alone let a cheap pack reach the top of the game: a gold or
+ * special roll drew from every card of that rarity, so a 2,000 ◈ Silver could
+ * hand over a 97 (3% of them gave a 90+), a 7,500 Gold gave a 90+ one time in
+ * five and a Prime nearly three times in four — a new season's squads were
+ * full of them inside a day. And the shelf showed 99s on every pack, the free
+ * Bronze included, because its sample cards ignored what the pack could give.
+ * Measured with the real draw (tests/unit/pack-caps.test.mjs). A roll above the
+ * ceiling becomes the best rarity that fits under it. The promo slot of a promo
+ * pack and the Limited packs keep their promise, which is the point of them.
+ */
+export const PACK_CAPS = {
+  bronze: 74, fodder: 76, silver: 80,
+  keeper: 82, striker: 82, stack: 82, dip: 84, youth: 83, defence: 83, midfield: 83,
+  gold: 85,
+  form: 87, premier: 87, nations: 87, builder: 87, mega: 87,
+  gamble: 89, double: 89, prime: 89,
+  campaign: 86, inform: 86, nationalday: 86,     // the filler; the promo slot is the pack's promise
+  eleven: 92, wildcard: 93,
+};
+const UNCAPPED = new Set(['vault', 'stars', 'limited', 'wonder', 'legend']);
+/** The best overall a pack can give (null = no ceiling). Event packs (events.json) are capped by their price. */
+export function packCap(pack) {
+  if (!pack || UNCAPPED.has(pack.id) || pack.guarantee === 'icon' || pack.guarantee === 'star') return null;
+  if (Number.isFinite(pack.maxOverall)) return pack.maxOverall;
+  if (PACK_CAPS[pack.id]) return PACK_CAPS[pack.id];
+  const c = pack.cost || 0;
+  return c <= 0 ? 74 : c <= 2000 ? 80 : c <= 6000 ? 83 : c <= 9000 ? 85 : c <= 22000 ? 87 : c <= 32000 ? 90 : null;
+}
+
 export const RARITY_RANK = { bronze: 0, silver: 1, gold: 2, special: 3, inform: 3, totw: 4, future: 4, desert: 4, winter: 4, nationalday: 4, star: 4, icon: 5 };
 
 export function rollRarity(odds) {
@@ -314,8 +346,22 @@ export function openPack(pack, seen = new Set(), needGK = false) {
    * the collection stay what they always were (they pay out as dups). */
   const inPack = new Set();
   const LADDER = ['bronze', 'silver', 'gold', 'special'];
+  // v206: the pack's ceiling (packCap); a rarity with nothing under it gives way to the best one below that has
+  const cap = packCap(pack);
+  const capOk = cap ? (p) => p.overall <= cap : null;
+  const memo = new Map();       // rarity -> anything under the ceiling alone (the common case, asked per card)
+  const has = (rarity, only) => {
+    if (only === capOk && memo.has(rarity)) return memo.get(rarity);
+    const v = WORLD.players.some((p) => !p.sbc && p.rarity === rarity && (!only || only(p)));
+    if (only === capOk) memo.set(rarity, v);
+    return v;
+  };
   const draw = (rarity, extra = null) => {
-    const only = scope && extra ? (p) => scope(p) && extra(p) : (scope || extra);
+    const preds = [scope, extra, capOk].filter(Boolean);
+    const only = preds.length > 1 ? (p) => preds.every((f) => f(p)) : (preds[0] || null);
+    if (cap && !has(rarity, only)) {
+      for (let at = LADDER.indexOf(rarity) - 1; at >= 0; at--) if (has(LADDER[at], only)) { rarity = LADDER[at]; break; }
+    }
     let p = drawPlayer(rarity, seen, only);
     if (inPack.has(p.id)) {
       const at = Math.max(0, LADDER.indexOf(rarity));
@@ -423,9 +469,11 @@ export function samplePulls(pack, n = 3, day = Math.floor(Date.now() / 86_400_00
     return pool.slice().sort((a, b) => b.overall - a.overall).slice(0, n);
   }
   const scope = filterOf(pack.filter) || (() => true);
-  const rank = RARITY_RANK[pack.guarantee || pack.floor || 'gold'] ?? 2;
+  // v206: only cards this pack can actually give — under its ceiling — and, with no floor, of any rarity
+  const cap = packCap(pack);
+  const rank = pack.guarantee || pack.floor ? (RARITY_RANK[pack.guarantee || pack.floor] ?? 2) : (cap ? 0 : 2);
   const pool = WORLD.players.filter((p) => !p.sbc && scope(p) && (RARITY_RANK[p.rarity] ?? 0) >= rank
-    && (!pack.minOverall || p.overall >= pack.minOverall));
+    && (!pack.minOverall || p.overall >= pack.minOverall) && (!cap || p.overall <= cap));
   if (!pool.length) return [];
   pool.sort((a, b) => b.overall - a.overall);
   const top = pool.slice(0, Math.min(pool.length, 24));

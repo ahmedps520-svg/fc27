@@ -5931,3 +5931,12 @@ button.clash-opp:disabled { cursor: default; opacity: .55; }
 .tiers-pass .tier.pass { border-color: rgba(184,146,255,.35); background: linear-gradient(180deg, rgba(184,146,255,.14), rgba(255,255,255,.03)); }
 .tiers-pass .tier.pass b { color: #c9b2ff; }
 .iap-passcta { width: 100%; margin-top: 8px; border-color: rgba(184,146,255,.45); color: #e6dcff; background: linear-gradient(90deg, rgba(184,146,255,.18), rgba(255,255,255,.02)); }
+
+/* v206: APEX Club in the shop (iapShop.js) and on Today */
+.iap-offer.iap-club { cursor: default; grid-template-areas: 'k price' 'name price' 'items price' 'terms terms'; background: radial-gradient(120% 160% at 0% 0%, rgba(255,196,0,.22), transparent 60%), linear-gradient(135deg, #1d1806, #0b0c16); border-color: rgba(255,196,0,.4); }
+.iap-club .iap-offer-k { color: #ffd35c; }
+.iap-club .iap-price { border: 0; cursor: pointer; font: inherit; font-weight: 800; font-family: var(--font-num); }
+.iap-club .iap-price:disabled { cursor: default; opacity: .6; }
+.iap-terms { grid-area: terms; margin-top: 8px; font-size: 11px; line-height: 1.45; color: var(--text-mute); }
+.iap-terms a { color: var(--text-dim); text-decoration: underline; }
+.club-panel .panel-head h2 { color: #ffd35c; }

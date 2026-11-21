@@ -410,7 +410,7 @@ export function adoptCloudSave(cloud) {
    * back into the stutter the setting existed to escape. */
   const device = { quality: state?.settings?.quality, models: state?.settings?.models, renderer: state?.settings?.renderer };
   // v205: App Store purchases live on the device, not in the cloud copy (api.js cloudCopy) — keep this device's
-  const bought = { starterBought: state?.club?.starterBought, pass: state?.club?.pass };
+  const bought = { starterBought: state?.club?.starterBought, pass: state?.club?.pass, member: state?.club?.member };
   state = { ...defaults(), ...cloud };
   state.settings = { ...defaults().settings, ...(cloud.settings || {}) };
   if (device.quality) state.settings.quality = device.quality;
@@ -420,6 +420,7 @@ export function adoptCloudSave(cloud) {
   state.club = { ...defaults().club, ...(cloud.club || {}) };
   if (bought.starterBought) state.club.starterBought = true;
   if (bought.pass) state.club.pass = { ...(state.club.pass || {}), ...bought.pass };
+  if (bought.member) state.club.member = bought.member;
   state.ultimate = { ...freshUltimate(), ...(cloud.ultimate || {}) };
   state.flags = { ...defaults().flags, ...(cloud.flags || {}) };
   state.meta = { ...(cloud.meta || {}) };

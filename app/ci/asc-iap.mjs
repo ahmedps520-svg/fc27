@@ -93,6 +93,72 @@ async function upsertProduct(app, existing, p) {
   return `${productId} (${p.type.toLowerCase().replace('_', '-')}, $${p.usd}): ${done.length ? `set ${done.join(', ')}` : 'already set'} · ${String(now.attributes.state || '').replace(/_/g, ' ').toLowerCase()}`;
 }
 
+/**
+ * v206: an auto-renewing subscription — its group (and the group's display
+ * name), the product, its name and description, every territory, its price
+ * (the nearest price point to the owner's in the base territory, and Apple's
+ * equalised price in every other one) and the review screenshot.
+ */
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+async function upload(kind, relKey, ownerType, ownerId, file) {
+  const buf = fs.readFileSync(file);
+  const s = (await api('POST', `/v1/${kind}`, { data: { type: kind, attributes: { fileName: path.basename(file), fileSize: buf.length }, relationships: { [relKey]: { data: { type: ownerType, id: ownerId } } } } })).data;
+  for (const op of s.attributes.uploadOperations || []) {
+    const headers = Object.fromEntries((op.requestHeaders || []).map((h) => [h.name, h.value]));
+    const res = await fetch(op.url, { method: op.method, headers, body: buf.subarray(op.offset, op.offset + op.length) });
+    if (!res.ok) throw new Error(`screenshot upload failed: ${res.status}`);
+  }
+  await api('PATCH', `/v1/${kind}/${s.id}`, { data: { type: kind, id: s.id, attributes: { uploaded: true, sourceFileChecksum: crypto.createHash('md5').update(buf).digest('hex') } } });
+}
+
+async function upsertSubscription(app, sub) {
+  const productId = CFG.prefix + sub.id;
+  const done = [];
+  const groups = await all(`/v1/apps/${app.id}/subscriptionGroups?limit=200`);
+  let g = groups.find((x) => x.attributes.referenceName === sub.group);
+  if (!g) { g = (await api('POST', '/v1/subscriptionGroups', { data: { type: 'subscriptionGroups', attributes: { referenceName: sub.group }, relationships: { app: { data: { type: 'apps', id: app.id } } } } })).data; done.push('group'); }
+  const gl = (await get(`/v1/subscriptionGroups/${g.id}/subscriptionGroupLocalizations?limit=50`)).data;
+  if (!gl.find((l) => l.attributes.locale === CFG.locale)) { await api('POST', '/v1/subscriptionGroupLocalizations', { data: { type: 'subscriptionGroupLocalizations', attributes: { locale: CFG.locale, name: sub.groupName || sub.group }, relationships: { subscriptionGroup: { data: { type: 'subscriptionGroups', id: g.id } } } } }); done.push('group name'); }
+
+  const subs = await all(`/v1/subscriptionGroups/${g.id}/subscriptions?limit=200`);
+  let it = subs.find((x) => x.attributes.productId === productId);
+  if (!it) { it = (await api('POST', '/v1/subscriptions', { data: { type: 'subscriptions', attributes: { name: sub.ref, productId, subscriptionPeriod: sub.period, familySharable: false, reviewNote: sub.review, groupLevel: sub.level || 1 }, relationships: { group: { data: { type: 'subscriptionGroups', id: g.id } } } } })).data; done.push('product'); }
+  else if (it.attributes.reviewNote !== sub.review) await api('PATCH', `/v1/subscriptions/${it.id}`, { data: { type: 'subscriptions', id: it.id, attributes: { reviewNote: sub.review } } });
+
+  const locs = (await get(`/v1/subscriptions/${it.id}/subscriptionLocalizations?limit=50`)).data;
+  const loc = locs.find((l) => l.attributes.locale === CFG.locale);
+  if (!loc) { await api('POST', '/v1/subscriptionLocalizations', { data: { type: 'subscriptionLocalizations', attributes: { locale: CFG.locale, name: sub.name, description: sub.description }, relationships: { subscription: { data: { type: 'subscriptions', id: it.id } } } } }); done.push('name'); }
+  else if (loc.attributes.name !== sub.name || loc.attributes.description !== sub.description) { await api('PATCH', `/v1/subscriptionLocalizations/${loc.id}`, { data: { type: 'subscriptionLocalizations', id: loc.id, attributes: { name: sub.name, description: sub.description } } }); done.push('name'); }
+
+  const avail = await maybe(`/v1/subscriptions/${it.id}/subscriptionAvailability`);
+  if (!avail?.data) {
+    const territories = await all('/v1/territories?limit=200');
+    await api('POST', '/v1/subscriptionAvailabilities', { data: { type: 'subscriptionAvailabilities', attributes: { availableInNewTerritories: true }, relationships: { subscription: { data: { type: 'subscriptions', id: it.id } }, availableTerritories: { data: territories.map((t) => ({ type: 'territories', id: t.id })) } } } });
+    done.push(`${territories.length} territories`);
+  }
+
+  const prices = await all(`/v1/subscriptions/${it.id}/prices?limit=200`);
+  if (!prices.length) {
+    const points = await all(`/v1/subscriptions/${it.id}/pricePoints?filter[territory]=${sub.baseTerritory}&limit=200`);
+    const want = Number(sub.price);
+    const point = points.slice().sort((a, b) => Math.abs(Number(a.attributes.customerPrice) - want) - Math.abs(Number(b.attributes.customerPrice) - want))[0];
+    if (!point) throw new Error(`no price points in ${sub.baseTerritory}`);
+    const eq = await all(`/v1/subscriptionPricePoints/${point.id}/equalizations?include=territory&limit=200`);
+    const set = [[point.id, sub.baseTerritory], ...eq.map((x) => [x.id, x.relationships?.territory?.data?.id]).filter(([, t]) => t && t !== sub.baseTerritory)];
+    for (const [pointId, territory] of set) {
+      await api('POST', '/v1/subscriptionPrices', { data: { type: 'subscriptionPrices', attributes: { startDate: null, preserveCurrentPrice: false }, relationships: { subscription: { data: { type: 'subscriptions', id: it.id } }, subscriptionPricePoint: { data: { type: 'subscriptionPricePoints', id: pointId } }, territory: { data: { type: 'territories', id: territory } } } } });
+      await pause(250);
+    }
+    done.push(`${point.attributes.customerPrice} ${sub.baseTerritory === 'SAU' ? 'SAR' : sub.baseTerritory} and ${set.length - 1} other countries`);
+  }
+
+  const shot = await maybe(`/v1/subscriptions/${it.id}/appStoreReviewScreenshot`);
+  if (!shot?.data) { await upload('subscriptionAppStoreReviewScreenshots', 'subscription', 'subscriptions', it.id, path.join(STORE, CFG.reviewScreenshot)); done.push('review screenshot'); }
+
+  const now = (await get(`/v1/subscriptions/${it.id}`)).data;
+  return `${productId} (monthly subscription): ${done.length ? `set ${done.join(', ')}` : 'already set'} · ${String(now.attributes.state || '').replace(/_/g, ' ').toLowerCase()}`;
+}
+
 try {
   const app = (await get(`/v1/apps?filter[bundleId]=${encodeURIComponent(BUNDLE)}&limit=1`)).data[0];
   if (!app) throw new Error(`no App Store Connect app with bundle ID ${BUNDLE}`);
@@ -100,6 +166,9 @@ try {
   const existing = await all(`/v1/apps/${app.id}/inAppPurchasesV2?limit=200`);
   for (const p of CFG.products) {
     try { R.ok(await upsertProduct(app, existing, p)); } catch (e) { R.bad(`${CFG.prefix}${p.id}`, describe(e).replace(/\n\s*/g, ' ')); }
+  }
+  for (const sub of CFG.subscriptions || []) {
+    try { R.ok(await upsertSubscription(app, sub)); } catch (e) { R.bad(`${CFG.prefix}${sub.id}`, describe(e).replace(/\n\s*/g, ' ')); }
   }
   R.note('Selling them needs the Paid Applications Agreement, bank and tax details in App Store Connect → Business (the account holder only).');
 } catch (e) {

@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v206',
+    date: '2026-11-22',
+    tag: 'Store',
+    title: 'Fairer packs, and APEX Club',
+    lede: 'Every pack now has a best possible card that fits its price, and the App Store app has a monthly membership.',
+    entries: [
+      {
+        head: 'Fairer packs',
+        summary: 'Cheap packs no longer hand out the top players. The free Bronze tops out at 74, Silver at 80, Gold at 85, and no pack under 30,000 gives a 90. Each pack says its best possible card with its odds.',
+        detail: 'The shelf used to show 99s on every pack, the free Bronze included; it now shows only cards the pack can really give. The Limited packs and the promo slots keep their promise.',
+      },
+      {
+        head: 'APEX Club (App Store app)',
+        summary: 'A monthly membership: every month 80 ✦, 2 Prime packs, a Gold pack and ◈ 40,000, plus ◈ 2,000 every day on Today. Cancel any time.',
+        detail: 'It renews every month until cancelled in your Apple ID settings. Manage subscription is on the APEX Club panel on Today.',
+      },
+    ],
+  },
+  {
     version: 'v205',
     date: '2026-11-21',
     tag: 'Season 2',
