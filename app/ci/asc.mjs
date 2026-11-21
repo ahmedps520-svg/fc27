@@ -185,10 +185,23 @@ try {
     summary(`App Store review: ${VERSION} (${BUILD}) — not submitted`);
     process.exit(1);
   }
-  for (const it of iapReady) {
-    await api('POST', '/v1/inAppPurchaseSubmissions', { data: { type: 'inAppPurchaseSubmissions', relationships: { inAppPurchaseV2: { data: { type: 'inAppPurchases', id: it.id } } } } });
-    ok(`Submitted in-app purchase ${it.attributes.productId}`);
-  }
+  /* v205: an app's first consumable has to go "at the same time" as a version
+   * (FIRST_CONSUMABLE_MUST_BE_SUBMITTED_ON_VERSION). So the purchases are sent once
+   * the version is in the review submission and before it is submitted; any Apple
+   * still refuses there are tried again straight after the submission. */
+  const submitIaps = async (list) => {
+    const left = [];
+    for (const it of list) {
+      try {
+        await api('POST', '/v1/inAppPurchaseSubmissions', { data: { type: 'inAppPurchaseSubmissions', relationships: { inAppPurchaseV2: { data: { type: 'inAppPurchases', id: it.id } } } } });
+        ok(`Submitted in-app purchase ${it.attributes.productId}`);
+      } catch (e) {
+        if (!(e instanceof ApiError)) throw e;
+        left.push([it, e]);
+      }
+    }
+    return left;
+  };
   if (problems.length) note(`${problems.length} gap(s) found above — submitting anyway, so Apple's own answer is on record`);
   const open = (await get(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES&limit=10`)).data;
   const live = open.find((s) => ['WAITING_FOR_REVIEW', 'IN_REVIEW'].includes(s.attributes.state));
@@ -217,8 +230,23 @@ try {
       if (!(e instanceof ApiError && e.status === 409 && /already/i.test(JSON.stringify(e.errors)))) throw e;
     }
   }
+  let iapLeft = await submitIaps(iapReady);
+  if (iapLeft.length) note(`${iapLeft.length} in-app purchase(s) not taken before the submission (${describe(iapLeft[0][1]).split('\n').pop().trim()}) — trying again once it is in`);
   const done = (await api('PATCH', `/v1/reviewSubmissions/${sub.id}`, { data: { type: 'reviewSubmissions', id: sub.id, attributes: { submitted: true } } })).data;
   ok(`Submitted for review: ${String(done.attributes.state || 'WAITING_FOR_REVIEW').replace(/_/g, ' ').toLowerCase()}`);
+  if (iapLeft.length) {
+    iapLeft = await submitIaps(iapLeft.map(([it]) => it));
+    if (iapLeft.length) {
+      // the version's shop would have nothing to sell: take it back out of review rather than have it judged that way
+      for (const [it, e] of iapLeft) bad(`In-app purchase ${it.attributes.productId} not submitted`, describe(e).replace(/\n\s*/g, ' '));
+      try {
+        await api('PATCH', `/v1/reviewSubmissions/${sub.id}`, { data: { type: 'reviewSubmissions', id: sub.id, attributes: { canceled: true } } });
+        note('Withdrew the submission so the version is not reviewed without its purchases');
+      } catch (e) { note(`Could not withdraw the submission: ${describe(e).split('\n').pop().trim()}`); }
+      summary(`App Store review: ${VERSION} (${BUILD}) — not submitted, the in-app purchases were refused`);
+      process.exit(1);
+    }
+  }
   summary(`App Store review: ${VERSION} (${BUILD}) submitted`);
 } catch (e) {
   if (e) {
