@@ -15,10 +15,11 @@
 export const LIVE_DEFAULT = {
   version: 1,
   season: {
-    id: 's1',
-    name: 'Season 1 · Kick-Off',
-    from: '2026-09-14',
-    to: '2026-10-25',
+    // v205: Season 2 (the v204 wipe); its pass is the App Store product online.apexxi.game.pass.s2 (iap.js)
+    id: 's2',
+    name: 'Season 2',
+    from: '2026-11-21',
+    to: '2027-01-31',
     // tiers: optional override of data/season.js DEFAULT_TIERS
   },
   events: [

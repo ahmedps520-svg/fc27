@@ -52,6 +52,8 @@ const ownedList = (s = getState()) => s.club.cosmetics?.owned || [];
 export const owns = (id, s = getState()) => ownedList(s).includes(id);
 /** Is this option one you would have to buy first? (Anything that is not for sale is free.) */
 export function locked(kind, value, s = getState()) {
+  // v205: a Season Pass's own celebration belongs to the pass holder and is never sold here
+  if (kind === 'celebration' && value === 'crown') return !s.club?.pass?.s2;
   const it = itemOf(kind, value);
   return !!it && !owns(it.id, s);
 }

@@ -15,18 +15,20 @@ import { playerCard, cardStrip } from '../components/playerCard.js';
 import { packArt } from '../components/packArt.js';
 import { WORLD } from '../data/generator.js';
 import { activeEvent, eventKey, eventEndsAt, season, eventPack } from '../live.js';
-import { TIER_XP, TIERS, rewardText, tierOf } from '../data/season.js';
+import { TIER_XP, TIERS, rewardText, tierOf, PREMIUM_TIERS } from '../data/season.js';
+import { iapAvailable, PASS_SEASON } from '../iap.js';   // v205: the Season Pass's paid track
+import { openShop } from './squad.js';
 import { weekendWindow, currentWeekend, matchesLeft, rankFor, untilText } from '../weekend.js';
 import * as progress from '../progress.js';
 import { DAILY } from '../progress.js';
 import { worldState } from '../world.js';
-import { t, lang } from '../i18n.js';
+import { t, tx, lang } from '../i18n.js';
 
 let showAllTiers = false;   // v92: the season grid shows a window of tiers unless asked for all
 
 export const TITLE = 'Today';
 
-const rewardLabel = (r) => rewardText({ apex: r.apex, ultimate: r.ultimate, pack: r.pack });
+const rewardLabel = (r) => rewardText({ apex: r.apex, ultimate: r.ultimate, pack: r.pack, celebration: r.celebration, label: r.label });
 
 function dailyPanel() {
   const d = progress.dailyStatus();
@@ -70,6 +72,33 @@ function eventPanel(s) {
     </section>`;
 }
 
+/**
+ * v205: the Season Pass's paid track under the free one — claimable tier by
+ * tier for a pass holder (`club.pass[season]`), a door to the shop for
+ * everyone else in the App Store app, nothing on the website (no pass sold).
+ */
+function passRow(s, se, sp, tier, tierWin) {
+  const owned = !!s.club.pass?.[se.id];
+  if (!owned) {
+    return se.id === PASS_SEASON && iapAvailable()
+      ? `<button class="btn iap-passcta" id="getPass">✦ ${tx('Season Pass')} · ${tx('a second reward on all 30 tiers')} →</button>`
+      : '';
+  }
+  const tiers = se.premiumTiers || PREMIUM_TIERS;
+  const got = Array.isArray(sp.premium) ? sp.premium : [];
+  const open = Array.from({ length: Math.min(TIERS, tier) }, (_, i) => i + 1).filter((t) => !got.includes(t));
+  return `
+      <div class="tiers tiers-pass" aria-label="${tx('Season Pass')}">
+        ${tiers.map((r, i) => {
+          if (!showAllTiers && (i < tierWin || i >= tierWin + 9)) return '';
+          const t = i + 1;
+          const st = got.includes(t) ? 'done' : t <= tier ? 'claim' : 'locked';
+          return `<button class="tier pass ${st} ${r.label ? 'milestone' : ''}" data-ptier="${t}" ${st === 'claim' ? '' : 'disabled'} title="${rewardLabel(r)}"><b>✦ ${t}</b><span>${rewardLabel(r)}</span></button>`;
+        }).join('')}
+      </div>
+      ${open.length > 1 ? `<button class="btn primary" id="claimPass">${tx('Claim')} ${open.length} ${tx('pass rewards')}</button>` : ''}`;
+}
+
 function seasonPanel(s) {
   const se = season();
   const sp = s.club.season?.id === se.id ? s.club.season : { xp: 0, claimed: [] };
@@ -97,6 +126,7 @@ function seasonPanel(s) {
           return `<button class="tier ${st} ${r.label ? 'milestone' : ''}" data-tier="${t}" ${st === 'claim' ? '' : 'disabled'} title="${rewardLabel(r)}"><b>${t}</b><span>${rewardLabel(r)}</span></button>`;
         }).join('')}
       </div>
+      ${passRow(s, se, sp, tier, tierWin)}
       <button class="btn ghost sm" id="allTiers">${showAllTiers ? 'Show fewer tiers' : `Show all ${TIERS} tiers`}</button>
       ${claimable.length > 1 ? `<button class="btn primary" id="claimTiers">Claim ${claimable.length} tiers</button>` : ''}
       ${about('XP: 40 a match, +60 a win, +5 a goal · objectives 80 · daily login 50 · challenges 90 · event objectives 120.', 'How XP is earned')}
@@ -179,6 +209,17 @@ export function mount(root) {
     if (!r) return;
     sfx('coin'); refreshCoins(); toast(`Tier ${b.dataset.tier}: ${rewardLabel(r)}`, 'good'); refresh();
   }));
+  root.querySelectorAll('[data-ptier]').forEach((b) => b.addEventListener('click', () => {
+    const r = progress.claimPremiumTier(+b.dataset.ptier);
+    if (!r) return;
+    sfx('coin'); refreshCoins(); toast(`${tx('Season Pass')} ${b.dataset.ptier}: ${rewardLabel(r)}`, 'good'); refresh();
+  }));
+  root.querySelector('#claimPass')?.addEventListener('click', () => {
+    let n = 0;
+    for (let t = 1; t <= TIERS; t++) if (progress.claimPremiumTier(t)) n += 1;
+    if (n) { sfx('coin'); refreshCoins(); toast(`${n} ${tx('pass rewards')}`, 'good'); refresh(); }
+  });
+  root.querySelector('#getPass')?.addEventListener('click', () => { openShop(); navigate('squad'); });
   root.querySelector('#claimTiers')?.addEventListener('click', () => {
     let n = 0;
     for (let t = 1; t <= TIERS; t++) if (progress.claimTier(t)) n += 1;

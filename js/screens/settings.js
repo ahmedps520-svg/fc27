@@ -246,7 +246,7 @@ export function render() {
         <div><b>${tx("Goal celebration")}</b><span id="celebSub">${(CELEBRATIONS.find((c) => c.id === s.celebration) || { blurb: 'A different one each time, by who scored.' }).blurb}</span></div>
         <select id="celebSel" aria-label="Goal celebration">
           <option value="random"${!s.celebration || s.celebration === 'random' ? ' selected' : ''}>Random</option>
-          ${CELEBRATIONS.map((c) => { const lock = cosmeticLocked('celebration', c.id); return `<option value="${c.id}"${s.celebration === c.id ? ' selected' : ''}${lock ? ' disabled' : ''}>${c.name}${lock ? ` — ${tx('in Store → Style')}` : ''}</option>`; }).join('')}
+          ${CELEBRATIONS.map((c) => { const lock = cosmeticLocked('celebration', c.id); return `<option value="${c.id}"${s.celebration === c.id ? ' selected' : ''}${lock ? ' disabled' : ''}>${c.name}${lock ? ` — ${c.pass ? tx('Season 2 Pass') : tx('in Store → Style')}` : ''}</option>`; }).join('')}
         </select>
       </div>
       ${segRow('Shot timing assist', 'shootAssist', [['0', 'Off'], ['1', 'On — power from distance']], String(s.shootAssist || 0))}

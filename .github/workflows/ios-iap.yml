@@ -1,0 +1,54 @@
+# v205: create the in-app purchases in app/store/iap.json on App Store Connect.
+#
+# Actions → "iOS → In-app purchases" → Run workflow. For each product: its
+# type, names, US price (Apple sets the other countries'), every territory and
+# the review screenshot (app/store/iap-review.png). Safe to run again. Selling
+# them needs the Paid Applications Agreement (App Store Connect → Business,
+# account holder). They are submitted with the next app version by
+# "iOS → App Store review".
+name: iOS → In-app purchases
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-review
+  cancel-in-progress: false
+
+jobs:
+  iap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'online.apexxi.game' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: API key (cleaned and checked)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          clean() { printf '%s' "$1" | tr -d ' \t\r\n"'"'"; }
+          KEY_ID="$(clean "$ASC_KEY_ID")"; ISSUER_ID="$(clean "$ASC_ISSUER_ID")"
+          bad=0
+          [[ "$KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error title=ASC_KEY_ID::should be the 10-character Key ID"; bad=1; }
+          [[ "$ISSUER_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "::error title=ASC_ISSUER_ID::should be the Issuer ID"; bad=1; }
+          [ $bad = 0 ] || exit 1
+          echo "::add-mask::$KEY_ID"; echo "::add-mask::$ISSUER_ID"
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${KEY_ID}.p8"
+          bash app/ci/asc-key.sh "$KEY_PATH"
+          { echo "KEY_ID=$KEY_ID"; echo "ISSUER_ID=$ISSUER_ID"; echo "KEY_PATH=$KEY_PATH"; } >> "$GITHUB_ENV"
+
+      - name: Create the in-app purchases
+        run: node app/ci/asc-iap.mjs --bundle "$BUNDLE_ID"
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

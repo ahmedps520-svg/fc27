@@ -1,0 +1,20 @@
+{
+  "_note": "v205: the App Store in-app purchases (app/ci/asc-iap.mjs creates them). Keep in step with js/iap.js PRODUCTS (tests/unit/iap.test.mjs). Display names at most 30 characters, descriptions at most 45. Prices are the US price; Apple sets every other country's from it.",
+  "prefix": "online.apexxi.game.",
+  "locale": "en-GB",
+  "reviewScreenshot": "iap-review.png",
+  "products": [
+    { "id": "ult20", "type": "CONSUMABLE", "usd": "1.99", "ref": "Ultimate 20", "name": "20 Ultimate", "description": "20 Ultimate for Icons and Style items", "review": "Adds 20 Ultimate (shown top right) at once. Ultimate buys Icons and Style items, never packs." },
+    { "id": "ult55", "type": "CONSUMABLE", "usd": "4.99", "ref": "Ultimate 55", "name": "55 Ultimate", "description": "50 Ultimate plus 5 bonus", "review": "Adds 55 Ultimate (shown top right) at once." },
+    { "id": "ult110", "type": "CONSUMABLE", "usd": "9.99", "ref": "Ultimate 110", "name": "110 Ultimate", "description": "100 Ultimate plus 10 bonus", "review": "Adds 110 Ultimate (shown top right) at once." },
+    { "id": "ult240", "type": "CONSUMABLE", "usd": "19.99", "ref": "Ultimate 240", "name": "240 Ultimate", "description": "200 Ultimate plus 40 bonus", "review": "Adds 240 Ultimate (shown top right) at once." },
+    { "id": "ult650", "type": "CONSUMABLE", "usd": "49.99", "ref": "Ultimate 650", "name": "650 Ultimate", "description": "500 Ultimate plus 150 bonus", "review": "Adds 650 Ultimate (shown top right) at once." },
+    { "id": "apex10k", "type": "CONSUMABLE", "usd": "0.99", "ref": "Apex 10000", "name": "10,000 Apex", "description": "10,000 Apex to spend in the store", "review": "Adds 10,000 Apex (shown top right) at once. Apex buys packs; each pack shows its odds before purchase." },
+    { "id": "apex60k", "type": "CONSUMABLE", "usd": "4.99", "ref": "Apex 60000", "name": "60,000 Apex", "description": "60,000 Apex to spend in the store", "review": "Adds 60,000 Apex (shown top right) at once." },
+    { "id": "apex130k", "type": "CONSUMABLE", "usd": "9.99", "ref": "Apex 130000", "name": "130,000 Apex", "description": "130,000 Apex to spend in the store", "review": "Adds 130,000 Apex (shown top right) at once." },
+    { "id": "apex280k", "type": "CONSUMABLE", "usd": "19.99", "ref": "Apex 280000", "name": "280,000 Apex", "description": "280,000 Apex to spend in the store", "review": "Adds 280,000 Apex (shown top right) at once." },
+    { "id": "apex750k", "type": "CONSUMABLE", "usd": "49.99", "ref": "Apex 750000", "name": "750,000 Apex", "description": "750,000 Apex to spend in the store", "review": "Adds 750,000 Apex (shown top right) at once." },
+    { "id": "starter", "type": "CONSUMABLE", "usd": "0.99", "ref": "Starter Pack", "name": "Starter Pack", "description": "20 Ultimate, a Prime pack and 10,000 Apex", "review": "Offered once per player in Store > Shop. Adds 20 Ultimate and 10,000 Apex, and a Prime pack to the Locker tab." },
+    { "id": "pass.s2", "type": "NON_CONSUMABLE", "usd": "4.99", "ref": "Season 2 Pass", "name": "Season 2 Pass", "description": "A second reward on every Season 2 tier", "review": "Unlocks the Season Pass's paid track for Season 2: a second row of rewards on the Today screen's Season panel, claimable as tiers are reached by playing. Restore Purchases is in Store > Shop." }
+  ]
+}

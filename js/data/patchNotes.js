@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v205',
+    date: '2026-11-21',
+    tag: 'Season 2',
+    title: 'The Season 2 Pass and the Shop',
+    lede: 'Season 2 has its own pass, with a second reward on every tier, and the App Store app has a shop.',
+    entries: [
+      {
+        head: 'Season 2',
+        summary: 'The Season Pass is now Season 2, with thirty new tiers to climb by playing, until 31 January.',
+        detail: 'In the App Store app, the Season 2 Pass adds a second reward on all 30 tiers: about 100 ✦, six Prime packs, a Legends Vault at the top and The Crown, a celebration only the pass has.',
+      },
+      {
+        head: 'The Shop (App Store app)',
+        summary: 'Ultimate and Apex bundles, a one-time Starter Pack and the Season Pass, paid with your Apple ID. Everything can still be earned by playing.',
+        detail: 'Ultimate buys Icons and Style items and never a pack. Apex buys packs, and every pack shows its odds before you open it. Restore purchases is in the Shop.',
+      },
+    ],
+  },
+  {
     version: 'v204',
     date: '2026-11-21',
     tag: 'Season 2',

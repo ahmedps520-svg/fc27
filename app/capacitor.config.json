@@ -6,5 +6,10 @@
   "ios": {
     "contentInset": "never",
     "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "NativePurchases": {
+      "autoFinishTransactions": false
+    }
   }
 }
