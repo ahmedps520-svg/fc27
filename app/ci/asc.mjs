@@ -228,8 +228,8 @@ try {
   /* v205: an app's first purchases have to go to review with a version. The legacy
    * inAppPurchaseSubmissions refuses them (FIRST_*_MUST_BE_SUBMITTED_ON_VERSION, both before
    * and after the version is submitted), so they are offered to the review submission itself
-   * as items. If Apple will not take them that way either, the version is left staged in the
-   * submission, unsent, for the website's last step (the version page → In-App Purchases and
+   * as items. If Apple will not take them that way either, the version is taken back out of the
+   * draft (v207, below) for the website's last step (the version page → In-App Purchases and
    * Subscriptions → select them → Submit for Review): nothing goes to review with an empty shop. */
   const notTaken = [];
   for (const it of iapReady) {
@@ -245,9 +245,20 @@ try {
   }
   for (const it of subsReady) notTaken.push([it, null]);           // v206: a subscription is never accepted as an item
   if (notTaken.length) {
-    bad(`${notTaken.length} in-app purchase(s) or subscription(s) can only be added on the website`, `App Store Connect → APEX XI → iOS App ${VERSION} → In-App Purchases and Subscriptions → Select → tick them → Done → Add for Review → Submit to App Review`);
-    note(`Version ${VERSION} with build ${BUILD} is staged in the review submission, ready — not sent`);
-    summary(`App Store review: ${VERSION} (${BUILD}) — staged; the first in-app purchases are added and sent on the website`);
+    /* v207: and the version comes back OUT of the draft. App Store Connect hides a
+     * version's "In-App Purchases and Subscriptions" section while the version sits
+     * in a draft submission — the one place the first purchases can be chosen — so
+     * leaving it staged (v205) sent 1.3 to review, and to the store, without them. */
+    try {
+      const now = (await get(`/v1/reviewSubmissions/${sub.id}/items?include=appStoreVersion&limit=50`)).data;
+      for (const it of now.filter((i) => i.relationships?.appStoreVersion?.data?.id === ver.id)) await api('DELETE', `/v1/reviewSubmissionItems/${it.id}`);
+      note(`Version ${VERSION} (build ${BUILD} attached) left out of any draft, so its purchases section shows`);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      note(`Could not take ${VERSION} back out of the draft (${describe(e).replace(/\n\s*/g, ' ')}) — remove it under Draft Submissions on the website first`);
+    }
+    bad(`${notTaken.length} in-app purchase(s) or subscription(s) can only be added on the website`, `App Store Connect → APEX XI → iOS App ${VERSION} → In-App Purchases and Subscriptions → Select → tick them → Done → Save → Add for Review → Submit to App Review`);
+    summary(`App Store review: ${VERSION} (${BUILD}) — ready; the first in-app purchases are chosen and sent on the website`);
     process.exit(1);
   }
   const done = (await api('PATCH', `/v1/reviewSubmissions/${sub.id}`, { data: { type: 'reviewSubmissions', id: sub.id, attributes: { submitted: true } } })).data;
