@@ -1,0 +1,61 @@
+# v207: where an App Store version stands (its state, open review submissions,
+# the purchases), read from Apple. "Take it out of the draft" removes the version
+# from a draft submission that has not been sent — App Store Connect hides the
+# version's "In-App Purchases and Subscriptions" section while it sits in one.
+name: iOS → App Store status
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App Store version (e.g. 1.4)'
+        required: true
+        default: '1.4'
+      unstage:
+        description: 'Take the version out of an unsent draft submission'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-review
+  cancel-in-progress: false
+
+jobs:
+  status:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'online.apexxi.game' }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: API key (cleaned and checked)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          clean() { printf '%s' "$1" | tr -d ' \t\r\n"'"'"; }
+          KEY_ID="$(clean "$ASC_KEY_ID")"; ISSUER_ID="$(clean "$ASC_ISSUER_ID")"
+          bad=0
+          [[ "$KEY_ID" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error title=ASC_KEY_ID::should be the 10-character Key ID"; bad=1; }
+          [[ "$ISSUER_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || { echo "::error title=ASC_ISSUER_ID::should be the Issuer ID"; bad=1; }
+          [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "::error::version must look like 1.0 or 1.0.1"; bad=1; }
+          [ $bad = 0 ] || exit 1
+          echo "::add-mask::$KEY_ID"; echo "::add-mask::$ISSUER_ID"
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${KEY_ID}.p8"
+          bash app/ci/asc-key.sh "$KEY_PATH"
+          { echo "KEY_ID=$KEY_ID"; echo "ISSUER_ID=$ISSUER_ID"; echo "KEY_PATH=$KEY_PATH"; } >> "$GITHUB_ENV"
+
+      - name: Status
+        run: node app/ci/asc-status.mjs --bundle "$BUNDLE_ID" --version "$VERSION" ${{ inputs.unstage && '--unstage' || '' }}
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
