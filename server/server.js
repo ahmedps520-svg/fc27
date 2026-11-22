@@ -832,6 +832,8 @@ function pair(a, b, kind) {
 
   // v202: through the near relay when it is quicker for both (clients that cannot are never sent a ticket)
   const relay = relayFor([{ peer: a, seat: 0 }, { peer: b, seat: 1 }]);
+  // v207: both phones can hold the kick-off until the other has loaded (caps 'kick'); an older build on either side plays as before
+  const syncKick = !!(a.caps?.has('kick') && b.caps?.has('kick'));
   const card = (self, opp, host) => ({
     t: 'match',
     matchId: id,
@@ -841,6 +843,7 @@ function pair(a, b, kind) {
     you: { name: self.name, club: self.club, divIdx: self.divIdx },
     opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx, kit: opp.kit || null },
     wl: self.wl ? self.wl.id : null,
+    ...(syncKick ? { syncKick: true } : {}),
     ...(relay ? { relay: relay[host ? 0 : 1] } : {}),
   });
   a.sock.send(card(a, b, true));

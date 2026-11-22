@@ -95,8 +95,8 @@ export function connect() {
   sock.onopen = () => {
     retry = 0;
     // v189: see protocol.js. v193: caps — what this client can play beyond a match ('ghost': server.js offerGhosts;
-    // v202 'relay': net/relay.js, unless ?norelay)
-    const caps = ['ghost']; if (!new URLSearchParams(location.search).has('norelay')) caps.push('relay');
+    // v202 'relay': net/relay.js, unless ?norelay; v207 'kick': holds the kick-off until every phone has loaded, screens/play.js)
+    const caps = ['ghost', 'kick']; if (!new URLSearchParams(location.search).has('norelay')) caps.push('relay');
     sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL, caps }));
   };
 
@@ -145,6 +145,42 @@ export function ping() {
     setTimeout(() => { off(); resolve(null); }, 3000);
   });
 }
+
+/* v207: back from the background. A phone that switched apps or locked its
+ * screen mid-match comes back to a closed socket — and to a retry that the
+ * backoff above may have pushed up to 25 s away, while the hub holds the seat
+ * for 45. So coming back (or the network returning) reconnects at once; and a
+ * socket that still says open after a long sleep, which iOS can leave behind
+ * dead, is pinged and replaced if it does not answer. */
+function reconnectNow() {
+  if (!wanted || !authToken()) return;
+  if (sock && sock.readyState === WebSocket.OPEN) {
+    const was = sock;
+    ping().then((ms) => {
+      if (ms != null || sock !== was) return;
+      // a dead socket can take a long while to report its close, so it is dropped here and replaced
+      was.onclose = null; was.onmessage = null;
+      try { was.close(); } catch { /* already gone */ }
+      sock = null; ready = false;
+      emit({ t: 'closed' });
+      clearTimeout(retryTimer); retry = 0;
+      connect();
+    });
+    return;
+  }
+  if (sock && sock.readyState === WebSocket.CONNECTING) return;
+  clearTimeout(retryTimer);
+  retry = 0;
+  connect();
+}
+let hiddenAt = 0;
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+    if (document.visibilityState === 'visible' && Date.now() - hiddenAt > 2000) reconnectNow();
+  });
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('online', reconnectNow);
 
 /** v189: the match protocol the server's current website speaks — above ours means an update is out. */
 export const serverProtocol = () => serverNet;

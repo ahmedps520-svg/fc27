@@ -53,6 +53,7 @@ import { startRelay, stopRelay, relayReady } from '../net/relay.js';   // v202: 
 import { advanceWeek } from '../career.js';
 import * as progress from '../progress.js';
 import { weekendWindow } from '../weekend.js';
+import { APP_STORE } from '../platform.js';
 import {
   InputSender, RemoteInput, SnapshotView, encodeSnapshot, qualityLabel, SNAP_MS,
 } from '../net/netplay.js';
@@ -366,6 +367,11 @@ export function mount(root, params) {
     if (st.oneHanded) shell.classList.add('one-hand', `one-hand-${st.oneHandedSide === 'left' ? 'left' : 'right'}`); }
   const mode = params.mode || 'single';
   const online = params.online || null;
+  /* v207: a touch screen. `(pointer: coarse)` alone describes the *primary*
+     pointer, and an iPad with a keyboard and trackpad attached reports a fine
+     one — so in the App Store app (every device it runs on has a touch
+     screen) that iPad got no touch controls at all and could not play. */
+  const touchScreen = window.matchMedia('(pointer: coarse)').matches || (APP_STORE && navigator.maxTouchPoints > 0);
   let ghostSent = false;            // v193: a ghost match reports once
   /* v95: the attract demo — the title screen left alone plays a CPU match
      behind a "press any button" banner. Nobody holds a stick, nothing is
@@ -1033,6 +1039,29 @@ export function mount(root, params) {
   let lastPeerPing = 0;
   const pendingCues = [];
 
+  /* v207: kick-off together. The host's match used to start the moment its
+   * own screen had loaded, so two phones that loaded at different speeds
+   * played different games: the quick one kicked off and ran at an empty
+   * pitch (its opponent's players standing still) while the slow one was
+   * still on the loading screen, and arrived seconds into the match. Now the
+   * host's simulation does not move while its own veil is up, each guest says
+   * `ready` once its veil could lift (repeated until it sees the kick-off, so
+   * one sent before the host's screen was listening is not lost), and the host
+   * lifts its veil when every guest has — or after KICK_WAIT, so a phone that
+   * never loads cannot hold the others for ever. Its snapshots carry `ko`
+   * until then; a guest keeps its own veil up while they do and lifts on the
+   * first one without it, so both screens open on the same kick-off. Only
+   * when the match card says every phone can (`syncKick`, caps 'kick'): an
+   * older build on either side plays exactly as before. */
+  const syncKick = !!online?.syncKick && !spectating;
+  const KICK_WAIT = 30000;                 // ms from this screen opening
+  const openedAt = performance.now();
+  let kickSeen = false;                    // guest: the host has kicked off
+  let lastReadySent = -Infinity;           // guest: 'ready' goes up once a second until then
+  const readySeats = new Set();            // host: the guests whose phones are in
+  const guestSeats = online?.party ? online.party.seats.filter((st) => st.seat !== online.seat).map((st) => st.seat) : [1];
+  let kickWaitText = '';
+
   if (online) {
     netEl.hidden = false;
     match.online = true;
@@ -1040,9 +1069,12 @@ export function mount(root, params) {
     if (online.host) {
       netOffs.push(net.on('in', (m) => { stampIn(m); return remotes ? remotes[m.sq]?.accept(m) : remote.accept(m); }));
       netOffs.push(net.on('evt', (m) => { if (m.k === 'pausereq') requestPause(m.name || online.oppName); }));
+      // v207: a guest's phone is in (a party's are stamped with their seat; one who drops counts as in)
+      netOffs.push(net.on('evt', (m) => { if (m.k === 'ready' || (m.k === 'dropped' && online.party)) readySeats.add(online.party ? (m.k === 'ready' ? m.sq : m.seat) : 1); }));
     } else {
       netOffs.push(net.on('snap', (m) => {
         stampIn(m);
+        if (!m.ko) kickSeen = true;   // v207: the first picture without the hold is the kick-off
         view.accept(m);
         /* v186: the host sends nothing while its own replay plays, so a picture
            arriving well into ours means the host is back in play — and so are
@@ -1205,7 +1237,7 @@ export function mount(root, params) {
     match.managerFig = mgr.fig;
     match.managerLook = careerCtx.manager || {};
     root.querySelector('#mgrHud').hidden = false;
-    if (window.matchMedia('(pointer: coarse)').matches) root.querySelector('#mgrWalk').hidden = false;
+    if (touchScreen) root.querySelector('#mgrWalk').hidden = false;
   }
   // held-down state of the on-screen walk arrows
   let walkTouch = 0;
@@ -1576,6 +1608,27 @@ export function mount(root, params) {
     loadText.textContent = lines[lineIdx];
   }, 700 + Math.random() * 500);
 
+  /** v207: this phone is in; may the match start? (see syncKick above) */
+  function kickOffNow(now) {
+    const late = now - openedAt > KICK_WAIT;
+    let go;
+    let who;
+    if (online.host) {
+      const missing = guestSeats.filter((st) => !readySeats.has(st));
+      go = late || !missing.length;
+      who = online.party ? missing.map((st) => online.party.seats.find((x) => x.seat === st)?.name).filter(Boolean).join(', ') : online.oppName;
+    } else {
+      if (now - lastReadySent > 1000) { lastReadySent = now; net.send({ t: 'evt', k: 'ready' }); }
+      go = kickSeen || now - openedAt > KICK_WAIT + 5000;
+      who = online.party ? tx('the other players') : online.oppName;
+    }
+    if (!go) {
+      const text = `${tx('Waiting for')} ${who || tx('the other players')}…`;
+      if (text !== kickWaitText) { kickWaitText = text; clearInterval(lineTimer); loadText.textContent = text; }
+    }
+    return go;
+  }
+
   /** @returns {boolean} true once the veil has been lifted */
   function tickLoading(now) {
     const elapsed = now - loadStart;
@@ -1589,6 +1642,7 @@ export function mount(root, params) {
     loadFill.style.width = `${(pct * 100).toFixed(1)}%`;
     if (elapsed < LOAD_MS) return false;
     if (!assetsReady && elapsed < LOAD_CEILING) return false;
+    if (syncKick && !kickOffNow(now)) return false;
 
     loading = false;
     clearInterval(lineTimer);
@@ -1681,9 +1735,9 @@ export function mount(root, params) {
    * and the walk arrows are the whole touch surface of a career match. */
   /* v82: two people, one tablet — each half of the screen is one player's:
      a stick that lands under the thumb, and four buttons on the inside edge. */
-  const splitTouch = twoUp && window.matchMedia('(pointer: coarse)').matches && window.innerWidth >= 900;
+  const splitTouch = twoUp && touchScreen && window.innerWidth >= 900;
   if (splitTouch) buildSplitTouch(root, inputs);
-  if (window.matchMedia('(pointer: coarse)').matches && mode !== 'career' && !splitTouch) {
+  if (touchScreen && mode !== 'career' && !splitTouch) {
     touchWrap.hidden = false;
     /* v105: the buttons fan out round the right thumb, sized to the screen
        (components/touchLayout.js); the one-handed layout keeps its column */
@@ -2078,7 +2132,9 @@ export function mount(root, params) {
      * the guest reads back out of snapshots. The local menu on its own never
      * stops an online match (the other player is still out there). */
     const syncActive = online ? (online.host ? syncLeft > 0 : guestSynced) : false;
-    const frozen = ((paused || loading || !!walkout || !!pregame || !!photo) && !online) || syncActive;
+    /* v207: online, the host's match does not run behind its own loading veil
+       either — the opponent's players would stand still while it did */
+    const frozen = ((paused || loading || !!walkout || !!pregame || !!photo) && !online) || syncActive || (!!online?.host && loading);
     sender?.tick(dt);
 
     if (photo && input.pressed('pause')) closePhoto();
@@ -2310,6 +2366,7 @@ export function mount(root, params) {
           ? { ...pauseSnap, ts: performance.now() }
           : encodeSnapshot(match);
         if (pendingCues.length) { snap.cu = pendingCues.slice(0, 12); pendingCues.length = 0; }
+        if (syncKick && loading) snap.ko = 1;   // v207: kick-off held until every phone is in
         if (pq && syncLeft <= 0) snap.pq = pq.name;
         if (syncLeft > 0) snap.pz = [pq ? pq.name : '', Math.ceil(syncLeft * 10)];
         sendStamped(snap);

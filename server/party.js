@@ -137,7 +137,9 @@ function createPartyHub({ store, guard, log = console.log, forget = () => {}, re
         p.kits = [kitOfSide(0), MODES[p.mode].sides[1] ? kitOfSide(1) : null];
         // v202: the near relay, when it is quicker for everyone in the party (server.js relayFor); one ticket per seat
         p.relay = relayFor(p.members.map((x) => ({ peer: x, seat: x.partySeat })), true);
-        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup, kits: p.kits, ...(p.relay ? { relay: p.relay[x.partySeat] } : {}) });
+        // v207: everyone kicks off together when every phone in the party can (caps 'kick', screens/play.js)
+        const syncKick = p.members.every((x) => x.caps?.has('kick'));
+        for (const x of p.members) x.sock.send({ t: 'partyMatch', matchId: p.matchId, mode: p.mode, host: x === p.host, seat: x.partySeat, seats, setup: m.setup, kits: p.kits, ...(syncKick ? { syncKick: true } : {}), ...(p.relay ? { relay: p.relay[x.partySeat] } : {}) });
         log(`[party ${p.code}] match ${p.matchId}: ${seats.map((s) => `${s.name}@${s.team}`).join(', ')}`);
         return true;
       }

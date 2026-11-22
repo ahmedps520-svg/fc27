@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v207',
+    date: '2026-11-22',
+    tag: 'Online',
+    title: 'Online matches kick off together',
+    lede: 'Two phones in an online match now start at the same moment, whichever one loads first.',
+    entries: [
+      {
+        head: 'Kick off together',
+        summary: 'In an online match the quicker phone no longer starts playing while the other is still loading. It waits, says who it is waiting for, and both start at 0:00.',
+        detail: 'The host\'s match used to start the moment its own screen had loaded, so the other phone could arrive seconds late to a match already under way, with its players having stood still. Now each phone says when it is in, and the kick-off waits for everyone (for at most 30 seconds, so a phone that never loads cannot hold the other). Both phones need this update; against an older version the match starts as before.',
+      },
+      {
+        head: 'Touch controls on every iPad',
+        summary: 'An iPad with a keyboard or trackpad attached now gets the touch controls in a match.',
+        detail: 'The game asked whether the main pointer was a finger, and an iPad with a trackpad says it is not, so it showed no touch controls at all. In the App Store app every device has a touch screen, so they are always there.',
+      },
+    ],
+  },
+  {
     version: 'v206',
     date: '2026-11-22',
     tag: 'Store',
