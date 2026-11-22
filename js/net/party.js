@@ -67,6 +67,7 @@ function launch(m) {
       oppName: m.seats.filter((st) => st.seat !== m.seat).map((st) => st.name).join(', '), myName: api.getName(),
       party: { mode: m.mode, seats: m.seats, locks: sq.locks, rejoin: !!m.rejoin },
       relay: m.relay || null,          // v202
+      syncKick: !!m.syncKick && !m.rejoin,   // v207: a rejoin comes back into a match already under way
     },
   });
 }

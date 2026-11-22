@@ -493,6 +493,8 @@ const AR_TEXT = {
   "Grounds": "الملاعب",
   "Five each, then sudden death. Stop the marker to place your kick; the keeper guesses.": "خمس ركلات لكل فريق ثم الموت المفاجئ. أوقف المؤشر لتحدد ركلتك، والحارس يخمّن.",
   "Your team on a full pitch against a keeper and nobody else. No clock, no offside. Free-roam, or stage a set piece from the pause menu: a free kick where you stand, a penalty, a corner.": "فريقك في ملعب كامل أمام حارس فقط. بلا وقت وبلا تسلل. تحرّك بحرية، أو جهّز كرة ثابتة من قائمة الإيقاف: ركلة حرة من مكانك، أو ركلة جزاء، أو ركنية.",
+  "Waiting for": "بانتظار",
+  "the other players": "اللاعبين الآخرين",
 };
 export function tx(en) { return lang() === 'ar' ? AR_TEXT[en] ?? en : en; }
 

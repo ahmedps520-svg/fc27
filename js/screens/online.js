@@ -711,6 +711,7 @@ net.on('match', (m) => {
       oppName: m.opp.name,
       myName: api.getName(),
       relay: m.relay || null,          // v202: a ticket for the near relay, when the server chose it
+      syncKick: !!m.syncKick,          // v207: both phones hold the kick-off until the other has loaded
     },
     ultimate: m.kind === 'division',
     // a Weekend Showdown pairing counts for the weekend on both machines
