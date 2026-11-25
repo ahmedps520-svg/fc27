@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       poses:
-        description: 'Poses to photograph (space separated: folded unfolded)'
-        default: 'folded unfolded'
+        description: 'Poses to photograph (only folded works from the command line)'
+        default: 'folded'
 
 concurrency:
   group: ios-duo
@@ -104,10 +104,11 @@ jobs:
           # the tour's timetable (app/ci/duo-tour.js: stop k from 25·k s after the page loads), in seconds after launch
           STOPS="probe:16 title:38 menu:66 squad:90 store:115 today:140 settings:165 match:270 match2:305 pause:345"
           for POSE in $POSES; do
-            if [ "$POSE" = unfolded ]; then ON=$INNER; OFF=$OUTER; else ON=$OUTER; OFF=$INNER; fi
-            t 20 xcrun simctl io "$UDID" screenConfig --display="$ON" power on 2>&1 | head -3 || true
-            t 20 xcrun simctl io "$UDID" screenConfig --display="$OFF" power off 2>&1 | head -3 || true
-            sleep 5
+            # The Duo boots folded, drawing on its outer screen. Turning screens off and on with
+            # `screenConfig power` leaves it on a spinner (tried 2026-11-25), so only the pose it
+            # boots in is photographed here; the open screen's layout is checked in a browser at
+            # its exact size (tests/visual/layout-scan.mjs --phones duo).
+            [ "$POSE" = folded ] || { echo "$POSE: not photographed (the simulator cannot be unfolded from the command line)"; continue; }
             t 20 xcrun simctl io "$UDID" enumerate > "$OUT/$POSE-screens.txt" 2>&1 || true
             t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
             perl -e 'alarm shift; exec @ARGV' 600 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" &
