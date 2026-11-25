@@ -95,11 +95,12 @@ jobs:
           # The Duo has two built-in screens (plus a TV-out) and no fold command: a pose is which one
           # is powered. From `io enumerate`: the first built-in screen is the outer display, the
           # second the inner one (their pictures' sizes say so: 2034 × 1398 and 2853 × 2007).
-          SCR="$(awk '/Screen ID:/{id=$3} /Screen Type:/{if ($3=="Integrated") print id}' "$RUNNER_TEMP/screens.txt" | tr '\n' ' ')"
+          SCR="$(awk '/Screen ID:/{id=$3} /Screen Type:/{if ($3=="Integrated") print id}' "$RUNNER_TEMP/screens.txt" | sort -un | tr '\n' ' ')"
           OUTER="$(echo $SCR | cut -d' ' -f1)"; INNER="$(echo $SCR | cut -d' ' -f2)"
-          [ -n "$OUTER" ] || OUTER=1; [ -n "$INNER" ] || INNER=3
+          # what an earlier run found (screen 2 is the TV-out) if the listing reads differently
+          if [ -z "$OUTER" ] || [ -z "$INNER" ] || [ "$OUTER" = "$INNER" ]; then OUTER=1; INNER=3; fi
           echo "outer display $OUTER, inner display $INNER"
-          shoot() { for D in $OUTER $INNER; do t 30 xcrun simctl io "$UDID" screenshot --type=jpeg --display="$D" --mask=black "$OUT/$1-d$D.jpg" >/dev/null 2>&1 && echo "  $1 display $D ✓" || echo "  $1 display $D: no picture"; done; }
+          shoot() { for D in $OUTER $INNER; do t 30 xcrun simctl io "$UDID" screenshot --display="$D" --mask=black "$OUT/$1-d$D.png" >/dev/null 2>&1 && echo "  $1 display $D ✓" || echo "  $1 display $D: no picture"; done; }
           # the tour's timetable (app/ci/duo-tour.js: stop k from 25·k s after the page loads), in seconds after launch
           STOPS="probe:16 title:38 menu:66 squad:90 store:115 today:140 settings:165 match:270 match2:305 pause:345"
           for POSE in $POSES; do
@@ -138,6 +139,6 @@ jobs:
           name: iphone-duo
           # pictures and short text only, each text file cut to its first 400 lines
           path: |
-            ${{ runner.temp }}/duo/*.jpg
+            ${{ runner.temp }}/duo/*.png
             ${{ runner.temp }}/duo/*.txt
           if-no-files-found: warn
