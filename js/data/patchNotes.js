@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v208',
+    date: '2026-11-25',
+    tag: 'Devices',
+    title: 'Made for iPhone Duo',
+    lede: 'The App Store app is built for iPhone Duo, folded or open, and the menu reads properly in Arabic on every screen.',
+    entries: [
+      {
+        head: 'iPhone Duo',
+        summary: 'On iPhone Duo the game fills the whole screen, folded or open. The main menu fits the open screen with nothing to scroll.',
+        detail: 'The app is now built with Apple\'s iOS 27.1 tools, which is what lets it use all of iPhone Duo\'s displays instead of sitting in the middle with empty space around it. The menu, the squad, the store, Today and the match were each checked at both of its screen sizes.',
+      },
+      {
+        head: 'Arabic menu on larger screens',
+        summary: 'In Arabic, the main menu now mirrors properly on an iPad, an open iPhone Duo and a phone held sideways.',
+        detail: 'An old rule from before the menu was redesigned squeezed its small tiles into one narrow column: on an iPad one column of tiles was cut off at the edge, and on a phone held sideways the small tiles took the room of Kick Off and Ultimate XI.',
+      },
+    ],
+  },
+  {
     version: 'v207',
     date: '2026-11-22',
     tag: 'Online',
