@@ -69,7 +69,8 @@ jobs:
           DT="$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; d=[x for x in json.load(sys.stdin)["devicetypes"] if "duo" in x["name"].lower()]; print(d[0]["identifier"] if d else "")')"
           test -n "$DT" || { echo "::error::no iPhone Duo simulator in this Xcode"; exit 1; }
           # the newest iOS runtime that can run an iPhone Duo (iOS 27.2 for every iPhone says "Incompatible device")
-          RT="$(DT="$DT" xcrun simctl list runtimes -j | python3 -c 'import json,os,sys; dt=os.environ["DT"]; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"] and any(t.get("identifier")==dt for t in x.get("supportedDeviceTypes",[]))]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
+          export DT
+          RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,os,sys; dt=os.environ["DT"]; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"] and any(t.get("identifier")==dt for t in x.get("supportedDeviceTypes",[]))]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
           echo "runtime $RT · device type $DT"
           test -n "$RT" || { echo "::error::no iOS runtime here can run $DT"; exit 1; }
           UDID="$(xcrun simctl create duo "$DT" "$RT")"
