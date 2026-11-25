@@ -82,7 +82,7 @@ jobs:
       - name: Photograph the tour
         # its own limit, below the job's: a job that runs out of time is cancelled and GitHub keeps
         # neither its log nor its upload, so this step must end first, and the upload still runs
-        timeout-minutes: 40
+        timeout-minutes: 30
         env:
           POSES: ${{ inputs.poses }}
         run: |
@@ -92,45 +92,34 @@ jobs:
           t() { local s="$1"; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
           t 120 xcrun simctl install "$UDID" "$APP"
           BID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
-          # the Duo has two screens and no fold command: a pose is which screen is powered.
-          # Screen IDs from `io enumerate` (printed by the step above); each screenshot names its display.
-          IDS="$(grep -oiE 'screen id[^0-9]*[0-9]+' "$RUNNER_TEMP/screens.txt" | grep -oE '[0-9]+$' | sort -un | tr '\n' ' ')"
-          [ -n "$IDS" ] || IDS="1 2"
-          echo "screens: $IDS"
-          shoot() { for D in $IDS; do t 30 xcrun simctl io "$UDID" screenshot --display="$D" --mask=black "$OUT/$1-d$D.png" >/dev/null 2>&1 && echo "  $1 display $D ✓" || echo "  $1 display $D: no picture"; done; }
-          N=0
+          # The Duo has two built-in screens (plus a TV-out) and no fold command: a pose is which one
+          # is powered. From `io enumerate`: the first built-in screen is the outer display, the
+          # second the inner one (their pictures' sizes say so: 2034 × 1398 and 2853 × 2007).
+          SCR="$(awk '/Screen ID:/{id=$3} /Screen Type:/{if ($3=="Integrated") print id}' "$RUNNER_TEMP/screens.txt" | tr '\n' ' ')"
+          OUTER="$(echo $SCR | cut -d' ' -f1)"; INNER="$(echo $SCR | cut -d' ' -f2)"
+          [ -n "$OUTER" ] || OUTER=1; [ -n "$INNER" ] || INNER=3
+          echo "outer display $OUTER, inner display $INNER"
+          shoot() { for D in $OUTER $INNER; do t 30 xcrun simctl io "$UDID" screenshot --type=jpeg --display="$D" --mask=black "$OUT/$1-d$D.jpg" >/dev/null 2>&1 && echo "  $1 display $D ✓" || echo "  $1 display $D: no picture"; done; }
+          # the tour's timetable (app/ci/duo-tour.js: stop k from 25·k s after the page loads), in seconds after launch
+          STOPS="probe:16 title:38 menu:66 squad:90 store:115 today:140 settings:165 match:270 match2:305 pause:345"
           for POSE in $POSES; do
-            N=$((N + 1))
-            if [ "$N" -gt 1 ]; then
-              # the second pose: the first screen off and the others on (the first pose is the Duo as it boots);
-              # which pose each picture shows is plain from its size (outer 1398 × 2034, inner 2007 × 2853)
-              FIRST="${IDS%% *}"
-              for D in $IDS; do
-                if [ "$D" = "$FIRST" ]; then P=off; else P=on; fi
-                t 20 xcrun simctl io "$UDID" screenConfig --display="$D" power "$P" 2>&1 | head -3 || true
-              done
-              sleep 5
-            fi
-            t 20 xcrun simctl io "$UDID" enumerate 2>&1 | grep -iE 'screen|power|name' | head -20 > "$OUT/$POSE-screens.txt" || true
-            # the tour's lines come out on the app's own stdout (Capacitor prints the page's console there);
-            # nothing runs in the background, so nothing is still writing when the upload starts
-            t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            # simctl may stay attached while it relays the app's output, so it runs alongside and is ended with the app
-            perl -e 'alarm shift; exec @ARGV' 900 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" &
-            LAUNCH=$!
+            if [ "$POSE" = unfolded ]; then ON=$INNER; OFF=$OUTER; else ON=$OUTER; OFF=$INNER; fi
+            t 20 xcrun simctl io "$UDID" screenConfig --display="$ON" power on 2>&1 | head -3 || true
+            t 20 xcrun simctl io "$UDID" screenConfig --display="$OFF" power off 2>&1 | head -3 || true
             sleep 5
-            echo "$POSE: launched at $(date -u +%T)"
-            T0=$(date +%s)
-            for STAGE in title menu squad store today career settings match pause; do
-              LIM=$([ "$STAGE" = match ] && echo 300 || echo 60)
-              for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
-              if cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
-              echo "$POSE $STAGE ($(( $(date +%s) - T0 )) s)"; shoot "$POSE-$STAGE"
+            t 20 xcrun simctl io "$UDID" enumerate > "$OUT/$POSE-screens.txt" 2>&1 || true
+            t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            perl -e 'alarm shift; exec @ARGV' 600 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" &
+            LAUNCH=$!
+            L0=$(date +%s)
+            echo "$POSE: display $ON on, $OFF off; launched at $(date -u +%T)"
+            for S in $STOPS; do
+              NAME="${S%%:*}"; AT="${S##*:}"; NOW=$(( $(date +%s) - L0 ))
+              [ "$NOW" -lt "$AT" ] && sleep $(( AT - NOW ))
+              echo "$POSE $NAME at $(( $(date +%s) - L0 )) s"; shoot "$POSE-$NAME"
             done
             t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
             kill "$LAUNCH" 2>/dev/null || true; wait "$LAUNCH" 2>/dev/null || true
-            cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
-            echo '--- first lines of the app output'; head -n 30 "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null || true
           done
           ls -la "$OUT"
 
@@ -149,6 +138,6 @@ jobs:
           name: iphone-duo
           # pictures and short text only, each text file cut to its first 400 lines
           path: |
-            ${{ runner.temp }}/duo/*.png
+            ${{ runner.temp }}/duo/*.jpg
             ${{ runner.temp }}/duo/*.txt
           if-no-files-found: warn
