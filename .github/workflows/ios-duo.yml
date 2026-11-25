@@ -21,7 +21,7 @@ concurrency:
 jobs:
   duo:
     runs-on: xcode-27
-    timeout-minutes: 60
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +64,7 @@ jobs:
           echo "APP=$APP" >> "$GITHUB_ENV"
 
       - name: Boot an iPhone Duo
+        timeout-minutes: 15
         run: |
           RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
           if [ -z "$RT" ]; then xcodebuild -downloadPlatform iOS; RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; print(r[-1]["identifier"] if r else "")')"; fi
@@ -76,28 +77,35 @@ jobs:
           echo "UDID=$UDID" >> "$GITHUB_ENV"
 
       - name: Photograph the tour
+        # its own limit, below the job's: a job that runs out of time is cancelled and GitHub keeps
+        # neither its log nor its upload, so this step must end first, and the upload still runs
+        timeout-minutes: 40
         env:
           POSES: ${{ inputs.poses }}
         run: |
           OUT="$RUNNER_TEMP/duo"; mkdir -p "$OUT"
-          xcrun simctl install "$UDID" "$APP"
+          echo "OUT=$OUT" >> "$GITHUB_ENV"
+          # every simulator command under its own short limit (macOS has no timeout(1))
+          t() { local s="$1"; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
+          t 120 xcrun simctl install "$UDID" "$APP"
           BID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
           for POSE in $POSES; do
             # the pose, if this simctl can set it (the step above lists what it offers)
-            xcrun simctl io "$UDID" posture "$POSE" 2>/dev/null || xcrun simctl ui "$UDID" posture "$POSE" 2>/dev/null || echo "(no command to set the pose $POSE; photographing as booted)"
+            t 20 xcrun simctl io "$UDID" posture "$POSE" 2>/dev/null || t 20 xcrun simctl ui "$UDID" posture "$POSE" 2>/dev/null || echo "(no command to set the pose $POSE; photographing as booted)"
             sleep 3
             LOG="$OUT/$POSE.log"; : > "$LOG"
             # the app's own output (Capacitor prints the page's console there) and the system log, both into one file
             xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' >> "$LOG" 2>&1 &
             LP=$!
-            xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID"
+            t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            t 60 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" || echo "launch did not return in 60 s"
+            echo "$POSE: launched at $(date -u +%T)"
             T0=$(date +%s)
             for STAGE in title menu squad store today career settings match pause; do
               LIM=$([ "$STAGE" = match ] && echo 300 || echo 60)
               for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
               if cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
-              xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓ ($(( $(date +%s) - T0 )) s)"
+              t 30 xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓ ($(( $(date +%s) - T0 )) s)" || echo "$POSE $STAGE: screenshot failed or hung"
             done
             kill $LP 2>/dev/null || true
             cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
