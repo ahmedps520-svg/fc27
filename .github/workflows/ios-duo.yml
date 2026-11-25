@@ -66,15 +66,17 @@ jobs:
       - name: Boot an iPhone Duo
         timeout-minutes: 15
         run: |
-          RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
-          if [ -z "$RT" ]; then xcodebuild -downloadPlatform iOS; RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; print(r[-1]["identifier"] if r else "")')"; fi
           DT="$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; d=[x for x in json.load(sys.stdin)["devicetypes"] if "duo" in x["name"].lower()]; print(d[0]["identifier"] if d else "")')"
-          echo "runtime $RT · device type $DT"
           test -n "$DT" || { echo "::error::no iPhone Duo simulator in this Xcode"; exit 1; }
+          # the newest iOS runtime that can run an iPhone Duo (iOS 27.2 for every iPhone says "Incompatible device")
+          RT="$(DT="$DT" xcrun simctl list runtimes -j | python3 -c 'import json,os,sys; dt=os.environ["DT"]; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"] and any(t.get("identifier")==dt for t in x.get("supportedDeviceTypes",[]))]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
+          echo "runtime $RT · device type $DT"
+          test -n "$RT" || { echo "::error::no iOS runtime here can run $DT"; exit 1; }
           UDID="$(xcrun simctl create duo "$DT" "$RT")"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           echo "UDID=$UDID" >> "$GITHUB_ENV"
+          echo '--- its screens'; xcrun simctl io "$UDID" enumerate 2>&1 | sed -n '1,120p' | tee "$RUNNER_TEMP/screens.txt"
 
       - name: Photograph the tour
         # its own limit, below the job's: a job that runs out of time is cancelled and GitHub keeps
@@ -89,12 +91,27 @@ jobs:
           t() { local s="$1"; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
           t 120 xcrun simctl install "$UDID" "$APP"
           BID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
+          # the Duo has two screens and no fold command: a pose is which screen is powered.
+          # Screen IDs from `io enumerate` (printed by the step above); each screenshot names its display.
+          IDS="$(grep -oiE 'screen id[^0-9]*[0-9]+' "$RUNNER_TEMP/screens.txt" | grep -oE '[0-9]+$' | sort -un | tr '\n' ' ')"
+          [ -n "$IDS" ] || IDS="1 2"
+          echo "screens: $IDS"
+          shoot() { for D in $IDS; do t 30 xcrun simctl io "$UDID" screenshot --display="$D" --mask=black "$OUT/$1-d$D.png" >/dev/null 2>&1 && echo "  $1 display $D ✓" || echo "  $1 display $D: no picture"; done; }
+          N=0
           for POSE in $POSES; do
-            # the pose, if this simctl can set it (the step above lists what it offers)
-            t 20 xcrun simctl io "$UDID" posture "$POSE" 2>/dev/null || t 20 xcrun simctl ui "$UDID" posture "$POSE" 2>/dev/null || echo "(no command to set the pose $POSE; photographing as booted)"
-            sleep 3
+            N=$((N + 1))
+            if [ "$N" -gt 1 ]; then
+              # the second pose: the first screen off and the others on (the first pose is the Duo as it boots);
+              # which pose each picture shows is plain from its size (outer 1398 × 2034, inner 2007 × 2853)
+              FIRST="${IDS%% *}"
+              for D in $IDS; do
+                if [ "$D" = "$FIRST" ]; then P=off; else P=on; fi
+                t 20 xcrun simctl io "$UDID" screenConfig --display="$D" power "$P" 2>&1 | head -3 || true
+              done
+              sleep 5
+            fi
+            t 20 xcrun simctl io "$UDID" enumerate 2>&1 | grep -iE 'screen|power|name' | head -20 > "$OUT/$POSE-screens.txt" || true
             LOG="$OUT/$POSE.log"; : > "$LOG"
-            # the app's own output (Capacitor prints the page's console there) and the system log, both into one file
             xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' >> "$LOG" 2>&1 &
             LP=$!
             t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
@@ -105,11 +122,11 @@ jobs:
               LIM=$([ "$STAGE" = match ] && echo 300 || echo 60)
               for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
               if cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
-              t 30 xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓ ($(( $(date +%s) - T0 )) s)" || echo "$POSE $STAGE: screenshot failed or hung"
+              echo "$POSE $STAGE ($(( $(date +%s) - T0 )) s)"; shoot "$POSE-$STAGE"
             done
             kill $LP 2>/dev/null || true
             cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
-            echo '--- first lines of the app output'; head -n 40 "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null || true
+            echo '--- first lines of the app output'; head -n 30 "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null || true
           done
           ls -la "$OUT"
 
