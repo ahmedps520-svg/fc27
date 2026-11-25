@@ -1,7 +1,7 @@
 /**
  * App Store screenshots of the App Store build itself.
  *
- *   node app/store/shots.mjs [--only iphone|ipad] [--scenes menu,squad,...]
+ *   node app/store/shots.mjs [--only iphone|ipad|duo-outer|duo-inner] [--scenes menu,squad,...]
  *
  * Boots the game exactly as the iOS shell does (APEX_APP_STORE, so every name
  * is the original one) on the real server, at an iPhone 6.7" (932×430 @3x →
@@ -28,6 +28,12 @@ const COMPOSE_ONLY = process.argv.includes('--compose-only');   // rebuild the s
 export const DEVICES = [
   { id: 'iphone', css: [932, 430], dpr: 3, type: 'APP_IPHONE_67' },
   { id: 'ipad', css: [1366, 1024], dpr: 2, type: 'APP_IPAD_PRO_3GEN_129' },
+  /* v208: iPhone Duo, outer and inner display held sideways (Apple's sizes: 2034 × 1398
+     and 2853 × 2007). The App Store Connect API has no display type for them yet
+     (spec 4.6.1), so these are uploaded on the website: they are what puts the
+     "Made for iPhone Duo" badge on the product page. */
+  { id: 'duo-outer', css: [678, 466], dpr: 3, type: null },
+  { id: 'duo-inner', css: [951, 669], dpr: 3, type: null },
 ];
 export const HEADLINES = {
   match: ['Every match, in 3D', 'Tackles, set pieces, penalties and goal replays'],
@@ -142,7 +148,7 @@ export async function compose(browser, dev, scene, rawFile, outFile) {
   const [head, sub] = HEADLINES[scene];
   const img = `data:image/png;base64,${fs.readFileSync(rawFile).toString('base64')}`;
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
-  const band = Math.round(H * (dev.id === 'ipad' ? 0.16 : 0.2));
+  const band = Math.round(H * (dev.id === 'iphone' ? 0.2 : 0.16));   // the squarer screens (iPad, iPhone Duo) need less of their height for the headline
   const pad = Math.round(H * 0.035);
   const shotH = H - band - pad;
   const shotW = Math.round(shotH * (dev.css[0] / dev.css[1]));

@@ -86,18 +86,22 @@ jobs:
             # the pose, if this simctl can set it (the step above lists what it offers)
             xcrun simctl io "$UDID" posture "$POSE" 2>/dev/null || xcrun simctl ui "$UDID" posture "$POSE" 2>/dev/null || echo "(no command to set the pose $POSE; photographing as booted)"
             sleep 3
-            LOG="$OUT/$POSE.log"
-            xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' > "$LOG" 2>&1 &
+            LOG="$OUT/$POSE.log"; : > "$LOG"
+            # the app's own output (Capacitor prints the page's console there) and the system log, both into one file
+            xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' >> "$LOG" 2>&1 &
             LP=$!
-            sleep 2
             xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            xcrun simctl launch "$UDID" "$BID"
+            xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID"
+            T0=$(date +%s)
             for STAGE in title menu squad store today career settings match pause; do
-              for i in $(seq 1 300); do grep -q "APEX_TOUR $STAGE " "$LOG" && break; sleep 1; done
-              if grep -q "APEX_TOUR $STAGE " "$LOG"; then sleep 3; xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓"; else echo "$POSE $STAGE: no log line"; fi
+              LIM=$([ "$STAGE" = match ] && echo 300 || echo 60)
+              for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
+              if cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
+              xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓ ($(( $(date +%s) - T0 )) s)"
             done
             kill $LP 2>/dev/null || true
-            grep -o 'APEX_TOUR .*' "$LOG" | tee -a "$GITHUB_STEP_SUMMARY" || true
+            cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo '--- first lines of the app output'; head -n 40 "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null || true
           done
           ls -la "$OUT"
 
