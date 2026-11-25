@@ -22,6 +22,25 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v209',
+    date: '2026-11-25',
+    tag: 'Fixes',
+    title: 'More room on a phone held sideways',
+    lede: 'A slimmer bar at the top of every screen, and the pause menu clear of the camera on iPhone Duo.',
+    entries: [
+      {
+        head: 'A slimmer top bar',
+        summary: 'On a phone held sideways the bar at the top of each screen is slimmer, so the screen itself has more room.',
+        detail: 'The bar was padded by the space iPhones keep free at the bottom of the screen for the home bar, which a bar at the top never needed: about a fifth of an inch of empty bar on every phone held sideways, and more on iPhone Duo. Seen in Xcode\'s iPhone Duo simulator.',
+      },
+      {
+        head: 'Pause menu on iPhone Duo',
+        summary: 'On iPhone Duo the pause menu\'s title and button hints keep clear of the camera and the rounded corner.',
+        detail: 'The menu\'s options already kept to the safe part of the screen; its title and the button hints at the bottom now do too.',
+      },
+    ],
+  },
+  {
     version: 'v208',
     date: '2026-11-25',
     tag: 'Devices',
