@@ -65,6 +65,15 @@ for (const page of PAGES) {
   fs.writeFileSync(path.join(OUT, page), html);
 }
 
+/* v208: the simulator tour (app/ci/duo-tour.js) — only when APEX_TOUR=1, which the
+   iPhone Duo check (.github/workflows/ios-duo.yml) sets and the App Store build never does */
+if (process.env.APEX_TOUR === '1') {
+  fs.copyFileSync(path.join(ROOT, 'app/ci/duo-tour.js'), path.join(OUT, 'duo-tour.js'));
+  const idx = path.join(OUT, 'index.html');
+  fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('</body>', '  <script src="duo-tour.js"></script>\n</body>'));
+  console.log('www: with the simulator tour (APEX_TOUR=1) — not for the App Store');
+}
+
 let bytes = 0; let n = 0;
 (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else { bytes += fs.statSync(p).size; n++; } } })(OUT);
 console.log(`www: ${n} files, ${(bytes / 1048576).toFixed(1)} MB, server ${SERVER}, build ${STAMP.version} (${STAMP.build}) ${STAMP.commit.slice(0, 7)}`);
