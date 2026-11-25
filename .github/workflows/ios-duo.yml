@@ -1,0 +1,109 @@
+# v208: the App Store app in Xcode's iPhone Duo simulator, folded and unfolded.
+#
+# Builds the iOS app for the simulator with the tour (app/ci/duo-tour.js: the app walks
+# itself through the menu, the squad, the store, Today, Career, Settings and a match),
+# boots an iPhone Duo, and photographs each stop. The screenshots and the log (the size
+# the web view was given, its safe-area insets, anything drawn off screen) are the run's
+# artifact "iphone-duo". Nothing is signed or uploaded.
+name: iOS → iPhone Duo check
+
+on:
+  workflow_dispatch:
+    inputs:
+      poses:
+        description: 'Poses to photograph (space separated: folded unfolded)'
+        default: 'folded unfolded'
+
+concurrency:
+  group: ios-duo
+  cancel-in-progress: true
+
+jobs:
+  duo:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Pick the newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | grep -viE 'beta|_rc' | sort -V | tail -1)"
+          xcodebuild -version
+          echo "iOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
+
+      - name: What the simulator offers
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devicetypes | grep -iE 'duo|fold|iphone' || true
+          echo '--- simctl commands'; xcrun simctl help 2>&1 | sed -n '1,80p'
+          echo '--- io'; xcrun simctl io 2>&1 | sed -n '1,60p' || true
+          echo '--- any posture/fold commands'; xcrun simctl help 2>&1 | grep -iE 'pose|posture|fold|hinge|display' || echo none
+
+      - name: Build the web files with the tour, and the app for the simulator
+        working-directory: app
+        env:
+          APEX_TOUR: '1'
+          APEX_IOS_VERSION: '1.5'
+          APEX_IOS_BUILD: ${{ github.run_number }}
+          APEX_IOS_COMMIT: ${{ github.sha }}
+        run: |
+          npm ci
+          node build-www.mjs
+          npx cap sync ios
+          xcodebuild build \
+            -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO | tail -n 25
+          APP="$(ls -d "$RUNNER_TEMP"/dd/Build/Products/Debug-iphonesimulator/*.app | head -1)"
+          test -d "$APP" || { echo "::error::no .app built"; exit 1; }
+          echo "APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Boot an iPhone Duo
+        run: |
+          RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; r.sort(key=lambda x: [int(p) for p in x["version"].split(".")]); print(r[-1]["identifier"] if r else "")')"
+          if [ -z "$RT" ]; then xcodebuild -downloadPlatform iOS; RT="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]]; print(r[-1]["identifier"] if r else "")')"; fi
+          DT="$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; d=[x for x in json.load(sys.stdin)["devicetypes"] if "duo" in x["name"].lower()]; print(d[0]["identifier"] if d else "")')"
+          echo "runtime $RT · device type $DT"
+          test -n "$DT" || { echo "::error::no iPhone Duo simulator in this Xcode"; exit 1; }
+          UDID="$(xcrun simctl create duo "$DT" "$RT")"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Photograph the tour
+        env:
+          POSES: ${{ inputs.poses }}
+        run: |
+          OUT="$RUNNER_TEMP/duo"; mkdir -p "$OUT"
+          xcrun simctl install "$UDID" "$APP"
+          BID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
+          for POSE in $POSES; do
+            # the pose, if this simctl can set it (the step above lists what it offers)
+            xcrun simctl io "$UDID" posture "$POSE" 2>/dev/null || xcrun simctl ui "$UDID" posture "$POSE" 2>/dev/null || echo "(no command to set the pose $POSE; photographing as booted)"
+            sleep 3
+            LOG="$OUT/$POSE.log"
+            xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' > "$LOG" 2>&1 &
+            LP=$!
+            sleep 2
+            xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            xcrun simctl launch "$UDID" "$BID"
+            for STAGE in title menu squad store today career settings match pause; do
+              for i in $(seq 1 300); do grep -q "APEX_TOUR $STAGE " "$LOG" && break; sleep 1; done
+              if grep -q "APEX_TOUR $STAGE " "$LOG"; then sleep 3; xcrun simctl io "$UDID" screenshot "$OUT/$POSE-$STAGE.png" >/dev/null 2>&1 && echo "$POSE $STAGE ✓"; else echo "$POSE $STAGE: no log line"; fi
+            done
+            kill $LP 2>/dev/null || true
+            grep -o 'APEX_TOUR .*' "$LOG" | tee -a "$GITHUB_STEP_SUMMARY" || true
+          done
+          ls -la "$OUT"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-duo
+          path: ${{ runner.temp }}/duo
+          if-no-files-found: warn
