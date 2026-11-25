@@ -112,28 +112,43 @@ jobs:
               sleep 5
             fi
             t 20 xcrun simctl io "$UDID" enumerate 2>&1 | grep -iE 'screen|power|name' | head -20 > "$OUT/$POSE-screens.txt" || true
-            LOG="$OUT/$POSE.log"; : > "$LOG"
-            xcrun simctl spawn "$UDID" log stream --level debug --style compact --predicate 'eventMessage CONTAINS "APEX_TOUR"' >> "$LOG" 2>&1 &
-            LP=$!
+            # the tour's lines come out on the app's own stdout (Capacitor prints the page's console there);
+            # nothing runs in the background, so nothing is still writing when the upload starts
             t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            t 60 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" || echo "launch did not return in 60 s"
+            # simctl may stay attached while it relays the app's output, so it runs alongside and is ended with the app
+            perl -e 'alarm shift; exec @ARGV' 900 xcrun simctl launch --terminate-running-process --stdout="$OUT/$POSE.out" --stderr="$OUT/$POSE.err" "$UDID" "$BID" &
+            LAUNCH=$!
+            sleep 5
             echo "$POSE: launched at $(date -u +%T)"
             T0=$(date +%s)
             for STAGE in title menu squad store today career settings match pause; do
               LIM=$([ "$STAGE" = match ] && echo 300 || echo 60)
-              for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
-              if cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
+              for i in $(seq 1 $LIM); do cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -q "APEX_TOUR $STAGE " && break; sleep 1; done
+              if cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -q "APEX_TOUR $STAGE "; then sleep 3; else echo "$POSE $STAGE: no log line after $LIM s — photographing anyway"; fi
               echo "$POSE $STAGE ($(( $(date +%s) - T0 )) s)"; shoot "$POSE-$STAGE"
             done
-            kill $LP 2>/dev/null || true
-            cat "$OUT/$POSE.out" "$OUT/$POSE.err" "$LOG" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
+            t 30 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+            kill "$LAUNCH" 2>/dev/null || true; wait "$LAUNCH" 2>/dev/null || true
+            cat "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null | grep -o 'APEX_TOUR .*' | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
             echo '--- first lines of the app output'; head -n 30 "$OUT/$POSE.out" "$OUT/$POSE.err" 2>/dev/null || true
           done
           ls -la "$OUT"
 
+      - name: Keep the logs short
+        if: always()
+        timeout-minutes: 2
+        run: |
+          cd "$RUNNER_TEMP/duo" 2>/dev/null || exit 0
+          for f in *.out *.err; do [ -f "$f" ] && head -n 400 "$f" > "$f.txt"; done
+          ls -la
+
       - uses: actions/upload-artifact@v4
         if: always()
+        timeout-minutes: 10
         with:
           name: iphone-duo
-          path: ${{ runner.temp }}/duo
+          # pictures and short text only, each text file cut to its first 400 lines
+          path: |
+            ${{ runner.temp }}/duo/*.png
+            ${{ runner.temp }}/duo/*.txt
           if-no-files-found: warn
