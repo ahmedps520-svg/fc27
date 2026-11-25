@@ -11,7 +11,7 @@
  *
  * Screenshots of every screen go to tests/tmp/layout/.
  *
- *   node tests/visual/layout-scan.mjs [--screens menu,squad] [--langs en,ar]
+ *   node tests/visual/layout-scan.mjs [--screens menu,squad] [--langs en,ar] [--phones phones|duo]
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -22,11 +22,23 @@ import { startServer } from '../smoke/server.mjs';
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const SCREENS = arg('--screens', 'menu,today,squad,career,pro,quick,online,street,skills,weekend,trophies,world,stadiums,builder,settings').split(',');
 const LANGS = arg('--langs', 'en,ar').split(',');
-const PHONES = [
-  { name: 'se1', width: 320, height: 568 },
-  { name: 'se2', width: 375, height: 667 },
-  { name: 'p14', width: 390, height: 844 },
-];
+const SETS = {
+  phones: [
+    { name: 'se1', width: 320, height: 568 },
+    { name: 'se2', width: 375, height: 667 },
+    { name: 'p14', width: 390, height: 844 },
+  ],
+  /* v208: iPhone Duo, from Apple's screenshot sizes at 3x — outer display 2034×1398,
+     inner 2853×2007 held sideways (the App Store app only runs sideways; the website
+     can be held either way) */
+  duo: [
+    { name: 'duo-outer', width: 678, height: 466 },
+    { name: 'duo-inner', width: 951, height: 669 },
+    { name: 'duo-outer-tall', width: 466, height: 678 },
+    { name: 'duo-inner-tall', width: 669, height: 951 },
+  ],
+};
+const PHONES = SETS[arg('--phones', 'phones')] || SETS.phones;
 const OUT = arg('--out', 'tests/tmp/layout');
 mkdirSync(OUT, { recursive: true });
 
