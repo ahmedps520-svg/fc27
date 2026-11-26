@@ -95,8 +95,9 @@ export function connect() {
   sock.onopen = () => {
     retry = 0;
     // v189: see protocol.js. v193: caps — what this client can play beyond a match ('ghost': server.js offerGhosts;
-    // v202 'relay': net/relay.js, unless ?norelay; v207 'kick': holds the kick-off until every phone has loaded, screens/play.js)
-    const caps = ['ghost', 'kick']; if (!new URLSearchParams(location.search).has('norelay')) caps.push('relay');
+    // v202 'relay': net/relay.js, unless ?norelay; v207 'kick': holds the kick-off until every phone has loaded, screens/play.js;
+    // v210 'rematch': a friendly played again from its full-time card, screens/play.js)
+    const caps = ['ghost', 'kick', 'rematch']; if (!new URLSearchParams(location.search).has('norelay')) caps.push('relay');
     sock.send(JSON.stringify({ t: 'auth', token, net: NET_PROTOCOL, caps }));
   };
 

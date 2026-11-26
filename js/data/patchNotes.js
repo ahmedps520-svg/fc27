@@ -22,6 +22,30 @@ const APP_STORE_FIRST = 'v184';
 
 export const RELEASES = [
   {
+    version: 'v210',
+    date: '2026-11-26',
+    tag: 'Online',
+    title: 'Rematch',
+    lede: 'Play an online friendly again with one tap each, and the first match of a session starts sooner.',
+    entries: [
+      {
+        head: 'Rematch',
+        summary: 'After an online friendly, tap Rematch: when your opponent taps it too, the same two clubs kick off again.',
+        detail: 'The button on the full-time card says when the other player wants one, and who you are waiting for when you asked first. It goes when either of you leaves the card or starts another match, and it is only offered when both phones have this version. Friendlies only: ranked matches are always found by the queue.',
+      },
+      {
+        head: 'A quicker first match',
+        summary: 'On the Ultra and High graphics settings, the first match after opening the game loads sooner.',
+        detail: 'The match renderer and the scanned player model (about 15 MB) now load in the background a few seconds after the menu appears, when the phone has nothing else to do, instead of when you press play. The menu now shows the scanned player on Ultra too, not only on High. Not on a data saver or a slow connection on the web.',
+      },
+      {
+        head: 'Full time is full time',
+        summary: 'The guest in an online friendly no longer sees "Opponent left" at the final whistle when the match went direct between the two phones.',
+        detail: 'The host\'s whistle reached the guest through the server and the last picture of the match came the direct way; when the whistle won, the guest\'s card called it a walkover. The guest now waits a moment for the last picture.',
+      },
+    ],
+  },
+  {
     version: 'v209',
     date: '2026-11-25',
     tag: 'Fixes',

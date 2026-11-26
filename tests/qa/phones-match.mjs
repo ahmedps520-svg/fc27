@@ -13,7 +13,9 @@
  *   - a guest whose phone goes to the background and loses its connection
  *     for 12 s is back in the match the moment it returns (it used to wait out
  *     a reconnect backoff that had grown to 12-25 s), and play resumes;
- *   - both reach full time.
+ *   - both reach full time (both cards say so: the host's whistle reaching the guest
+ *     before its last picture is not a walkover);
+ *   - v210: one tap each on Rematch starts the same friendly again, together.
  *
  * `--party` plays a co-op party (both phones on one side, through the hub)
  * instead of a friendly.
@@ -181,7 +183,27 @@ try {
 
   await A.page.evaluate(() => { const m = window.__apexMatch; m.half = 2; m.t = m.duration - 0.6; });
   for (const X of [A, B]) await X.page.waitForSelector('[data-o="quit"], [data-o="uxi"]', { timeout: 90000 });
+  const titles = await Promise.all([A, B].map((X) => X.page.evaluate(() => document.querySelector('.gm-ft')?.textContent || '')));
+  assert.ok(titles.every((x) => /full time/i.test(x)), `both cards say full time, not a walkover (${JSON.stringify(titles)})`);
   step('both reached full time');
+
+  // v210: a rematch, one tap each: the guest asks, the host's button says so, the host taps, and both start again
+  if (!PARTY) {
+    for (const X of [A, B]) await X.page.waitForSelector('[data-o="rematchOnline"]', { timeout: 5000 });
+    await B.page.tap('[data-o="rematchOnline"]');
+    await B.page.waitForFunction(() => /Waiting for/i.test(document.querySelector('[data-o="rematchOnline"]')?.textContent || ''), null, { timeout: 5000 });
+    await A.page.waitForFunction(() => document.querySelector('[data-o="rematchOnline"]')?.classList.contains('gm-rematch-ask'), null, { timeout: 5000 });
+    const label = await A.page.evaluate(() => document.querySelector('[data-o="rematchOnline"]').textContent);
+    if (process.env.QA_SHOT) await A.page.screenshot({ path: process.env.QA_SHOT });
+    for (const X of [A, B]) await X.page.evaluate(() => { window.__lift = null; window.__oldMatch = window.__apexMatch; const t = setInterval(() => { const el = document.getElementById('gmLoad'); if (el && el.classList.contains('done') && window.__apexMatch !== window.__oldMatch && window.__lift == null) { window.__lift = { at: Date.now(), t: window.__apexMatch?.t ?? null }; clearInterval(t); } }, 20); });
+    const asked = Date.now();
+    await A.page.tap('[data-o="rematchOnline"]');
+    for (const X of [A, B]) await X.page.waitForFunction(() => window.__lift, null, { timeout: 60000 });
+    const [ra, rb] = [await A.page.evaluate(() => window.__lift), await B.page.evaluate(() => window.__lift)];
+    assert.ok(Math.abs(ra.at - rb.at) < 1500, `the rematch kicks off together (${Math.abs(ra.at - rb.at)} ms apart)`);
+    assert.ok((ra.t ?? 0) < 1, `from 0:00 (${ra.t})`);
+    step(`rematch: the host's button said "${label.trim()}"; both kicked off again ${ra.at - asked} ms after the second tap`);
+  }
   assert.deepEqual(errors, [], errors.join('\n'));
   console.log('phones match: ok');
 } finally {

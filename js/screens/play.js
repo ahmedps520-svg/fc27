@@ -1033,6 +1033,7 @@ export function mount(root, params) {
     showQueueBanner(pq.name);
   };
   let oppGone = null;
+  const rematchState = { asked: false, theyAsked: false, gone: false, noAnswer: false, timer: 0 };   // v210: paintRematch
   let spectators = 0;      // host: how many are watching through the hub
   let rtt = null;          // this client to the server
   let peerRtt = null;      // this client to the opponent and back — what you feel
@@ -1098,8 +1099,22 @@ export function mount(root, params) {
         }
       }));
     }
-    netOffs.push(net.on('oppLeft', () => {
+    netOffs.push(net.on('oppLeft', (m) => {
       if (ended) return;
+      /* v210: 'ended' is the host's whistle — its result is in. Its last picture comes by
+         another road when the match went direct or through the near relay, and can land
+         after this: give it a moment, then end as the full time it is, not a walkover. */
+      if (m?.reason === 'ended' && !online.host && !spectating) {
+        setTimeout(() => {
+          if (ended) return;
+          pq = null; syncLeft = 0; guestSynced = false; guestPz = null;
+          showQueueBanner(null);
+          if (paused) setPaused(false);
+          ended = true;
+          finish();
+        }, 2500);
+        return;
+      }
       // whatever the pause machinery was doing dies with the opponent — a
       // disconnect during a queued or active pause must not strand the menu
       pq = null; syncLeft = 0; guestSynced = false; guestPz = null;
@@ -1109,6 +1124,19 @@ export function mount(root, params) {
       ended = true;
       finish();
     }));
+    /* v210: a rematch (server.js rememberFriendly). The other phone's ask can land
+       before this one's card is up, so it is kept and the card paints from it. */
+    if (online.rematch && !online.party && !spectating) {
+      netOffs.push(net.on('rematchAsk', () => {
+        if (rematchState.gone) return;
+        rematchState.theyAsked = true;
+        // the button says it (and glows); a toast would sit on the buttons of a phone held sideways
+        if (ended && !rematchState.asked) sfx('confirm');
+        paintRematch();
+      }));
+      netOffs.push(net.on('rematchWait', () => { rematchState.asked = true; paintRematch(); }));
+      netOffs.push(net.on('rematchOff', () => { rematchState.gone = true; clearTimeout(rematchState.timer); paintRematch(); }));
+    }
     // try to go direct; the relay carries the match until (and unless) it works
     // v202: a new match starts its own order — the last match's timestamps came from another machine's clock
     net.resetOrder();
@@ -2993,6 +3021,33 @@ export function mount(root, params) {
     });
   }
 
+  /* v210: the Rematch button on an online friendly's full-time card. One tap asks; when
+     both have asked the server sends a new match card, and online.js starts it. */
+  function paintRematch() {
+    const btn = overlay.querySelector('[data-o="rematchOnline"]'); if (!btn) return;
+    const name = esc(online?.oppName || '');
+    const st = rematchState;
+    btn.disabled = st.gone || st.noAnswer || st.asked;
+    btn.classList.toggle('gm-rematch-ask', st.theyAsked && !st.asked && !st.gone);
+    const line = st.gone ? `${name} ${tx('has gone')}`
+      : st.noAnswer ? `${tx('No answer from')} ${name}`
+      : st.asked ? `${tx('Waiting for')} ${name}…`
+      : st.theyAsked ? `${name} ${tx('is up for it')}`
+      : '';
+    btn.innerHTML = `${t('end.rematch')}${line ? `<small>${line}</small>` : ''}`;
+  }
+  function askRematch() {
+    const st = rematchState;
+    if (st.gone || st.asked || !net.isReady()) return;
+    st.asked = true;
+    sfx('confirm');
+    net.send({ t: 'rematch' });
+    paintRematch();
+    // nobody can be waited for forever: the server forgets the pairing three minutes after the match
+    clearTimeout(st.timer);
+    st.timer = setTimeout(() => { if (!st.gone) { st.noAnswer = true; paintRematch(); } }, 90000);
+  }
+
   function finish() {
     const [ph, pa] = match.possession();
     const [h, a] = match.teams;
@@ -3139,6 +3194,8 @@ export function mount(root, params) {
       const champ = match.teams[meIdx];
       setTimeout(() => { if (running) trophyScene({ title: 'Champions', club: { name: champ.name, short: champ.short, crest: champ.club?.crest }, sub: `${h.short} ${h.score}–${a.score} ${a.short}`, cup: true }); }, 1800);
     }
+    // v210: an online friendly can be played again, the same two clubs, when both phones can
+    const canRematch = !!(online && !online.party && !spectating && online.kind === 'friendly' && online.rematch && !oppGone);
     overlay.hidden = false;
     overlay.innerHTML = `
       <div class="gm-panel glass">
@@ -3235,6 +3292,8 @@ export function mount(root, params) {
             ? `<button class="btn primary" data-o="draft">${tx('Back to the Draft')}</button>`
             : spectating
             ? '<button class="btn primary" data-o="quit">Back online</button>'
+            : canRematch
+            ? `<button class="btn primary gm-rematch" data-o="rematchOnline">${t('end.rematch')}</button><button class="btn ghost" data-o="uxi">${t('end.uxi')}</button>`
             : online || params.ghost
             ? '<button class="btn primary" data-o="uxi">Back to Ultimate XI</button>'
             : div
@@ -3245,6 +3304,7 @@ export function mount(root, params) {
           ${params.draft ? '' : `<button class="btn ghost" data-o="quit">${t('end.quit')}</button>`}
         </div>
       </div>`;
+    if (canRematch) paintRematch();
   }
 
   overlay.addEventListener('click', (e) => {
@@ -3258,6 +3318,7 @@ export function mount(root, params) {
     const o = e.target.closest('[data-o]')?.dataset.o;
     if (o) {
       // v190: report or block the player you just played (components/playerSheet.js)
+      if (o === 'rematchOnline') { askRematch(); return; }
       if (o === 'reportOpp') { openPlayerSheet(online?.oppName, { matchId: online?.matchId ?? null }); return; }
       if (o === 'gfxLower' || o === 'gfxKeep') {
         if (o === 'gfxLower') {
@@ -3467,6 +3528,9 @@ export function mount(root, params) {
     for (const inp of inputs) { try { inp.destroy?.(); } catch { /* ditto */ } }
     // tell the hub we are gone, so the other player is not left waiting
     if (online && !ended) net.send({ t: 'leave' });
+    // v210: off the full-time card, no rematch (ignored by the hub when this is the rematch starting)
+    clearTimeout(rematchState.timer);
+    if (online?.rematch && ended && !rematchState.gone && net.isReady()) net.send({ t: 'rematchOff' });
     netOffs.forEach((off) => off());
   };
 }

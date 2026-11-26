@@ -80,7 +80,9 @@ export function mountHero(canvas) {
        same footballer you play with, idling, his card's hair on his head. The
        built figure is the fallback (Medium, or the model will not load). */
     let model = null;
-    if (q === 'high' || q === 'ultra') {
+    // v210: 'cinema' is what Ultra resolves to (quality.js) — the check still said 'ultra', so on the default
+    // setting the menu showed the built figure and nothing had read the match's model before kick-off
+    if (q === 'high' || q === 'ultra' || q === 'cinema') {
       try {
         const pm = await import('./game/playerModel.js');
         const m = await pm.loadPlayerModel();

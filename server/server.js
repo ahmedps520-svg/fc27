@@ -697,9 +697,41 @@ function leaveQueue(peer) {
   peer.room = null;
 }
 
+/* v210: a rematch. When a friendly ends with its result in, the two players are
+ * remembered to each other for REMATCH_MS, by name (a phone that reconnects in
+ * the meantime is a new peer record). Either asks with `rematch`; the other is
+ * told (`rematchAsk`), and when both have asked, the same two are paired again
+ * with the same host and the clubs, squads and kits they brought. Only between
+ * clients that can (caps 'rematch'), and only friendlies: a ranked match is
+ * found by the queue, never chosen. */
+const REMATCH_MS = 3 * 60 * 1000;
+const lastFriendly = new Map();   // name -> { name (the other player), host, at, asked }
+function rememberFriendly(a, b) {
+  if (!a?.name || !b?.name || !a.caps?.has('rematch') || !b.caps?.has('rematch')) return;
+  const at = Date.now();
+  lastFriendly.set(a.name, { name: b.name, host: !!a.isHost, at, asked: 0 });
+  lastFriendly.set(b.name, { name: a.name, host: !!b.isHost, at, asked: 0 });
+}
+function rematchOf(peer) {
+  const r = lastFriendly.get(peer.name);
+  if (!r || Date.now() - r.at > REMATCH_MS) return null;
+  const back = lastFriendly.get(r.name);
+  if (!back || back.name !== peer.name) return null;
+  return { r, back, other: peers.get(r.name) || null };
+}
+function forgetFriendly(peer, tell) {
+  const rm = rematchOf(peer);
+  lastFriendly.delete(peer.name);
+  if (rm) { lastFriendly.delete(rm.r.name); if (tell && rm.other?.sock.open) rm.other.sock.send({ t: 'rematchOff', from: peer.name }); }
+}
+function sweepFriendlies(now = Date.now()) {
+  for (const [k, r] of lastFriendly) if (now - r.at > REMATCH_MS) lastFriendly.delete(k);
+}
+
 function endMatch(peer, reason) {
   const other = peer.opponent;
   const host = peer.isHost ? peer : other;
+  if (reason === 'ended' && other && peer.matchKind === 'friendly') rememberFriendly(peer, other);   // v210
   peer.opponent = null;
   peer.matchId = null;
   if (other) {
@@ -826,6 +858,8 @@ function pair(a, b, kind) {
   a.opponent = b; b.opponent = a;
   a.matchId = id; b.matchId = id;
   a.reported = false; b.reported = false;      // one result per match, per pairing
+  a.matchKind = kind; b.matchKind = kind;      // v210: a friendly can be played again (rematch)
+  lastFriendly.delete(a.name); lastFriendly.delete(b.name);
   // whoever waited longer hosts — they are likelier to have a stable connection,
   // and it makes the choice deterministic rather than a race
   a.isHost = true; b.isHost = false;
@@ -844,6 +878,7 @@ function pair(a, b, kind) {
     opp: { name: opp.name, club: opp.club, squad: opp.squad, divIdx: opp.divIdx, kit: opp.kit || null },
     wl: self.wl ? self.wl.id : null,
     ...(syncKick ? { syncKick: true } : {}),
+    ...(kind === 'friendly' && a.caps?.has('rematch') && b.caps?.has('rematch') ? { rematch: true } : {}),   // v210
     ...(relay ? { relay: relay[host ? 0 : 1] } : {}),
   });
   a.sock.send(card(a, b, true));
@@ -863,7 +898,7 @@ function tryMatchmake() {
 // Waiting players are re-checked on a timer as well as on arrival, because the
 // widening above is time-based: two lone players in different divisions must
 // eventually find each other with no new event to trigger it.
-setInterval(() => { if (queue.length >= 2) tryMatchmake(); offerGhosts(); expireGhosts(); }, 3000).unref();
+setInterval(() => { if (queue.length >= 2) tryMatchmake(); offerGhosts(); expireGhosts(); sweepFriendlies(); }, 3000).unref();
 
 /* v193: ghosts. Nobody for you after GHOST_AFTER_MS: an AI-controlled copy of a
  * real player's recent squad (store.pickGhost), played on your own machine, the
@@ -981,6 +1016,7 @@ ws.attach(server, '/ws', (sock) => {
     switch (m.t) {
       case 'queue': {
         leaveQueue(peer);
+        forgetFriendly(peer, true);              // v210: gone to play someone else
         // whatever is stored here is relayed to an opponent's machine, so it
         // is rebuilt from known fields rather than forwarded as it arrived
         peer.club = guard.cleanClub(m.club);
@@ -1005,6 +1041,7 @@ ws.attach(server, '/ws', (sock) => {
 
       case 'host': {
         leaveQueue(peer);
+        forgetFriendly(peer, true);              // v210: gone to play someone else
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
         peer.kit = guard.cleanKit(m.kit);          // v116
@@ -1028,6 +1065,7 @@ ws.attach(server, '/ws', (sock) => {
         // v190: blocked either way round looks exactly like a code that does not exist
         if (store.blocks(host.acct, peer.acct)) { sock.send({ t: 'joinFail', error: 'No lobby with that code.' }); return; }
         leaveQueue(peer);
+        forgetFriendly(peer, true);              // v210
         peer.club = guard.cleanClub(m.club);
         peer.squad = guard.cleanSquad(m.squad);
         peer.kit = guard.cleanKit(m.kit);          // v116
@@ -1171,6 +1209,32 @@ ws.attach(server, '/ws', (sock) => {
 
       case 'leave':
         endMatch(peer, 'left');
+        break;
+
+      // v210: the same friendly again (see rememberFriendly)
+      case 'rematch': {
+        if (!guard.allow(`rematch:${peer.name}`, 4, 0.2)) break;
+        const rm = rematchOf(peer);
+        const other = rm?.other;
+        const busy = (p) => !!(p.opponent || p.party || p.room || p.watching || queue.includes(p));
+        if (!rm || busy(peer)) { sock.send({ t: 'rematchOff' }); break; }
+        if (!other || !other.sock.open || other.dropped || busy(other) || store.blocks(peer.acct, other.acct) || (other.net || 1) !== (peer.net || 1)) {
+          sock.send({ t: 'rematchOff', from: rm.r.name });
+          break;
+        }
+        const now = Date.now();
+        rm.r.asked = now;
+        if (rm.back.asked && now - rm.back.asked < REMATCH_MS) {
+          const host = rm.r.host ? peer : other;
+          pair(host, host === peer ? other : peer, 'friendly');
+        } else {
+          other.sock.send({ t: 'rematchAsk', from: peer.name });
+          sock.send({ t: 'rematchWait', to: other.name });
+        }
+        break;
+      }
+      case 'rematchOff':
+        if (!peer.opponent) forgetFriendly(peer, true);
         break;
 
       case 'ping':
