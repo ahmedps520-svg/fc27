@@ -61,6 +61,39 @@ export function prefetchScreens() {
   const next = () => { const n = names.shift(); if (!n) return; loadScreen(n).catch(() => {}).finally(() => idle(next)); };
   idle(next);
 }
+/**
+ * v210: the match's renderer and the scanned players, warmed on the menu.
+ *
+ * `loadPlayerModel()` keeps what it loads for the rest of the session, but it
+ * only started when the first match did — so the first kick-off of every
+ * session waited on three.js and a 15 MB model being read and parsed behind the
+ * loading screen (online, that was the phone the other one sat waiting for).
+ * Now the same two loads start once the menu has been up a few seconds and the
+ * device is idle, and the match finds them done. Only when the match would use
+ * the scanned players (High and above), and on the website not on a metered or
+ * slow connection: in the App Store app the files are on the phone already.
+ */
+let prewarmed = false;
+export function prewarmMatch() {
+  if (prewarmed || window.__apexNoPrewarm) return;   // (the switch is for tests/perf/prewarm.mjs)
+  try {
+    const q = getState().settings.quality;
+    const conn = navigator.connection || {};
+    if (!APP_STORE && (conn.saveData || /(^|-)2g$|^3g$/.test(conn.effectiveType || ''))) return;
+    prewarmed = true;
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 300));
+    idle(async () => {
+      try {
+        const { resolveQuality } = await import('./game/quality.js');
+        const level = resolveQuality(q);
+        if (!(level === 'high' || level === 'ultra' || level === 'cinema')) return;
+        await import('./game/renderGL.js');
+        const { loadPlayerModel } = await import('./game/playerModel.js');
+        await loadPlayerModel();
+      } catch { /* the match loads them itself, as it always did */ }
+    }, { timeout: 8000 });
+  } catch { prewarmed = false; }
+}
 window.__apexScreen = () => current;        // v88: which screen is up, for the controller test
 let navToken = 0;
 let prefetched = false;
@@ -80,7 +113,7 @@ let prefetched = false;
 const GREEN = { accent: '#23c55e', deep: '#0f9e56', soft: 'rgba(35,197,94,.18)' };
 
 /** Shown in Settings so a player can say which build they are actually on. */
-export const APP_VERSION = 'v209';
+export const APP_VERSION = 'v210';
 
 const root = document.getElementById('screen');
 const title = document.getElementById('topTitle');
@@ -312,7 +345,7 @@ export function navigate(name, params = {}) {
     if (name !== 'menu') { navigate('menu'); return; }
   }
   resetPadFocus();
-  if (name === 'menu' && !prefetched) { prefetched = true; setTimeout(prefetchScreens, 1500); }
+  if (name === 'menu' && !prefetched) { prefetched = true; setTimeout(prefetchScreens, 1500); setTimeout(prewarmMatch, 4000); }
   // music belongs to the front end only; the match runs its own crowd bed
   if (name === 'play') stopMusic(); else startMusic();
   refreshCoins();
